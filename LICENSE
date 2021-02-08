@@ -1,0 +1,1 @@
+    git branch --set-upstream-to=hwc/<branch> master
