@@ -1,0 +1,18 @@
+[package]
+name = "recipient-typescript"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+recipient-typescript-lib = { path = "../../lib/recipient-typescript-lib", default_features = false }
+ckb-std = "0.7.2"
+contracts-helper = { path = "../../contracts-helper", default_features = false }
+
+[profile.release]
+overflow-checks = true
+opt-level = 's'
+lto = true
+codegen-units = 1
+panic = 'abort'

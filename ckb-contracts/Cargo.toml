@@ -1,0 +1,14 @@
+[workspace]
+
+members = [
+    "tests",
+    "types",
+    "contracts-helper",
+    "lib/bridge-lockscript-lib",
+    "lib/recipient-typescript-lib",
+]
+
+exclude = [
+    "contracts/bridge-lockscript",
+    "contracts/recipient-typescript",
+]

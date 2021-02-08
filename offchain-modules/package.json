@@ -1,0 +1,21 @@
+{
+  "name": "force-bridge-core",
+  "version": "0.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@ckb-lumos/base": "^0.16.0",
+    "@ckb-lumos/indexer": "^0.16.0",
+    "@lay2/pw-core": "^0.3.22",
+    "@nervosnetwork/ckb-sdk-core": "^0.39.0",
+    "@nervosnetwork/ckb-types": "^0.39.0",
+    "ckb-js-toolkit": "^0.10.2",
+    "dotenv": "^8.2.0",
+    "nconf": "^0.11.2"
+  }
+}

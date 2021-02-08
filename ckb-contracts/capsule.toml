@@ -1,0 +1,17 @@
+# [rust]
+# # path of rust contracts workspace directory,
+# # a `Cargo.toml` file is expected under the directory.
+# workspace_dir = "."
+
+# capsule version
+# version = "0.4.2 dcfac5b"
+# path of deployment config file
+deployment = "deployment.toml"
+
+[[contracts]]
+name = "bridge-lockscript"
+template_type = "Rust"
+
+[[contracts]]
+name = "recipient-typescript"
+template_type = "Rust"

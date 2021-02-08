@@ -1,0 +1,22 @@
+[package]
+name = "bridge-lockscript-lib"
+version = "0.1.0"
+authors = ["huwenchao <me@huwenchao.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = ["std"]
+std = ["mockall", "no-std-compat/std", "contracts-helper/std"]
+
+[dependencies]
+ckb-std = "0.7.2"
+sparse-merkle-tree = { version = "0.3.1-pre", default-features = false }
+mockall = { version = "0.9", optional = true }
+molecule = { version = "0.6", default-features = false }
+force-bridge-types = { path = "../../types", default-features = false, features = ["contract", "devnet"]}
+no-std-compat = { version = "0.4.1", features = [ "alloc" ] }
+contracts-helper = { path = "../../contracts-helper", default-features = false }
+rlp = {version = "0.4.5", default-features = false }
+hex = { version = "0.4.2", default-features = false }
