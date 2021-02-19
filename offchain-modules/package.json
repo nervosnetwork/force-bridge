@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "demo": "node src/demo.js",
+    "clear": "rm -rf lumos_db config.json"
   },
   "author": "",
   "license": "ISC",
@@ -14,6 +16,7 @@
     "@lay2/pw-core": "^0.3.22",
     "@nervosnetwork/ckb-sdk-core": "^0.39.0",
     "@nervosnetwork/ckb-types": "^0.39.0",
+    "axios": "^0.21.1",
     "ckb-js-toolkit": "^0.10.2",
     "dotenv": "^8.2.0",
     "nconf": "^0.11.2"
