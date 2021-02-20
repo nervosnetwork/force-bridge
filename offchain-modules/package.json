@@ -1,15 +1,17 @@
 {
-  "name": "force-bridge-core",
-  "version": "0.0.0",
+  "name": "force-bridge",
+  "version": "0.0.1",
   "description": "",
-  "main": "index.js",
+  "workspace": [
+    "packages/*",
+    "apps/*"
+  ],
   "scripts": {
     "start": "npx ts-node src/index.ts",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "demo": "node scripts/demo.js",
+    "demo": "ts-node-dev scripts/demo.ts",
     "lint": "npx eslint --format=pretty -c .eslintrc.js src/**/*.ts",
     "prettier": "npx prettier --write .",
-    "clear": "rm -rf lumos_db config.json"
+    "clear": "rimraf lumos_db config.json"
   },
   "author": "",
   "license": "MIT",
@@ -25,20 +27,23 @@
     "prettier": "^2.2.1",
     "ts-jest": "^26.4.4",
     "ts-node": "^9.1.1",
-    "typescript": "^4.1.3"
+    "typescript": "^4.1.3",
+    "rimraf": "^3.0.2",
+    "lodash": "4.17.20",
+    "@typescript-eslint/eslint-plugin": "^4.15.1",
+    "@typescript-eslint/parser": "^4.15.1",
+    "eslint": "^7.20.0",
+    "@nervosnetwork/ckb-types": "^0.39.0",
+    "ts-node-dev": "^1.1.1"
   },
   "dependencies": {
     "@ckb-lumos/base": "^0.16.0",
     "@ckb-lumos/indexer": "^0.16.0",
     "@lay2/pw-core": "^0.3.22",
     "@nervosnetwork/ckb-sdk-core": "^0.39.0",
-    "@nervosnetwork/ckb-types": "^0.39.0",
-    "@typescript-eslint/eslint-plugin": "^4.15.1",
-    "@typescript-eslint/parser": "^4.15.1",
     "axios": "^0.21.1",
     "ckb-js-toolkit": "^0.10.2",
     "dotenv": "^8.2.0",
-    "eslint": "^7.20.0",
     "nconf": "^0.11.2"
   }
 }

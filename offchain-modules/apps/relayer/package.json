@@ -1,0 +1,10 @@
+{
+  "name": "@force-bridge/relayer",
+  "version": "0.0.1",
+  "main": "./lib/index.js",
+  "dependencies": {
+    "lodash": "4.17.20"
+  },
+  "peerDependencies": {},
+  "devDependencies": {}
+}
