@@ -1,3 +1,4 @@
 node_modules/
 config.json
 lumos_db/
+yarn-error.log
