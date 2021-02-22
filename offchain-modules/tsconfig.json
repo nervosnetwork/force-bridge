@@ -1,14 +1,17 @@
 {
   "compilerOptions": {
     "module": "commonjs",
+    "composite": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "target": "es2020",
+    "types": ["node", "jest"],
     //    "noImplicitAny": true,
     "moduleResolution": "node",
     "sourceMap": true,
     "declaration": true,
     "declarationMap": true,
+    "rootDir": ".",
     "outDir": "dist"
     //    "baseUrl": ".",
     //    "paths": {
@@ -16,4 +19,5 @@
     //    }
   }
   //  "include": ["src/**/*"]
+  //  "references": [{ "path": "packages/ckb" }, { "path": "packages/eth" }, { "path": "packages/commons" }]
 }
