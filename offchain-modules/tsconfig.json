@@ -11,13 +11,18 @@
     "sourceMap": true,
     "declaration": true,
     "declarationMap": true,
-    "rootDir": ".",
-    "outDir": "dist"
-    //    "baseUrl": ".",
-    //    "paths": {
-    //      "*": ["node_modules/*", "src/types/*"]
-    //    }
-  }
-  //  "include": ["src/**/*"]
+    // "rootDir": ".",
+    "outDir": "dist",
+    "skipLibCheck": true,
+    // "baseUrl": "./src",
+    // "paths": {
+    //   "*": ["*"],
+    //   // "*": ["./src/packages/*"],
+    //   // "*": ["node_modules/*", "*"],
+    //   // "@force-bridge/*": ["./src/packages/*"],
+    // }
+  },
+  "include": ["./src/**/*.ts"],
+  "exclude": ["./node_modules"],
   //  "references": [{ "path": "packages/ckb" }, { "path": "packages/eth" }, { "path": "packages/commons" }]
 }

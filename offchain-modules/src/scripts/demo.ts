@@ -24,6 +24,8 @@ const PUB_KEY = ckb.utils.privateKeyToPublicKey(PRI_KEY);
 const ARGS = `0x${ckb.utils.blake160(PUB_KEY, 'hex')}`;
 const ADDRESS = ckb.utils.pubkeyToAddress(PUB_KEY);
 
+console.log({ ADDRESS });
+
 const BRIDGE_CELL_LOCKSCRIPT_ARGS = '0x0102';
 
 const deploy = async () => {
@@ -40,7 +42,7 @@ const deploy = async () => {
   const cells = await ckb.loadCells({ indexer, CellCollector, lock });
   const emptyCells = cells.filter((cell) => cell.data === '0x');
   console.dir({ emptyCells }, { depth: null });
-  const rawTx = ckb.generateRawTransaction({
+  const rawTx = ckb.generateTransaction({
     fromAddress: ADDRESS,
     toAddress: ADDRESS,
     capacity: (contractBinLength + 100n) * 10n ** 8n,

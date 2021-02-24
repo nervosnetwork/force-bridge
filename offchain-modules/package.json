@@ -2,16 +2,12 @@
   "name": "force-bridge",
   "version": "0.0.1",
   "description": "",
-  "workspace": [
-    "packages/*",
-    "apps/*"
-  ],
   "scripts": {
     "start": "ts-node-dev src/index.ts",
     "demo": "ts-node-dev scripts/demo.ts",
     "lint": "npx eslint --format=pretty -c .eslintrc.js src/**/*.ts",
     "prettier": "npx prettier --write .",
-    "watch": "ts-node-dev --respawn src/index.ts",
+    "watch": "ts-node-dev --respawn --transpile-only src/scripts/test.ts",
     "clear": "rimraf lumos_db config.json"
   },
   "author": "",
@@ -41,6 +37,7 @@
   "dependencies": {
     "@ckb-lumos/base": "^0.16.0",
     "@ckb-lumos/indexer": "^0.16.0",
+    "@ckb-lumos/rpc": "^0.16.0",
     "@lay2/pw-core": "^0.3.22",
     "@nervosnetwork/ckb-sdk-core": "^0.39.0",
     "axios": "^0.21.1",
