@@ -13,7 +13,7 @@
     "declarationMap": true,
     // "rootDir": ".",
     "outDir": "dist",
-    "skipLibCheck": true,
+    "skipLibCheck": true
     // "baseUrl": "./src",
     // "paths": {
     //   "*": ["*"],
@@ -23,6 +23,6 @@
     // }
   },
   "include": ["./src/**/*.ts"],
-  "exclude": ["./node_modules"],
+  "exclude": ["./node_modules"]
   //  "references": [{ "path": "packages/ckb" }, { "path": "packages/eth" }, { "path": "packages/commons" }]
 }

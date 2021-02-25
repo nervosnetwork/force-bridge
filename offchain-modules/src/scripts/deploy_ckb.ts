@@ -1,12 +1,11 @@
 // todo: remove lumos indexer dep, use collector in packages/ckb/tx-helper/collector
-import { blake2b, asyncSleep as sleep } from "../packages/utils";
+import { blake2b, asyncSleep as sleep } from '../packages/utils';
 
 const fs = require('fs').promises;
 const nconf = require('nconf');
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
 const utils = require('@nervosnetwork/ckb-sdk-utils');
 const { Indexer, CellCollector } = require('@ckb-lumos/indexer');
-
 
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
 const ckb = new CKB(CKB_URL);
@@ -22,117 +21,115 @@ const ARGS = `0x${ckb.utils.blake160(PUB_KEY, 'hex')}`;
 const ADDRESS = ckb.utils.pubkeyToAddress(PUB_KEY);
 
 const deploy = async () => {
-    const lockscriptBin = await fs.readFile('../ckb-contracts/build/release/bridge-lockscript');
-    const lockscriptCodeHash = utils.bytesToHex(blake2b(lockscriptBin));
-    const sudtBin = await fs.readFile('./deps/simple_udt');
-    const sudtCodeHash = utils.bytesToHex(blake2b(sudtBin));
-    // console.dir({lockscriptCodeHash, sudtCodeHash}, {depth: null})
-    const contractBinLength = BigInt(lockscriptBin.length);
-    console.log({ contractBinLength });
-    const { secp256k1Dep } = await ckb.loadDeps();
-    const lock = { ...secp256k1Dep, args: ARGS };
-    // nconf.set('userLockscript', lock);
-    const cells = await ckb.loadCells({ indexer, CellCollector, lock });
-    const emptyCells = cells.filter((cell) => cell.data === '0x');
-    console.dir({ emptyCells }, { depth: null });
-    const rawTx = ckb.generateRawTransaction({
-        fromAddress: ADDRESS,
-        toAddress: ADDRESS,
-        capacity: (contractBinLength + 100n) * 10n ** 8n,
-        fee: 100000n,
-        safeMode: true,
-        cells: emptyCells,
-        outputsData: [utils.bytesToHex(lockscriptBin)],
-        deps: secp256k1Dep,
-    });
-    // add sudt
-    const sudtCodeCellCapacity = (BigInt(sudtBin.length) + 100n) * 10n ** 8n;
-    rawTx.outputs.push({
-        ...rawTx.outputs[0],
-        capacity: `0x${sudtCodeCellCapacity.toString(16)}`,
-    });
-    rawTx.outputsData.push(utils.bytesToHex(sudtBin));
-    // // create bridge cell
-    // const bridgeCellCapacity = 100n * 10n ** 8n;
-    // const bridgeCellLockscript = {
-    //     codeHash: lockscriptCodeHash,
-    //     hashType: 'data',
-    //     args: BRIDGE_CELL_LOCKSCRIPT_ARGS,
-    // };
-    // const bridgeCellLockscriptHash = ckb.utils.scriptToHash(bridgeCellLockscript);
-    // nconf.set('bridgeCellLockscript', bridgeCellLockscript);
-    // nconf.set('bridgeCellLockscriptHash', bridgeCellLockscriptHash);
-    // rawTx.outputs.push({
-    //     lock: bridgeCellLockscript,
-    //     capacity: `0x${bridgeCellCapacity.toString(16)}`,
-    // });
-    // rawTx.outputsData.push('0x');
-    // modify change cell
-    const changeCellCap = BigInt(rawTx.outputs[1].capacity) - sudtCodeCellCapacity;
-    rawTx.outputs[1].capacity = `0x${changeCellCap.toString(16)}`;
-    console.dir({ rawTx }, { depth: null });
+  const lockscriptBin = await fs.readFile('../ckb-contracts/build/release/bridge-lockscript');
+  const lockscriptCodeHash = utils.bytesToHex(blake2b(lockscriptBin));
+  const sudtBin = await fs.readFile('./deps/simple_udt');
+  const sudtCodeHash = utils.bytesToHex(blake2b(sudtBin));
+  // console.dir({lockscriptCodeHash, sudtCodeHash}, {depth: null})
+  const contractBinLength = BigInt(lockscriptBin.length);
+  console.log({ contractBinLength });
+  const { secp256k1Dep } = await ckb.loadDeps();
+  const lock = { ...secp256k1Dep, args: ARGS };
+  // nconf.set('userLockscript', lock);
+  const cells = await ckb.loadCells({ indexer, CellCollector, lock });
+  const emptyCells = cells.filter((cell) => cell.data === '0x');
+  console.dir({ emptyCells }, { depth: null });
+  const rawTx = ckb.generateRawTransaction({
+    fromAddress: ADDRESS,
+    toAddress: ADDRESS,
+    capacity: (contractBinLength + 100n) * 10n ** 8n,
+    fee: 100000n,
+    safeMode: true,
+    cells: emptyCells,
+    outputsData: [utils.bytesToHex(lockscriptBin)],
+    deps: secp256k1Dep,
+  });
+  // add sudt
+  const sudtCodeCellCapacity = (BigInt(sudtBin.length) + 100n) * 10n ** 8n;
+  rawTx.outputs.push({
+    ...rawTx.outputs[0],
+    capacity: `0x${sudtCodeCellCapacity.toString(16)}`,
+  });
+  rawTx.outputsData.push(utils.bytesToHex(sudtBin));
+  // // create bridge cell
+  // const bridgeCellCapacity = 100n * 10n ** 8n;
+  // const bridgeCellLockscript = {
+  //     codeHash: lockscriptCodeHash,
+  //     hashType: 'data',
+  //     args: BRIDGE_CELL_LOCKSCRIPT_ARGS,
+  // };
+  // const bridgeCellLockscriptHash = ckb.utils.scriptToHash(bridgeCellLockscript);
+  // nconf.set('bridgeCellLockscript', bridgeCellLockscript);
+  // nconf.set('bridgeCellLockscriptHash', bridgeCellLockscriptHash);
+  // rawTx.outputs.push({
+  //     lock: bridgeCellLockscript,
+  //     capacity: `0x${bridgeCellCapacity.toString(16)}`,
+  // });
+  // rawTx.outputsData.push('0x');
+  // modify change cell
+  const changeCellCap = BigInt(rawTx.outputs[1].capacity) - sudtCodeCellCapacity;
+  rawTx.outputs[1].capacity = `0x${changeCellCap.toString(16)}`;
+  console.dir({ rawTx }, { depth: null });
 
-    // return
-    const signedTx = ckb.signTransaction(PRI_KEY)(rawTx);
-    const deployTxHash = await ckb.rpc.sendTransaction(signedTx);
-    console.log(`Transaction has been sent with tx hash ${deployTxHash}`);
-    const txStatus = await waitUntilCommitted(deployTxHash);
-    // console.dir({ txStatus }, {depth: null})
-    // nconf.set('deployTxHash', deployTxHash);
-    const scriptsInfo = {
-        bridgeLock: {
-            cellDep: {
-                depType: "code",
-                outPoint: {
-                    txHash: deployTxHash,
-                    index: '0x0',
-                },
-            },
-            script: {
-                codeHash: lockscriptCodeHash,
-                hashType: 'data',
-            }
+  // return
+  const signedTx = ckb.signTransaction(PRI_KEY)(rawTx);
+  const deployTxHash = await ckb.rpc.sendTransaction(signedTx);
+  console.log(`Transaction has been sent with tx hash ${deployTxHash}`);
+  const txStatus = await waitUntilCommitted(deployTxHash);
+  // console.dir({ txStatus }, {depth: null})
+  // nconf.set('deployTxHash', deployTxHash);
+  const scriptsInfo = {
+    bridgeLock: {
+      cellDep: {
+        depType: 'code',
+        outPoint: {
+          txHash: deployTxHash,
+          index: '0x0',
         },
-        sudt: {
-            cellDep: {
-                depType: "code",
-                outPoint: {
-                    txHash: deployTxHash,
-                    index: '0x1',
-                },
-            },
-            script: {
-                codeHash: sudtCodeHash,
-                hashType: 'data',
-            }
+      },
+      script: {
+        codeHash: lockscriptCodeHash,
+        hashType: 'data',
+      },
+    },
+    sudt: {
+      cellDep: {
+        depType: 'code',
+        outPoint: {
+          txHash: deployTxHash,
+          index: '0x1',
         },
-    };
-    nconf.set('forceBridge:ckb:deps', scriptsInfo);
-    nconf.save();
+      },
+      script: {
+        codeHash: sudtCodeHash,
+        hashType: 'data',
+      },
+    },
+  };
+  nconf.set('forceBridge:ckb:deps', scriptsInfo);
+  nconf.save();
 };
-
 
 const waitUntilCommitted = async (txHash) => {
-    let waitTime = 0;
-    while (true) {
-        const txStatus = await ckb.rpc.getTransaction(txHash);
-        console.log(`tx ${txHash} status: ${txStatus.txStatus.status}, index: ${waitTime}`);
-        if (txStatus.txStatus.status === 'committed') {
-            return txStatus;
-        }
-        await sleep(1000);
-        waitTime += 1;
+  let waitTime = 0;
+  while (true) {
+    const txStatus = await ckb.rpc.getTransaction(txHash);
+    console.log(`tx ${txHash} status: ${txStatus.txStatus.status}, index: ${waitTime}`);
+    if (txStatus.txStatus.status === 'committed') {
+      return txStatus;
     }
+    await sleep(1000);
+    waitTime += 1;
+  }
 };
 
-
 const main = async () => {
-    console.log('\n\n\n---------start deploy -----------\n');
-    await indexer.waitForSync();
-    nconf.env().file({ file: configPath });
-    await deploy();
-    console.log('\n\n\n---------end deploy -----------\n');
-    process.exit(0)
+  console.log('\n\n\n---------start deploy -----------\n');
+  await indexer.waitForSync();
+  nconf.env().file({ file: configPath });
+  await deploy();
+  console.log('\n\n\n---------end deploy -----------\n');
+  process.exit(0);
 };
 
 main();
