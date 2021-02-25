@@ -1,0 +1,30 @@
+version: "3.3"
+services:
+  ckb:
+    image: tockb/ckb-dev:v0.39.2
+    ports:
+      - "8114:8114"
+  ckb-indexer:
+    image: tockb/ckb-indexer
+    ports:
+      - "8116:8116"
+    environment:
+      - RUST_LOG=info
+    command: ckb-indexer -s /tmp/ckb-indexer-test -c http://ckb:8114 -l 0.0.0.0:8116
+    depends_on:
+      - ckb
+  geth:
+    image: tockb/geth-priv:v1.9.23
+
+    volumes:
+      - type: volume
+        source: geth-dag
+        target: /root/.ethash
+      - type: bind
+        source: ./geth
+        target: /config
+    ports:
+      - "8545:8545"
+
+volumes:
+  geth-dag:
