@@ -12,7 +12,7 @@ const ckb = new CKB(CKB_URL);
 const PRI_KEY = process.env.PRI_KEY || '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
 
 async function main() {
-    logger.debug("start test")
+    logger.debug("start ckb test")
     const account = new Account(PRI_KEY, ckb);
     logger.debug("address", account.address);
     // const pw = await new PWCore(CKB_URL).init();

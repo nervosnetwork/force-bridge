@@ -1,14 +1,9 @@
 import CKB from '@nervosnetwork/ckb-sdk-core'
 import {CellDep, ConfigItem} from "@lay2/pw-core";
+import {Config} from "./config";
 
-export interface Config {
-    ckbRpcUrl: string,
-    deps: {
-        bridgeLock: ConfigItem,
-        sudtType: ConfigItem,
-    }
-}
-
+// make global config and var static,
+// which can be import from ForceBridgeCore
 export class ForceBridgeCore {
     static config: Config;
     static ckb: CKB;
@@ -17,7 +12,7 @@ export class ForceBridgeCore {
         config: Config,
     ): Promise<ForceBridgeCore> {
         ForceBridgeCore.config = config;
-        ForceBridgeCore.ckb = new CKB(config.ckbRpcUrl);
+        ForceBridgeCore.ckb = new CKB(config.ckb.ckbRpcUrl);
         return this;
     }
 }

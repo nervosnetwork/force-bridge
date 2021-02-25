@@ -3,12 +3,14 @@
   "version": "0.0.1",
   "description": "",
   "scripts": {
-    "start": "ts-node-dev src/index.ts",
+    "start": "ts-node-dev ./src/apps/relayer/index.ts",
     "demo": "ts-node-dev scripts/demo.ts",
     "lint": "npx eslint --format=pretty -c .eslintrc.js src/**/*.ts",
     "prettier": "npx prettier --write .",
-    "watch": "ts-node-dev --respawn --transpile-only src/scripts/test.ts",
-    "clear": "rimraf lumos_db config.json"
+    "watch": "ts-node-dev --respawn ./src/apps/relayer/index.ts",
+    "clean": "rimraf lumos_db",
+    "ci": "run-s clean deploy start",
+    "deploy": "ts-node-dev ./src/scripts/deploy_ckb.ts"
   },
   "author": "",
   "license": "MIT",
@@ -45,6 +47,7 @@
     "dotenv": "^8.2.0",
     "lodash": "^4.17.20",
     "log4js": "^6.3.0",
-    "nconf": "^0.11.2"
+    "nconf": "^0.11.2",
+    "npm-run-all": "^4.1.5"
   }
 }

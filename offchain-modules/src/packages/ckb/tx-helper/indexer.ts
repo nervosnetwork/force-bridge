@@ -72,7 +72,7 @@ export class CkbIndexer {
         return res.data.result;
     }
 
-    async getCells(
+    public async getCells(
         searchKey: SearchKey,
         terminator: Terminator = DefaultTerminator,
         {sizeLimit = 0x100, order = Order.asc }: {sizeLimit?: number, order?: Order} = {}
