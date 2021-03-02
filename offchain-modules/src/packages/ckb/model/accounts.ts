@@ -15,7 +15,11 @@ export class Account {
     if (this.lockscript === undefined) {
       const { secp256k1Dep } = await this.ckb.loadDeps();
       const args = `0x${ckb.utils.blake160(this.publicKey, 'hex')}`;
-      this.lockscript = new Script(secp256k1Dep.codeHash, args, secp256k1Dep.hashType);
+      this.lockscript = Script.fromRPC({
+        code_hash: secp256k1Dep.codeHash,
+        args,
+        hash_type: secp256k1Dep.hashType,
+      });
     }
     return this.lockscript;
   }

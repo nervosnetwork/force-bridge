@@ -1,6 +1,7 @@
 import { CkbDb } from '../db';
 import { CkbBurn, EthUnlock, transformBurnEvent } from '../db/model';
 import { logger } from '../utils/logger';
+import { asyncSleep } from '../utils';
 
 // CKB handler
 // 1. Listen CKB chain to get new burn events.
@@ -23,23 +24,23 @@ export class CkbHandler {
     await this.db.saveCkbBurn([burn]);
   }
 
-  async watchBurnEventsInnter(): Promise<never> {
+  async watchBurnEvents(): Promise<never> {
     // get cursor from db, usually the block height, to start the poll or subscribe
     // invoke saveBurnEvent when get new one
-    throw new Error('not implemented');
-  }
-
-  async watchMintEventsInnter(): Promise<never> {
     while (true) {
-      const mintEvents = await this.db.getCkbMintRecordsToMint();
-      logger.debug('new mintEvents', mintEvents);
-      // send tx with this mint events, update db status when finish or throw error
+      logger.debug('get new burn events and save to db');
+      await asyncSleep(3000);
     }
   }
 
-  watchBurnEvents() {}
-
-  watchMintEvents() {}
+  async watchMintEvents(): Promise<never> {
+    while (true) {
+      // const mintEvents = await this.db.getCkbMintRecordsToMint();
+      logger.debug('new mintEvents');
+      await asyncSleep(3000);
+      // send tx with this mint events, update db status when finish or throw error
+    }
+  }
 
   start() {
     this.watchBurnEvents();

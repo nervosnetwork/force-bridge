@@ -1,9 +1,9 @@
 export enum ChainType {
-  btc,
-  eth,
-  eos,
-  tron,
-  polkadot,
+  BTC,
+  ETH,
+  EOS,
+  TRON,
+  POLKADOT,
 }
 
 export abstract class Asset {
@@ -15,10 +15,11 @@ export class EthAsset extends Asset {
   // '0x00000000000000000000' represents ETH
   // other address represents ERC20 address
   constructor(public address: string) {
+    super();
     if (!address.startsWith('0x') || address.length !== 42) {
       throw new Error('invalid ETH asset address');
     }
-    this.chainType = ChainType.eth;
+    this.chainType = ChainType.ETH;
   }
 
   toBridgeLockscriptArgs(): string {

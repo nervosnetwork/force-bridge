@@ -22,7 +22,7 @@
     //   // "@force-bridge/*": ["./src/packages/*"],
     // }
   },
-  "include": ["./src/**/*.ts"],
-  "exclude": ["./node_modules"]
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules/**"]
   //  "references": [{ "path": "packages/ckb" }, { "path": "packages/eth" }, { "path": "packages/commons" }]
 }
