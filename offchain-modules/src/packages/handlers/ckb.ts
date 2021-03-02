@@ -11,17 +11,18 @@ export class CkbHandler {
 
   // save unlock event first and then
   async saveBurnEvent(burn: CkbBurn): Promise<void> {
-    const unlock = await transformBurnEvent(burn);
-    switch (unlock.name) {
-      case 'EthUnlock': {
-        await this.db.createEthUnlock([unlock]);
-        break;
-      }
-      default: {
-        throw new Error(`wrong unlock type: ${unlock.name}`);
-      }
-    }
-    await this.db.saveCkbBurn([burn]);
+    logger.debug('save burn event');
+    // const unlock = await transformBurnEvent(burn);
+    // switch (unlock.name) {
+    //   case 'EthUnlock': {
+    //     await this.db.createEthUnlock([unlock]);
+    //     break;
+    //   }
+    //   default: {
+    //     throw new Error(`wrong unlock type: ${unlock.name}`);
+    //   }
+    // }
+    // await this.db.saveCkbBurn([burn]);
   }
 
   async watchBurnEvents(): Promise<never> {

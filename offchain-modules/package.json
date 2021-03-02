@@ -6,11 +6,13 @@
     "start": "ts-node-dev ./src/apps/relayer/index.ts",
     "demo": "ts-node-dev scripts/demo.ts",
     "build": "tsc",
+    "test": "ava",
     "lint:eslint": "eslint --format=pretty -c .eslintrc.js src/**/*.ts",
     "lint:tslint": "tslint --project .",
     "lint": "run-p check:prettier build",
     "prettier": "npx prettier --write .",
-    "watch:test": "ts-node-dev --respawn ./src/apps/relayer/index.ts",
+    "watch:test": "ts-node-dev --respawn --transpile-only ./src/apps/relayer/index.ts",
+    "watch:ava": "ava --watch",
     "watch:build": "tsc -w",
     "check:prettier": "prettier -c .",
     "clean": "rimraf lumos_db dist",
@@ -39,6 +41,7 @@
     "rimraf": "^3.0.2",
     "ts-jest": "^26.4.4",
     "ts-node-dev": "^1.1.1",
+    "tsconfig-paths": "^3.9.0",
     "tslint": "^6.1.3",
     "tslint-config-prettier": "^1.18.0",
     "tslint-immutable": "^6.0.1",
@@ -67,6 +70,15 @@
     "hooks": {
       "pre-commit": "yarn lint"
     }
+  },
+  "ava": {
+    "extensions": [
+      "ts"
+    ],
+    "require": [
+      "ts-node/register",
+      "tsconfig-paths/register"
+    ]
   },
   "_moduleAliases": {
     "@force-bridge": "dist/src/packages"

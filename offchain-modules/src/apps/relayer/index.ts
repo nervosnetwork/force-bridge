@@ -5,6 +5,7 @@ import { CkbDb, EthDb } from '@force-bridge/db';
 import { CkbHandler } from '@force-bridge/handlers/ckb';
 import { EthHandler } from '@force-bridge/handlers/eth';
 import { Config } from '@force-bridge/config';
+import { createConnection } from 'typeorm';
 
 async function main() {
   const configPath = process.env.CONFIG_PATH || './config.json';
@@ -14,7 +15,8 @@ async function main() {
   const core = await new ForceBridgeCore().init(config);
 
   // init db and start handlers
-  const ckbDb = new CkbDb();
+  const conn = await createConnection();
+  const ckbDb = new CkbDb(conn);
   const ckbHandler = new CkbHandler(ckbDb);
   ckbHandler.start();
 
