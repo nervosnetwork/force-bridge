@@ -4,11 +4,11 @@ on:
   push:
     paths:
       - .github/workflows/offchain-modules.yml
-      - 'offchain-modules/**/*.ts'
+      - 'offchain-modules/**'
   pull_request:
     paths:
       - .github/workflows/offchain-modules.yml
-      - 'offchain-modules/**/*.ts'
+      - 'offchain-modules/**'
 
 defaults:
   run:

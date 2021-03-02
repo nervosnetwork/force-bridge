@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { CkbMint, CkbBurn, EthLock, EthUnlock } from './model';
 
 // invoke in ckb handler

@@ -1,9 +1,10 @@
-import { ForceBridgeCore } from '../../packages/core';
+import 'module-alias/register';
 import nconf from 'nconf';
-import { CkbDb, EthDb } from '../../packages/db';
-import { CkbHandler } from '../../packages/handlers/ckb';
-import { EthHandler } from '../../packages/handlers/eth';
-import { Config } from '../../packages/config';
+import { ForceBridgeCore } from '@force-bridge/core';
+import { CkbDb, EthDb } from '@force-bridge/db';
+import { CkbHandler } from '@force-bridge/handlers/ckb';
+import { EthHandler } from '@force-bridge/handlers/eth';
+import { Config } from '@force-bridge/config';
 
 async function main() {
   const configPath = process.env.CONFIG_PATH || './config.json';

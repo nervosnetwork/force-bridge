@@ -6,23 +6,20 @@
     "allowSyntheticDefaultImports": true,
     "target": "es2020",
     "types": ["node", "jest"],
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
     //    "noImplicitAny": true,
     "moduleResolution": "node",
     "sourceMap": true,
     "declaration": true,
     "declarationMap": true,
-    // "rootDir": ".",
     "outDir": "dist",
-    "skipLibCheck": true
-    // "baseUrl": "./src",
-    // "paths": {
-    //   "*": ["*"],
-    //   // "*": ["./src/packages/*"],
-    //   // "*": ["node_modules/*", "*"],
-    //   // "@force-bridge/*": ["./src/packages/*"],
-    // }
+    "skipLibCheck": true,
+    "baseUrl": "./src",
+    "paths": {
+      "@force-bridge/*": ["./packages/*"]
+    }
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules/**"]
-  //  "references": [{ "path": "packages/ckb" }, { "path": "packages/eth" }, { "path": "packages/commons" }]
 }
