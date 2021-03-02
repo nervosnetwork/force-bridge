@@ -32,4 +32,4 @@ jobs:
           node-version: '12.x'
       - name: install dependencies
         run: yarn --frozen-lockfile
-      - run: yarn check
+      - run: yarn lint
