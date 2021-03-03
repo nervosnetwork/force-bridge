@@ -22,7 +22,7 @@ async function main() {
 
   // start xchain handlers if config exists
   if (config.eth !== undefined) {
-    const ethDb = new EthDb();
+    const ethDb = new EthDb(conn);
     const ethHandler = new EthHandler(ethDb);
     ethHandler.start();
   }

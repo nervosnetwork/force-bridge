@@ -72,6 +72,11 @@
     }
   },
   "ava": {
+    "files": [
+      "src/**/test/**/*.ts",
+      "src/**/*.spec.ts",
+      "!src/**/helper.ts"
+    ],
     "extensions": [
       "ts"
     ],

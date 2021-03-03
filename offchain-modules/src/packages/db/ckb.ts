@@ -1,8 +1,6 @@
 // invoke in ckb handler
 import { Connection } from 'typeorm';
-import { CkbMint } from '@force-bridge/db/entity/CkbMint';
-import { CkbBurn } from '@force-bridge/db/entity/CkbBurn';
-import { EthUnlock } from '@force-bridge/db/entity/EthUnlock';
+import { CkbMint, CkbBurn, EthUnlock } from '@force-bridge/db/model';
 
 export class CkbDb {
   constructor(private connection: Connection) {}
@@ -11,17 +9,22 @@ export class CkbDb {
     await this.connection.manager.save(records);
   }
 
-  async getCkbMintRecordsToMint(limit: number = 100): Promise<CkbMint[]> {
-    throw new Error('Method not implemented.');
+  async getCkbMintRecordsToMint(take: number = 100): Promise<CkbMint[]> {
+    return await this.connection.getRepository(CkbMint).find({
+      where: {
+        status: 'pending',
+      },
+      take,
+    });
   }
 
   // update mint status
   async updateCkbMint(records: CkbMint[]): Promise<void> {
-    throw new Error('Method not implemented.');
+    await this.connection.manager.save(records);
   }
 
   /* save chain specific data */
   async createEthUnlock(records: EthUnlock[]): Promise<void> {
-    throw new Error('Method not implemented.');
+    await this.connection.manager.save(records);
   }
 }

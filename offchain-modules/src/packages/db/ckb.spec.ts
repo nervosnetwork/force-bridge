@@ -1,18 +1,17 @@
 import anyTest, { TestInterface } from 'ava';
 import { CkbDb } from './ckb';
-import { getTmpConnection } from '@force-bridge/db/helper';
+import { getTmpConnection } from './test/helper';
 import { CkbBurn } from '@force-bridge/db/entity/CkbBurn';
 import { Connection } from 'typeorm';
 
 const test = anyTest as TestInterface<{
-  tmpdir: string;
+  path: string;
   connection: Connection;
 }>;
 
 test.beforeEach(async (t) => {
-  const { tmpdir, connection } = await getTmpConnection();
-  console.log({ tmpdir });
-  t.context = { tmpdir, connection };
+  const { path, connection } = await getTmpConnection();
+  t.context = { path, connection };
 });
 
 test('ckb db works', async (t) => {

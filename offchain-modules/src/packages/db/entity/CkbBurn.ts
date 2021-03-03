@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, PrimaryColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, PrimaryColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
 @Entity()
 export class CkbBurn {
@@ -16,6 +16,12 @@ export class CkbBurn {
 
   @Column()
   memo: string;
+
+  @CreateDateColumn()
+  created_at: string;
+
+  @UpdateDateColumn()
+  updated_at: string;
 
   from(data: { tx_hash: string; memo: string; amount: string; asset: string; chain: number }) {
     const record = new CkbBurn();
