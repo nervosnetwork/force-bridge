@@ -1,20 +1,27 @@
-import { Entity, PrimaryGeneratedColumn, CreateDateColumn, Column, UpdateDateColumn, PrimaryColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, CreateDateColumn, Column, UpdateDateColumn, Index } from 'typeorm';
 
 export type TronUnlockStatus = 'pending' | 'success' | 'error';
 
 @Entity()
+@Index(['tron_unlock_tx_hash', 'tron_unlock_tx_index'])
 export class TronUnlock {
-  @PrimaryColumn()
-  ckb_burn_tx_hash: string;
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column()
+  related_id: number;
 
   @Column()
   tron_unlock_tx_hash: string;
 
   @Column()
-  ckb_sender: string;
+  tron_unlock_tx_index: number;
 
   @Column()
   asset: string;
+
+  @Column()
+  asset_type: string;
 
   @Column()
   amount: string;
@@ -38,20 +45,22 @@ export class TronUnlock {
   updated_at: Date;
 
   from({
-    ckb_burn_tx_hash,
+    related_id,
     tron_unlock_tx_hash = '',
-    ckb_sender,
+    tron_unlock_tx_index = 0,
     asset,
+    asset_type,
     amount,
     memo,
     tron_recipient_address,
     committee,
     status = 'pending',
   }: {
-    ckb_burn_tx_hash: string;
+    related_id: number;
     tron_unlock_tx_hash?: string;
-    ckb_sender: string;
+    tron_unlock_tx_index?: number;
     asset: string;
+    asset_type: string;
     amount: string;
     memo: string;
     tron_recipient_address: string;
@@ -59,10 +68,11 @@ export class TronUnlock {
     status?: string;
   }) {
     const record = new TronUnlock();
-    record.ckb_burn_tx_hash = ckb_burn_tx_hash;
+    record.related_id = related_id;
     record.tron_unlock_tx_hash = tron_unlock_tx_hash;
-    record.ckb_sender = ckb_sender;
+    record.tron_unlock_tx_index = tron_unlock_tx_index;
     record.asset = asset;
+    record.asset_type = asset_type;
     record.amount = amount;
     record.memo = memo;
     record.tron_recipient_address = tron_recipient_address;

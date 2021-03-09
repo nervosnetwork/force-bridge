@@ -1,12 +1,29 @@
-import { Entity, CreateDateColumn, UpdateDateColumn, Column, PrimaryColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  VersionColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+  Column,
+  Index,
+} from 'typeorm';
+
+export type TronAssetType = 'trx' | 'trc10' | 'trc20';
 
 @Entity()
+@Index(['tron_lock_tx_hash', 'tron_lock_index'])
 export class TronLock {
-  @PrimaryColumn()
-  ckb_mint_tx_hash: string;
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column()
+  related_id: number;
 
   @Column()
   tron_lock_tx_hash: string;
+
+  @Column()
+  tron_lock_index: number;
 
   @Column()
   tron_sender: string;
@@ -15,16 +32,19 @@ export class TronLock {
   asset: string;
 
   @Column()
+  asset_type: string;
+
+  @Column()
   amount: string;
 
   @Column()
   memo: string;
 
   @Column()
-  ckb_recipient_address: string;
-
-  @Column()
   committee: string;
+
+  @VersionColumn()
+  version: number;
 
   @CreateDateColumn()
   created_at: Date;
@@ -33,32 +53,35 @@ export class TronLock {
   updated_at: Date;
 
   from({
-    ckb_mint_tx_hash,
+    related_id,
     tron_lock_tx_hash,
+    tron_lock_index,
     tron_sender,
     asset,
+    asset_type,
     amount,
     memo,
-    ckb_recipient_address,
     committee,
   }: {
-    ckb_mint_tx_hash: string;
+    related_id: number;
     tron_lock_tx_hash: string;
+    tron_lock_index: number;
     tron_sender: string;
     asset: string;
+    asset_type: string;
     amount: string;
     memo: string;
-    ckb_recipient_address: string;
     committee: string;
   }) {
     const record = new TronLock();
-    record.ckb_mint_tx_hash = ckb_mint_tx_hash;
+    record.related_id = related_id;
     record.tron_lock_tx_hash = tron_lock_tx_hash;
+    record.tron_lock_index = tron_lock_index;
     record.tron_sender = tron_sender;
     record.asset = asset;
+    record.asset_type = asset_type;
     record.amount = amount;
     record.memo = memo;
-    record.ckb_recipient_address = ckb_recipient_address;
     record.committee = committee;
     return record;
   }

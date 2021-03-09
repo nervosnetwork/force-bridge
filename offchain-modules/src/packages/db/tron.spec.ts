@@ -36,13 +36,14 @@ test('tron db CkbMint', async (t) => {
 test('tron db TronLock', async (t) => {
   // save db
   const data = {
-    ckb_mint_tx_hash: '0x0',
+    related_id: 1,
     tron_lock_tx_hash: '0x0',
+    tron_lock_index: 0,
     tron_sender: '0x0',
     asset: 'TRX',
+    asset_type: 'trx',
     amount: '0x1',
     memo: 'lock 1 TRX',
-    ckb_recipient_address: 'ckb1qyqt8xaupvm8837nv3gtc9x0ekkj64vud3jqfwyw5v',
     committee: '0x0000000000000000000000000000000000000000',
   };
   let tronLock = new TronLock().from(data);
@@ -56,9 +57,9 @@ test('tron db TronLock', async (t) => {
 test('tron db TronUnlock', async (t) => {
   // save db
   const data = {
-    ckb_burn_tx_hash: '0x0',
-    ckb_sender: '0x0',
-    asset: 'TRX_SUDT',
+    related_id: 1,
+    asset: 'TLBaRhANQoJFTqre9Nf1mjuwNWjCJeYqUL',
+    asset_type: 'trc20',
     amount: '0x1',
     memo: 'unlock 1 TRX_SUDT',
     tron_recipient_address: '0x0000000000000000000000000000000000000000',
