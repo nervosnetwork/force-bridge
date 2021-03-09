@@ -3,7 +3,7 @@ import { Entity, PrimaryGeneratedColumn, Column, PrimaryColumn, CreateDateColumn
 @Entity()
 export class CkbBurn {
   @PrimaryColumn()
-  tx_hash: string;
+  txHash: string;
 
   @Column()
   chain: number;
@@ -18,14 +18,14 @@ export class CkbBurn {
   memo: string;
 
   @CreateDateColumn()
-  created_at: string;
+  createdAt: string;
 
   @UpdateDateColumn()
-  updated_at: string;
+  updatedAt: string;
 
-  from(data: { tx_hash: string; memo: string; amount: string; asset: string; chain: number }) {
+  from(data: { txHash: string; memo: string; amount: string; asset: string; chain: number }) {
     const record = new CkbBurn();
-    record.tx_hash = data.tx_hash;
+    record.txHash = data.txHash;
     record.chain = data.chain;
     record.asset = data.asset;
     record.amount = data.amount;

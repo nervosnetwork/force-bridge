@@ -15,5 +15,5 @@ export class EthUnlock {
   amount: string;
 
   @Column()
-  recipient_address: string;
+  recipientAddress: string;
 }

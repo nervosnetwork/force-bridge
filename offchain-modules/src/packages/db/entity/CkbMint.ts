@@ -17,35 +17,35 @@ export class CkbMint {
   amount: string;
 
   @Column()
-  recipient_address: string;
+  recipientAddress: string;
 
   @Column()
-  sudt_extra_data: string;
+  sudtExtraData: string;
 
   @Column()
   status: string;
 
   @CreateDateColumn()
-  created_at: string;
+  createdAt: string;
 
   @UpdateDateColumn()
-  updated_at: string;
+  updatedAt: string;
 
   from({
     id,
     chain,
     amount,
     asset,
-    recipient_address,
-    sudt_extra_data = '',
+    recipientAddress,
+    sudtExtraData = '',
     status = 'pending',
   }: {
     id: string;
     chain: number;
     amount: string;
     asset: string;
-    recipient_address: string;
-    sudt_extra_data?: string;
+    recipientAddress: string;
+    sudtExtraData?: string;
     status?: string;
   }) {
     const record = new CkbMint();
@@ -53,8 +53,8 @@ export class CkbMint {
     record.chain = chain;
     record.asset = asset;
     record.amount = amount;
-    record.recipient_address = recipient_address;
-    record.sudt_extra_data = sudt_extra_data;
+    record.recipientAddress = recipientAddress;
+    record.sudtExtraData = sudtExtraData;
     record.status = status;
     return record;
   }

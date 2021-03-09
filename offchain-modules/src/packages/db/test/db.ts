@@ -25,7 +25,7 @@ test('ckb db works', async (t) => {
     chain: 1,
     amount: '0x01',
     asset: '0x00000000000000000000',
-    recipient_address: '0x00000000000000000001',
+    recipientAddress: '0x00000000000000000001',
   };
   const ckbMintRecord = new CkbMint().from(data);
   await ethDb.createCkbMint([ckbMintRecord]);

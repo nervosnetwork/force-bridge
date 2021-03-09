@@ -15,5 +15,5 @@ export class BtcLock {
   amount: string;
 
   @Column()
-  recipient_address: string;
+  recipientAddress: string;
 }

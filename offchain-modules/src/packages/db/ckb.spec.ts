@@ -21,7 +21,7 @@ test('ckb db works', async (t) => {
     amount: '0x1',
     asset: '0x00000000000000000000',
     chain: 0,
-    tx_hash: '0x12',
+    txHash: '0x12',
     memo: '',
   };
   let ckbBurn = new CkbBurn().from(data);

@@ -64,7 +64,8 @@
     "nconf": "^0.11.2",
     "reflect-metadata": "^0.1.13",
     "sqlite3": "^5.0.2",
-    "typeorm": "^0.2.31"
+    "typeorm": "^0.2.31",
+    "typeorm-naming-strategies": "^2.0.0"
   },
   "husky": {
     "hooks": {
