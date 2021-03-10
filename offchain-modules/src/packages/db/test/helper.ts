@@ -6,6 +6,7 @@ import { TronLock } from '@force-bridge/db/entity/TronLock';
 import { TronUnlock } from '@force-bridge/db/entity/TronUnlock';
 
 export async function getTmpConnection(path: string = `${os.tmpdir()}/db.sqlite`) {
+  console.log('path ', path);
   const connection = await createConnection({
     type: 'sqlite',
     database: path,

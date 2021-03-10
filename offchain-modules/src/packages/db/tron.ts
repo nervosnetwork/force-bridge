@@ -35,6 +35,13 @@ export class TronDb {
     });
   }
 
+  async getLatestLock(): Promise<TronLock[]> {
+    const qb = this.connection.getRepository(TronLock).createQueryBuilder('lock');
+    return qb
+      .where('lock.timestamp=' + qb.subQuery().select('MAX(lock.timestamp)').from(TronLock, 'lock').getQuery())
+      .getMany();
+  }
+
   async saveTronUnlock(records: TronUnlock[]): Promise<void> {
     await this.connection.manager.save(records);
   }

@@ -47,12 +47,22 @@ test('tron db TronLock', async (t) => {
     timestamp: 1612603926000,
     committee: '0x0000000000000000000000000000000000000000',
   };
-  const tronLock = new TronLock().from(data);
-  await t.context.db.saveTronLock([tronLock]);
+  const tronLock_1 = new TronLock().from(data);
+
+  data.timestamp = 1612603926001;
+  const tronLock_2 = new TronLock().from(data);
+
+  const tronLock_3 = tronLock_2;
+  await t.context.db.saveTronLock([tronLock_1, tronLock_2, tronLock_3]);
   // get db
   const tronLockRecords = await t.context.db.getTronLock();
-  t.is(tronLockRecords.length, 1);
-  t.like(tronLockRecords[0], data);
+  t.is(tronLockRecords.length, 3);
+  t.like(tronLockRecords[2], data);
+
+  const latestLockRecords = await t.context.db.getLatestLock();
+  t.is(latestLockRecords.length, 2);
+  t.is(latestLockRecords[0].timestamp, 1612603926001);
+  t.is(latestLockRecords[1].timestamp, 1612603926001);
 });
 
 test('tron db TronUnlock', async (t) => {
