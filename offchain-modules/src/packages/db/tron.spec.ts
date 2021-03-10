@@ -10,7 +10,7 @@ const test = anyTest as TestInterface<{
 }>;
 
 test.beforeEach(async (t) => {
-  const { path, connection } = await getTmpConnection();
+  const { connection } = await getTmpConnection();
   const db: TronDb = new TronDb(connection);
   t.context = { db };
 });
@@ -25,7 +25,7 @@ test('tron db CkbMint', async (t) => {
     recipient_address: 'ckb1qyqt8xaupvm8837nv3gtc9x0ekkj64vud3jqfwyw5v',
     sudt_extra_data: 'tron mint',
   };
-  let ckbMint = new CkbMint().from(data);
+  const ckbMint = new CkbMint().from(data);
   await t.context.db.createCkbMint([ckbMint]);
   // get db
   const ckbMintRecords = await t.context.db.getCkbMint();
@@ -44,9 +44,10 @@ test('tron db TronLock', async (t) => {
     asset_type: 'trx',
     amount: '0x1',
     memo: 'lock 1 TRX',
+    timestamp: 1612603926000,
     committee: '0x0000000000000000000000000000000000000000',
   };
-  let tronLock = new TronLock().from(data);
+  const tronLock = new TronLock().from(data);
   await t.context.db.saveTronLock([tronLock]);
   // get db
   const tronLockRecords = await t.context.db.getTronLock();
@@ -65,7 +66,7 @@ test('tron db TronUnlock', async (t) => {
     tron_recipient_address: '0x0000000000000000000000000000000000000000',
     committee: '0x0000000000000000000000000000000000000000',
   };
-  let tronUnlock = new TronUnlock().from(data);
+  const tronUnlock = new TronUnlock().from(data);
   await t.context.db.saveTronUnlock([tronUnlock]);
   // get db
   const tronUnlockRecords = await t.context.db.getTronUnlockRecordsToUnlock();

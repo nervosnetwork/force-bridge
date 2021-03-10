@@ -41,6 +41,9 @@ export class TronLock {
   memo: string;
 
   @Column()
+  timestamp: number;
+
+  @Column()
   committee: string;
 
   @VersionColumn()
@@ -61,6 +64,7 @@ export class TronLock {
     asset_type,
     amount,
     memo,
+    timestamp,
     committee,
   }: {
     related_id: number;
@@ -71,6 +75,7 @@ export class TronLock {
     asset_type: string;
     amount: string;
     memo: string;
+    timestamp: number;
     committee: string;
   }) {
     const record = new TronLock();
@@ -82,6 +87,7 @@ export class TronLock {
     record.asset_type = asset_type;
     record.amount = amount;
     record.memo = memo;
+    record.timestamp = timestamp;
     record.committee = committee;
     return record;
   }

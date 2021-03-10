@@ -8,8 +8,8 @@ export class TronDb {
     await this.connection.manager.save(records);
   }
 
-  async getCkbMint(limit: number = 100): Promise<CkbMint[]> {
-    let ckbMintRepository = this.connection.getRepository(CkbMint);
+  async getCkbMint(limit = 100): Promise<CkbMint[]> {
+    const ckbMintRepository = this.connection.getRepository(CkbMint);
     return await ckbMintRepository.find({
       where: {
         chain: 1,
@@ -25,8 +25,8 @@ export class TronDb {
     await this.connection.manager.save(records);
   }
 
-  async getTronLock(limit: number = 100): Promise<TronLock[]> {
-    let tronLockRepository = this.connection.getRepository(TronLock);
+  async getTronLock(limit = 100): Promise<TronLock[]> {
+    const tronLockRepository = this.connection.getRepository(TronLock);
     return await tronLockRepository.find({
       order: {
         updated_at: 'DESC',
@@ -39,8 +39,8 @@ export class TronDb {
     await this.connection.manager.save(records);
   }
 
-  async getTronUnlockRecordsToUnlock(limit: number = 100): Promise<TronUnlock[]> {
-    let tronUnlockRepository = this.connection.getRepository(TronUnlock);
+  async getTronUnlockRecordsToUnlock(limit = 100): Promise<TronUnlock[]> {
+    const tronUnlockRepository = this.connection.getRepository(TronUnlock);
     return await tronUnlockRepository.find({
       where: {
         status: 'pending',
