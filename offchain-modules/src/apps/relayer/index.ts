@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import 'module-alias/register';
 import nconf from 'nconf';
 import { ForceBridgeCore } from '@force-bridge/core';
@@ -6,6 +7,8 @@ import { CkbHandler } from '@force-bridge/handlers/ckb';
 import { EthHandler } from '@force-bridge/handlers/eth';
 import { Config } from '@force-bridge/config';
 import { createConnection } from 'typeorm';
+import { CkbMint, CkbBurn } from '@force-bridge/db/model';
+import { EthChain } from '@force-bridge/xchain/eth';
 
 async function main() {
   const configPath = process.env.CONFIG_PATH || './config.json';
@@ -23,7 +26,8 @@ async function main() {
   // start xchain handlers if config exists
   if (config.eth !== undefined) {
     const ethDb = new EthDb(conn);
-    const ethHandler = new EthHandler(ethDb);
+    const ethChain = new EthChain();
+    const ethHandler = new EthHandler(ethDb, ethChain);
     ethHandler.start();
   }
 }

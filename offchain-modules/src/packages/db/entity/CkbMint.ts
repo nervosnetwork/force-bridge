@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, PrimaryColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
-export type CkbMintStatus = 'pending' | 'success' | 'error';
+export type CkbMintStatus = 'todo' | 'pending' | 'success' | 'error';
 
 @Entity()
 export class CkbMint {
@@ -17,12 +17,16 @@ export class CkbMint {
   amount: string;
 
   @Column()
-  recipientAddress: string;
+  recipientLockscript: string;
 
-  @Column()
+  // todo: save address when save lockscript
+  // @Column()
+  // recipientAddress: string;
+
+  @Column({ default: '' })
   sudtExtraData: string;
 
-  @Column()
+  @Column({ default: 'todo' })
   status: string;
 
   @CreateDateColumn()
@@ -30,32 +34,4 @@ export class CkbMint {
 
   @UpdateDateColumn()
   updatedAt: string;
-
-  from({
-    id,
-    chain,
-    amount,
-    asset,
-    recipientAddress,
-    sudtExtraData = '',
-    status = 'pending',
-  }: {
-    id: string;
-    chain: number;
-    amount: string;
-    asset: string;
-    recipientAddress: string;
-    sudtExtraData?: string;
-    status?: string;
-  }) {
-    const record = new CkbMint();
-    record.id = id;
-    record.chain = chain;
-    record.asset = asset;
-    record.amount = amount;
-    record.recipientAddress = recipientAddress;
-    record.sudtExtraData = sudtExtraData;
-    record.status = status;
-    return record;
-  }
 }

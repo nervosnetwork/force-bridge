@@ -1,12 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, PrimaryColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, PrimaryColumn, Index } from 'typeorm';
+
+export type EthUnlockStatus = 'todo' | 'pending' | 'error' | 'success';
 
 @Entity()
 export class EthUnlock {
   @PrimaryColumn()
-  ckb_tx_hash: string;
-
-  @Column()
-  chain: number;
+  ckbTxHash: string;
 
   @Column()
   asset: string;
@@ -16,4 +15,14 @@ export class EthUnlock {
 
   @Column()
   recipientAddress: string;
+
+  @Column({ nullable: true })
+  ethTxHash: string;
+
+  @Index()
+  @Column({ default: 'todo' })
+  status: EthUnlockStatus;
+
+  @Column({ default: '' })
+  message: string;
 }

@@ -7,3 +7,7 @@ export function asyncSleep(ms = 0) {
 export function blake2b(buffer) {
   return utils.blake2b(32, null, null, utils.PERSONAL).update(buffer).digest('binary');
 }
+
+export function genRandomHex(size: number) {
+  return '0x' + [...Array(size)].map(() => Math.floor(Math.random() * 16).toString(16)).join('');
+}

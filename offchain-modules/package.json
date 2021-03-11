@@ -17,6 +17,7 @@
     "check:prettier": "prettier -c .",
     "clean": "rimraf lumos_db dist",
     "ci": "run-s clean deploy start",
+    "sync-eth-abi": "cd ../eth-contracts && npx hardhat compile && cp artifacts/contracts/ForceBridge.sol/ForceBridge.json ../offchain-modules/src/packages/xchain/eth/abi",
     "deploy": "ts-node-dev ./src/scripts/deploy_ckb.ts"
   },
   "author": "",
@@ -57,6 +58,7 @@
     "axios": "^0.21.1",
     "ckb-js-toolkit": "^0.10.2",
     "dotenv": "^8.2.0",
+    "ethers": "^5.0.32",
     "lodash": "^4.17.20",
     "log4js": "^6.3.0",
     "module-alias": "^2.2.2",

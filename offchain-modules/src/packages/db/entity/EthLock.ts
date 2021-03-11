@@ -1,19 +1,46 @@
-import { Entity, PrimaryGeneratedColumn, Column, PrimaryColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  PrimaryColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+  Index,
+} from 'typeorm';
 
 @Entity()
 export class EthLock {
   @PrimaryColumn()
-  ckb_tx_hash: string;
+  txHash: string;
 
+  @Index()
   @Column()
-  chain: number;
+  sender: string;
 
+  @Index()
   @Column()
-  asset: string;
+  token: string;
 
   @Column()
   amount: string;
 
+  @Index()
   @Column()
-  recipientAddress: string;
+  recipientLockscript: string;
+
+  @Column()
+  sudtExtraData: string;
+
+  @Index()
+  @Column()
+  blockNumber: number;
+
+  @Column()
+  blockHash: string;
+
+  @CreateDateColumn()
+  createdAt: string;
+
+  @UpdateDateColumn()
+  updatedAt: string;
 }

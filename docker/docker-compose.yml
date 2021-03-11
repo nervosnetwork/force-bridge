@@ -5,7 +5,7 @@ services:
     ports:
       - "8114:8114"
   ckb-indexer:
-    image: tockb/ckb-indexer
+    image: tockb/ckb-indexer:ab57116
     ports:
       - "8116:8116"
     environment:
