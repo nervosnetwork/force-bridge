@@ -16,7 +16,7 @@ export class EthDb {
 
   async getLatestHeight(): Promise<number> {
     const rawRes = await this.connection.manager.query('select max(block_number) as max_block_number from eth_lock');
-    return rawRes[0].max_block_number;
+    return rawRes[0].max_block_number || 1;
   }
 
   async createCkbMint(records: ICkbMint[]): Promise<void> {

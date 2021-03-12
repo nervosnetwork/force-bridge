@@ -1,7 +1,7 @@
 import 'module-alias/register';
 import { ethers } from 'ethers';
 import nconf from 'nconf';
-import { Config } from '@force-bridge/config';
+import { Config, EthConfig } from '@force-bridge/config';
 import { logger } from '@force-bridge/utils/logger';
 import { asyncSleep, genRandomHex } from '@force-bridge/utils';
 import { createConnection } from 'typeorm';
@@ -15,20 +15,21 @@ async function main() {
 
   const configPath = process.env.CONFIG_PATH || './config.json';
   nconf.env().file({ file: configPath });
-  const config: Config = nconf.get('forceBridge');
+  const config: EthConfig = nconf.get('forceBridge:eth');
+  logger.debug('config', config);
   // const ForceBridge = await ethers.getContractFactory("ForceBridge");
   // const bridge = await ForceBridge.deploy();
   // await bridge.deployed();
   // console.log("ForceBridge deployed to:", bridge.address);
-  const provider = new ethers.providers.JsonRpcProvider();
+  const provider = new ethers.providers.JsonRpcProvider(config.rpcUrl);
   // const blockNumber = await provider.getBlockNumber();
   // logger.debug('blockNumber:', blockNumber);
-  const bridgeContractAddr = config.eth.contractAddress;
+  const bridgeContractAddr = config.contractAddress;
   // logger.debug('bridgeContractAddr:', bridgeContractAddr);
   // const signer = provider.getSigner()
   // logger.debug('signer:', signer);
-  const abi = require('../../../eth-contracts/artifacts/contracts/ForceBridge.sol/ForceBridge.json').abi;
-  logger.debug('abi:', abi);
+  const abi = require('../../../../eth-contracts/artifacts/contracts/ForceBridge.sol/ForceBridge.json').abi;
+  // logger.debug('abi:', abi);
   const bridge = new ethers.Contract(bridgeContractAddr, abi, provider);
   const privateKey = '0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed37a';
   const wallet = new ethers.Wallet(privateKey, provider);
@@ -49,13 +50,13 @@ async function main() {
     ],
   };
   // provider.resetEventsBlock(0)
-  // provider.on(filter, (log) => {
-  //     const parsedLog = iface.parseLog(log);
-  //     logger.debug('log:', {log, parsedLog});
-  //     // do whatever you want here
-  //     // I'm pretty sure this returns a promise, so don't forget to resolve it
-  // })
-  // lock
+  provider.on(filter, (log) => {
+    const parsedLog = iface.parseLog(log);
+    logger.debug('log:', { log, parsedLog });
+    // do whatever you want here
+    // I'm pretty sure this returns a promise, so don't forget to resolve it
+  });
+  // lock eth
   const recipientLockscript = '0x00';
   const sudtExtraData = '0x01';
   const amount = ethers.utils.parseEther('0.1');
@@ -64,14 +65,25 @@ async function main() {
   const receipt = await lockRes.wait();
   logger.debug('receipt', receipt);
 
-  // create eth unlock
-  const record = {
-    ckbTxHash: genRandomHex(32),
-    asset: ETH_ADDRESS,
-    amount: genRandomHex(4),
-    recipientAddress: '0x1000000000000000000000000000000000000001',
-  };
-  await ckbDb.createEthUnlock([record]);
+  // // create eth unlock
+  //   const recipientAddress = '0x1000000000000000000000000000000000000001';
+  //   const balanceBefore = await provider.getBalance(recipientAddress);
+  //   logger.debug('balanceBefore', balanceBefore);
+  // const record = {
+  //   ckbTxHash: genRandomHex(32),
+  //   asset: ETH_ADDRESS,
+  //   amount: genRandomHex(4),
+  //   recipientAddress,
+  // };
+  // await ckbDb.createEthUnlock([record]);
+  await asyncSleep(3000);
+
+  // check effect
+
+  // for(let i=0; i<100; i++) {
+  //
+  //
+  // }
 }
 
 main()

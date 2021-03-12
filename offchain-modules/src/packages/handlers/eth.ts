@@ -93,7 +93,7 @@ export class EthHandler {
 
   start() {
     this.watchLockEvents();
-    this.watchUnlockEvents();
+    // this.watchUnlockEvents();
     logger.info('eth handler started  🚀');
   }
 }
