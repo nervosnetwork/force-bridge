@@ -1,4 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, PrimaryColumn, Index } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  PrimaryColumn,
+  Index,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 export type EthUnlockStatus = 'todo' | 'pending' | 'error' | 'success';
 
@@ -25,4 +33,10 @@ export class EthUnlock {
 
   @Column({ default: '' })
   message: string;
+
+  @CreateDateColumn()
+  createdAt: string;
+
+  @UpdateDateColumn()
+  updatedAt: string;
 }

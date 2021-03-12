@@ -53,9 +53,13 @@ export class EthHandler {
   async watchUnlockEvents() {
     // todo: get and handle pending and error records
     while (true) {
+      await asyncSleep(15000);
       logger.debug('get new unlock events and send tx');
       const records = await this.getUnlockRecords('todo');
       logger.debug('unlock records', records);
+      if (records.length === 0) {
+        continue;
+      }
       try {
         const txRes = await this.ethChain.sendUnlockTxs(records);
         records.map((r) => {
@@ -84,12 +88,11 @@ export class EthHandler {
         });
         await this.db.saveEthUnlock(records);
       }
-      await asyncSleep(15000);
     }
   }
 
   start() {
-    // this.watchLockEvents();
+    this.watchLockEvents();
     this.watchUnlockEvents();
     logger.info('eth handler started  🚀');
   }
