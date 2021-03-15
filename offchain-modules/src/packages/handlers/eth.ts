@@ -46,7 +46,7 @@ export class EthHandler {
   }
 
   async getUnlockRecords(status: EthUnlockStatus): Promise<EthUnlock[]> {
-    return await this.db.getEthUnlockRecordsToUnlock(status);
+    return this.db.getEthUnlockRecordsToUnlock(status);
   }
   // watch the eth_unlock table and handle the new unlock events
   // send tx according to the data

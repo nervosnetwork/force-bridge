@@ -10,12 +10,15 @@
     "lint:eslint": "eslint --format=pretty -c .eslintrc.js src/**/*.ts",
     "lint:tslint": "tslint --project .",
     "lint": "run-p check:prettier build",
-    "prettier": "npx prettier --write .",
+    "pre-commit": "run-s lint",
+    "fix": "run-p fix:prettier",
+    "fix:prettier": "prettier --write .",
+    "fix:tslint": "tslint --project . --fix",
     "watch:test": "ts-node-dev --respawn --transpile-only ./src/apps/relayer/index.ts",
     "watch:ava": "ava --watch",
     "watch:build": "tsc -w",
     "check:prettier": "prettier -c .",
-    "clean": "rimraf lumos_db dist force-bridge.sqlite pm2-stop",
+    "clean": "rimraf lumos_db dist force-bridge.sqlite",
     "eth-test": "ts-node ./src/scripts/integration-test/eth.ts",
     "xchain-test": "run-s eth-test",
     "integration-test": "run-p -r start xchain-test",
@@ -75,7 +78,7 @@
   },
   "husky": {
     "hooks": {
-      "pre-commit": "yarn lint"
+      "pre-commit": "yarn pre-commit"
     }
   },
   "ava": {

@@ -10,7 +10,7 @@ export class CkbDb {
   }
 
   async getCkbMintRecordsToMint(take: number = 100): Promise<CkbMint[]> {
-    return await this.connection.getRepository(CkbMint).find({
+    return this.connection.getRepository(CkbMint).find({
       where: {
         status: 'pending',
       },

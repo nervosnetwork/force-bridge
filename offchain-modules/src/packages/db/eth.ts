@@ -34,7 +34,7 @@ export class EthDb {
   }
 
   async getEthUnlockRecordsToUnlock(status: EthUnlockStatus, take: number = 1): Promise<EthUnlock[]> {
-    return await this.ethUnlockRepository.find({
+    return this.ethUnlockRepository.find({
       where: {
         status,
       },

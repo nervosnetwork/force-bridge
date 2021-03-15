@@ -50,6 +50,6 @@ export class EthChain {
       };
     });
     logger.debug('sendUnlockTxs params', params);
-    return await this.bridge.unlock(params);
+    return this.bridge.unlock(params);
   }
 }
