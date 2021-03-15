@@ -22,10 +22,11 @@ jobs:
       - name: Cache node_modules
         uses: actions/cache@v2
         with:
-          path: offchain-modules/node_modules
-          key: offchain-modules-${{ hashFiles('eth-contracts/yarn.lock') }}
+          path: |
+            */node_modules
+          key: node-modules-${{ hashFiles('*/yarn.lock') }}
           restore-keys: |
-            offchain-modules-
+            node-modules-
       - name: Use Node.js
         uses: actions/setup-node@v1
         with:
