@@ -61,6 +61,11 @@ export class EthHandler {
         continue;
       }
       try {
+        // write db first, avoid send tx success and fail to write db
+        records.map((r) => {
+          r.status = 'pending';
+        });
+        await this.db.saveEthUnlock(records);
         const txRes = await this.ethChain.sendUnlockTxs(records);
         records.map((r) => {
           r.status = 'pending';
@@ -93,7 +98,7 @@ export class EthHandler {
 
   start() {
     this.watchLockEvents();
-    // this.watchUnlockEvents();
+    this.watchUnlockEvents();
     logger.info('eth handler started  🚀');
   }
 }

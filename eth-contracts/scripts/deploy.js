@@ -13,9 +13,9 @@ async function main() {
     const ForceBridge = await ethers.getContractFactory("ForceBridge");
     const bridge = await ForceBridge.deploy();
     await bridge.deployed();
-    console.log(`ForceBridge deployed to: ${bridge.address}, admin: ${await bridge.admin()}`);
-    nconf.set('forceBridge.eth.contractAddress', bridge.address);
+    nconf.set('forceBridge:eth:contractAddress', bridge.address);
     nconf.save()
+    console.log(`ForceBridge deployed to: ${bridge.address}, admin: ${await bridge.admin()}`);
 }
 
 main()

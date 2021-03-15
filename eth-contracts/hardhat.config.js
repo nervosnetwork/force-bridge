@@ -48,6 +48,10 @@ module.exports = {
         "ca2e37b4f2e4a122cc86c401e3d1da3841c525f01b5b249dcdcd69e2f086d576"
       ],
     },
+  },
+
+  mocha: {
+    timeout: 30000
   }
 };
 

@@ -3,7 +3,7 @@
     "eth": {
       "rpcUrl": "http://127.0.0.1:8545",
       "privateKey": "0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed37a",
-      "contractAddress": "0xeF79954086a6a0EDA662679F86420a48E25e4065"
+      "contractAddress": "0x8326e1d621Cd32752920ed2A44B49bB1a96c7391"
     },
     "ckb": {
       "ckbRpcUrl": "https://127.0.0.1:8114",
@@ -13,7 +13,7 @@
           "cellDep": {
             "depType": "code",
             "outPoint": {
-              "txHash": "0x1186d985b2cb97947b4d1f33c4364788b8251a0a9b4bbe8edac252161f7670e0",
+              "txHash": "0x45a9820eb80321a342e28dcff1ebbec31e6d3e1fd985eb1f86a8022081331800",
               "index": "0x0"
             }
           },
@@ -26,7 +26,7 @@
           "cellDep": {
             "depType": "code",
             "outPoint": {
-              "txHash": "0x1186d985b2cb97947b4d1f33c4364788b8251a0a9b4bbe8edac252161f7670e0",
+              "txHash": "0x45a9820eb80321a342e28dcff1ebbec31e6d3e1fd985eb1f86a8022081331800",
               "index": "0x1"
             }
           },
@@ -37,6 +37,5 @@
         }
       }
     }
-  },
-  "forceBridge.eth.contractAddress": "0xe90dF1482bd7D97Bde2B61475f707d35c440da6E"
+  }
 }
