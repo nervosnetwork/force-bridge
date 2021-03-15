@@ -15,6 +15,9 @@ jobs:
           key: node-modules-${{ hashFiles('*/yarn.lock') }}
           restore-keys: |
             node-modules-
+      - name: install dependencies
+        run: make install-node-modules
+        if: steps.yarn-cache.outputs.cache-hit != 'true'
       - name: install-capsule
         run: |
           wget -c https://github.com/nervosnetwork/capsule/releases/download/v0.2.3/capsule_v0.2.3_x86_64-linux.tar.gz
