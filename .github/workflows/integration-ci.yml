@@ -7,8 +7,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - name: Cache node_modules
+        uses: actions/cache@v2
         with:
-          submodules: 'recursive'
+          path: |
+            */node_modules
+          key: node-modules-${{ hashFiles('*/yarn.lock') }}
+          restore-keys: |
+            node-modules-
       - name: install-capsule
         run: |
           wget -c https://github.com/nervosnetwork/capsule/releases/download/v0.2.3/capsule_v0.2.3_x86_64-linux.tar.gz
