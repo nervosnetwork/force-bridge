@@ -12,7 +12,7 @@ export class CkbDb {
   async getCkbMintRecordsToMint(take: number = 100): Promise<CkbMint[]> {
     return this.connection.getRepository(CkbMint).find({
       where: {
-        status: 'pending',
+        status: 'todo',
       },
       take,
     });
