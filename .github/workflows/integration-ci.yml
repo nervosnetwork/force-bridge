@@ -8,6 +8,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Cache node_modules
+        id: yarn-cache
         uses: actions/cache@v2
         with:
           path: |
