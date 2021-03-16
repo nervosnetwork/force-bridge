@@ -47,6 +47,7 @@ export class EthChain {
         token: r.asset,
         recipient: r.recipientAddress,
         amount: BigNumber.from(r.amount),
+        ckbTxHash: r.ckbTxHash,
       };
     });
     logger.debug('sendUnlockTxs params', params);

@@ -14,7 +14,7 @@
     "fix": "run-p fix:prettier",
     "fix:prettier": "prettier --write .",
     "fix:tslint": "tslint --project . --fix",
-    "watch:test": "ts-node-dev --respawn --transpile-only ./src/apps/relayer/index.ts",
+    "watch:start": "ts-node-dev --respawn --transpile-only ./src/apps/relayer/index.ts",
     "watch:ava": "ava --watch",
     "watch:build": "tsc -w",
     "check:prettier": "prettier -c .",

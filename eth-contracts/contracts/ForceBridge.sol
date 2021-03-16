@@ -29,13 +29,15 @@ contract ForceBridge {
         address indexed token,
         address indexed recipient,
         address indexed sender,
-        uint256 receivedAmount
+        uint256 receivedAmount,
+        bytes ckbTxHash
     );
 
     struct UnlockRecord {
         address token;
         address recipient;
         uint256 amount;
+        bytes ckbTxHash;
     }
 
     modifier onlyAdmin {
@@ -52,15 +54,16 @@ contract ForceBridge {
         admin = newAdmin;
     }
 
-    function unlock(UnlockRecord[] memory records) public onlyAdmin {
+    function unlock(UnlockRecord[] calldata records) public onlyAdmin {
         for(uint i=0; i<records.length; i++) {
-            if(records[i].amount == 0) continue;
-            if (records[i].token == address(0)) {
-                payable(records[i].recipient).transfer(records[i].amount);
+            UnlockRecord calldata r = records[i];
+            if(r.amount == 0) continue;
+            if (r.token == address(0)) {
+                payable(r.recipient).transfer(r.amount);
             } else {
-                IERC20(records[i].token).safeTransfer(records[i].recipient, records[i].amount);
+                IERC20(r.token).safeTransfer(r.recipient, r.amount);
             }
-            emit Unlocked(records[i].token, records[i].recipient, msg.sender, records[i].amount);
+            emit Unlocked(r.token, r.recipient, msg.sender, r.amount, r.ckbTxHash);
         }
     }
 
