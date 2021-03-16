@@ -8,6 +8,7 @@
     "types": ["node", "jest"],
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
+    "resolveJsonModule": true,
     //    "noImplicitAny": true,
     "moduleResolution": "node",
     "sourceMap": true,
@@ -20,6 +21,6 @@
       "@force-bridge/*": ["./packages/*"]
     }
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "src/**/*.json"],
   "exclude": ["node_modules/**"]
 }

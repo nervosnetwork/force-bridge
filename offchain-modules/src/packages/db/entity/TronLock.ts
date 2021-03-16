@@ -11,28 +11,26 @@ import {
 export type TronAssetType = 'trx' | 'trc10' | 'trc20';
 
 @Entity()
-@Index(['tron_lock_tx_hash', 'tron_lock_index'])
+@Index(['tronLockTxHash', 'tronLockIndex'], { unique: true })
 export class TronLock {
   @PrimaryGeneratedColumn()
   id: number;
 
   @Column()
-  related_id: number;
+  tronLockTxHash: string;
 
   @Column()
-  tron_lock_tx_hash: string;
+  tronLockIndex: number;
 
+  @Index()
   @Column()
-  tron_lock_index: number;
-
-  @Column()
-  tron_sender: string;
+  tronSender: string;
 
   @Column()
   asset: string;
 
   @Column()
-  asset_type: string;
+  assetType: string;
 
   @Column()
   amount: string;
@@ -50,41 +48,38 @@ export class TronLock {
   version: number;
 
   @CreateDateColumn()
-  created_at: Date;
+  createdAt: Date;
 
   @UpdateDateColumn()
-  updated_at: Date;
+  updatedAt: Date;
 
   from({
-    related_id,
-    tron_lock_tx_hash,
-    tron_lock_index,
-    tron_sender,
+    tronLockTxHash,
+    tronLockIndex,
+    tronSender,
     asset,
-    asset_type,
+    assetType,
     amount,
     memo,
     timestamp,
     committee,
   }: {
-    related_id: number;
-    tron_lock_tx_hash: string;
-    tron_lock_index: number;
-    tron_sender: string;
+    tronLockTxHash: string;
+    tronLockIndex: number;
+    tronSender: string;
     asset: string;
-    asset_type: string;
+    assetType: string;
     amount: string;
     memo: string;
     timestamp: number;
     committee: string;
   }) {
     const record = new TronLock();
-    record.related_id = related_id;
-    record.tron_lock_tx_hash = tron_lock_tx_hash;
-    record.tron_lock_index = tron_lock_index;
-    record.tron_sender = tron_sender;
+    record.tronLockTxHash = tronLockTxHash;
+    record.tronLockIndex = tronLockIndex;
+    record.tronSender = tronSender;
     record.asset = asset;
-    record.asset_type = asset_type;
+    record.assetType = assetType;
     record.amount = amount;
     record.memo = memo;
     record.timestamp = timestamp;

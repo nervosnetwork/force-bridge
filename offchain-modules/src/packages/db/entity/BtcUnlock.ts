@@ -15,5 +15,5 @@ export class BtcUnlock {
   amount: string;
 
   @Column()
-  recipient_address: string;
+  recipientAddress: string;
 }

@@ -1,59 +1,45 @@
 // invoke in tron handler
-import { CkbMint, TronLock, TronUnlock } from '@force-bridge/db/model';
-import { Connection } from 'typeorm';
+import { CkbMint, TronLock, TronUnlock, ICkbMint } from '@force-bridge/db/model';
+import { Connection, Repository } from 'typeorm';
+import { TronUnlockStatus } from '@force-bridge/db/entity/TronUnlock';
 
 export class TronDb {
-  constructor(private connection: Connection) {}
-  async createCkbMint(records: CkbMint[]): Promise<void> {
-    await this.connection.manager.save(records);
+  private ckbMintRepository: Repository<CkbMint>;
+  private tronLockRepository: Repository<TronLock>;
+  private tronUnlockRepository: Repository<TronUnlock>;
+
+  constructor(private connection: Connection) {
+    this.ckbMintRepository = connection.getRepository(CkbMint);
+    this.tronLockRepository = connection.getRepository(TronLock);
+    this.tronUnlockRepository = connection.getRepository(TronUnlock);
   }
 
-  async getCkbMint(limit = 100): Promise<CkbMint[]> {
-    const ckbMintRepository = this.connection.getRepository(CkbMint);
-    return await ckbMintRepository.find({
-      where: {
-        chain: 1,
-      },
-      order: {
-        updated_at: 'DESC',
-      },
-      take: limit,
-    });
+  async createCkbMint(records: ICkbMint[]): Promise<void> {
+    const dbRecords = records.map((r) => this.ckbMintRepository.create(r));
+    await this.ckbMintRepository.save(dbRecords);
   }
 
-  async saveTronLock(records: TronLock[]): Promise<void> {
-    await this.connection.manager.save(records);
+  async createTronLock(records: TronLock[]): Promise<void> {
+    const dbRecords = records.map((r) => this.tronLockRepository.create(r));
+    await this.tronLockRepository.save(dbRecords);
   }
 
-  async getTronLock(limit = 100): Promise<TronLock[]> {
-    const tronLockRepository = this.connection.getRepository(TronLock);
-    return await tronLockRepository.find({
-      order: {
-        updated_at: 'DESC',
-      },
-      take: limit,
-    });
+  async saveTronUnlock(records: TronUnlock[]): Promise<void> {
+    await this.tronUnlockRepository.save(records);
   }
 
-  async getLatestLock(): Promise<TronLock[]> {
+  async getLatestLockRecords(): Promise<TronLock[]> {
     const qb = this.connection.getRepository(TronLock).createQueryBuilder('lock');
     return qb
       .where('lock.timestamp=' + qb.subQuery().select('MAX(lock.timestamp)').from(TronLock, 'lock').getQuery())
       .getMany();
   }
 
-  async saveTronUnlock(records: TronUnlock[]): Promise<void> {
-    await this.connection.manager.save(records);
-  }
-
-  async getTronUnlockRecordsToUnlock(limit = 100): Promise<TronUnlock[]> {
+  async getTronUnlockRecords(status: TronUnlockStatus, limit = 100): Promise<TronUnlock[]> {
     const tronUnlockRepository = this.connection.getRepository(TronUnlock);
     return await tronUnlockRepository.find({
       where: {
-        status: 'pending',
-      },
-      order: {
-        updated_at: 'DESC',
+        status: status,
       },
       take: limit,
     });

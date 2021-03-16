@@ -21,10 +21,10 @@ test('ckb db works', async (t) => {
     amount: '0x1',
     asset: '0x00000000000000000000',
     chain: 0,
-    tx_hash: '0x12',
+    txHash: '0x12',
     memo: '',
   };
-  let ckbBurn = new CkbBurn().from(data);
+  const ckbBurn = new CkbBurn().from(data);
   await manager.save(ckbBurn);
   // get db
   const ckbBurnRecords = await manager.find(CkbBurn);

@@ -1,27 +1,24 @@
 import { Entity, PrimaryGeneratedColumn, CreateDateColumn, Column, UpdateDateColumn, Index } from 'typeorm';
 
-export type TronUnlockStatus = 'pending' | 'success' | 'error';
+export type TronUnlockStatus = 'init' | 'pending' | 'success' | 'error';
 
 @Entity()
-@Index(['tron_unlock_tx_hash', 'tron_unlock_tx_index'])
+@Index(['tronUnlockTxHash', 'tronUnlockTxIndex'], { unique: true })
 export class TronUnlock {
   @PrimaryGeneratedColumn()
   id: number;
 
   @Column()
-  related_id: number;
+  tronUnlockTxHash: string;
 
   @Column()
-  tron_unlock_tx_hash: string;
-
-  @Column()
-  tron_unlock_tx_index: number;
+  tronUnlockTxIndex: number;
 
   @Column()
   asset: string;
 
   @Column()
-  asset_type: string;
+  assetType: string;
 
   @Column()
   amount: string;
@@ -29,8 +26,9 @@ export class TronUnlock {
   @Column()
   memo: string;
 
+  @Index()
   @Column()
-  tron_recipient_address: string;
+  tronRecipientAddress: string;
 
   @Column()
   status: string;
@@ -39,43 +37,40 @@ export class TronUnlock {
   committee: string;
 
   @CreateDateColumn()
-  created_at: Date;
+  createdAt: Date;
 
   @UpdateDateColumn()
-  updated_at: Date;
+  updatedAt: Date;
 
   from({
-    related_id,
-    tron_unlock_tx_hash = '',
-    tron_unlock_tx_index = 0,
+    tronUnlockTxHash = '',
+    tronUnlockTxIndex = 0,
     asset,
-    asset_type,
+    assetType,
     amount,
     memo,
-    tron_recipient_address,
+    tronRecipientAddress,
     committee,
-    status = 'pending',
+    status = 'init',
   }: {
-    related_id: number;
-    tron_unlock_tx_hash?: string;
-    tron_unlock_tx_index?: number;
+    tronUnlockTxHash?: string;
+    tronUnlockTxIndex?: number;
     asset: string;
-    asset_type: string;
+    assetType: string;
     amount: string;
     memo: string;
-    tron_recipient_address: string;
+    tronRecipientAddress: string;
     committee: string;
     status?: string;
   }) {
     const record = new TronUnlock();
-    record.related_id = related_id;
-    record.tron_unlock_tx_hash = tron_unlock_tx_hash;
-    record.tron_unlock_tx_index = tron_unlock_tx_index;
+    record.tronUnlockTxHash = tronUnlockTxHash;
+    record.tronUnlockTxIndex = tronUnlockTxIndex;
     record.asset = asset;
-    record.asset_type = asset_type;
+    record.assetType = assetType;
     record.amount = amount;
     record.memo = memo;
-    record.tron_recipient_address = tron_recipient_address;
+    record.tronRecipientAddress = tronRecipientAddress;
     record.committee = committee;
     record.status = status;
     return record;

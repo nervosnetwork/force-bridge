@@ -15,16 +15,22 @@ export interface ConfigItem {
   };
 }
 
+export interface CkbConfig {
+  ckbRpcUrl: string;
+  ckbIndexerUrl: string;
+  deps: {
+    bridgeLock: ConfigItem;
+    sudtType: ConfigItem;
+  };
+}
+
+export interface EthConfig {
+  rpcUrl: string;
+  contractAddress: string;
+  privateKey: string;
+}
+
 export interface Config {
-  ckb: {
-    ckbRpcUrl: string;
-    ckbIndexerUrl: string;
-    deps: {
-      bridgeLock: ConfigItem;
-      sudtType: ConfigItem;
-    };
-  };
-  eth?: {
-    rpcUrl: string;
-  };
+  ckb: CkbConfig;
+  eth?: EthConfig;
 }

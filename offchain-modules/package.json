@@ -3,20 +3,27 @@
   "version": "0.0.1",
   "description": "",
   "scripts": {
-    "start": "ts-node-dev ./src/apps/relayer/index.ts",
+    "start": "ts-node ./src/apps/relayer/index.ts",
     "demo": "ts-node-dev scripts/demo.ts",
     "build": "tsc",
     "test": "ava",
     "lint:eslint": "eslint --format=pretty -c .eslintrc.js src/**/*.ts",
     "lint:tslint": "tslint --project .",
     "lint": "run-p check:prettier build",
-    "prettier": "npx prettier --write .",
+    "pre-commit": "run-s lint",
+    "fix": "run-p fix:prettier",
+    "fix:prettier": "prettier --write .",
+    "fix:tslint": "tslint --project . --fix",
     "watch:test": "ts-node-dev --respawn --transpile-only ./src/apps/relayer/index.ts",
     "watch:ava": "ava --watch",
     "watch:build": "tsc -w",
     "check:prettier": "prettier -c .",
-    "clean": "rimraf lumos_db dist",
-    "ci": "run-s clean deploy start",
+    "clean": "rimraf lumos_db dist force-bridge.sqlite",
+    "eth-test": "ts-node ./src/scripts/integration-test/eth.ts",
+    "xchain-test": "run-s eth-test",
+    "integration-test": "run-p -r start xchain-test",
+    "ci": "run-s clean build deploy integration-test",
+    "sync-eth-abi": "cd ../eth-contracts && npx hardhat compile && cp artifacts/contracts/ForceBridge.sol/ForceBridge.json ../offchain-modules/src/packages/xchain/eth/abi",
     "deploy": "ts-node-dev ./src/scripts/deploy_ckb.ts"
   },
   "author": "",
@@ -35,8 +42,9 @@
     "husky": "^4.3.6",
     "jest": "^26.6.3",
     "lint-staged": "^10.5.3",
-    "nodemon": "^2.0.6",
+    "nodemon": "^2.0.7",
     "npm-run-all": "^4.1.5",
+    "pm2": "^4.5.5",
     "prettier": "^2.2.1",
     "rimraf": "^3.0.2",
     "ts-jest": "^26.4.4",
@@ -57,6 +65,7 @@
     "axios": "^0.21.1",
     "ckb-js-toolkit": "^0.10.2",
     "dotenv": "^8.2.0",
+    "ethers": "^5.0.32",
     "lodash": "^4.17.20",
     "log4js": "^6.3.0",
     "module-alias": "^2.2.2",
@@ -64,11 +73,12 @@
     "nconf": "^0.11.2",
     "reflect-metadata": "^0.1.13",
     "sqlite3": "^5.0.2",
-    "typeorm": "^0.2.31"
+    "typeorm": "^0.2.31",
+    "typeorm-naming-strategies": "^2.0.0"
   },
   "husky": {
     "hooks": {
-      "pre-commit": "yarn lint"
+      "pre-commit": "yarn pre-commit"
     }
   },
   "ava": {

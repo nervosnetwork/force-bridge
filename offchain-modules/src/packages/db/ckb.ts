@@ -1,6 +1,6 @@
 // invoke in ckb handler
 import { Connection } from 'typeorm';
-import { CkbMint, CkbBurn, EthUnlock } from '@force-bridge/db/model';
+import { CkbMint, CkbBurn, EthUnlock, IEthUnlock } from '@force-bridge/db/model';
 
 export class CkbDb {
   constructor(private connection: Connection) {}
@@ -10,9 +10,9 @@ export class CkbDb {
   }
 
   async getCkbMintRecordsToMint(take: number = 100): Promise<CkbMint[]> {
-    return await this.connection.getRepository(CkbMint).find({
+    return this.connection.getRepository(CkbMint).find({
       where: {
-        status: 'pending',
+        status: 'todo',
       },
       take,
     });
@@ -24,7 +24,9 @@ export class CkbDb {
   }
 
   /* save chain specific data */
-  async createEthUnlock(records: EthUnlock[]): Promise<void> {
-    await this.connection.manager.save(records);
+  async createEthUnlock(records: IEthUnlock[]): Promise<void> {
+    const ethUnlockRepo = this.connection.getRepository(EthUnlock);
+    const dbRecords = records.map((r) => ethUnlockRepo.create(r));
+    await ethUnlockRepo.save(dbRecords);
   }
 }
