@@ -1,13 +1,13 @@
 import os from 'os';
 import { createConnection } from 'typeorm';
-import { CkbMint } from '@force-bridge/db/entity/CkbMint';
-import { CkbBurn } from '@force-bridge/db/entity/CkbBurn';
+import { EthLock, CkbMint, CkbBurn, EthUnlock } from '@force-bridge/db/model';
+import { genRandomHex } from '@force-bridge/utils';
 
-export async function getTmpConnection(path: string = `${os.tmpdir()}/db.sqlite`) {
+export async function getTmpConnection(path: string = `${os.tmpdir()}/${genRandomHex(32)}/db.sqlite`) {
   const connection = await createConnection({
     type: 'sqlite',
     database: path,
-    entities: [CkbBurn, CkbMint],
+    entities: [CkbBurn, CkbMint, EthLock, EthUnlock],
     synchronize: true,
     logging: true,
   });

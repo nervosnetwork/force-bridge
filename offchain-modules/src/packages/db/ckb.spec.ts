@@ -24,7 +24,7 @@ test('ckb db works', async (t) => {
     txHash: '0x12',
     memo: '',
   };
-  let ckbBurn = new CkbBurn().from(data);
+  const ckbBurn = new CkbBurn().from(data);
   await manager.save(ckbBurn);
   // get db
   const ckbBurnRecords = await manager.find(CkbBurn);

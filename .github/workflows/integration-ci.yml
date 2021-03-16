@@ -1,0 +1,27 @@
+name: integration-ci
+
+on: ["push", "pull_request"]
+
+jobs:
+  integration-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Cache node_modules
+        id: yarn-cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            */node_modules
+          key: node-modules-${{ hashFiles('*/yarn.lock') }}
+          restore-keys: |
+            node-modules-
+      - name: install dependencies
+        run: make install-node-modules
+        if: steps.yarn-cache.outputs.cache-hit != 'true'
+      - name: install-capsule
+        run: |
+          wget -c https://github.com/nervosnetwork/capsule/releases/download/v0.2.3/capsule_v0.2.3_x86_64-linux.tar.gz
+          tar -zxvf capsule_v0.2.3_x86_64-linux.tar.gz
+          cp capsule_v0.2.3_x86_64-linux/capsule ~/.cargo/bin
+      - run: make github-ci

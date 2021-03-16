@@ -46,17 +46,26 @@ export class EthHandler {
   }
 
   async getUnlockRecords(status: EthUnlockStatus): Promise<EthUnlock[]> {
-    return await this.db.getEthUnlockRecordsToUnlock(status);
+    return this.db.getEthUnlockRecordsToUnlock(status);
   }
   // watch the eth_unlock table and handle the new unlock events
   // send tx according to the data
   async watchUnlockEvents() {
     // todo: get and handle pending and error records
     while (true) {
+      await asyncSleep(15000);
       logger.debug('get new unlock events and send tx');
       const records = await this.getUnlockRecords('todo');
       logger.debug('unlock records', records);
+      if (records.length === 0) {
+        continue;
+      }
       try {
+        // write db first, avoid send tx success and fail to write db
+        records.map((r) => {
+          r.status = 'pending';
+        });
+        await this.db.saveEthUnlock(records);
         const txRes = await this.ethChain.sendUnlockTxs(records);
         records.map((r) => {
           r.status = 'pending';
@@ -84,12 +93,11 @@ export class EthHandler {
         });
         await this.db.saveEthUnlock(records);
       }
-      await asyncSleep(15000);
     }
   }
 
   start() {
-    // this.watchLockEvents();
+    this.watchLockEvents();
     this.watchUnlockEvents();
     logger.info('eth handler started  🚀');
   }

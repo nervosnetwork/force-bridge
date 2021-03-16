@@ -11,7 +11,7 @@ const test = anyTest as TestInterface<{
 }>;
 
 test.beforeEach(async (t) => {
-  const { path, connection } = await getTmpConnection('force-bridge.test.sqlite');
+  const { path, connection } = await getTmpConnection();
   t.context = { path, connection };
 });
 

@@ -53,7 +53,7 @@ export class CkbIndexer {
   async waitUntilSync(): Promise<void> {
     const rpcTipNumber = parseInt((await this.ckbRpc.get_tip_header()).number, 16);
     logger.debug('rpcTipNumber', rpcTipNumber);
-    let index = 0;
+    const index = 0;
     while (true) {
       const indexerTipNumber = parseInt((await this.request('get_tip')).block_number, 16);
       logger.debug('indexerTipNumber', indexerTipNumber);
@@ -90,11 +90,11 @@ export class CkbIndexer {
   ): Promise<Cell[]> {
     const infos: Cell[] = [];
     let cursor = null;
-    let index = 0;
+    const index = 0;
     const params = [searchKey, order, `${sizeLimit.toString(16)}`, cursor];
     while (true) {
       const res = await this.request('get_cells', params);
-      let liveCells = res.objects;
+      const liveCells = res.objects;
       cursor = res.lastCursor;
       logger.debug('liveCells', liveCells[liveCells.length - 1]);
       for (const cell of liveCells) {

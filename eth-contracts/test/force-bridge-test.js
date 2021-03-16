@@ -26,7 +26,7 @@ describe("ForceBridge", function() {
 
         const receipt = await waitingForReceipt(provider, res);
         // console.log(`gasUsed: ${receipt.gasUsed.toString()}`);
-        // console.dir(receipt.logs, {depth: null});
+        console.dir(receipt, {depth: null});
         const parsedLog = iface.parseLog(receipt.logs[0]);
         // console.dir(parsedLog.args, {depth: null});
 

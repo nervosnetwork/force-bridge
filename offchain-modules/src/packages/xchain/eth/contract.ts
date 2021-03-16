@@ -24,22 +24,23 @@ export class EthChain {
     this.bridge = new ethers.Contract(this.bridgeContractAddr, abi, this.provider).connect(this.wallet);
   }
 
-  watchUnlockRecords(startHeight: number = 0, handleLogFunc) {
+  watchUnlockRecords(startHeight: number = 1, handleLogFunc) {
     const filter = {
       address: this.bridgeContractAddr,
       fromBlock: 'earliest',
-      topics: [ethers.utils.id('Locked(address,address,uint256,bytes,bytes)')],
+      // topics: [ethers.utils.id('Locked(address,address,uint256,bytes,bytes)')],
     };
-    this.provider.resetEventsBlock(startHeight);
+    // this.provider.resetEventsBlock(startHeight);
     this.provider.on(filter, async (log) => {
+      logger.debug('log', log);
       const parsedLog = this.iface.parseLog(log);
       await handleLogFunc(log, parsedLog);
     });
   }
 
   async sendUnlockTxs(records: EthUnlock[]): Promise<any> {
-    const admin = await this.bridge.admin();
-    logger.debug('admin', admin);
+    // const admin = await this.bridge.admin();
+    // logger.debug('admin', admin);
     logger.debug('contract balance', await this.provider.getBalance(this.bridgeContractAddr));
     const params = records.map((r) => {
       return {
@@ -49,6 +50,6 @@ export class EthChain {
       };
     });
     logger.debug('sendUnlockTxs params', params);
-    return await this.bridge.unlock(params);
+    return this.bridge.unlock(params);
   }
 }
