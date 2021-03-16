@@ -21,7 +21,6 @@
     "xchain-test": "run-s eth-test",
     "integration-test": "run-p -r start xchain-test",
     "ci": "run-s clean build deploy integration-test",
-    "sync-eth-abi": "cd ../eth-contracts && npx hardhat compile && cp artifacts/contracts/ForceBridge.sol/ForceBridge.json ../offchain-modules/src/packages/xchain/eth/abi",
     "deploy": "ts-node-dev ./src/scripts/deploy_ckb.ts"
   },
   "author": "",
