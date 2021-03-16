@@ -9,7 +9,7 @@ export class CkbDb {
     await this.connection.manager.save(records);
   }
 
-  async getCkbMintRecordsToMint(take: number = 100): Promise<CkbMint[]> {
+  async getCkbMintRecordsToMint(take = 100): Promise<CkbMint[]> {
     return this.connection.getRepository(CkbMint).find({
       where: {
         status: 'todo',
