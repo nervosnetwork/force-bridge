@@ -10,6 +10,7 @@ import { ETH_ADDRESS } from '@force-bridge/xchain/eth';
 import { CkbMint, EthLock, EthUnlock } from '@force-bridge/db/model';
 import assert from 'assert';
 import { ChainType } from '@force-bridge/ckb/model/asset';
+import { abi } from '@force-bridge/xchain/eth/abi/ForceBridge.json';
 
 async function main() {
   const conn = await createConnection();
@@ -31,7 +32,6 @@ async function main() {
   // logger.debug('bridgeContractAddr:', bridgeContractAddr);
   // const signer = provider.getSigner()
   // logger.debug('signer:', signer);
-  const abi = require('../../../../eth-contracts/artifacts/contracts/ForceBridge.sol/ForceBridge.json').abi;
   // logger.debug('abi:', abi);
   const bridge = new ethers.Contract(bridgeContractAddr, abi, provider);
   const wallet = new ethers.Wallet(config.privateKey, provider);

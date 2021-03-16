@@ -2,7 +2,7 @@ module.exports = {
   parser: '@typescript-eslint/parser',
   extends: ['plugin:@typescript-eslint/recommended'],
   plugins: ['prettier'],
-  ignorePatterns: ['packages/*/lib', '*.js'],
+  ignorePatterns: ['src/scripts/*.ts', '*.js'],
   rules: {
     'prettier/prettier': 'error',
     'no-unused-vars': 'off',

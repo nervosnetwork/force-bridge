@@ -33,7 +33,7 @@ export class EthDb {
     await this.ethLockRepository.save(dbRecords);
   }
 
-  async getEthUnlockRecordsToUnlock(status: EthUnlockStatus, take: number = 1): Promise<EthUnlock[]> {
+  async getEthUnlockRecordsToUnlock(status: EthUnlockStatus, take = 1): Promise<EthUnlock[]> {
     return this.ethUnlockRepository.find({
       where: {
         status,
