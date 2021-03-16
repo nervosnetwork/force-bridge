@@ -8,8 +8,8 @@ github-ci: build-ckb-contracts start-docker
 	cd offchain-modules && yarn ci
 
 install-node-modules:
-	cd offchain-modules && yarn --frozen-lockfile
-	cd eth-contracts && yarn --frozen-lockfile
+	cd offchain-modules && yarn
+	cd eth-contracts && yarn
 
 start-docker:
 	cd docker && docker-compose up -d
