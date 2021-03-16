@@ -30,7 +30,18 @@ export interface EthConfig {
   privateKey: string;
 }
 
+export interface TronConfig {
+  tronGridUrl: string;
+  commitee: {
+    address: string;
+    permissionId: string;
+    keys: string[];
+  };
+  startTimestamp: number;
+}
+
 export interface Config {
   ckb: CkbConfig;
   eth?: EthConfig;
+  tron?: TronConfig;
 }

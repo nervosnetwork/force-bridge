@@ -74,7 +74,9 @@
     "reflect-metadata": "^0.1.13",
     "sqlite3": "^5.0.2",
     "typeorm": "^0.2.31",
-    "typeorm-naming-strategies": "^2.0.0"
+    "typeorm-naming-strategies": "^2.0.0",
+    "trongrid": "^1.2.6",
+    "tronweb": "^3.2.3"
   },
   "husky": {
     "hooks": {
