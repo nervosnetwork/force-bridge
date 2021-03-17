@@ -2,10 +2,10 @@ import { TronDb } from '../db';
 import { logger } from '../utils/logger';
 import { asyncSleep } from '../utils';
 import { ForceBridgeCore } from '../core';
-import { TronWeb } from 'tronweb';
-import { TronGrid } from 'trongrid';
 import { TronLock, TronUnlock, ICkbMint } from '@force-bridge/db/model';
 import { ChainType } from '@force-bridge/ckb/model/asset';
+const TronWeb = require('tronweb');
+const TronGrid = require('trongrid');
 
 type TronLockEvent = {
   tx_hash: string;
@@ -18,8 +18,8 @@ type TronLockEvent = {
 };
 
 export class TronHandler {
-  private tronWeb: TronWeb;
-  private tronGrid: TronGrid;
+  private tronWeb;
+  private tronGrid;
   private committee;
   constructor(private db: TronDb) {
     this.tronWeb = new TronWeb({ fullHost: ForceBridgeCore.config.tron.tronGridUrl });
@@ -228,7 +228,7 @@ export class TronHandler {
     return broad_tx.txid;
   }
 
-  // watch the eth_unlock table and handle the new unlock events
+  // watch the tron_unlock table and handle the new unlock events
   // send tx according to the data
   async watchUnlockEvents(): Promise<void> {
     while (true) {
@@ -265,6 +265,6 @@ export class TronHandler {
   start() {
     this.watchLockEvents();
     this.watchUnlockEvents();
-    logger.info('eth handler started  🚀');
+    logger.info('tron handler started  🚀');
   }
 }
