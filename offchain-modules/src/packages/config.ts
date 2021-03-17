@@ -31,8 +31,9 @@ export interface EthConfig {
 }
 
 export interface TronConfig {
+  privateKey: string;
   tronGridUrl: string;
-  commitee: {
+  committee: {
     address: string;
     permissionId: string;
     keys: string[];

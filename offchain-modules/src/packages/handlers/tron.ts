@@ -4,10 +4,12 @@ import { asyncSleep } from '../utils';
 import { ForceBridgeCore } from '../core';
 import { TronWeb } from 'tronweb';
 import { TronGrid } from 'trongrid';
-import { TronLock, TronUnlock } from '@force-bridge/db/model';
+import { TronLock, TronUnlock, ICkbMint } from '@force-bridge/db/model';
+import { ChainType } from '@force-bridge/ckb/model/asset';
 
 type TronLockEvent = {
   tx_hash: string;
+  index?: number;
   sender: string;
   asset: string;
   amount: string;
@@ -22,14 +24,13 @@ export class TronHandler {
   constructor(private db: TronDb) {
     this.tronWeb = new TronWeb({ fullHost: ForceBridgeCore.config.tron.tronGridUrl });
     this.tronGrid = new TronGrid(this.tronWeb);
-    this.committee = ForceBridgeCore.config.tron.commitee;
+    this.committee = ForceBridgeCore.config.tron.committee;
   }
 
-  private async getTrxAndTrc10LockEvents(min_timestamp: number, limit = 200): Promise<TronLockEvent[]> {
+  private async getTrxAndTrc10LockEvents(min_timestamp: number): Promise<TronLockEvent[]> {
     const txs = await this.tronGrid.account.getTransactions(this.committee.address, {
       only_to: true,
       only_confirmed: true,
-      limit: limit,
       min_timestamp: min_timestamp,
     });
 
@@ -48,10 +49,9 @@ export class TronHandler {
     return lockEvents;
   }
 
-  private async getTrc20Txs(min_timestamp: number, limit = 200): Promise<TronLockEvent[]> {
+  private async getTrc20TxsLockEvents(min_timestamp: number): Promise<TronLockEvent[]> {
     const txs = await this.tronGrid.account.getTrc20Transactions(this.committee.address, {
       only_confirmed: true,
-      limit: limit,
       only_to: true,
       min_timestamp: min_timestamp,
     });
@@ -91,10 +91,18 @@ export class TronHandler {
   }
 
   private transferEventToCkbMint(event: TronLockEvent) {
-    throw new Error('Method not implemented.');
+    const { ckbRecipient, sudtExtraData } = this.analyzeMemo(event.memo);
+    return {
+      id: event.tx_hash.concat(event.index.toString()),
+      chain: ChainType.TRON,
+      asset: event.asset,
+      amount: event.amount,
+      recipientLockscript: ckbRecipient,
+      sudtExtraData: sudtExtraData,
+    };
   }
 
-  private transferEventToTronLock(related_id: number, event: TronLockEvent) {
+  private transferEventToTronLock(event: TronLockEvent) {
     const data = {
       tronLockTxHash: event.tx_hash,
       tronLockIndex: 0,
@@ -118,18 +126,24 @@ export class TronHandler {
     while (true) {
       logger.debug('get new lock events and save to db');
 
+      let ckbMintRecords: ICkbMint[];
       let tronLockRecords: TronLock[];
-      const trxAndTrc10Txs = await this.getTrxAndTrc10LockEvents(minTimestamp);
-      for (let i = 0; i < trxAndTrc10Txs.length; i++) {
-        if (trxAndTrc10Txs[i].timestamp == minTimestamp) {
+      const trxAndTrc10Events = await this.getTrxAndTrc10LockEvents(minTimestamp);
+      const trc20LockEvents = await this.getTrc20TxsLockEvents(minTimestamp);
+      const totalLockEvents = trxAndTrc10Events.concat(trc20LockEvents);
+
+      for (let i = 0; i < totalLockEvents.length; i++) {
+        if (totalLockEvents[i].timestamp == minTimestamp) {
           continue;
         } else {
-          //todo createCkbMint
-          const tronLock = this.transferEventToTronLock(0, trxAndTrc10Txs[i]);
+          const ckbMint = this.transferEventToCkbMint(totalLockEvents[i]);
+          ckbMintRecords.push(ckbMint);
+          const tronLock = this.transferEventToTronLock(totalLockEvents[i]);
           tronLockRecords.push(tronLock);
         }
       }
-      this.db.createTronLock(tronLockRecords);
+      await this.db.createCkbMint(ckbMintRecords);
+      await this.db.createTronLock(tronLockRecords);
 
       await asyncSleep(3000);
     }
