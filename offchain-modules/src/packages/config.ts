@@ -20,6 +20,7 @@ export interface CkbConfig {
   ckbIndexerUrl: string;
   deps: {
     bridgeLock: ConfigItem;
+    recipientType: ConfigItem;
     sudtType: ConfigItem;
   };
 }

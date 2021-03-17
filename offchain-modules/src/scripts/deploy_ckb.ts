@@ -23,6 +23,8 @@ const ADDRESS = ckb.utils.pubkeyToAddress(PUB_KEY);
 const deploy = async () => {
   const lockscriptBin = await fs.readFile('../ckb-contracts/build/release/bridge-lockscript');
   const lockscriptCodeHash = utils.bytesToHex(blake2b(lockscriptBin));
+  const recipientTypescriptBin = await fs.readFile('../ckb-contracts/build/release/recipient-typescript');
+  const recipientTypescriptCodeHash = utils.bytesToHex(blake2b(recipientTypescriptBin));
   const sudtBin = await fs.readFile('./deps/simple_udt');
   const sudtCodeHash = utils.bytesToHex(blake2b(sudtBin));
   // console.dir({lockscriptCodeHash, sudtCodeHash}, {depth: null})
@@ -51,6 +53,13 @@ const deploy = async () => {
     capacity: `0x${sudtCodeCellCapacity.toString(16)}`,
   });
   rawTx.outputsData.push(utils.bytesToHex(sudtBin));
+  // add recipient typescript
+  const recipientTypescriptCodeCellCapacity = (BigInt(recipientTypescriptBin.length) + 100n) * 10n ** 8n;
+  rawTx.outputs.push({
+    ...rawTx.outputs[0],
+    capacity: `0x${recipientTypescriptCodeCellCapacity.toString(16)}`,
+  });
+  rawTx.outputsData.push(utils.bytesToHex(recipientTypescriptBin));
   // // create bridge cell
   // const bridgeCellCapacity = 100n * 10n ** 8n;
   // const bridgeCellLockscript = {
@@ -67,7 +76,7 @@ const deploy = async () => {
   // });
   // rawTx.outputsData.push('0x');
   // modify change cell
-  const changeCellCap = BigInt(rawTx.outputs[1].capacity) - sudtCodeCellCapacity;
+  const changeCellCap = BigInt(rawTx.outputs[1].capacity) - sudtCodeCellCapacity - recipientTypescriptCodeCellCapacity;
   rawTx.outputs[1].capacity = `0x${changeCellCap.toString(16)}`;
   console.dir({ rawTx }, { depth: null });
 
@@ -97,11 +106,24 @@ const deploy = async () => {
         depType: 'code',
         outPoint: {
           txHash: deployTxHash,
-          index: '0x1',
+          index: '0x2',
         },
       },
       script: {
         codeHash: sudtCodeHash,
+        hashType: 'data',
+      },
+    },
+    recipientType: {
+      cellDep: {
+        depType: 'code',
+        outPoint: {
+          txHash: deployTxHash,
+          index: '0x3',
+        },
+      },
+      script: {
+        codeHash: recipientTypescriptCodeHash,
         hashType: 'data',
       },
     },
