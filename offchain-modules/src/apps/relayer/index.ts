@@ -9,6 +9,8 @@ import { Config } from '@force-bridge/config';
 import { createConnection } from 'typeorm';
 import { CkbMint, CkbBurn } from '@force-bridge/db/model';
 import { EthChain } from '@force-bridge/xchain/eth';
+import { EosHandler } from '@force-bridge/handlers/eos';
+import { EosDb } from '@force-bridge/db/eos';
 
 async function main() {
   const configPath = process.env.CONFIG_PATH || './config.json';
@@ -22,6 +24,12 @@ async function main() {
   const ckbDb = new CkbDb(conn);
   const ckbHandler = new CkbHandler(ckbDb);
   ckbHandler.start();
+
+  if (config.eos !== undefined) {
+    const eosDb = new EosDb(conn);
+    const eosHandler = new EosHandler(eosDb, ForceBridgeCore.config.eos);
+    eosHandler.start();
+  }
 
   // start xchain handlers if config exists
   if (config.eth !== undefined) {

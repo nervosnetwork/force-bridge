@@ -31,7 +31,16 @@ export interface EthConfig {
   privateKey: string;
 }
 
+export interface EosConfig {
+  rpcUrl: string;
+  chainId: string;
+  bridgerAccount: string;
+  bridgerAccountPermission: string;
+  privateKeys: string[];
+}
+
 export interface Config {
   ckb: CkbConfig;
   eth?: EthConfig;
+  eos?: EosConfig;
 }

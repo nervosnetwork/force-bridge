@@ -1,6 +1,6 @@
 // invoke in ckb handler
 import { Connection } from 'typeorm';
-import { CkbMint, CkbBurn, EthUnlock, IEthUnlock } from '@force-bridge/db/model';
+import { CkbMint, CkbBurn, EthUnlock, EosUnlock, IEthUnlock, IEosUnlock } from '@force-bridge/db/model';
 
 export class CkbDb {
   constructor(private connection: Connection) {}
@@ -28,5 +28,11 @@ export class CkbDb {
     const ethUnlockRepo = this.connection.getRepository(EthUnlock);
     const dbRecords = records.map((r) => ethUnlockRepo.create(r));
     await ethUnlockRepo.save(dbRecords);
+  }
+
+  async createEosUnlock(records: IEosUnlock[]): Promise<void> {
+    const eosUnlockRepo = this.connection.getRepository(EosUnlock);
+    const dbRecords = records.map((r) => eosUnlockRepo.create(r));
+    await eosUnlockRepo.save(dbRecords);
   }
 }
