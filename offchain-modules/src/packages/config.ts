@@ -31,6 +31,14 @@ export interface EthConfig {
   privateKey: string;
 }
 
+export interface EosConfig {
+  rpcUrl: string;
+  chainId: string;
+  bridgerAccount: string;
+  bridgerAccountPermission: string;
+  privateKeys: string[];
+}
+
 export interface TronConfig {
   tronGridUrl: string;
   committee: {
@@ -44,5 +52,6 @@ export interface TronConfig {
 export interface Config {
   ckb: CkbConfig;
   eth?: EthConfig;
+  eos?: EosConfig;
   tron?: TronConfig;
 }
