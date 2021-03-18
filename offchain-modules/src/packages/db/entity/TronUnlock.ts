@@ -48,35 +48,4 @@ export class TronUnlock {
 
   @UpdateDateColumn()
   updatedAt: Date;
-
-  from({
-    tronUnlockTxHash = '',
-    tronUnlockTxIndex = 0,
-    asset,
-    assetType,
-    amount,
-    memo,
-    recipientAddress,
-    status = 'todo',
-  }: {
-    tronUnlockTxHash?: string;
-    tronUnlockTxIndex?: number;
-    asset: string;
-    assetType: string;
-    amount: string;
-    memo: string;
-    recipientAddress: string;
-    status?: string;
-  }) {
-    const record = new TronUnlock();
-    record.tronUnlockTxHash = tronUnlockTxHash;
-    record.tronUnlockTxIndex = tronUnlockTxIndex;
-    record.asset = asset;
-    record.assetType = assetType;
-    record.amount = amount;
-    record.memo = memo;
-    record.recipientAddress = recipientAddress;
-    record.status = status;
-    return record;
-  }
 }

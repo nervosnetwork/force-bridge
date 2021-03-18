@@ -2,7 +2,7 @@ import { TronDb } from '../db';
 import { logger } from '../utils/logger';
 import { asyncSleep } from '../utils';
 import { ForceBridgeCore } from '../core';
-import { TronLock, TronUnlock, ICkbMint } from '@force-bridge/db/model';
+import { ITronLock, TronUnlock, ICkbMint } from '@force-bridge/db/model';
 import { ChainType } from '@force-bridge/ckb/model/asset';
 const TronWeb = require('tronweb');
 const TronGrid = require('trongrid');
@@ -98,7 +98,7 @@ export class TronHandler {
   }
 
   private transferEventToTronLock(event: TronLockEvent) {
-    const data = {
+    const tronLock = {
       tronLockTxHash: event.tx_hash,
       tronLockIndex: 0,
       tronSender: event.sender,
@@ -107,10 +107,8 @@ export class TronHandler {
       amount: event.amount,
       memo: event.memo,
       timestamp: event.timestamp,
-      committee: this.committee.address,
     };
-
-    return new TronLock().from(data);
+    return tronLock;
   }
 
   // listen Tron chain and handle the new lock events
@@ -121,7 +119,7 @@ export class TronHandler {
       const minTimestamp = await this.db.getLatestTimestamp();
 
       const ckbMintRecords: ICkbMint[] = [];
-      const tronLockRecords: TronLock[] = [];
+      const tronLockRecords: ITronLock[] = [];
       const trxAndTrc10Events = await this.getTrxAndTrc10LockEvents(minTimestamp);
       const trc20LockEvents = await this.getTrc20TxsLockEvents(minTimestamp);
       const totalLockEvents = trxAndTrc10Events.concat(trc20LockEvents);

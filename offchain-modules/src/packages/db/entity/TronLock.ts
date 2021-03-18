@@ -51,35 +51,4 @@ export class TronLock {
 
   @UpdateDateColumn()
   updatedAt: Date;
-
-  from({
-    tronLockTxHash,
-    tronLockIndex,
-    tronSender,
-    asset,
-    assetType,
-    amount,
-    memo,
-    timestamp,
-  }: {
-    tronLockTxHash: string;
-    tronLockIndex: number;
-    tronSender: string;
-    asset: string;
-    assetType: string;
-    amount: string;
-    memo: string;
-    timestamp: number;
-  }) {
-    const record = new TronLock();
-    record.tronLockTxHash = tronLockTxHash;
-    record.tronLockIndex = tronLockIndex;
-    record.tronSender = tronSender;
-    record.asset = asset;
-    record.assetType = assetType;
-    record.amount = amount;
-    record.memo = memo;
-    record.timestamp = timestamp;
-    return record;
-  }
 }

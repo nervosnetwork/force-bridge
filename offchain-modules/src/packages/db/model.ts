@@ -38,6 +38,17 @@ export interface IEthUnlock {
   recipientAddress: string;
 }
 
+export interface ITronLock {
+  tronLockTxHash: string;
+  tronLockIndex: number;
+  tronSender: string;
+  asset: string;
+  assetType: string;
+  amount: string;
+  memo: string;
+  timestamp: number;
+}
+
 export interface ITronUnlock {
   ckbTxHash: string;
   asset: string;

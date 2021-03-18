@@ -1,5 +1,5 @@
 // invoke in tron handler
-import { CkbMint, TronLock, TronUnlock, ICkbMint } from '@force-bridge/db/model';
+import { CkbMint, TronLock, TronUnlock, ICkbMint, ITronLock } from '@force-bridge/db/model';
 import { Connection, Repository } from 'typeorm';
 import { TronUnlockStatus } from '@force-bridge/db/entity/TronUnlock';
 
@@ -19,7 +19,7 @@ export class TronDb {
     await this.ckbMintRepository.save(dbRecords);
   }
 
-  async createTronLock(records: TronLock[]): Promise<void> {
+  async createTronLock(records: ITronLock[]): Promise<void> {
     const dbRecords = records.map((r) => this.tronLockRepository.create(r));
     await this.tronLockRepository.save(dbRecords);
   }
