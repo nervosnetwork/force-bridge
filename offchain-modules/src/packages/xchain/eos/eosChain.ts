@@ -12,8 +12,9 @@ import {
   PushTransactionArgs,
 } from 'eosjs/dist/eosjs-rpc-interfaces';
 import { TransactResult } from 'eosjs/dist/eosjs-api-interfaces';
+import { parseAssetAmount } from '@force-bridge/xchain/eos/utils';
 
-const EosAsset = 'eos';
+const EosDecimal = 4;
 const EosTokenAccount = 'eosio.token';
 const EosTokenTransferActionName = 'transfer';
 const EosTransactionStatus = 'executed';
@@ -99,19 +100,20 @@ export class EosChain {
           if (data.to !== this.bridgeAccount) {
             continue;
           }
+          const amountAsset = parseAssetAmount(data.quantity, EosDecimal);
           const lockRecord = {
             TxHash: tx.trx.id,
             BlockNumber: block.block_num,
             BlockHash: block.id,
-            Asset: EosAsset,
+            Asset: amountAsset.Asset,
             From: data.from,
             To: data.to,
-            Amount: data.quantity,
+            Amount: amountAsset.Amount,
             Memo: data.memo,
           };
           handleFunc(lockRecord);
           logger.info(
-            `Eos watch transfer txHash:${tx.trx.id} from:${data.from} to:${data.to} amount:${data.quantity} memo:${data.memo}`,
+            `Eos watched transfer txHash:${tx.trx.id} from:${data.from} to:${data.to} amount:${lockRecord.Amount} asset:${lockRecord.Asset} memo:${data.memo}`,
           );
         }
       }

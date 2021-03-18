@@ -15,7 +15,7 @@ export class EosHandler {
   }
 
   async sendUnlockTx(record: EosUnlock): Promise<TransactResult | PushTransactionArgs> {
-    return this.eosChain.transferTo(record.recipientAddress, record.amount, '');
+    return this.eosChain.transferTo(record.recipientAddress, `${record.amount} ${record.asset}`, '');
   }
 
   async watchLockEvents() {
@@ -52,11 +52,11 @@ export class EosHandler {
           },
         ]);
         logger.info(
-          `process CkbMint and EosLock successful for eos tx:${record.TxHash} from:${record.From} amount:${record.Amount}.`,
+          `process CkbMint and EosLock successful for eos tx:${record.TxHash} from:${record.From} amount:${record.Amount} asset:${record.Asset} memo:${record.Memo}.`,
         );
       } catch (e) {
         logger.error(
-          `process eosLock event failed.tx:${record.TxHash} from:${record.From} amount:${record.Amount} error:${e}.`,
+          `process eosLock event failed.tx:${record.TxHash} from:${record.From} amount:${record.Amount} asset:${record.Asset} memo:${record.Memo} error:${e}.`,
         );
       }
     });
@@ -82,8 +82,8 @@ export class EosHandler {
         if ('transaction_id' in txResult) {
           record.status = 'success';
           record.eosTxHash = txResult.transaction_id;
-          logger.debug(
-            `EosUnlock process success ckbTxHash:${record.ckbTxHash} receiver:${record.recipientAddress} eosTxhash:${record.eosTxHash}`,
+          logger.info(
+            `EosUnlock process success ckbTxHash:${record.ckbTxHash} receiver:${record.recipientAddress} eosTxhash:${record.eosTxHash} amount:${record.amount}, asset:${record.asset}`,
           );
         } else {
           record.status = 'error';
