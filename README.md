@@ -1,5 +1,6 @@
 # Force Bridge
 
+![integration-ci workflow](https://github.com/nervosnetwork/force-bridge/actions/workflows/integration-ci.yml/badge.svg)
 [![codecov](https://codecov.io/gh/nervosnetwork/force-bridge/branch/main/graph/badge.svg)](https://codecov.io/gh/nervosnetwork/force-bridge)
 
 > This project is still in active development.
