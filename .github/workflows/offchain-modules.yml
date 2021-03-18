@@ -15,7 +15,7 @@ defaults:
     working-directory: offchain-modules
 
 jobs:
-  eth-contracts-check:
+  offchain-modules-check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -36,4 +36,5 @@ jobs:
         run: yarn --frozen-lockfile
 #        if: steps.yarn-cache.outputs.cache-hit != 'true'
       - run: yarn lint
+      - run: yarn cov
       - run: yarn cov:send
