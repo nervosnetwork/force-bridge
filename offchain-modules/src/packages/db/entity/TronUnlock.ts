@@ -12,9 +12,6 @@ export type TronUnlockStatus = 'todo' | 'pending' | 'error' | 'success';
 
 @Entity()
 export class TronUnlock {
-  @PrimaryGeneratedColumn()
-  id: number;
-
   @PrimaryColumn()
   ckbTxHash: string;
 

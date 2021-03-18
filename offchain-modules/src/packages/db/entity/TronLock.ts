@@ -6,6 +6,7 @@ import {
   UpdateDateColumn,
   Column,
   Index,
+  PrimaryColumn,
 } from 'typeorm';
 
 export type TronAssetType = 'trx' | 'trc10' | 'trc20';
