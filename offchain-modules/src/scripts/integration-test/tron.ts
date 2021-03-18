@@ -36,13 +36,14 @@ async function main() {
     fullHost: config.tronGridUrl,
   });
 
-  const from = tronWeb.address.fromPrivateKey(config.privateKey);
+  const userPrivateKey = 'AECC2FBC0BF175DDD04BD1BC3B64A13DB98738962A512544C89B50F5DDB7EBBD';
+  const from = tronWeb.address.fromPrivateKey(userPrivateKey);
   const to = config.committee.address;
   const amount = 100;
   const recipientLockscript = 'ckt1qyq2f0uwf3lk7e0nthfucvxgl3zu36v6zuwq6mlzps';
   const sudtExtraData = 'transfer 100 to ckt1qyq2f0uwf3lk7e0nthfucvxgl3zu36v6zuwq6mlzps';
   const memo = recipientLockscript.concat(',').concat(sudtExtraData);
-  const lockRes = await transferTrx(tronWeb, from, to, amount, memo, config.privateKey);
+  const lockRes = await transferTrx(tronWeb, from, to, amount, memo, userPrivateKey);
   const txHash: string = lockRes.transaction.txID;
 
   // create tron unlock
