@@ -3,3 +3,5 @@ config.json
 lumos_db/
 yarn-error.log
 *.sqlite
+.nyc_output/
+coverage/

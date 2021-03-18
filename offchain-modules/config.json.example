@@ -3,7 +3,7 @@
     "eth": {
       "rpcUrl": "http://127.0.0.1:8545",
       "privateKey": "0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed37a",
-      "contractAddress": "0xeF79954086a6a0EDA662679F86420a48E25e4065"
+      "contractAddress": "0x8326e1d621Cd32752920ed2A44B49bB1a96c7391"
     },
     "ckb": {
       "ckbRpcUrl": "https://127.0.0.1:8114",
@@ -13,7 +13,7 @@
           "cellDep": {
             "depType": "code",
             "outPoint": {
-              "txHash": "0xecc976406cae4d9333d598d10d61ddbd1e6f08a1ccde08a444d5837b288b1975",
+              "txHash": "0x0caa50efa282e1aeda3ef6c5f99d2bf6a8365a59eaaad7a490a26aa99a1177cd",
               "index": "0x0"
             }
           },
@@ -26,12 +26,25 @@
           "cellDep": {
             "depType": "code",
             "outPoint": {
-              "txHash": "0xecc976406cae4d9333d598d10d61ddbd1e6f08a1ccde08a444d5837b288b1975",
-              "index": "0x1"
+              "txHash": "0x0caa50efa282e1aeda3ef6c5f99d2bf6a8365a59eaaad7a490a26aa99a1177cd",
+              "index": "0x2"
             }
           },
           "script": {
             "codeHash": "0xe1e354d6d643ad42724d40967e334984534e0367405c5ae42a9d7d63d77df419",
+            "hashType": "data"
+          }
+        },
+        "recipientType": {
+          "cellDep": {
+            "depType": "code",
+            "outPoint": {
+              "txHash": "0x0caa50efa282e1aeda3ef6c5f99d2bf6a8365a59eaaad7a490a26aa99a1177cd",
+              "index": "0x3"
+            }
+          },
+          "script": {
+            "codeHash": "0x0e95396c13c9f0dfb48fedfe0dd670eaa228fb8fb6f5a82b8b8dfe89c8c1bb37",
             "hashType": "data"
           }
         }

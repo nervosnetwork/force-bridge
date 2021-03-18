@@ -21,7 +21,7 @@ build-ckb-contracts:
 	cd ckb-contracts && capsule build --release
 
 deploy-eth-contracts:
-	cd eth-contracts && yarn deploy
+	cd eth-contracts && yarn ci
 
 clean-dev-env: stop-docker
 

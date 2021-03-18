@@ -24,7 +24,7 @@ export class EthChain {
     this.bridge = new ethers.Contract(this.bridgeContractAddr, abi, this.provider).connect(this.wallet);
   }
 
-  watchUnlockRecords(startHeight: number = 1, handleLogFunc) {
+  watchUnlockRecords(startHeight = 1, handleLogFunc) {
     const filter = {
       address: this.bridgeContractAddr,
       fromBlock: 'earliest',
@@ -47,6 +47,7 @@ export class EthChain {
         token: r.asset,
         recipient: r.recipientAddress,
         amount: BigNumber.from(r.amount),
+        ckbTxHash: r.ckbTxHash,
       };
     });
     logger.debug('sendUnlockTxs params', params);

@@ -45,11 +45,13 @@ describe("ForceBridge", function() {
                 token: '0x0000000000000000000000000000000000000000',
                 recipient: '0x1000000000000000000000000000000000000001',
                 amount: ethers.utils.parseEther("0.06"),
+                ckbTxHash: '0x1000000000000000000000000000000000000008',
             },
             {
                 token: '0x0000000000000000000000000000000000000000',
                 recipient: '0x1000000000000000000000000000000000000002',
                 amount: ethers.utils.parseEther("0.04"),
+                ckbTxHash: '0x1000000000000000000000000000000000000009',
             },
         ]
         const resUnlock = await bridge.unlock(records);
@@ -64,6 +66,7 @@ describe("ForceBridge", function() {
             expect(r.recipient).to.equal(res.recipient);
             expect(r.token).to.equal(res.token);
             expect(r.amount).to.equal(res.receivedAmount);
+            expect(r.ckbTxHash).to.equal(res.ckbTxHash);
         }
     });
 });
