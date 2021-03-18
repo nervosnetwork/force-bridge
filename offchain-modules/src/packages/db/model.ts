@@ -38,6 +38,14 @@ export interface IEthUnlock {
   recipientAddress: string;
 }
 
+export interface ITronUnlock {
+  ckbTxHash: string;
+  asset: string;
+  assetType: string;
+  amount: string;
+  recipientAddress: string;
+}
+
 export type XchainUnlock = EthUnlock | BtcUnlock;
 export async function transformBurnEvent(burn: CkbBurn): Promise<XchainUnlock> {
   throw new Error('Method not implemented.');

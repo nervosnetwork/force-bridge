@@ -2,10 +2,10 @@ import 'module-alias/register';
 import nconf from 'nconf';
 import { TronConfig } from '@force-bridge/config';
 import { logger } from '@force-bridge/utils/logger';
-import { asyncSleep } from '@force-bridge/utils';
+import { asyncSleep, genRandomHex } from '@force-bridge/utils';
 import { createConnection } from 'typeorm';
 import { CkbDb, TronDb } from '@force-bridge/db';
-import { CkbMint, TronLock } from '@force-bridge/db/model';
+import { CkbMint, TronLock, TronUnlock } from '@force-bridge/db/model';
 import assert from 'assert';
 import { ChainType } from '@force-bridge/ckb/model/asset';
 const TronWeb = require('tronweb');
@@ -19,12 +19,12 @@ async function transferTrx(tronWeb, from, to, amount, memo, priv) {
 
   const signed_tx = await tronWeb.trx.sign(unsignedWithMemoTx, priv);
   const broad_tx = await tronWeb.trx.broadcast(signed_tx);
+
   return broad_tx;
 }
 
 async function main() {
   const conn = await createConnection();
-  const tronDb = new TronDb(conn);
   const ckbDb = new CkbDb(conn);
 
   const configPath = process.env.CONFIG_PATH || './config.json';
@@ -36,37 +36,34 @@ async function main() {
     fullHost: config.tronGridUrl,
   });
 
-  const from = 'TS6VejPL8cQy6pA8eDGyusmmhCrXHRdJK6';
+  const from = tronWeb.address.fromPrivateKey(config.privateKey);
   const to = config.committee.address;
   const amount = 100;
-  const recipientLockscript = '0x00';
-  const sudtExtraData = '0x01';
-  const memo = recipientLockscript.concat(sudtExtraData);
-
+  const recipientLockscript = 'ckt1qyq2f0uwf3lk7e0nthfucvxgl3zu36v6zuwq6mlzps';
+  const sudtExtraData = 'transfer 100 to ckt1qyq2f0uwf3lk7e0nthfucvxgl3zu36v6zuwq6mlzps';
+  const memo = recipientLockscript.concat(',').concat(sudtExtraData);
   const lockRes = await transferTrx(tronWeb, from, to, amount, memo, config.privateKey);
-  logger.debug('lockRes', lockRes);
-  const txHash = lockRes.txID;
+  const txHash: string = lockRes.transaction.txID;
 
-  // // create eth unlock
-  // const recipientAddress = '0x1000000000000000000000000000000000000001';
-  // const balanceBefore = await provider.getBalance(recipientAddress);
-  // logger.debug('balanceBefore', balanceBefore);
-  // const record = {
-  //   ckbTxHash: genRandomHex(32),
-  //   asset: ETH_ADDRESS,
-  //   amount: genRandomHex(4),
-  //   recipientAddress,
-  // };
-  // await ckbDb.createEthUnlock([record]);
+  // create tron unlock
+  const recipientAddress = 'TS6VejPL8cQy6pA8eDGyusmmhCrXHRdJK6';
+  const record = {
+    ckbTxHash: genRandomHex(32),
+    asset: 'trx',
+    assetType: 'trx',
+    amount: '100',
+    recipientAddress,
+  };
+  await ckbDb.createTronUnlock([record]);
 
   const checkEffect = async () => {
-    // check EthLock and CkbMint saved.
+    // check TronLock and CkbMint saved.
     const tronLockRecords = await conn.manager.find(TronLock, {
       where: {
         tronLockTxHash: txHash,
       },
     });
-    logger.debug('ethLockRecords', tronLockRecords);
+    logger.debug('tronLockRecords', tronLockRecords);
     assert(tronLockRecords.length === 1);
     const tronLockRecord = tronLockRecords[0];
 
@@ -77,28 +74,29 @@ async function main() {
 
     const ckbMintRecords = await conn.manager.find(CkbMint, {
       where: {
-        id: txHash,
+        id: txHash.concat('_').concat(tronLockRecord.tronLockIndex.toString()),
       },
     });
     logger.debug('ckbMintRecords', ckbMintRecords);
     assert(ckbMintRecords.length === 1);
     const ckbMintRecord = ckbMintRecords[0];
-    assert(ckbMintRecord.chain === ChainType.ETH);
+    assert(ckbMintRecord.chain === ChainType.TRON);
     assert(ckbMintRecord.sudtExtraData === sudtExtraData);
     assert(ckbMintRecord.status === 'todo');
     assert(ckbMintRecord.asset === 'trx');
     assert(ckbMintRecord.amount === amount.toString());
     assert(ckbMintRecord.recipientLockscript === recipientLockscript);
 
-    // // check unlock record send
-    // const ethUnlockRecords = await conn.manager.find(EthUnlock, {
-    //   where: {
-    //     ckbTxHash: record.ckbTxHash,
-    //   },
-    // });
-    // assert(ethUnlockRecords.length === 1);
-    // const ethUnlockRecord = ethUnlockRecords[0];
-    // assert(ethUnlockRecord.status === 'success');
+    // check unlock record send
+    const tronUnlockRecords = await conn.manager.find(TronUnlock, {
+      where: {
+        ckbTxHash: record.ckbTxHash,
+      },
+    });
+    assert(tronUnlockRecords.length === 1);
+    const tronUnlockRecord = tronUnlockRecords[0];
+    assert(tronUnlockRecord.status === 'success');
+
     // const unlockReceipt = await provider.getTransactionReceipt(ethUnlockRecord.ethTxHash);
     // logger.debug('unlockReceipt', unlockReceipt);
     // assert(unlockReceipt.logs.length === 1);
@@ -111,17 +109,17 @@ async function main() {
 
   // try 100 times and wait for 3 seconds every time.
   for (let i = 0; i < 100; i++) {
-    await asyncSleep(3000);
+    await asyncSleep(10000);
     try {
       await checkEffect();
     } catch (e) {
-      logger.warn('The eth component integration not pass yet.', { i, e });
+      logger.warn('The tron component integration not pass yet.', { i, e });
       continue;
     }
-    logger.info('The eth component integration test pass!');
+    logger.info('The tron component integration test pass!');
     return;
   }
-  throw new Error('The eth component integration test failed!');
+  throw new Error('The tron component integration test failed!');
 }
 
 main()

@@ -38,7 +38,6 @@ export interface TronConfig {
     permissionId: string;
     keys: string[];
   };
-  startTimestamp: number;
 }
 
 export interface Config {

@@ -28,20 +28,18 @@ export class TronDb {
     await this.tronUnlockRepository.save(records);
   }
 
-  async getLatestLockRecords(): Promise<TronLock[]> {
-    const qb = this.connection.getRepository(TronLock).createQueryBuilder('lock');
-    return qb
-      .where('lock.timestamp=' + qb.subQuery().select('MAX(lock.timestamp)').from(TronLock, 'lock').getQuery())
-      .getMany();
+  async getLatestTimestamp(): Promise<number> {
+    const rawRes = await this.connection.manager.query('select max(timestamp) + 1 as max_timestamp from tron_lock');
+    const max_timestamp: number = rawRes[0].max_timestamp || 1;
+    return max_timestamp;
   }
 
-  async getTronUnlockRecords(status: TronUnlockStatus, limit = 100): Promise<TronUnlock[]> {
+  async getTronUnlockRecords(status: TronUnlockStatus): Promise<TronUnlock[]> {
     const tronUnlockRepository = this.connection.getRepository(TronUnlock);
     return await tronUnlockRepository.find({
       where: {
         status: status,
       },
-      take: limit,
     });
   }
 }

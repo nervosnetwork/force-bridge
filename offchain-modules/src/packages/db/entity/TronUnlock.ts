@@ -1,17 +1,27 @@
-import { Entity, PrimaryGeneratedColumn, CreateDateColumn, Column, UpdateDateColumn, Index } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  PrimaryColumn,
+  CreateDateColumn,
+  Column,
+  UpdateDateColumn,
+  Index,
+} from 'typeorm';
 
-export type TronUnlockStatus = 'init' | 'pending' | 'success' | 'error';
+export type TronUnlockStatus = 'todo' | 'pending' | 'error' | 'success';
 
 @Entity()
-@Index(['tronUnlockTxHash', 'tronUnlockTxIndex'], { unique: true })
 export class TronUnlock {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @PrimaryColumn()
+  ckbTxHash: string;
+
+  @Column({ nullable: true })
   tronUnlockTxHash: string;
 
-  @Column()
+  @Column({ nullable: true })
   tronUnlockTxIndex: number;
 
   @Column()
@@ -23,18 +33,15 @@ export class TronUnlock {
   @Column()
   amount: string;
 
-  @Column()
+  @Column({ default: '' })
   memo: string;
 
   @Index()
   @Column()
-  tronRecipientAddress: string;
+  recipientAddress: string;
 
-  @Column()
+  @Column({ default: 'todo' })
   status: string;
-
-  @Column()
-  committee: string;
 
   @CreateDateColumn()
   createdAt: Date;
@@ -49,9 +56,8 @@ export class TronUnlock {
     assetType,
     amount,
     memo,
-    tronRecipientAddress,
-    committee,
-    status = 'init',
+    recipientAddress,
+    status = 'todo',
   }: {
     tronUnlockTxHash?: string;
     tronUnlockTxIndex?: number;
@@ -59,8 +65,7 @@ export class TronUnlock {
     assetType: string;
     amount: string;
     memo: string;
-    tronRecipientAddress: string;
-    committee: string;
+    recipientAddress: string;
     status?: string;
   }) {
     const record = new TronUnlock();
@@ -70,8 +75,7 @@ export class TronUnlock {
     record.assetType = assetType;
     record.amount = amount;
     record.memo = memo;
-    record.tronRecipientAddress = tronRecipientAddress;
-    record.committee = committee;
+    record.recipientAddress = recipientAddress;
     record.status = status;
     return record;
   }

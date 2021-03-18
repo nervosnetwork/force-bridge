@@ -21,7 +21,7 @@
     "clean": "rimraf lumos_db dist force-bridge.sqlite",
     "eth-test": "ts-node ./src/scripts/integration-test/eth.ts",
     "tron-test": "ts-node ./src/scripts/integration-test/tron.ts",
-    "xchain-test": "run-s tron-test",
+    "xchain-test": "run-s eth-test tron-test",
     "integration-test": "run-p -r start xchain-test",
     "ci": "run-s clean build deploy integration-test",
     "sync-eth-abi": "cd ../eth-contracts && npx hardhat compile && cp artifacts/contracts/ForceBridge.sol/ForceBridge.json ../offchain-modules/src/packages/xchain/eth/abi",

@@ -16,6 +16,7 @@ export class TronLock {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Index()
   @Column()
   tronLockTxHash: string;
 
@@ -38,11 +39,9 @@ export class TronLock {
   @Column()
   memo: string;
 
-  @Column()
+  @Index()
+  @Column({ type: 'bigint' })
   timestamp: number;
-
-  @Column()
-  committee: string;
 
   @VersionColumn()
   version: number;
@@ -62,7 +61,6 @@ export class TronLock {
     amount,
     memo,
     timestamp,
-    committee,
   }: {
     tronLockTxHash: string;
     tronLockIndex: number;
@@ -72,7 +70,6 @@ export class TronLock {
     amount: string;
     memo: string;
     timestamp: number;
-    committee: string;
   }) {
     const record = new TronLock();
     record.tronLockTxHash = tronLockTxHash;
@@ -83,7 +80,6 @@ export class TronLock {
     record.amount = amount;
     record.memo = memo;
     record.timestamp = timestamp;
-    record.committee = committee;
     return record;
   }
 }
