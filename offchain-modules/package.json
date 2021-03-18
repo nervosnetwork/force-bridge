@@ -18,7 +18,8 @@
     "check:eslint": "eslint src/**/*.ts",
     "clean": "rimraf lumos_db dist force-bridge.sqlite",
     "eth-test": "ts-node ./src/scripts/integration-test/eth.ts",
-    "xchain-test": "run-s eth-test",
+    "eos-test": "ts-node ./src/scripts/integration-test/eos.ts",
+    "xchain-test": "run-s eth-test eos-test",
     "integration-test": "run-p -r start xchain-test",
     "ci": "run-s clean build deploy integration-test",
     "deploy": "ts-node-dev ./src/scripts/deploy_ckb.ts"
