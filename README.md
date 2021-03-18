@@ -1,5 +1,7 @@
 # Force Bridge
 
+[![codecov](https://codecov.io/gh/nervosnetwork/force-bridge/branch/main/graph/badge.svg)](https://codecov.io/gh/nervosnetwork/force-bridge)
+
 > This project is still in active development.
 
 A general new designed Force Bridge.
