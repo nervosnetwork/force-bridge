@@ -36,4 +36,4 @@ jobs:
         run: yarn --frozen-lockfile
 #        if: steps.yarn-cache.outputs.cache-hit != 'true'
       - run: yarn lint
-      - run: yarn test
+      - run: yarn cov:send
