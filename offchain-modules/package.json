@@ -64,6 +64,7 @@
     "@nervosnetwork/ckb-sdk-core": "^0.39.0",
     "@types/node": "^14.14.31",
     "axios": "^0.21.1",
+    "bitcore-lib": "^8.25.7",
     "ckb-js-toolkit": "^0.10.2",
     "dotenv": "^8.2.0",
     "ethers": "^5.0.32",
@@ -73,6 +74,7 @@
     "mysql2": "^2.2.5",
     "nconf": "^0.11.2",
     "reflect-metadata": "^0.1.13",
+    "rpc-bitcoin": "^2.0.0",
     "sqlite3": "^5.0.2",
     "typeorm": "^0.2.31",
     "typeorm-naming-strategies": "^2.0.0"
