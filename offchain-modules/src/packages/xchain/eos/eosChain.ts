@@ -10,6 +10,7 @@ import {
   GetTransactionResult,
   PushTransactionArgs,
 } from 'eosjs/dist/eosjs-rpc-interfaces';
+import { asyncSleep } from '@force-bridge/utils';
 
 const SubscribeBatchSize = 16;
 const SubscribeSleepTime = 1000;
@@ -84,12 +85,18 @@ export class EosChain {
   }
 
   async subscribeBlock(startHeight: number, handler: SubscribedBlockHandler, onlyIrreversibleBlock = true) {
-    const curBlockInfo = await this.getCurrentBlockInfo();
-    let endHeight = curBlockInfo.last_irreversible_block_num;
-    if (!onlyIrreversibleBlock) {
-      endHeight = curBlockInfo.head_block_num;
+    try {
+      const curBlockInfo = await this.getCurrentBlockInfo();
+      let endHeight = curBlockInfo.last_irreversible_block_num;
+      if (!onlyIrreversibleBlock) {
+        endHeight = curBlockInfo.head_block_num;
+      }
+      await this.doSubscribeBlock(startHeight, endHeight, handler, onlyIrreversibleBlock);
+    } catch (e) {
+      logger.error('subscribeBlock error:', e);
+      await asyncSleep(1000);
+      await this.subscribeBlock(startHeight, handler, onlyIrreversibleBlock);
     }
-    await this.doSubscribeBlock(startHeight, endHeight, handler, onlyIrreversibleBlock);
   }
 
   private async doSubscribeBlock(
