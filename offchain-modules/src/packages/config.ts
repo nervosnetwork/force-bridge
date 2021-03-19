@@ -38,6 +38,7 @@ export interface TronConfig {
     permissionId: string;
     keys: string[];
   };
+  feeLimit: number;
 }
 
 export interface Config {

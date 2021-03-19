@@ -190,7 +190,7 @@ export class TronHandler {
 
     const options = {
       permissionId: this.committee.permissionId,
-      feeLimit: 1000000,
+      feeLimit: ForceBridgeCore.config.tron.feeLimit,
     };
     const functionSelector = 'transfer(address,uint256)';
     const params = [
@@ -226,7 +226,7 @@ export class TronHandler {
       logger.debug('flush pending tx to confirm');
       const pendingRecords = await this.db.getTronUnlockRecords('pending');
       for (const pendingRecord of pendingRecords) {
-        // check tx is confirmed
+        // todo: check tx is confirmed
         pendingRecord.status = 'success';
       }
       await this.db.saveTronUnlock(pendingRecords);
