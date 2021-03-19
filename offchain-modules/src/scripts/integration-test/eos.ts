@@ -3,10 +3,7 @@ import 'module-alias/register';
 import nconf from 'nconf';
 import { EosConfig } from '@force-bridge/config';
 import { logger } from '@force-bridge/utils/logger';
-import { Api, JsonRpc } from 'eosjs';
 import { JsSignatureProvider } from 'eosjs/dist/eosjs-jssig';
-import fetch from 'node-fetch/index';
-import { TextDecoder, TextEncoder } from 'util';
 import { CkbDb } from '@force-bridge/db';
 import { EosLock } from '@force-bridge/db/entity/EosLock';
 import { asyncSleep, genRandomHex } from '@force-bridge/utils';
@@ -14,6 +11,7 @@ import assert from 'assert';
 import { CkbMint } from '@force-bridge/db/entity/CkbMint';
 import { ChainType } from '@force-bridge/ckb/model/asset';
 import { EosUnlock } from '@force-bridge/db/entity/EosUnlock';
+import { EosChain } from '@force-bridge/xchain/eos/eosChain';
 
 type waitFn = () => Promise<boolean>;
 
@@ -36,19 +34,12 @@ async function main() {
   const config: EosConfig = nconf.get('forceBridge:eos');
   logger.debug('EosConfig:', config);
 
-  const conn = await createConnection();
-  const ckbDb = new CkbDb(conn);
-
+  const rpcUrl = config.rpcUrl;
   const lockAccount = 'spongebob111';
   const lockAccountPri = ['5KQ1LgoXrSLiUMS8HZp6rSuyyJP5i6jTi1KWbZNerQQLFeTrxac'];
-
-  const eosRpc = new JsonRpc(config.rpcUrl, { fetch });
-  const eosApi = new Api({
-    rpc: eosRpc,
-    signatureProvider: new JsSignatureProvider(lockAccountPri),
-    textDecoder: new TextDecoder(),
-    textEncoder: new TextEncoder(),
-  });
+  const chain = new EosChain(rpcUrl, new JsSignatureProvider(lockAccountPri));
+  const conn = await createConnection();
+  const ckbDb = new CkbDb(conn);
 
   //lock eos
   const recipientLockscript = '0x00';
@@ -56,32 +47,15 @@ async function main() {
   const memo = `${recipientLockscript}#${sudtExtraData}`;
   const lockAmount = '0.0001';
   const lockAsset = 'EOS';
+  const eosTokenAccount = 'eosio.token';
 
-  const lockTxRes = await eosApi.transact(
-    {
-      actions: [
-        {
-          account: 'eosio.token',
-          name: 'transfer',
-          authorization: [
-            {
-              actor: lockAccount,
-              permission: 'active',
-            },
-          ],
-          data: {
-            from: lockAccount,
-            to: config.bridgerAccount,
-            quantity: `${lockAmount} ${lockAsset}`,
-            memo: memo,
-          },
-        },
-      ],
-    },
-    {
-      blocksBehind: 3,
-      expireSeconds: 30,
-    },
+  const lockTxRes = await chain.transfer(
+    lockAccount,
+    config.bridgerAccount,
+    'active',
+    `${lockAmount} ${lockAsset}`,
+    memo,
+    eosTokenAccount,
   );
 
   let lockTxHash: string;
@@ -170,7 +144,7 @@ async function main() {
   );
 
   if (eosUnlockTxHash !== '') {
-    const eosUnlockTx = await eosRpc.history_get_transaction(eosUnlockTxHash);
+    const eosUnlockTx = await chain.getTransactionResult(eosUnlockTxHash);
     logger.debug('EosUnlockTx:', eosUnlockTx);
   }
 }

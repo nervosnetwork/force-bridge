@@ -1,9 +1,8 @@
 import { logger } from '../../utils/logger';
 import { Api, JsonRpc } from 'eosjs';
-import { JsSignatureProvider } from 'eosjs/dist/eosjs-jssig';
 import fetch from 'node-fetch/index';
 import { TextDecoder, TextEncoder } from 'util';
-import { ForceBridgeCore } from '@force-bridge/core';
+import { SignatureProvider, TransactConfig, Transaction, TransactResult } from 'eosjs/dist/eosjs-api-interfaces';
 import {
   GetAccountResult,
   GetBlockResult,
@@ -11,47 +10,22 @@ import {
   GetTransactionResult,
   PushTransactionArgs,
 } from 'eosjs/dist/eosjs-rpc-interfaces';
-import { TransactResult } from 'eosjs/dist/eosjs-api-interfaces';
-import { parseAssetAmount } from '@force-bridge/xchain/eos/utils';
 
-const EosDecimal = 4;
-const EosTokenAccount = 'eosio.token';
-const EosTokenTransferActionName = 'transfer';
-const EosTransactionStatus = 'executed';
-
-const WatchSleepInterval = 1000;
-
-export class EosLockRecord {
-  TxHash: string;
-  BlockNumber: number;
-  BlockHash: string;
-  Asset: string;
-  From: string;
-  To: string;
-  Amount: string;
-  Memo: string;
-}
-
-type LockRecordHandleFunc = (record: EosLockRecord) => void;
+const SubscribeBatchSize = 16;
+const SubscribeSleepTime = 1000;
+type SubscribedBlockHandler = (block: GetBlockResult) => void;
 
 export class EosChain {
-  private readonly privateKeys: string[];
-  private readonly bridgeAccount: string;
-  private readonly bridgeAccountPermission: string;
-  private readonly chainId: string;
   private readonly rpc: JsonRpc;
+  private readonly signatureProvider: SignatureProvider;
   private readonly api: Api;
 
-  constructor() {
-    const config = ForceBridgeCore.config.eos;
-    this.chainId = config.chainId;
-    this.privateKeys = config.privateKeys;
-    this.bridgeAccount = config.bridgerAccount;
-    this.bridgeAccountPermission = config.bridgerAccountPermission;
-    this.rpc = new JsonRpc(config.rpcUrl, { fetch });
+  constructor(rpcUrl: string, signatureProvider: SignatureProvider) {
+    this.rpc = new JsonRpc(rpcUrl, { fetch });
+    this.signatureProvider = signatureProvider;
     this.api = new Api({
       rpc: this.rpc,
-      signatureProvider: new JsSignatureProvider(this.privateKeys),
+      signatureProvider: signatureProvider,
       textDecoder: new TextDecoder(),
       textEncoder: new TextEncoder(),
     });
@@ -65,79 +39,38 @@ export class EosChain {
     return this.rpc.get_block(blockNumberOrId);
   }
 
-  getBridgeAccountInfo(): Promise<GetAccountResult> {
-    return this.rpc.get_account(this.bridgeAccount);
+  getAccountInfo(account: string): Promise<GetAccountResult> {
+    return this.rpc.get_account(account);
   }
 
-  async watchLockRecords(startHeight: number, handleFunc: LockRecordHandleFunc) {
-    const curBlockInfo = await this.getCurrentBlockInfo();
-    if (curBlockInfo.chain_id !== this.chainId) {
-      logger.error(`Eos chainId:${curBlockInfo.chain_id} doesn't match with:${this.chainId}`);
-      return;
-    }
-    await this.doWatchLockRecord(startHeight, curBlockInfo.head_block_num, handleFunc);
+  transact(transaction: Transaction, transactCfg?: TransactConfig): Promise<TransactResult | PushTransactionArgs> {
+    return this.api.transact(transaction, transactCfg);
   }
 
-  private async doWatchLockRecord(startHeight: number, endHeight: number, handleFunc: LockRecordHandleFunc) {
-    while (true) {
-      if (startHeight > endHeight) {
-        setTimeout(() => {
-          this.watchLockRecords(startHeight, handleFunc);
-        }, WatchSleepInterval);
-        return;
-      }
-      const block = await this.getBlock(startHeight);
-      logger.debug(`Eos doWatchLockRecord blockHeight:${block.block_num} txNum:${block.transactions.length}`);
-      for (const tx of block.transactions) {
-        if (tx.status !== EosTransactionStatus) {
-          continue;
-        }
-        for (const action of tx.trx.transaction.actions) {
-          if (action.account !== EosTokenAccount || action.name !== EosTokenTransferActionName) {
-            continue;
-          }
-          const data = action.data;
-          if (data.to !== this.bridgeAccount) {
-            continue;
-          }
-          const amountAsset = parseAssetAmount(data.quantity, EosDecimal);
-          const lockRecord = {
-            TxHash: tx.trx.id,
-            BlockNumber: block.block_num,
-            BlockHash: block.id,
-            Asset: amountAsset.Asset,
-            From: data.from,
-            To: data.to,
-            Amount: amountAsset.Amount,
-            Memo: data.memo,
-          };
-          handleFunc(lockRecord);
-          logger.info(
-            `Eos watched transfer txHash:${tx.trx.id} from:${data.from} to:${data.to} amount:${lockRecord.Amount} asset:${lockRecord.Asset} memo:${data.memo}`,
-          );
-        }
-      }
-      startHeight++;
-    }
-  }
-
-  transferTo(to: string, amount: string, memo: string): Promise<TransactResult | PushTransactionArgs> {
-    return this.api.transact(
+  async transfer(
+    from: string,
+    to: string,
+    fromPermission: string,
+    quantity: string,
+    memo: string,
+    tokenAccount = 'eosio.token',
+  ): Promise<TransactResult | PushTransactionArgs> {
+    return this.transact(
       {
         actions: [
           {
-            account: EosTokenAccount,
-            name: EosTokenTransferActionName,
+            account: tokenAccount,
+            name: 'transfer',
             authorization: [
               {
-                actor: this.bridgeAccount,
-                permission: this.bridgeAccountPermission,
+                actor: from,
+                permission: fromPermission,
               },
             ],
             data: {
-              from: this.bridgeAccount,
+              from: from,
               to: to,
-              quantity: amount,
+              quantity: quantity,
               memo: memo,
             },
           },
@@ -148,6 +81,35 @@ export class EosChain {
         expireSeconds: 30,
       },
     );
+  }
+
+  async subscribeBlock(startHeight: number, handler: SubscribedBlockHandler, onlyIrreversibleBlock = true) {
+    const curBlockInfo = await this.getCurrentBlockInfo();
+    let endHeight = curBlockInfo.last_irreversible_block_num;
+    if (!onlyIrreversibleBlock) {
+      endHeight = curBlockInfo.head_block_num;
+    }
+    await this.doSubscribeBlock(startHeight, endHeight, handler, onlyIrreversibleBlock);
+  }
+
+  private async doSubscribeBlock(
+    startHeight: number,
+    endHeight: number,
+    handler: SubscribedBlockHandler,
+    onlyIrreversibleBlock = true,
+  ) {
+    while (true) {
+      if (startHeight > endHeight) {
+        setTimeout(() => {
+          this.subscribeBlock(startHeight, handler, onlyIrreversibleBlock);
+        }, SubscribeSleepTime);
+        return;
+      }
+      const block = await this.getBlock(startHeight);
+      logger.debug(`Eos doSubscribeBlock blockHeight:${block.block_num} txNum:${block.transactions.length}`);
+      handler(block);
+      startHeight++;
+    }
   }
 
   getTransactionResult(txHash: string): Promise<GetTransactionResult> {

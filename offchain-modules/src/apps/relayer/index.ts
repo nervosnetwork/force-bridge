@@ -10,7 +10,6 @@ import { createConnection } from 'typeorm';
 import { CkbMint, CkbBurn } from '@force-bridge/db/model';
 import { EthChain } from '@force-bridge/xchain/eth';
 import { EosHandler } from '@force-bridge/handlers/eos';
-import { EosChain } from '@force-bridge/xchain/eos/eosChain';
 import { EosDb } from '@force-bridge/db/eos';
 
 async function main() {
@@ -28,8 +27,7 @@ async function main() {
 
   if (config.eos !== undefined) {
     const eosDb = new EosDb(conn);
-    const eosChain = new EosChain();
-    const eosHandler = new EosHandler(eosDb, eosChain);
+    const eosHandler = new EosHandler(eosDb, ForceBridgeCore.config.eos);
     eosHandler.start();
   }
 
