@@ -1,0 +1,11 @@
+import basic;
+
+table RecipientCellData {
+    recipient_address: Bytes,
+    chain: byte,
+    asset: Bytes,
+    bridge_lock_code_hash: Byte32,
+    owner_lock_hash: Byte32,
+    amount: Uint128,
+    fee: Uint128,
+}

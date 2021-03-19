@@ -1,7 +1,7 @@
 import basic;
 
 table ForceBridgeLockscriptArgs {
-    owner_lock_hash: Bytes32,
+    owner_lock_hash: Byte32,
     chain: byte,
     asset: Bytes,
 }
