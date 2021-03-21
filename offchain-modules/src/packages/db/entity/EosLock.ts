@@ -20,12 +20,15 @@ export class EosLock {
   @Column()
   memo: string;
 
+  @Column()
+  accountActionSeq: number;
+
+  @Column()
+  globalActionSeq: number;
+
   @Index()
   @Column()
   blockNumber: number;
-
-  @Column()
-  blockHash: string;
 
   @CreateDateColumn()
   createdAt: string;

@@ -141,7 +141,7 @@ async function main() {
   );
 
   if (eosUnlockTxHash !== '') {
-    const eosUnlockTx = await chain.getTransactionResult(eosUnlockTxHash);
+    const eosUnlockTx = await chain.getTransaction(eosUnlockTxHash);
     logger.debug('EosUnlockTx:', eosUnlockTx);
   }
 }

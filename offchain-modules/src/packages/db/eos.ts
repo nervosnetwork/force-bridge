@@ -15,9 +15,9 @@ export class EosDb {
     this.eosUnlockRepository = conn.getRepository(EosUnlock);
   }
 
-  async getLatestHeight(): Promise<number> {
-    const rawRes = await this.conn.manager.query('select max(block_number) as max_block_number from eos_lock');
-    return rawRes[0].max_block_number || 0;
+  async getLastedAccountActionSeq(): Promise<number> {
+    const rawRes = await this.conn.manager.query('select max(account_action_seq) as lasted_account_seq from eos_lock');
+    return rawRes[0].lasted_account_seq || -1;
   }
 
   async createCkbMint(records: ICkbMint[]): Promise<void> {

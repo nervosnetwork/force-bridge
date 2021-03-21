@@ -88,13 +88,14 @@ export function EthLock2CkbMint(record: EthLock): CkbMint {
 }
 
 export interface IEosLock {
+  globalActionSeq: number;
+  accountActionSeq: number;
   txHash: string;
   sender: string;
   token: string;
   amount: string;
   memo: string;
   blockNumber: number;
-  blockHash: string;
 }
 
 export interface IEosUnlock {

@@ -37,6 +37,7 @@ export interface EosConfig {
   bridgerAccount: string;
   bridgerAccountPermission: string;
   privateKeys: string[];
+  latestAccountActionSeq: number;
 }
 
 export interface TronConfig {

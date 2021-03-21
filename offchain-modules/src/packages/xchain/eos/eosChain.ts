@@ -1,20 +1,15 @@
-import { logger } from '../../utils/logger';
 import { Api, JsonRpc } from 'eosjs';
 import fetch from 'node-fetch/index';
 import { TextDecoder, TextEncoder } from 'util';
 import { SignatureProvider, TransactConfig, Transaction, TransactResult } from 'eosjs/dist/eosjs-api-interfaces';
 import {
   GetAccountResult,
+  GetActionsResult,
   GetBlockResult,
   GetInfoResult,
   GetTransactionResult,
   PushTransactionArgs,
 } from 'eosjs/dist/eosjs-rpc-interfaces';
-import { asyncSleep } from '@force-bridge/utils';
-
-const SubscribeBatchSize = 16;
-const SubscribeSleepTime = 1000;
-type SubscribedBlockHandler = (block: GetBlockResult) => void;
 
 export class EosChain {
   private readonly rpc: JsonRpc;
@@ -84,42 +79,12 @@ export class EosChain {
     );
   }
 
-  async subscribeBlock(startHeight: number, handler: SubscribedBlockHandler, onlyIrreversibleBlock = true) {
-    try {
-      const curBlockInfo = await this.getCurrentBlockInfo();
-      let endHeight = curBlockInfo.last_irreversible_block_num;
-      if (!onlyIrreversibleBlock) {
-        endHeight = curBlockInfo.head_block_num;
-      }
-      await this.doSubscribeBlock(startHeight, endHeight, handler, onlyIrreversibleBlock);
-    } catch (e) {
-      logger.error('subscribeBlock error:', e);
-      await asyncSleep(1000);
-      await this.subscribeBlock(startHeight, handler, onlyIrreversibleBlock);
-    }
+  //getActions 返回account账户关系的action，action按action_seq倒序排列，从pos位置开始的offset + 1个actions
+  getActions(account: string, pos: number, offset?: number): Promise<GetActionsResult> {
+    return this.rpc.history_get_actions(account, pos, offset);
   }
 
-  private async doSubscribeBlock(
-    startHeight: number,
-    endHeight: number,
-    handler: SubscribedBlockHandler,
-    onlyIrreversibleBlock = true,
-  ) {
-    while (true) {
-      if (startHeight > endHeight) {
-        setTimeout(() => {
-          this.subscribeBlock(startHeight, handler, onlyIrreversibleBlock);
-        }, SubscribeSleepTime);
-        return;
-      }
-      const block = await this.getBlock(startHeight);
-      logger.debug(`Eos doSubscribeBlock blockHeight:${block.block_num} txNum:${block.transactions.length}`);
-      handler(block);
-      startHeight++;
-    }
-  }
-
-  getTransactionResult(txHash: string): Promise<GetTransactionResult> {
+  getTransaction(txHash: string): Promise<GetTransactionResult> {
     return this.rpc.history_get_transaction(txHash);
   }
 }
