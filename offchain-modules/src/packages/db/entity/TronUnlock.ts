@@ -1,12 +1,4 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  PrimaryColumn,
-  CreateDateColumn,
-  Column,
-  UpdateDateColumn,
-  Index,
-} from 'typeorm';
+import { Entity, PrimaryColumn, CreateDateColumn, Column, UpdateDateColumn, Index } from 'typeorm';
 
 export type TronUnlockStatus = 'todo' | 'pending' | 'error' | 'success';
 

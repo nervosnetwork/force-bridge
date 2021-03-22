@@ -6,14 +6,16 @@ import {
   UpdateDateColumn,
   Column,
   Index,
-  PrimaryColumn,
 } from 'typeorm';
 
 export type TronAssetType = 'trx' | 'trc10' | 'trc20';
 
 @Entity()
-@Index(['tronLockTxHash', 'tronLockIndex'], { unique: true })
+@Index(['txHash', 'txIndex'], { unique: true })
 export class TronLock {
+  @PrimaryGeneratedColumn()
+  id: number;
+
   @Index()
   @Column()
   txHash: string;
