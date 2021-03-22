@@ -31,7 +31,20 @@ export interface EthConfig {
   privateKey: string;
 }
 
+export interface BtcConfig {
+  clientParams: {
+    url: string;
+    user: string;
+    pass: string;
+    port: number;
+    timeout?: number;
+  };
+  privateKeys: string[];
+  lockAddress: string;
+}
+
 export interface Config {
   ckb: CkbConfig;
   eth?: EthConfig;
+  btc?: BtcConfig;
 }

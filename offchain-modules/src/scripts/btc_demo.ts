@@ -1,6 +1,6 @@
 import 'module-alias/register';
 import { logger } from '@force-bridge/utils/logger';
-const { RPCClient } = require('rpc-bitcoin');
+import { RPCClient } from 'rpc-bitcoin';
 import bitcore from 'bitcore-lib';
 import { asyncSleep } from '@force-bridge/utils';
 
@@ -12,11 +12,11 @@ async function main() {
   const port = 18443;
   const timeout = 10000;
   const client = new RPCClient({ url, port, timeout, user, pass });
-  const hex = await client.getbestblockhash();
-  logger.debug('bestblockhash', hex);
-  const aliceBalance = await client.getbalances('alice');
-  const bobBalance = await client.getbalances('bob');
-  logger.debug('balance', { aliceBalance, bobBalance });
+  // const hex = await client.getbestblockhash();
+  // logger.debug('bestblockhash', hex);
+  // const aliceBalance = await client.getbalances('alice');
+  // const bobBalance = await client.getbalances('bob');
+  // logger.debug('balance', { aliceBalance, bobBalance });
   const chainTips = await client.getchaintips();
   logger.debug('chainTips:', chainTips);
   const latestHeight = chainTips[0].height;
