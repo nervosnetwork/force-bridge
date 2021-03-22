@@ -88,9 +88,11 @@ export function EthLock2CkbMint(record: EthLock): CkbMint {
 }
 
 export interface IEosLock {
+  id: string;
   globalActionSeq: number;
   accountActionSeq: number;
   txHash: string;
+  actionIndex: number;
   sender: string;
   token: string;
   amount: string;
@@ -108,7 +110,7 @@ export interface IEosUnlock {
 export function EosLock2CkbMint(record: IEosLock): CkbMint {
   const ckbMintRepo = getRepository(CkbMint);
   return ckbMintRepo.create({
-    id: record.txHash,
+    id: record.id,
     chain: ChainType.EOS,
     amount: record.amount,
     asset: record.token,

@@ -16,6 +16,7 @@ const EosTokenTransferActionName = 'transfer';
 
 export class EosLockEvent {
   TxHash: string;
+  ActionIndex: number;
   BlockNumber: number;
   AccountActionSeq: number;
   GlobalActionSeq: number;
@@ -111,6 +112,7 @@ export class EosHandler {
         const amountAsset = parseAssetAmount(data.quantity, EosDecimal);
         const lockEvent = {
           TxHash: actionTrace.trx_id,
+          ActionIndex: actionTrace.action_ordinal,
           BlockNumber: actionTrace.block_num,
           AccountActionSeq: action.account_action_seq,
           GlobalActionSeq: action.global_action_seq,
@@ -138,27 +140,29 @@ export class EosHandler {
   }
 
   async processLockEvent(lockEvent: EosLockEvent) {
+    const lockRecord = {
+      id: `${lockEvent.TxHash}_${lockEvent.ActionIndex}`,
+      accountActionSeq: lockEvent.AccountActionSeq,
+      globalActionSeq: lockEvent.GlobalActionSeq,
+      txHash: lockEvent.TxHash,
+      actionIndex: lockEvent.ActionIndex,
+      amount: lockEvent.Amount,
+      token: lockEvent.Asset,
+      sender: lockEvent.From,
+      memo: lockEvent.Memo,
+      blockNumber: lockEvent.BlockNumber,
+    };
+
     await this.db.createCkbMint([
       {
-        id: lockEvent.TxHash,
+        id: lockRecord.id,
         chain: ChainType.EOS,
-        amount: lockEvent.Amount,
-        asset: lockEvent.Asset,
+        amount: lockRecord.amount,
+        asset: lockRecord.token,
         recipientLockscript: lockEvent.Memo,
       },
     ]);
-    await this.db.createEosLock([
-      {
-        accountActionSeq: lockEvent.AccountActionSeq,
-        globalActionSeq: lockEvent.GlobalActionSeq,
-        txHash: lockEvent.TxHash,
-        amount: lockEvent.Amount,
-        token: lockEvent.Asset,
-        sender: lockEvent.From,
-        memo: lockEvent.Memo,
-        blockNumber: lockEvent.BlockNumber,
-      },
-    ]);
+    await this.db.createEosLock([lockRecord]);
     logger.info(
       `process CkbMint and EosLock successful for eos tx:${lockEvent.TxHash} from:${lockEvent.From} amount:${lockEvent.Amount} asset:${lockEvent.Asset} memo:${lockEvent.Memo}.`,
     );

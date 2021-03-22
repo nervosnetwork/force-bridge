@@ -1,10 +1,16 @@
-import { Entity, Column, PrimaryColumn, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
+import { Entity, Column, CreateDateColumn, UpdateDateColumn, Index, PrimaryColumn } from 'typeorm';
 
 @Entity()
 export class EosLock {
   @PrimaryColumn()
+  id: string; //txHash + actionIndex
+
   @Index()
+  @Column()
   txHash: string;
+
+  @Column()
+  actionIndex: number;
 
   @Index()
   @Column()
@@ -20,13 +26,14 @@ export class EosLock {
   @Column()
   memo: string;
 
+  @Index()
   @Column()
   accountActionSeq: number;
 
+  @Index()
   @Column()
   globalActionSeq: number;
 
-  @Index()
   @Column()
   blockNumber: number;
 
