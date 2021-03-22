@@ -4,10 +4,12 @@ import { CkbMint } from '@force-bridge/db/entity/CkbMint';
 import { BtcUnlock } from '@force-bridge/db/entity/BtcUnlock';
 import { BtcLock } from '@force-bridge/db/entity/BtcLock';
 import { EthLock } from '@force-bridge/db/entity/EthLock';
+import { TronLock } from '@force-bridge/db/entity/TronLock';
+import { TronUnlock } from '@force-bridge/db/entity/TronUnlock';
 import { ChainType } from '@force-bridge/ckb/model/asset';
 import { getRepository } from 'typeorm';
 
-export { EthUnlock, EthLock, BtcLock, BtcUnlock, CkbMint, CkbBurn };
+export { EthUnlock, EthLock, BtcLock, BtcUnlock, CkbMint, CkbBurn, TronLock, TronUnlock };
 
 export interface ICkbMint {
   id: string;
@@ -32,6 +34,25 @@ export interface IEthLock {
 export interface IEthUnlock {
   ckbTxHash: string;
   asset: string;
+  amount: string;
+  recipientAddress: string;
+}
+
+export interface ITronLock {
+  txHash: string;
+  txIndex: number;
+  sender: string;
+  asset: string;
+  assetType: string;
+  amount: string;
+  memo: string;
+  timestamp: number;
+}
+
+export interface ITronUnlock {
+  ckbTxHash: string;
+  asset: string;
+  assetType: string;
   amount: string;
   recipientAddress: string;
 }
