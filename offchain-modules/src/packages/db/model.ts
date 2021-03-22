@@ -39,9 +39,9 @@ export interface IEthUnlock {
 }
 
 export interface ITronLock {
-  tronLockTxHash: string;
-  tronLockIndex: number;
-  tronSender: string;
+  txHash: string;
+  txIndex: number;
+  sender: string;
   asset: string;
   assetType: string;
   amount: string;

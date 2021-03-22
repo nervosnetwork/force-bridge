@@ -99,9 +99,9 @@ export class TronHandler {
 
   private transferEventToTronLock(event: TronLockEvent) {
     const tronLock = {
-      tronLockTxHash: event.tx_hash,
-      tronLockIndex: 0,
-      tronSender: event.sender,
+      txHash: event.tx_hash,
+      txIndex: 0,
+      sender: event.sender,
       asset: event.asset,
       assetType: event.asset,
       amount: event.amount,
