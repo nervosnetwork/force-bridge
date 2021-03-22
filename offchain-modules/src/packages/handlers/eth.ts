@@ -17,7 +17,7 @@ export class EthHandler {
   async watchLockEvents() {
     const latestHeight = await this.db.getLatestHeight();
     logger.debug('latestHeight: ', latestHeight);
-    this.ethChain.watchUnlockRecords(latestHeight, async (log, parsedLog) => {
+    this.ethChain.watchLockEvents(latestHeight, async (log, parsedLog) => {
       logger.debug('log:', { log, parsedLog });
       await this.db.createCkbMint([
         {
