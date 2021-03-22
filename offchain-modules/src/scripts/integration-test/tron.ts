@@ -61,7 +61,7 @@ async function main() {
     // check TronLock and CkbMint saved.
     const tronLockRecords = await conn.manager.find(TronLock, {
       where: {
-        tronLockTxHash: txHash,
+        txHash: txHash,
       },
     });
     logger.debug('tronLockRecords', tronLockRecords);
