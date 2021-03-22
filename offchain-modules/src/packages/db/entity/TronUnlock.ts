@@ -16,10 +16,10 @@ export class TronUnlock {
   ckbTxHash: string;
 
   @Column({ nullable: true })
-  tronUnlockTxHash: string;
+  tronTxHash: string;
 
   @Column({ nullable: true })
-  tronUnlockTxIndex: number;
+  tronTxIndex: number;
 
   @Column()
   asset: string;

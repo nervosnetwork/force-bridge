@@ -246,8 +246,8 @@ export class TronHandler {
             txid = await this.multiSignTransferTrc20(unlockRecord);
             break;
         }
-        unlockRecord.tronUnlockTxHash = txid;
-        unlockRecord.tronUnlockTxIndex = 0;
+        unlockRecord.tronTxHash = txid;
+        unlockRecord.tronTxIndex = 0;
         unlockRecord.status = 'pending';
       }
       await this.db.saveTronUnlock(unlockRecords);

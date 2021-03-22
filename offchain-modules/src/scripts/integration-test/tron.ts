@@ -69,13 +69,13 @@ async function main() {
     const tronLockRecord = tronLockRecords[0];
 
     assert(tronLockRecord.memo === memo);
-    assert(tronLockRecord.tronSender === from);
+    assert(tronLockRecord.sender === from);
     assert(tronLockRecord.asset === 'trx');
     assert(tronLockRecord.assetType === 'trx');
 
     const ckbMintRecords = await conn.manager.find(CkbMint, {
       where: {
-        id: txHash.concat('_').concat(tronLockRecord.tronLockIndex.toString()),
+        id: txHash.concat('_').concat(tronLockRecord.txIndex.toString()),
       },
     });
     logger.debug('ckbMintRecords', ckbMintRecords);

@@ -14,19 +14,16 @@ export type TronAssetType = 'trx' | 'trc10' | 'trc20';
 @Entity()
 @Index(['tronLockTxHash', 'tronLockIndex'], { unique: true })
 export class TronLock {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @Index()
+  @Column()
+  txHash: string;
+
+  @Column()
+  txIndex: number;
 
   @Index()
   @Column()
-  tronLockTxHash: string;
-
-  @Column()
-  tronLockIndex: number;
-
-  @Index()
-  @Column()
-  tronSender: string;
+  sender: string;
 
   @Column()
   asset: string;
