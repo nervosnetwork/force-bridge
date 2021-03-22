@@ -1,9 +1,11 @@
 #[cfg(not(feature = "std"))]
 use alloc::borrow::ToOwned;
 #[cfg(not(feature = "std"))]
+use alloc::string::String;
+#[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 
-use crate::generated::basic::{Byte32, Bytes, ETHAddress, Uint128, Uint64};
+use crate::generated::basic::{Byte32, Bytes, Uint128};
 use core::convert::TryFrom;
 use molecule::{
     error::VerificationError,
@@ -35,26 +37,6 @@ impl TryFrom<Vec<u8>> for Byte32 {
     }
 }
 
-impl From<[Byte; 20]> for ETHAddress {
-    fn from(v: [Byte; 20]) -> Self {
-        Self::new_builder().set(v).build()
-    }
-}
-
-impl From<u64> for Uint64 {
-    fn from(v: u64) -> Self {
-        let mut inner = [Byte::new(0); 8];
-        let v = v
-            .to_le_bytes()
-            .to_vec()
-            .into_iter()
-            .map(Byte::new)
-            .collect::<Vec<_>>();
-        inner.copy_from_slice(&v);
-        Self::new_builder().set(inner).build()
-    }
-}
-
 impl From<u128> for Uint128 {
     fn from(v: u128) -> Self {
         let mut inner = [Byte::new(0); 16];
@@ -66,5 +48,25 @@ impl From<u128> for Uint128 {
             .collect::<Vec<_>>();
         inner.copy_from_slice(&v);
         Self::new_builder().set(inner).build()
+    }
+}
+
+impl From<String> for Bytes {
+    fn from(s: String) -> Self {
+        Bytes::new_builder()
+            .set(
+                s.as_str()
+                    .as_bytes()
+                    .iter()
+                    .map(|c| Byte::new(*c))
+                    .collect::<Vec<_>>(),
+            )
+            .build()
+    }
+}
+
+impl From<Bytes> for String {
+    fn from(b: Bytes) -> Self {
+        String::from_utf8(b.raw_data().as_ref().to_vec()).expect("Bytes to string error")
     }
 }

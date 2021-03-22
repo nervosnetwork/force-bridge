@@ -40,7 +40,7 @@ const deploy = async () => {
     fromAddress: ADDRESS,
     toAddress: ADDRESS,
     capacity: (contractBinLength + 100n) * 10n ** 8n,
-    fee: 100000n,
+    fee: 10000000n,
     safeMode: true,
     cells: emptyCells,
     outputsData: [utils.bytesToHex(lockscriptBin)],
