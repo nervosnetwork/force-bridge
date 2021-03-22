@@ -9,7 +9,7 @@ use ckb_std::ckb_types::{
 use ckb_std::error::SysError;
 use contracts_helper::data_loader::MockDataLoader;
 use force_bridge_types::config::{SUDT_CODE_HASH, SUDT_HASH_TYPE};
-use force_bridge_types::recipient_cell::{RecipientDataView};
+use force_bridge_types::recipient_cell::RecipientDataView;
 use molecule::prelude::{Builder, Entity};
 
 struct TestParams {
@@ -29,10 +29,11 @@ fn get_correct_params() -> TestParams {
     let recipient_address = "mock_address".to_string();
     let chain = 1;
     let asset = "trx".to_string();
-    let owner_lock_hash = [100u8;32];
+    let owner_lock_hash = [100u8; 32];
     let bridge_lock_code_hash = [1u8; 32];
     let bridge_lock_hash = [
-        218u8, 23, 180, 100, 78, 151, 151, 22, 206, 10, 203, 43, 214, 141, 196, 63, 115, 243, 138, 86, 163, 57, 218, 146, 244, 255, 64, 70, 230, 209, 238, 159
+        218u8, 23, 180, 100, 78, 151, 151, 22, 206, 10, 203, 43, 214, 141, 196, 63, 115, 243, 138,
+        86, 163, 57, 218, 146, 244, 255, 64, 70, 230, 209, 238, 159,
     ];
 
     TestParams {
