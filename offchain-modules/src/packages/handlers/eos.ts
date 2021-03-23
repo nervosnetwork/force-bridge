@@ -5,7 +5,7 @@ import { EosChain } from '@force-bridge/xchain/eos/eosChain';
 import { EosUnlock, EosUnlockStatus } from '@force-bridge/db/entity/EosUnlock';
 import { PushTransactionArgs } from 'eosjs/dist/eosjs-rpc-interfaces';
 import { EosConfig } from '@force-bridge/config';
-import { getTxIdFromSerializedTx, parseAssetAmount } from '@force-bridge/xchain/eos/utils';
+import { EosAssetAmount, getTxIdFromSerializedTx } from '@force-bridge/xchain/eos/utils';
 import { JsSignatureProvider } from 'eosjs/dist/eosjs-jssig';
 import { ChainType } from '@force-bridge/ckb/model/asset';
 import { getEosLockId } from '@force-bridge/db/entity/EosLock';
@@ -120,7 +120,7 @@ export class EosHandler {
           if (data.to !== this.config.bridgerAccount) {
             continue;
           }
-          const amountAsset = parseAssetAmount(data.quantity, EosDecimal);
+          const amountAsset = EosAssetAmount.assetAmountFromQuantity(data.quantity);
           const lockEvent = {
             TxHash: actionTrace.trx_id,
             ActionIndex: actionTrace.action_ordinal,
