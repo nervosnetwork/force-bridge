@@ -8,6 +8,8 @@ import { EosConfig } from '@force-bridge/config';
 import { getTxIdFromSerializedTx, parseAssetAmount } from '@force-bridge/xchain/eos/utils';
 import { JsSignatureProvider } from 'eosjs/dist/eosjs-jssig';
 import { ChainType } from '@force-bridge/ckb/model/asset';
+import { getEosLockId } from '@force-bridge/db/entity/EosLock';
+import { TransactResult } from 'eosjs/dist/eosjs-api-interfaces';
 
 const EosDecimal = 4;
 const EosTokenAccount = 'eosio.token';
@@ -157,7 +159,7 @@ export class EosHandler {
 
   async processLockEvent(lockEvent: EosLockEvent) {
     const lockRecord = {
-      id: `${lockEvent.TxHash}_${lockEvent.ActionIndex}`,
+      id: getEosLockId(lockEvent.TxHash, lockEvent.ActionIndex),
       accountActionSeq: lockEvent.AccountActionSeq,
       globalActionSeq: lockEvent.GlobalActionSeq,
       txHash: lockEvent.TxHash,
@@ -207,23 +209,39 @@ export class EosHandler {
       const txHash = getTxIdFromSerializedTx(pushTxArgs.serializedTransaction);
       record.eosTxHash = txHash;
       await this.db.saveEosUnlock([record]); //save txHash first
+      let txRes: TransactResult;
       try {
-        await this.chain.pushSignedTransaction(pushTxArgs);
+        txRes = await this.chain.pushSignedTransaction(pushTxArgs);
         logger.info(
-          `EosUnlock pushSignedTransaction ckbTxHash:${record.ckbTxHash} receiver:${record.recipientAddress} eosTxhash:${record.eosTxHash} amount:${record.amount}, asset:${record.asset}`,
+          `EosHandler pushSignedTransaction ckbTxHash:${record.ckbTxHash} receiver:${record.recipientAddress} eosTxhash:${record.eosTxHash} amount:${record.amount} asset:${record.asset}`,
         );
       } catch (e) {
         record.status = 'error';
         record.message = e.message;
         logger.error(
-          `EosUnlock process failed ckbTxHash:${record.ckbTxHash} receiver:${record.recipientAddress} amount:${record.amount}, asset:${record.asset} error:${e}`,
+          `EosHandler pushSignedTransaction failed eosTxHash:${txHash} ckbTxHash:${record.ckbTxHash} receiver:${record.recipientAddress} amount:${record.amount} asset:${record.asset} error:${e}`,
         );
-        await this.db.saveEosUnlock([record]);
       }
+      if (!this.config.onlyWatchIrreversibleBlock) {
+        const txStatus = txRes.processed.receipt.status;
+        if (txStatus === 'executed') {
+          record.status = 'success';
+        } else {
+          record.status = 'error';
+          record.message = `action status:${txStatus} doesn't executed`;
+          logger.error(
+            `EosHandler processUnLockEvents eosTxHash:${txHash} ckbTxHash:${record.ckbTxHash} receiver:${record.recipientAddress} amount:${record.amount} asset:${record.asset} action status:${txStatus} doesn't executed`,
+          );
+        }
+      }
+      await this.db.saveEosUnlock([record]);
     }
   }
 
   async checkUnlockTxStatus() {
+    if (!this.config.onlyWatchIrreversibleBlock) {
+      return;
+    }
     try {
       while (true) {
         const pendingRecords = await this.getUnlockRecords('pending');

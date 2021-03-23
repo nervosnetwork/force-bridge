@@ -43,3 +43,7 @@ export class EosLock {
   @UpdateDateColumn()
   updatedAt: string;
 }
+
+export function getEosLockId(txHash: string, actionIndex: number): string {
+  return `${txHash}_${actionIndex}`;
+}

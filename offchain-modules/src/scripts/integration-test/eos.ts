@@ -5,7 +5,7 @@ import { EosConfig } from '@force-bridge/config';
 import { logger } from '@force-bridge/utils/logger';
 import { JsSignatureProvider } from 'eosjs/dist/eosjs-jssig';
 import { CkbDb } from '@force-bridge/db';
-import { EosLock } from '@force-bridge/db/entity/EosLock';
+import { EosLock, getEosLockId } from '@force-bridge/db/entity/EosLock';
 import { asyncSleep, genRandomHex } from '@force-bridge/utils';
 import assert from 'assert';
 import { CkbMint } from '@force-bridge/db/entity/CkbMint';
@@ -21,7 +21,7 @@ async function waitFnCompleted(timeout: number, fn: waitFn, sleepTime = 1000) {
     if (await fn()) {
       return;
     }
-    if (new Date().getTime() - start < 0) {
+    if (new Date().getTime() - start >= timeout) {
       throw new Error(`waitFnCompleted timeout after:${timeout}`);
     }
     await asyncSleep(sleepTime);
@@ -69,6 +69,7 @@ async function main() {
   } else {
     throw new Error('send lock eos transaction failed. txRes:' + lockTxRes);
   }
+  const transferActionId = getEosLockId(lockTxHash, 1);
 
   //check EosLock and EosMint saved.
   const waitTimeout = 1000 * 60 * 3; //3 minutes
@@ -77,12 +78,12 @@ async function main() {
     async (): Promise<boolean> => {
       const eosLockRecords = await conn.manager.find(EosLock, {
         where: {
-          txHash: lockTxHash,
+          id: transferActionId,
         },
       });
       const ckbMintRecords = await conn.manager.find(CkbMint, {
         where: {
-          id: lockTxHash,
+          id: transferActionId,
         },
       });
       if (eosLockRecords.length == 0 || ckbMintRecords.length === 0) {
@@ -147,7 +148,7 @@ async function main() {
 
   if (eosUnlockTxHash !== '') {
     const eosUnlockTx = await chain.getTransaction(eosUnlockTxHash);
-    logger.debug('EosUnlockTx:', eosUnlockTx);
+    logger.debug('EosUnlockTx status:', eosUnlockTx.trx.receipt.status);
   }
 }
 
