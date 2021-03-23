@@ -1,0 +1,40 @@
+name: eth-contracts-ci
+
+on:
+  push:
+    paths:
+      - .github/workflows/eth-contracts.yml
+      - 'eth-contracts/**.js'
+      - 'eth-contracts/**.json'
+      - 'eth-contracts/**.sol'
+  pull_request:
+    paths:
+      - .github/workflows/eth-contracts.yml
+      - 'eth-contracts/**.js'
+      - 'eth-contracts/**.json'
+      - 'eth-contracts/**.sol'
+
+defaults:
+  run:
+    working-directory: eth-contracts
+
+jobs:
+  eth-contracts-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Cache node_modules
+        uses: actions/cache@v2
+        with:
+          path: eth-contracts/node_modules
+          key: eth-contracts-${{ hashFiles('eth-contracts/yarn.lock') }}
+          restore-keys: |
+            eth-contracts-
+      - name: Use Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: '12.x'
+      - name: install dependencies
+        run: yarn --frozen-lockfile
+      - run: yarn test
+      - run: yarn lint
