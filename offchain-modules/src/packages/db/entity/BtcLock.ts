@@ -25,4 +25,26 @@ export class BtcLock {
 
   @Column()
   txIndex: number;
+
+  from(data: {
+    txid: string;
+    txHash: string;
+    amount: string;
+    data: string;
+    rawTx: string;
+    blockHeight: number;
+    blockHash: string;
+    txIndex: number;
+  }) {
+    const record = new BtcLock();
+    record.txid = data.txid;
+    record.txHash = data.txHash;
+    record.amount = data.amount;
+    record.data = data.data;
+    record.rawTx = data.rawTx;
+    record.blockHeight = data.blockHeight;
+    record.blockHash = data.blockHash;
+    record.txIndex = data.txIndex;
+    return record;
+  }
 }
