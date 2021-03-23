@@ -3,7 +3,6 @@ import { asyncSleep } from '../utils';
 import { EosDb } from '@force-bridge/db/eos';
 import { EosChain } from '@force-bridge/xchain/eos/eosChain';
 import { EosUnlock, EosUnlockStatus } from '@force-bridge/db/entity/EosUnlock';
-import { TransactResult } from 'eosjs/dist/eosjs-api-interfaces';
 import { PushTransactionArgs } from 'eosjs/dist/eosjs-rpc-interfaces';
 import { EosConfig } from '@force-bridge/config';
 import { getTxIdFromSerializedTx, parseAssetAmount } from '@force-bridge/xchain/eos/utils';
@@ -58,89 +57,95 @@ export class EosHandler {
   }
 
   async watchLockEvents() {
-    //check chain id
-    const curBlockInfo = await this.chain.getCurrentBlockInfo();
-    if (curBlockInfo.chain_id != this.config.chainId) {
-      logger.error(`Eos chainId:${curBlockInfo.chain_id} doesn't match with:${this.config.chainId}`);
-      return;
-    }
-
-    let latestActionSeq = await this.db.getLastedAccountActionSeq();
-    if (latestActionSeq < this.config.latestAccountActionSeq) {
-      latestActionSeq = this.config.latestAccountActionSeq;
-    }
-
-    let pos = 0;
-    let forward = false;
-    const offset = 20;
-    while (true) {
-      if (pos < 0) {
-        pos = 0;
-        await asyncSleep(3000);
+    try {
+      //check chain id
+      const curBlockInfo = await this.chain.getCurrentBlockInfo();
+      if (curBlockInfo.chain_id != this.config.chainId) {
+        logger.error(`EosHandler chainId:${curBlockInfo.chain_id} doesn't match with:${this.config.chainId}`);
+        return;
       }
 
-      const actions = await this.chain.getActions(this.config.bridgerAccount, pos, offset);
-      const actLen = actions.actions.length;
-      if (actLen === 0) {
-        pos -= offset + 1;
-        forward = true;
-        continue;
+      let latestActionSeq = await this.db.getLastedAccountActionSeq();
+      if (latestActionSeq < this.config.latestAccountActionSeq) {
+        latestActionSeq = this.config.latestAccountActionSeq;
       }
 
-      const firstAction = actions.actions[0];
-      const lastAction = actions.actions[actLen - 1];
-      if (lastAction.account_action_seq > latestActionSeq && !forward) {
-        pos += offset + 1;
-        forward = false;
-        continue;
-      }
-      if (firstAction.account_action_seq < latestActionSeq) {
-        pos -= offset + 1;
-        forward = true;
-        continue;
-      }
-
-      for (let i = actLen - 1; i >= 0; i--) {
-        const action = actions.actions[i];
-        if (action.account_action_seq <= latestActionSeq) {
-          continue;
+      let pos = 0;
+      let forward = false;
+      const offset = 20;
+      while (true) {
+        if (pos < 0) {
+          pos = 0;
+          await asyncSleep(3000);
         }
-        const actionTrace = action.action_trace;
-        const act = actionTrace.act;
-        if (act.account !== EosTokenAccount || act.name !== EosTokenTransferActionName) {
-          continue;
-        }
-        const data = act.data;
-        if (data.to !== this.config.bridgerAccount) {
-          continue;
-        }
-        const amountAsset = parseAssetAmount(data.quantity, EosDecimal);
-        const lockEvent = {
-          TxHash: actionTrace.trx_id,
-          ActionIndex: actionTrace.action_ordinal,
-          BlockNumber: actionTrace.block_num,
-          AccountActionSeq: action.account_action_seq,
-          GlobalActionSeq: action.global_action_seq,
-          Asset: amountAsset.Asset,
-          From: data.from,
-          To: data.to,
-          Amount: amountAsset.Amount,
-          Memo: data.memo,
-        };
-        logger.info(
-          `Eos watched transfer blockNumber:${actionTrace.block_num} accountActionSeq:${action.account_action_seq} txHash:${actionTrace.trx_id} from:${data.from} to:${data.to} amount:${lockEvent.Amount} asset:${lockEvent.Asset} memo:${data.memo}`,
-        );
-        try {
-          await this.processLockEvent(lockEvent);
-          latestActionSeq = action.account_action_seq;
+
+        const actions = await this.chain.getActions(this.config.bridgerAccount, pos, offset);
+        const actLen = actions.actions.length;
+        if (actLen === 0) {
           pos -= offset + 1;
           forward = true;
-        } catch (err) {
-          logger.error(
-            `process eosLock event failed. blockNumber:${actionTrace.block_num} tx:${lockEvent.TxHash} from:${lockEvent.From} amount:${lockEvent.Amount} asset:${lockEvent.Asset} memo:${lockEvent.Memo} error:${err}.`,
+          continue;
+        }
+
+        const firstAction = actions.actions[0];
+        const lastAction = actions.actions[actLen - 1];
+        if (lastAction.account_action_seq > latestActionSeq && !forward) {
+          pos += offset + 1;
+          forward = false;
+          continue;
+        }
+        if (firstAction.account_action_seq < latestActionSeq) {
+          pos -= offset + 1;
+          forward = true;
+          continue;
+        }
+
+        for (let i = actLen - 1; i >= 0; i--) {
+          const action = actions.actions[i];
+          if (action.account_action_seq <= latestActionSeq) {
+            continue;
+          }
+          const actionTrace = action.action_trace;
+          const act = actionTrace.act;
+          if (act.account !== EosTokenAccount || act.name !== EosTokenTransferActionName) {
+            continue;
+          }
+          const data = act.data;
+          if (data.to !== this.config.bridgerAccount) {
+            continue;
+          }
+          const amountAsset = parseAssetAmount(data.quantity, EosDecimal);
+          const lockEvent = {
+            TxHash: actionTrace.trx_id,
+            ActionIndex: actionTrace.action_ordinal,
+            BlockNumber: actionTrace.block_num,
+            AccountActionSeq: action.account_action_seq,
+            GlobalActionSeq: action.global_action_seq,
+            Asset: amountAsset.Asset,
+            From: data.from,
+            To: data.to,
+            Amount: amountAsset.Amount,
+            Memo: data.memo,
+          };
+          logger.info(
+            `EosHandler watched transfer blockNumber:${actionTrace.block_num} accountActionSeq:${action.account_action_seq} txHash:${actionTrace.trx_id} from:${data.from} to:${data.to} amount:${lockEvent.Amount} asset:${lockEvent.Asset} memo:${data.memo}`,
           );
+          try {
+            await this.processLockEvent(lockEvent);
+            latestActionSeq = action.account_action_seq;
+            pos -= offset + 1;
+            forward = true;
+          } catch (err) {
+            logger.error(
+              `EosHandler process eosLock event failed. blockNumber:${actionTrace.block_num} tx:${lockEvent.TxHash} from:${lockEvent.From} amount:${lockEvent.Amount} asset:${lockEvent.Asset} memo:${lockEvent.Memo} error:${err}.`,
+            );
+            await asyncSleep(3000); //wait to recovery
+          }
         }
       }
+    } catch (e) {
+      logger.error('EosHandler watchLockEvents error:', e);
+      setTimeout(this.watchLockEvents, 3000);
     }
   }
 
@@ -169,18 +174,23 @@ export class EosHandler {
     ]);
     await this.db.createEosLock([lockRecord]);
     logger.info(
-      `process CkbMint and EosLock successful for eos tx:${lockEvent.TxHash} from:${lockEvent.From} amount:${lockEvent.Amount} asset:${lockEvent.Asset} memo:${lockEvent.Memo}.`,
+      `EosHandler process CkbMint and EosLock successful for eos tx:${lockEvent.TxHash} from:${lockEvent.From} amount:${lockEvent.Amount} asset:${lockEvent.Asset} memo:${lockEvent.Memo}.`,
     );
   }
 
   async watchUnlockEvents() {
-    while (true) {
-      const todoRecords = await this.getUnlockRecords('todo');
-      if (todoRecords.length === 0) {
-        await asyncSleep(15000);
-        continue;
+    try {
+      while (true) {
+        const todoRecords = await this.getUnlockRecords('todo');
+        if (todoRecords.length === 0) {
+          await asyncSleep(15000);
+          continue;
+        }
+        await this.processUnLockEvents(todoRecords);
       }
-      await this.processUnLockEvents(todoRecords);
+    } catch (e) {
+      logger.error('EosHandler watchUnlockEvents error:', e);
+      setTimeout(this.watchUnlockEvents, 3000);
     }
   }
 
