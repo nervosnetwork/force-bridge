@@ -6,7 +6,7 @@ import { EosUnlock, EosUnlockStatus } from '@force-bridge/db/entity/EosUnlock';
 import { TransactResult } from 'eosjs/dist/eosjs-api-interfaces';
 import { PushTransactionArgs } from 'eosjs/dist/eosjs-rpc-interfaces';
 import { EosConfig } from '@force-bridge/config';
-import { parseAssetAmount } from '@force-bridge/xchain/eos/utils';
+import { getTxIdFromSerializedTx, parseAssetAmount } from '@force-bridge/xchain/eos/utils';
 import { JsSignatureProvider } from 'eosjs/dist/eosjs-jssig';
 import { ChainType } from '@force-bridge/ckb/model/asset';
 
@@ -41,15 +41,20 @@ export class EosHandler {
     return this.db.getEosUnlockRecordsToUnlock(status);
   }
 
-  async sendUnlockTx(record: EosUnlock): Promise<TransactResult | PushTransactionArgs> {
-    return this.chain.transfer(
+  async buildUnlockTx(record: EosUnlock): Promise<PushTransactionArgs> {
+    return (await this.chain.transfer(
       this.config.bridgerAccount,
       record.recipientAddress,
       this.config.bridgerAccountPermission,
       `${record.amount} ${record.asset}`,
       '',
       EosTokenAccount,
-    );
+      {
+        broadcast: false,
+        blocksBehind: 3,
+        expireSeconds: 30,
+      },
+    )) as PushTransactionArgs;
   }
 
   async watchLockEvents() {
@@ -181,36 +186,75 @@ export class EosHandler {
 
   async processUnLockEvents(records: EosUnlock[]) {
     for (const record of records) {
+      record.status = 'pending';
+      const pushTxArgs = await this.buildUnlockTx(record);
+      const txHash = getTxIdFromSerializedTx(pushTxArgs.serializedTransaction);
+      record.eosTxHash = txHash;
+      await this.db.saveEosUnlock([record]); //save txHash first
       try {
-        record.status = 'pending';
-        await this.db.saveEosUnlock([record]);
-        const txResult = await this.sendUnlockTx(record);
-        if ('transaction_id' in txResult) {
-          record.status = 'success';
-          record.eosTxHash = txResult.transaction_id;
-          logger.info(
-            `EosUnlock process success ckbTxHash:${record.ckbTxHash} receiver:${record.recipientAddress} eosTxhash:${record.eosTxHash} amount:${record.amount}, asset:${record.asset}`,
-          );
-        } else {
-          record.status = 'error';
-          logger.error(
-            `Eos precess unlockTx failed. ckbTxHash:${record.ckbTxHash} receiver:${record.recipientAddress} txResult:${txResult}`,
-          );
-        }
-        await this.db.saveEosUnlock([record]);
+        await this.chain.pushSignedTransaction(pushTxArgs);
+        logger.info(
+          `EosUnlock pushSignedTransaction ckbTxHash:${record.ckbTxHash} receiver:${record.recipientAddress} eosTxhash:${record.eosTxHash} amount:${record.amount}, asset:${record.asset}`,
+        );
       } catch (e) {
         record.status = 'error';
-        await this.db.saveEosUnlock([record]);
+        record.message = e.message;
         logger.error(
-          `EosUnlock process failed ckbTxHash:${record.ckbTxHash} receiver:${record.recipientAddress} error:${e}`,
+          `EosUnlock process failed ckbTxHash:${record.ckbTxHash} receiver:${record.recipientAddress} amount:${record.amount}, asset:${record.asset} error:${e}`,
         );
+        await this.db.saveEosUnlock([record]);
       }
+    }
+  }
+
+  async checkUnlockTxStatus() {
+    try {
+      while (true) {
+        const pendingRecords = await this.getUnlockRecords('pending');
+        if (pendingRecords.length === 0) {
+          await asyncSleep(15000);
+          continue;
+        }
+        let newRecords = new Array<EosUnlock>();
+        for (const pendingRecord of pendingRecords) {
+          const txRes = await this.chain.getTransaction(pendingRecord.eosTxHash);
+          if ('error' in txRes) {
+            const {
+              error: { code, name, what },
+            } = txRes;
+            pendingRecord.status = 'error';
+            pendingRecord.message = `rpcError ${code}-${name}:${what}`;
+            newRecords.push(pendingRecord);
+            continue;
+          }
+          if (txRes.trx.receipt.status !== 'executed') {
+            pendingRecord.status = 'error';
+            pendingRecord.message = `invalid transaction result status:${txRes.trx.receipt.status}`;
+            newRecords.push(pendingRecord);
+            continue;
+          }
+          if (txRes.block_num <= txRes.last_irreversible_block) {
+            pendingRecord.status = 'success';
+            newRecords.push(pendingRecord);
+            logger.info(
+              `EosHandler unlock status check success. ckbTxHash:${pendingRecord.ckbTxHash} receiver:${pendingRecord.recipientAddress} eosTxhash:${pendingRecord.eosTxHash} amount:${pendingRecord.amount}, asset:${pendingRecord.asset}`,
+            );
+          }
+        }
+        if (newRecords.length !== 0) {
+          await this.db.saveEosUnlock(newRecords);
+        }
+      }
+    } catch (e) {
+      logger.error(`EosHandler checkUnlockTxStatus error:${e}`);
+      setTimeout(this.checkUnlockTxStatus, 3000);
     }
   }
 
   start() {
     this.watchLockEvents();
     this.watchUnlockEvents();
+    this.checkUnlockTxStatus();
     logger.info('eos handler started  🚀');
   }
 }

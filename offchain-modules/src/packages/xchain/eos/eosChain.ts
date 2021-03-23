@@ -50,6 +50,7 @@ export class EosChain {
     quantity: string,
     memo: string,
     tokenAccount = 'eosio.token',
+    transactCfg?: TransactConfig,
   ): Promise<TransactResult | PushTransactionArgs> {
     return this.transact(
       {
@@ -72,11 +73,16 @@ export class EosChain {
           },
         ],
       },
-      {
-        blocksBehind: 3,
-        expireSeconds: 30,
-      },
+      transactCfg,
     );
+  }
+
+  pushSignedTransaction({
+    signatures,
+    serializedTransaction,
+    serializedContextFreeData,
+  }: PushTransactionArgs): Promise<TransactResult> {
+    return this.api.pushSignedTransaction({ signatures, serializedTransaction, serializedContextFreeData });
   }
 
   //getActions 返回account账户关系的action，action按action_seq倒序排列，从pos位置开始的offset + 1个actions

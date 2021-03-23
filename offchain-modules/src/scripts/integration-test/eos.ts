@@ -55,6 +55,11 @@ async function main() {
     `${lockAmount} ${lockAsset}`,
     memo,
     eosTokenAccount,
+    {
+      broadcast: true,
+      blocksBehind: 3,
+      expireSeconds: 30,
+    },
   );
 
   let lockTxHash: string;
