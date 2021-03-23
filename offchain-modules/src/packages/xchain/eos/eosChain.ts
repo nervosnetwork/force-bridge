@@ -85,7 +85,7 @@ export class EosChain {
     return this.api.pushSignedTransaction({ signatures, serializedTransaction, serializedContextFreeData });
   }
 
-  //getActions 返回account账户关系的action，action按action_seq倒序排列，从pos位置开始的offset + 1个actions
+  //getActions actions ordered by desc related with account，bound:[pos, pos+offset]
   getActions(account: string, pos: number, offset?: number): Promise<GetActionsResult> {
     return this.rpc.history_get_actions(account, pos, offset);
   }

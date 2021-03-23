@@ -71,7 +71,6 @@ export class EosHandler {
       }
 
       let pos = 0;
-      let forward = false;
       const offset = 20;
       while (true) {
         if (pos < 0) {
@@ -82,29 +81,34 @@ export class EosHandler {
         const actions = await this.chain.getActions(this.config.bridgerAccount, pos, offset);
         const actLen = actions.actions.length;
         if (actLen === 0) {
-          pos -= offset + 1;
-          forward = true;
+          pos -= offset;
           continue;
         }
 
         const firstAction = actions.actions[0];
         const lastAction = actions.actions[actLen - 1];
-        if (lastAction.account_action_seq > latestActionSeq && !forward) {
-          pos += offset + 1;
-          forward = false;
+        if (lastAction.account_action_seq > latestActionSeq) {
+          pos += offset;
           continue;
         }
         if (firstAction.account_action_seq < latestActionSeq) {
-          pos -= offset + 1;
-          forward = true;
+          //Some actions were been added when last scanning, rescan
+          pos -= offset;
           continue;
         }
 
+        let hasReversibleAction = false;
         for (let i = actLen - 1; i >= 0; i--) {
           const action = actions.actions[i];
           if (action.account_action_seq <= latestActionSeq) {
             continue;
           }
+          if (this.config.onlyWatchIrreversibleBlock && action.block_num > actions.last_irreversible_block) {
+            hasReversibleAction = true;
+            break;
+          }
+          latestActionSeq = action.account_action_seq;
+
           const actionTrace = action.action_trace;
           const act = actionTrace.act;
           if (act.account !== EosTokenAccount || act.name !== EosTokenTransferActionName) {
@@ -132,15 +136,17 @@ export class EosHandler {
           );
           try {
             await this.processLockEvent(lockEvent);
-            latestActionSeq = action.account_action_seq;
-            pos -= offset + 1;
-            forward = true;
           } catch (err) {
             logger.error(
               `EosHandler process eosLock event failed. blockNumber:${actionTrace.block_num} tx:${lockEvent.TxHash} from:${lockEvent.From} amount:${lockEvent.Amount} asset:${lockEvent.Asset} memo:${lockEvent.Memo} error:${err}.`,
             );
-            await asyncSleep(3000); //wait to recovery
           }
+        }
+        if (hasReversibleAction) {
+          //wait actions become irreversible
+          await asyncSleep(3000);
+        } else {
+          pos -= offset;
         }
       }
     } catch (e) {

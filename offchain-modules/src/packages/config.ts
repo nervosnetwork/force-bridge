@@ -38,6 +38,7 @@ export interface EosConfig {
   bridgerAccountPermission: string;
   privateKeys: string[];
   latestAccountActionSeq: number;
+  onlyWatchIrreversibleBlock: boolean;
 }
 
 export interface TronConfig {
