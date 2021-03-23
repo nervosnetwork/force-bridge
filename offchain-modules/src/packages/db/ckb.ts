@@ -1,6 +1,15 @@
 // invoke in ckb handler
 import { Connection } from 'typeorm';
-import { CkbMint, CkbBurn, EthUnlock, EosUnlock, IEthUnlock, IEosUnlock, ITronUnlock, TronUnlock } from '@force-bridge/db/model';
+import {
+  CkbMint,
+  CkbBurn,
+  EthUnlock,
+  EosUnlock,
+  IEthUnlock,
+  IEosUnlock,
+  ITronUnlock,
+  TronUnlock,
+} from '@force-bridge/db/model';
 
 export class CkbDb {
   constructor(private connection: Connection) {}
