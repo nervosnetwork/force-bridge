@@ -9,7 +9,8 @@
     "compile": "hardhat compile",
     "test": "hardhat test",
     "sync-eth-abi": "cp artifacts/contracts/ForceBridge.sol/ForceBridge.json ../offchain-modules/src/packages/xchain/eth/abi",
-    "watch": "nodemon --watch contracts --watch test -x 'npx hardhat test'"
+    "watch": "nodemon --watch contracts --watch test -x 'npx hardhat test'",
+    "lint": "solhint \"contracts/**/*.sol\" && yarn prettier ./test/*.js ./scripts/*/*.js ./scripts/*.js --check"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.0",
@@ -20,6 +21,7 @@
     "hardhat": "^2.1.0",
     "nconf": "^0.11.2",
     "nodemon": "^2.0.7",
-    "npm-run-all": "^4.1.5"
+    "npm-run-all": "^4.1.5",
+    "solhint": "^3.3.2"
   }
 }
