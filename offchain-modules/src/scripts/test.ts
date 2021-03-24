@@ -13,12 +13,12 @@ const PRI_KEY = process.env.PRI_KEY || '0xa800c82df5461756ae99b5c6677d019c98cc98
 
 async function main() {
   logger.debug('start ckb test');
-  const account = new Account(PRI_KEY, ckb);
+  const account = new Account(PRI_KEY);
   logger.debug('address', account.address);
   // const pw = await new PWCore(CKB_URL).init();
-  const indexer = new CkbIndexer(CKB_INDEXER_URL, CKB_URL);
-  const collector = new IndexerCollector(indexer);
-  const generator = new CkbTxGenerator(collector);
+  // const indexer = new CkbIndexer(CKB_INDEXER_URL, CKB_URL);
+  // const collector = new IndexerCollector(indexer);
+  // const generator = new CkbTxGenerator(collector);
 }
 
 main();

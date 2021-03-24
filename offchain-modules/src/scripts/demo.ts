@@ -1,8 +1,7 @@
-const path = require('path');
-const os = require('os');
+// const path = require('path');
+// const os = require('os');
 const fs = require('fs').promises;
 const nconf = require('nconf');
-
 const configPath = './config.json';
 
 /* eslint-disable import/no-extraneous-dependencies */
@@ -42,7 +41,7 @@ const deploy = async () => {
   const cells = await ckb.loadCells({ indexer, CellCollector, lock });
   const emptyCells = cells.filter((cell) => cell.data === '0x');
   console.dir({ emptyCells }, { depth: null });
-  const rawTx = ckb.generateTransaction({
+  const rawTx = ckb.generateRawTransaction({
     fromAddress: ADDRESS,
     toAddress: ADDRESS,
     capacity: (contractBinLength + 100n) * 10n ** 8n,
@@ -83,7 +82,7 @@ const deploy = async () => {
   const signedTx = ckb.signTransaction(PRI_KEY)(rawTx);
   const deployTxHash = await ckb.rpc.sendTransaction(signedTx);
   console.log(`Transaction has been sent with tx hash ${deployTxHash}`);
-  const txStatus = await waitUntilCommitted(deployTxHash);
+  // const txStatus = await waitUntilCommitted(deployTxHash);
   // console.dir({ txStatus }, {depth: null})
   nconf.set('deployTxHash', deployTxHash);
   const scriptsInfo = {
@@ -222,9 +221,9 @@ const mint = async () => {
       // create one more bridge cell
       {
         lock: {
-          codeHash: nconf.get('scriptsInfo:lockscript:codeHash'),
-          hashType: 'data',
-          args: BRIDGE_CELL_LOCKSCRIPT_ARGS,
+          codeHash: `${bridgeCellLockscript.codeHash}`,
+          hashType: `${bridgeCellLockscript.hashType}`,
+          args: `${bridgeCellLockscript.args}`,
         },
         capacity: `0x${bridgeCellCapacity.toString(16)}`,
       },

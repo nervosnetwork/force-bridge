@@ -9,14 +9,28 @@ import { CkbDb, EthDb } from '@force-bridge/db';
 import { ETH_ADDRESS } from '@force-bridge/xchain/eth';
 import { CkbMint, EthLock, EthUnlock } from '@force-bridge/db/model';
 import assert from 'assert';
-import { ChainType } from '@force-bridge/ckb/model/asset';
+import { ChainType, EthAsset } from '@force-bridge/ckb/model/asset';
 import { abi } from '@force-bridge/xchain/eth/abi/ForceBridge.json';
+import { Address, AddressType, Amount } from '@lay2/pw-core';
+import { Account } from '@force-bridge/ckb/model/accounts';
+import { CkbTxGenerator } from '@force-bridge/ckb/tx-helper/generator';
+import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
+// import {CkbIndexer} from "@force-bridge/ckb/tx-helper/indexer";
+import { ForceBridgeCore } from '@force-bridge/core';
+import { CkbIndexer } from '@force-bridge/ckb/tx-helper/indexer';
+const CKB = require('@nervosnetwork/ckb-sdk-core').default;
+// const { Indexer, CellCollector } = require('@ckb-lumos/indexer');
 
 async function main() {
   const conn = await createConnection();
   const ethDb = new EthDb(conn);
   const ckbDb = new CkbDb(conn);
-
+  const PRI_KEY = process.env.PRI_KEY || '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
+  const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
+  // const LUMOS_DB = './lumos_db';
+  const indexer = new CkbIndexer('http://127.0.0.1:8116');
+  // indexer.startForever();
+  const ckb = new CKB(CKB_URL);
   const configPath = process.env.CONFIG_PATH || './config.json';
   nconf.env().file({ file: configPath });
   const config: EthConfig = nconf.get('forceBridge:eth');
@@ -60,7 +74,8 @@ async function main() {
   //   // I'm pretty sure this returns a promise, so don't forget to resolve it
   // });
   // lock eth
-  const recipientLockscript = '0x00';
+  const recipientLockscript = stringToUint8Array('ckt1qyqyph8v9mclls35p6snlaxajeca97tc062sa5gahk');
+  logger.debug('recipientLockscript', toHexString(recipientLockscript));
   const sudtExtraData = '0x01';
   const amount = ethers.utils.parseEther('0.1');
   const lockRes = await bridgeWithSigner.lockETH(recipientLockscript, sudtExtraData, { value: amount });
@@ -95,7 +110,7 @@ async function main() {
     assert(ethLockRecord.sender === wallet.address);
     assert(ethLockRecord.token === ETH_ADDRESS);
     assert(ethLockRecord.amount === amount.toHexString());
-    assert(ethLockRecord.recipientLockscript === recipientLockscript);
+    assert(ethLockRecord.recipientLockscript === recipientLockscript.toString());
 
     const ckbMintRecords = await conn.manager.find(CkbMint, {
       where: {
@@ -110,7 +125,19 @@ async function main() {
     assert(ckbMintRecord.status === 'todo');
     assert(ckbMintRecord.asset === ETH_ADDRESS);
     assert(ckbMintRecord.amount === amount.toHexString());
-    assert(ckbMintRecord.recipientLockscript === recipientLockscript);
+    assert(ckbMintRecord.recipientLockscript === uint8ArrayToString(recipientLockscript));
+
+    // const params = ckbMintRecords.map((r) => {
+    //   return {
+    //     asset: new EthAsset(r.asset),
+    //     amount: new Amount(r.amount),
+    //     recipient: new Address(r.recipientLockscript, AddressType.ckb),
+    //   };
+    // });
+    // logger.debug('params', params);
+    // const account = new Account(PRI_KEY);
+    // const generator = new CkbTxGenerator();
+    // await generator.mint(await account.getLockscript(), params);
 
     // check unlock record send
     const ethUnlockRecords = await conn.manager.find(EthUnlock, {
@@ -152,3 +179,24 @@ main()
     console.error(error);
     process.exit(1);
   });
+
+function stringToUint8Array(str): Uint8Array {
+  const arr = [];
+  for (let i = 0, j = str.length; i < j; ++i) {
+    arr.push(str.charCodeAt(i));
+  }
+  const tmpUint8Array = new Uint8Array(arr);
+  return tmpUint8Array;
+}
+
+function uint8ArrayToString(fileData): string {
+  let dataString = '';
+  for (let i = 0; i < fileData.length; i++) {
+    dataString += String.fromCharCode(fileData[i]);
+  }
+  return dataString;
+}
+
+const fromHexString = (hexString) => new Uint8Array(hexString.match(/.{1,2}/g).map((byte) => parseInt(byte, 16)));
+
+const toHexString = (bytes) => bytes.reduce((str, byte) => str + byte.toString(16).padStart(2, '0'), '');

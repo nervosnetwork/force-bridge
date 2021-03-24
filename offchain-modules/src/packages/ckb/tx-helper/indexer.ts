@@ -46,8 +46,8 @@ const DefaultTerminator: Terminator = (_index, _cell) => {
 export class CkbIndexer {
   private ckbRpc: RPC;
 
-  constructor(public ckbIndexerUrl: string, public ckbRpcUrl: string) {
-    this.ckbRpc = new RPC(ckbRpcUrl);
+  constructor(public ckbIndexerUrl: string) {
+    this.ckbRpc = new RPC(ckbIndexerUrl);
   }
 
   async waitUntilSync(): Promise<void> {
@@ -91,7 +91,7 @@ export class CkbIndexer {
     const infos: Cell[] = [];
     let cursor = null;
     const index = 0;
-    const params = [searchKey, order, `${sizeLimit.toString(16)}`, cursor];
+    const params = [searchKey, order, `0x${sizeLimit.toString(16)}`, cursor];
     while (true) {
       const res = await this.request('get_cells', params);
       const liveCells = res.objects;
