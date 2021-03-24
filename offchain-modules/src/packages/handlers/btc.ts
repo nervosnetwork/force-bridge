@@ -1,5 +1,5 @@
-import { logger } from '../utils/logger';
-import { asyncSleep } from '../utils';
+import { logger } from '@force-bridge/utils/logger';
+import { asyncSleep } from '@force-bridge/utils';
 import { ChainType } from '@force-bridge/ckb/model/asset';
 import { BTCChain, BtcLockData } from '@force-bridge/xchain/btc';
 import { BtcDb } from '@force-bridge/db/btc';
@@ -9,42 +9,62 @@ export class BtcHandler {
 
   // listen ETH chain and handle the new lock events
   async watchLockEvents() {
-    const latestHeight = await this.db.getLatestHeight();
-    logger.debug('latestHeight: ', latestHeight);
-    const nowTips = await this.btcChain.getBtcHeight();
-    this.btcChain.watchLockEvents(latestHeight, nowTips, async (btcLockEventData: BtcLockData) => {
-      logger.debug('btc lock event data :', btcLockEventData);
-      await this.db.createCkbMint([
-        {
-          id: btcLockEventData.txId,
-          chain: ChainType.BTC,
-          amount: btcLockEventData.amount,
-          asset: 'btc',
-          recipientLockscript: btcLockEventData.data,
+    logger.debug('start watchLockEvents');
+    while (true) {
+      const latestHeight = await this.db.getLatestHeight();
+      const nowTips = await this.btcChain.getBtcHeight();
+      logger.debug('db latest height: ', latestHeight, 'chain now height: ', nowTips);
+      await this.btcChain.watchBtcTxEvents(
+        latestHeight + 1,
+        nowTips,
+        async (btcLockEventData: BtcLockData) => {
+          logger.debug('btc lock event data :', btcLockEventData);
+          await this.db.createCkbMint([
+            {
+              id: btcLockEventData.txId,
+              chain: ChainType.BTC,
+              amount: btcLockEventData.amount,
+              asset: 'btc',
+              recipientLockscript: btcLockEventData.data,
+            },
+          ]);
+          await this.db.createBtcLock([
+            {
+              txid: btcLockEventData.txId,
+              txIndex: btcLockEventData.txIndex,
+              txHash: btcLockEventData.txHash,
+              amount: btcLockEventData.amount,
+              receiptAddress: btcLockEventData.data,
+              blockHeight: btcLockEventData.blockHeight,
+              blockHash: btcLockEventData.blockHash,
+            },
+          ]);
+          logger.debug(`save CkbMint and BTCLock successful for BTC tx ${btcLockEventData.txHash}.`);
         },
-      ]);
-      await this.db.createBtcLock([
-        {
-          txid: btcLockEventData.txId,
-          txIndex: btcLockEventData.txIndex,
-          txHash: btcLockEventData.txHash,
-          rawTx: btcLockEventData.rawTx,
-          amount: btcLockEventData.amount,
-          receiptAddress: btcLockEventData.data,
-          blockHeight: btcLockEventData.blockHeight,
-          blockHash: btcLockEventData.blockHash,
+        async (ckbTxHash: string) => {
+          const records = await this.db.getNotSuccessUnlockRecord(ckbTxHash);
+          logger.debug('unlock records', records);
+          if (records.length === 0) {
+            return;
+          }
+          if (records.length > 1) {
+            logger.error('there are some unlock record which have the same ckb burn hash. ', records);
+          }
+          records[0].status = 'success';
+          await this.db.saveBtcUnlock(records);
         },
-      ]);
-      logger.debug(`save CkbMint and BTCLock successful for BTC tx ${btcLockEventData.txHash}.`);
-    });
+      );
+      await asyncSleep(1000 * 10);
+    }
   }
 
   // watch the BTC_unlock table and handle the new unlock events
   // send tx according to the data
   async watchUnlockEvents() {
     // todo: get and handle pending and error records
+    logger.debug('start watchUnlockEvents');
     while (true) {
-      await asyncSleep(15000);
+      await asyncSleep(1000 * 20);
       logger.debug('get new unlock events and send tx');
       const records = await this.db.getBtcUnlockRecords('todo');
       logger.debug('unlock records', records);
@@ -64,19 +84,6 @@ export class BtcHandler {
         });
         await this.db.saveBtcUnlock(records);
         logger.debug('sendUnlockTxs ', txRes);
-        // const receipt = await txRes.wait();
-        // if (receipt.status === 1) {
-        //   records.map((r) => {
-        //     r.status = 'success';
-        //   });
-        // } else {
-        //   records.map((r) => {
-        //     r.status = 'error';
-        //   });
-        //   logger.error('unlock execute failed', receipt);
-        // }
-        // await this.db.saveBTCUnlock(records);
-        // logger.debug('sendUnlockTxs receipt', receipt);
       } catch (e) {
         records.map((r) => {
           r.status = 'error';

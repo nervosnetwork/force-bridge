@@ -14,8 +14,8 @@ export class BtcLock {
   @Column()
   receiptAddress: string;
 
-  @Column()
-  rawTx: string;
+  // @Column()
+  // rawTx: string;
 
   @Column()
   blockHeight: number;
@@ -37,7 +37,6 @@ export class BtcLock {
     txHash: string;
     amount: string;
     receiptAddress: string;
-    rawTx: string;
     blockHeight: number;
     blockHash: string;
     txIndex: number;
@@ -47,7 +46,6 @@ export class BtcLock {
     record.txHash = data.txHash;
     record.amount = data.amount;
     record.receiptAddress = data.receiptAddress;
-    record.rawTx = data.rawTx;
     record.blockHeight = data.blockHeight;
     record.blockHash = data.blockHash;
     record.txIndex = data.txIndex;

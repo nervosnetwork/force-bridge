@@ -69,7 +69,6 @@ export interface IBtcLock {
   txHash: string;
   amount: string;
   receiptAddress: string;
-  rawTx: string;
   blockHeight: number;
   blockHash: string;
   txIndex: number;
