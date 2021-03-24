@@ -3,6 +3,12 @@
     "eth": {
       "rpcUrl": "http://127.0.0.1:8545",
       "privateKey": "0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed37a",
+      "multiSignKeys": [
+        "0x859bd720921bb5e60e3133ca11d534edebae38e7c1cd97214f310b4ce400155b",
+        "0x193c96316c6cada898f067004aa07a5d48fcecdb1aa158784f2e8868a4db7ce8",
+        "0x57c246bcb73e5d3409a903c94d46b3b118fdcfb81c5e51d3b0df72e883623fa7"
+      ],
+      "multiSignThreshold": 2,
       "contractAddress": "0x8326e1d621Cd32752920ed2A44B49bB1a96c7391"
     },
     "ckb": {
@@ -13,12 +19,12 @@
           "cellDep": {
             "depType": "code",
             "outPoint": {
-              "txHash": "0x0caa50efa282e1aeda3ef6c5f99d2bf6a8365a59eaaad7a490a26aa99a1177cd",
+              "txHash": "0xbbcbb5355d4604731027358c7baf25e5d9b3d20ddce4308cd835794aa5c409e4",
               "index": "0x0"
             }
           },
           "script": {
-            "codeHash": "0x0e95396c13c9f0dfb48fedfe0dd670eaa228fb8fb6f5a82b8b8dfe89c8c1bb37",
+            "codeHash": "0x8aa08e1154cbd2cb7dbb63f2a8b2f14c1fc7ec622f234e4ae6be37d757a4d106",
             "hashType": "data"
           }
         },
@@ -26,7 +32,7 @@
           "cellDep": {
             "depType": "code",
             "outPoint": {
-              "txHash": "0x0caa50efa282e1aeda3ef6c5f99d2bf6a8365a59eaaad7a490a26aa99a1177cd",
+              "txHash": "0xbbcbb5355d4604731027358c7baf25e5d9b3d20ddce4308cd835794aa5c409e4",
               "index": "0x2"
             }
           },
@@ -39,12 +45,12 @@
           "cellDep": {
             "depType": "code",
             "outPoint": {
-              "txHash": "0x0caa50efa282e1aeda3ef6c5f99d2bf6a8365a59eaaad7a490a26aa99a1177cd",
+              "txHash": "0xbbcbb5355d4604731027358c7baf25e5d9b3d20ddce4308cd835794aa5c409e4",
               "index": "0x3"
             }
           },
           "script": {
-            "codeHash": "0x0e95396c13c9f0dfb48fedfe0dd670eaa228fb8fb6f5a82b8b8dfe89c8c1bb37",
+            "codeHash": "0xccfc7603253b4d495d09fb6813d0ad2504a12b650e8640878234552e9cd503ee",
             "hashType": "data"
           }
         }
@@ -55,8 +61,10 @@
       "committee": {
         "address": "TX3MGfWT5aGv81vTSdZtr6hbHxhMVh1FFM",
         "permissionId": 2,
-        "keys": ["CA2B646CFF30E9CE13864F61CEF5F7C40E8720FA8310B00228F61D14EB761061", 
-        "EE782FE170F680D6CAB340ECA5ED2F6E05B0B9809082CF745207E87734211C72"]
+        "keys": [
+          "CA2B646CFF30E9CE13864F61CEF5F7C40E8720FA8310B00228F61D14EB761061",
+          "EE782FE170F680D6CAB340ECA5ED2F6E05B0B9809082CF745207E87734211C72"
+        ]
       },
       "feeLimit": 1000000
     }

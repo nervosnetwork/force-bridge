@@ -29,6 +29,8 @@ export interface EthConfig {
   rpcUrl: string;
   contractAddress: string;
   privateKey: string;
+  multiSignKeys: string[];
+  multiSignThreshold: number;
 }
 
 export interface TronConfig {
