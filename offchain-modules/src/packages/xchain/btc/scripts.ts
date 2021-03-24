@@ -47,12 +47,14 @@ export class BTCChain {
       for (let txIndex = 0; txIndex < waitVerifyTxs.length; txIndex++) {
         const txVouts = waitVerifyTxs[txIndex].vout;
         const ckbBurnTxHashes = await this.getUnockTxData(waitVerifyTxs[txIndex].vin, txVouts);
-        logger.debug('ckbBurnTxHashes ', ckbBurnTxHashes);
+        logger.debug('verify block :', blockHeight, 'tx ', waitVerifyTxs[txIndex].hash);
         if (ckbBurnTxHashes && ckbBurnTxHashes.length) {
+          logger.debug('ckbBurnTxHashes ', ckbBurnTxHashes);
           for (let i = 0; i < ckbBurnTxHashes.length; i++) {
             await handleUnlockAsyncFunc(ckbBurnTxHashes[i]);
           }
-        } else if (this.isLockTx(txVouts)) {
+        }
+        if (this.isLockTx(txVouts)) {
           const data: BtcLockData = {
             blockHeight: block.height,
             blockHash: block.hash,
@@ -70,19 +72,21 @@ export class BTCChain {
     }
   }
 
-  async sendLockTxs(fromAdress: string, amount: string, fromPrivKey, recipient: string) {
+  async sendLockTxs(fromAdress: string, amount: number, fromPrivKey, recipient: string) {
     if (!recipient.startsWith(BtcLockEventMark)) {
       throw new Error(`${recipient} must be available ckb address`);
     }
     logger.debug('params ', fromAdress, amount, fromPrivKey.toString());
     const liveUtxos = await this.rpcClient.scantxoutset({
       action: 'start',
-      scanobjects: [`addr(' + ${fromAdress} + ')`],
+      scanobjects: ['addr(' + fromAdress + ')'],
     });
     logger.debug('liveUtxos', liveUtxos);
     const utxos = getVins(liveUtxos.unspents, BigNumber(amount));
-    if (!!(utxos && utxos.length)) {
-      logger.error(`the unspend utxo is no for unlock. need : ${amount}. actual uxtos : ${liveUtxos}.`);
+    if (!(utxos && utxos.length)) {
+      throw new Error(
+        'the unspend utxo is no for unlock. need :' + amount + '. actual uxtos : ' + JSON.stringify(liveUtxos, null, 2),
+      );
     }
     const lockTx = new bitcore.Transaction()
       .from(utxos)
@@ -148,12 +152,12 @@ export class BTCChain {
     }
     const receiveAddr = new Buffer(secondVoutScriptPubKeyHex.substring(4), 'hex').toString();
 
-    if (receiveAddr.startsWith('ck')) {
+    if (receiveAddr.startsWith(BtcLockEventMark)) {
       logger.debug('receive addr', receiveAddr);
     }
     return (
       firstVoutScriptAddrList[0] === this.multiAddress &&
-      secondVoutScriptPubKeyHex.startsWith('6a08') &&
+      secondVoutScriptPubKeyHex.startsWith('6a') &&
       receiveAddr.startsWith(BtcLockEventMark)
     );
   }
@@ -187,40 +191,11 @@ export class BTCChain {
     // logger.debug("txVins :", txVins);
     let inputRawTx = await this.rpcClient.getrawtransaction({ txid: txVins[0].txid, verbose: true });
     let txSenders = inputRawTx.vout[txVins[0].vout].scriptPubKey.addresses;
-    logger.debug('txSender :', txSenders);
     for (let i = 0; i < txSenders.length; i++) {
       if (address === txSenders[i]) {
         return true;
       }
     }
-    return false;
-  }
-
-  async isTxInBlockAfterSubmit(client: RPCClient, startHeight, endHeight, txHash): Promise<boolean> {
-    const nowHeight = await this.getBtcHeight();
-
-    for (let blockHeight = startHeight; blockHeight <= endHeight; blockHeight++) {
-      const blockhash = await client.getblockhash({ height: blockHeight });
-      const block = await client.getblock({ blockhash, verbosity: 2 });
-      if (block.tx.length === 1) {
-        continue;
-      }
-      let waitVerifyTxs = block.tx.slice(1);
-      for (let txIndex = 0; txIndex < waitVerifyTxs.length; txIndex++) {
-        if (waitVerifyTxs[txIndex].hash === txHash) {
-          logger.debug(
-            'tx ',
-            txHash,
-            'is in block ',
-            blockHeight,
-            blockhash,
-            JSON.stringify(waitVerifyTxs[txIndex], null, 2),
-          );
-          return true;
-        }
-      }
-    }
-    logger.debug('tx,', txHash, ' not found in block');
     return false;
   }
 }
@@ -232,7 +207,6 @@ function getVins(liveUtxos, unlockAmount) {
     utxoAmount = utxoAmount.plus(BigNumber(liveUtxos[i].amount).multipliedBy(Math.pow(10, 8)));
     vins.push(liveUtxos[i]);
   }
-  logger.debug('vin utxo amount ', utxoAmount);
   if (utxoAmount.lt(unlockAmount)) {
     return [];
   }
