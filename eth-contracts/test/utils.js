@@ -1,9 +1,9 @@
-const { ecsign, toRpcSig } = require("ethereumjs-util");
+const { ecsign, toRpcSig } = require('ethereumjs-util');
 const { keccak256, defaultAbiCoder, solidityPack } = ethers.utils;
 
 async function sleep(seconds) {
   // console.log(`waiting for block confirmations, about ${seconds}s`)
-  await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
+  await new Promise(resolve => setTimeout(resolve, seconds * 1000));
 }
 
 async function waitingForReceipt(provider, res) {
@@ -23,7 +23,7 @@ async function waitingForReceipt(provider, res) {
   return txReceipt;
 }
 
-const generateWallets = (size) => {
+const generateWallets = size => {
   const wallets = [];
   for (let i = 0; i < size; i++) {
     const wallet = ethers.Wallet.createRandom();
@@ -33,12 +33,12 @@ const generateWallets = (size) => {
 };
 
 const generateSignatures = (msgHash, wallets) => {
-  let signatures = "0x";
+  let signatures = '0x';
   for (let i = 0; i < wallets.length; i++) {
     const wallet = wallets[i];
     const { v, r, s } = ecsign(
-      Buffer.from(msgHash.slice(2), "hex"),
-      Buffer.from(wallet.privateKey.slice(2), "hex")
+      Buffer.from(msgHash.slice(2), 'hex'),
+      Buffer.from(wallet.privateKey.slice(2), 'hex')
     );
     const sigHex = toRpcSig(v, r, s);
     signatures += sigHex.slice(2);
@@ -49,29 +49,29 @@ const generateSignatures = (msgHash, wallets) => {
 const getUnlockMsgHash = (DOMAIN_SEPARATOR, typeHash, records) => {
   return keccak256(
     solidityPack(
-      ["bytes1", "bytes1", "bytes32", "bytes32"],
+      ['bytes1', 'bytes1', 'bytes32', 'bytes32'],
       [
-        "0x19",
-        "0x01",
+        '0x19',
+        '0x01',
         DOMAIN_SEPARATOR,
         keccak256(
           defaultAbiCoder.encode(
             [
-              "bytes32",
+              'bytes32',
               {
                 components: [
-                  { name: "token", type: "address" },
-                  { name: "recipient", type: "address" },
-                  { name: "amount", type: "uint256" },
-                  { name: "ckbTxHash", type: "bytes" },
+                  { name: 'token', type: 'address' },
+                  { name: 'recipient', type: 'address' },
+                  { name: 'amount', type: 'uint256' },
+                  { name: 'ckbTxHash', type: 'bytes' }
                 ],
-                name: "records",
-                type: "tuple[]",
-              },
+                name: 'records',
+                type: 'tuple[]'
+              }
             ],
             [typeHash, records]
           )
-        ),
+        )
       ]
     )
   );
@@ -85,17 +85,17 @@ const getChangeValidatorsMsgHash = (
 ) => {
   return keccak256(
     solidityPack(
-      ["bytes1", "bytes1", "bytes32", "bytes32"],
+      ['bytes1', 'bytes1', 'bytes32', 'bytes32'],
       [
-        "0x19",
-        "0x01",
+        '0x19',
+        '0x01',
         DOMAIN_SEPARATOR,
         keccak256(
           defaultAbiCoder.encode(
-            ["bytes32", "address[]", "uint256"],
+            ['bytes32', 'address[]', 'uint256'],
             [typeHash, validators, multisigThreshold]
           )
-        ),
+        )
       ]
     )
   );
@@ -107,5 +107,5 @@ module.exports = {
   generateWallets,
   generateSignatures,
   getUnlockMsgHash,
-  getChangeValidatorsMsgHash,
+  getChangeValidatorsMsgHash
 };
