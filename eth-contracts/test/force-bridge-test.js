@@ -152,7 +152,7 @@ describe("ForceBridge", () => {
     it("should change validators", async function () {
       const newWallets = generateWallets(7);
       newValidators = newWallets.map((wallet) => wallet.address);
-      newMultisigThreshold = 5;
+      newMultisigThreshold = 6;
 
       const msgHash = getChangeValidatorsMsgHash(
         DOMAIN_SEPARATOR,
@@ -164,12 +164,15 @@ describe("ForceBridge", () => {
       // 2. generate signatures
       let signatures = generateSignatures(msgHash, wallets.slice(0, 7));
 
-      const res = await forceBridge.changeValidators(
+      const result = await forceBridge.changeValidators(
         newValidators,
         newMultisigThreshold,
         signatures
       );
-      console.log("res", res);
+      console.log("changeValidators result", result);
+      expect(await forceBridge.multisigThreshold_()).to.equal(
+        newMultisigThreshold
+      );
     });
   });
 });
