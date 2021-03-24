@@ -63,3 +63,14 @@ export function EthLock2CkbMint(record: EthLock): CkbMint {
     sudtExtraData: record.sudtExtraData,
   });
 }
+
+export interface IBtcLock {
+  txid: string;
+  txHash: string;
+  amount: string;
+  receiptAddress: string;
+  rawTx: string;
+  blockHeight: number;
+  blockHash: string;
+  txIndex: number;
+}

@@ -9,6 +9,8 @@
 import { RPCClient } from 'rpc-bitcoin';
 const BigNumber = require('bignumber.js');
 import bitcore from 'bitcore-lib';
+import { BtcLockData, BtcUnlockResult } from '@force-bridge/xchain/btc/type';
+import { BtcUnlock } from '@force-bridge/db/entity/BtcUnlock';
 /// import { asyncSleep } from '@force-bridge/utils';
 
 export class BTCChain {
@@ -50,10 +52,10 @@ export class BTCChain {
         let txVouts = waitVerifyTxs[txIndex].vout;
         if (isLockTx(txVouts, this.multiAddress)) {
           console.log('tda: ', new BigNumber(txVouts[0].value));
-          const data = {
+          const data: BtcLockData = {
             blockHeight: block.height,
             blockHash: block.hash,
-            txid: waitVerifyTxs[txIndex].txid,
+            txId: waitVerifyTxs[txIndex].txid,
             txHash: waitVerifyTxs[txIndex].hash,
             rawTx: waitVerifyTxs[txIndex].hex,
             txIndex: txIndex,
@@ -66,65 +68,79 @@ export class BTCChain {
     }
   }
 
-  async sendUnlockTxs(receiveBtcAddr: string): Promise<any> {
+  async sendUnlockTxs(records: BtcUnlock[]): Promise<BtcUnlockResult> {
     const liveUtxos = await this.rpcClient.scantxoutset({
       action: 'start',
       scanobjects: ['addr(' + this.multiAddress + ')'],
     });
-    const utxos = getVins(liveUtxos.unspents, BigNumber(5000));
-    const transaction = new bitcore.Transaction()
+    let VinNeedAmount = BigNumber(0);
+    let transaction = new bitcore.Transaction();
+    const params = records.map((r) => {
+      VinNeedAmount = VinNeedAmount.plus(BigNumber(r.amount));
+      transaction = transaction.to(r.recipientAddress, BigNumber(r.amount).toString());
+    });
+
+    const utxos = getVins(liveUtxos.unspents, VinNeedAmount);
+    if (!!(utxos && utxos.length)) {
+      console.error(`the unspend utxo is no for unlock. need : ${VinNeedAmount}. actual uxtos : ${liveUtxos}.`);
+    }
+    transaction = transaction
       .from(utxos, this.multiPubkeys, 2)
-      .to(receiveBtcAddr, 5000)
+      // .to(receiveBtcAddr, 5000)
       .addData('unlock')
       .change(this.multiAddress)
       .sign([this.multiPrivKeys[0], this.multiPrivKeys[3]]);
 
-    const startHeight = await this.rpcClient.getchaintips();
+    const startHeight = await this.getBtcHeight();
     const txHash = await this.rpcClient.sendrawtransaction({ hexstring: transaction.serialize() });
     console.debug('txHash', txHash);
-    await sleep(6000);
-    await isTxInBlockAfterConfirm(this.rpcClient, startHeight[0].height, txHash, 3);
+    return { startBlockHeight: startHeight, txHash };
+    // await sleep(6000);
+    // await this.isTxInBlockAfterConfirm(this.rpcClient, startHeight[0].height, txHash, 3);
   }
-
-  async getBtcHeight(): Promise<any> {
-    return await this.rpcClient.getchaintips();
-  }
-}
-
-async function isTxInBlockAfterConfirm(client: RPCClient, startHeight, txHash, confirms): Promise<boolean> {
-  for (let blockHeight = startHeight; blockHeight <= startHeight + confirms; blockHeight++) {
-    const blockhash = await client.getblockhash({ height: blockHeight });
-    const block = await client.getblock({ blockhash, verbosity: 2 });
-    if (block.tx.length === 1) {
-      continue;
-    }
-    let waitVerifyTxs = block.tx.slice(1);
-    for (let txIndex = 0; txIndex < waitVerifyTxs.length; txIndex++) {
-      if (waitVerifyTxs[txIndex].hash === txHash) {
-        console.log(
-          'tx ',
-          txHash,
-          'is in block ',
-          blockHeight,
-          blockhash,
-          JSON.stringify(waitVerifyTxs[txIndex], null, 2),
-        );
-        return true;
+  async isTxInBlockAfterSubmit(client: RPCClient, startHeight, endHeight, txHash): Promise<boolean> {
+    for (let blockHeight = startHeight; blockHeight <= endHeight; blockHeight++) {
+      const blockhash = await client.getblockhash({ height: blockHeight });
+      const block = await client.getblock({ blockhash, verbosity: 2 });
+      if (block.tx.length === 1) {
+        continue;
+      }
+      let waitVerifyTxs = block.tx.slice(1);
+      for (let txIndex = 0; txIndex < waitVerifyTxs.length; txIndex++) {
+        if (waitVerifyTxs[txIndex].hash === txHash) {
+          console.log(
+            'tx ',
+            txHash,
+            'is in block ',
+            blockHeight,
+            blockhash,
+            JSON.stringify(waitVerifyTxs[txIndex], null, 2),
+          );
+          return true;
+        }
       }
     }
+    console.log('tx,', txHash, ' not found in block');
+    return false;
   }
-  console.log('tx,', txHash, ' not found in block');
-  return false;
+
+  async getBtcHeight(): Promise<number> {
+    const height = await this.rpcClient.getchaintips();
+    return height[0].height;
+  }
 }
 
-function getVins(liveUtxos, unlock_amount) {
+function getVins(liveUtxos, unlockAmount) {
   let utxoAmount = BigNumber(0);
   let vins = [];
-  for (let i = 0; utxoAmount.lt(unlock_amount); i++) {
+  for (let i = 0; utxoAmount.lt(unlockAmount); i++) {
     utxoAmount = utxoAmount.plus(BigNumber(liveUtxos[i].amount).multipliedBy(Math.pow(10, 8)));
     vins.push(liveUtxos[i]);
   }
   console.log('vin utxo amount ', utxoAmount);
+  if (utxoAmount.lt(unlockAmount)) {
+    return [];
+  }
   return vins;
 }
 
@@ -164,7 +180,7 @@ async function main() {
   // let now = await  test.getBtcHeight();
   // console.log("height ", now)
   await test.watchLockEvents(7000, 8056, LockEventHandler);
-  await test.sendUnlockTxs('mtoKs9V381UAhUia3d7Vb9GNak8Qvmcsme');
+  // await test.sendUnlockTxs('mtoKs9V381UAhUia3d7Vb9GNak8Qvmcsme');
 }
 main()
   .then(() => process.exit(0))

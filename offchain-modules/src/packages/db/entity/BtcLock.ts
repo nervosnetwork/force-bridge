@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, PrimaryColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, PrimaryColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
 @Entity()
 export class BtcLock {
@@ -12,7 +12,7 @@ export class BtcLock {
   amount: string;
 
   @Column()
-  data: string;
+  receiptAddress: string;
 
   @Column()
   rawTx: string;
@@ -26,11 +26,17 @@ export class BtcLock {
   @Column()
   txIndex: number;
 
+  @CreateDateColumn()
+  createdAt: string;
+
+  @UpdateDateColumn()
+  updatedAt: string;
+
   from(data: {
     txid: string;
     txHash: string;
     amount: string;
-    data: string;
+    receiptAddress: string;
     rawTx: string;
     blockHeight: number;
     blockHash: string;
@@ -40,7 +46,7 @@ export class BtcLock {
     record.txid = data.txid;
     record.txHash = data.txHash;
     record.amount = data.amount;
-    record.data = data.data;
+    record.receiptAddress = data.receiptAddress;
     record.rawTx = data.rawTx;
     record.blockHeight = data.blockHeight;
     record.blockHash = data.blockHash;
