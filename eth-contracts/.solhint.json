@@ -1,0 +1,13 @@
+{
+  "extends": "solhint:recommended",
+  "rules": {
+    "func-order": "off",
+    "mark-callable-contracts": "off",
+    "no-empty-blocks": "off",
+    "compiler-version": "off",
+    "private-vars-leading-underscore": "off",
+    "reason-string": "off",
+    "func-visibility": ["error", { "ignoreConstructors": true }],
+    "no-complex-fallback": "off"
+  }
+}
