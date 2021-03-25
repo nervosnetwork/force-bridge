@@ -4,12 +4,14 @@ import { CkbMint } from '@force-bridge/db/entity/CkbMint';
 import { BtcUnlock } from '@force-bridge/db/entity/BtcUnlock';
 import { BtcLock } from '@force-bridge/db/entity/BtcLock';
 import { EthLock } from '@force-bridge/db/entity/EthLock';
+import { EosLock } from '@force-bridge/db/entity/EosLock';
+import { EosUnlock } from '@force-bridge/db/entity/EosUnlock';
 import { TronLock } from '@force-bridge/db/entity/TronLock';
 import { TronUnlock } from '@force-bridge/db/entity/TronUnlock';
 import { ChainType } from '@force-bridge/ckb/model/asset';
 import { getRepository } from 'typeorm';
 
-export { EthUnlock, EthLock, BtcLock, BtcUnlock, CkbMint, CkbBurn, TronLock, TronUnlock };
+export { EthUnlock, EthLock, BtcLock, BtcUnlock, EosLock, EosUnlock, CkbMint, CkbBurn, TronLock, TronUnlock };
 
 export interface ICkbMint {
   id: string;
@@ -57,7 +59,7 @@ export interface ITronUnlock {
   recipientAddress: string;
 }
 
-export type XchainUnlock = EthUnlock | BtcUnlock;
+export type XchainUnlock = EthUnlock | BtcUnlock | EosUnlock;
 export async function transformBurnEvent(burn: CkbBurn): Promise<XchainUnlock> {
   throw new Error('Method not implemented.');
 }
@@ -82,5 +84,36 @@ export function EthLock2CkbMint(record: EthLock): CkbMint {
     asset: record.token,
     recipientLockscript: record.recipientLockscript,
     sudtExtraData: record.sudtExtraData,
+  });
+}
+
+export interface IEosLock {
+  id: string;
+  globalActionSeq: number;
+  accountActionSeq: number;
+  txHash: string;
+  actionIndex: number;
+  sender: string;
+  token: string;
+  amount: string;
+  memo: string;
+  blockNumber: number;
+}
+
+export interface IEosUnlock {
+  ckbTxHash: string;
+  asset: string;
+  amount: string;
+  recipientAddress: string;
+}
+
+export function EosLock2CkbMint(record: IEosLock): CkbMint {
+  const ckbMintRepo = getRepository(CkbMint);
+  return ckbMintRepo.create({
+    id: record.id,
+    chain: ChainType.EOS,
+    amount: record.amount,
+    asset: record.token,
+    recipientLockscript: record.memo,
   });
 }
