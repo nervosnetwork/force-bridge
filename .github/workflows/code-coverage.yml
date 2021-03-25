@@ -1,0 +1,25 @@
+name: coverage-test
+
+on: ["push", "pull_request"]
+
+jobs:
+  integration-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: "recursive"
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly-2020-10-22
+          override: true
+          components: rustfmt, clippy
+      - name: install-tarpaulin
+        run: cargo install cargo-tarpaulin -f
+      - name: run coverage test
+        run: |
+          export CODECOV_TOKEN=${{secrets.CODECOV_TOKEN}}
+          cd ckb-contracts && bash ckb_script_coverage.sh
+          cd ..
+          cd eth-contracts && yarn install && bash eth_script_coverage.sh
