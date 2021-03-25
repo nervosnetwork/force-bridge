@@ -1,0 +1,4 @@
+fixes:
+  - "::offchain-modules/"
+  - "::ckb-contracts/"
+  - "::eth-contracts/"
