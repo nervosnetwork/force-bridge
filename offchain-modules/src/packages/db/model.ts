@@ -123,7 +123,7 @@ export interface IBtcLock {
   txHash: string;
   amount: string;
   rawTx: string;
-  recipientAddress: string;
+  data: string;
   blockHeight: number;
   blockHash: string;
   txIndex: number;

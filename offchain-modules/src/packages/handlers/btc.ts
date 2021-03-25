@@ -17,7 +17,7 @@ export class BtcHandler {
         const nowTips = await this.btcChain.getBtcHeight();
         logger.debug('btc db lock record latest height: ', latestHeight, 'chain now height: ', nowTips);
         await this.btcChain.watchBtcTxEvents(
-          latestHeight + 1,
+          latestHeight,
           nowTips,
           async (btcLockEventData: BtcLockData) => {
             logger.debug('btc lock event data :', btcLockEventData);
@@ -37,7 +37,7 @@ export class BtcHandler {
                 txHash: btcLockEventData.txHash,
                 rawTx: btcLockEventData.rawTx,
                 amount: btcLockEventData.amount,
-                recipientAddress: btcLockEventData.data,
+                data: btcLockEventData.data,
                 blockHeight: btcLockEventData.blockHeight,
                 blockHash: btcLockEventData.blockHash,
               },

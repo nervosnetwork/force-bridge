@@ -87,7 +87,7 @@ async function main() {
   logger.debug('successful lock records', lockRecords);
   const unlockRecords = await btcDb.getBtcUnlockRecords('success');
   logger.debug('successful unlock records ', unlockRecords);
-  assert(lockRecords[0].recipientAddress === LockEventReceipent);
+  assert(lockRecords[0].data === LockEventReceipent);
   assert(unlockRecords[0].recipientAddress === userAddr.toString());
   logger.debug('end btc test lock and unlock');
 }

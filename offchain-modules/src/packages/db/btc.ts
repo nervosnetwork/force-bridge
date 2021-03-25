@@ -51,12 +51,12 @@ export class BtcDb {
     });
   }
 
-  async getBtcUnlockRecords(status: BtcUnlockStatus): Promise<BtcUnlock[]> {
+  async getBtcUnlockRecords(status: BtcUnlockStatus, take = 2): Promise<BtcUnlock[]> {
     return this.btcUnlockRepository.find({
       where: {
         status,
       },
-      // take,
+      take,
     });
   }
 }
