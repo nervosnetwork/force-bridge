@@ -14,7 +14,7 @@ export class BtcLock {
   @Column()
   recipientAddress: string;
 
-  @Column("text")
+  @Column('text')
   rawTx: string;
 
   @Column()

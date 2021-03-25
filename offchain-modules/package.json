@@ -87,6 +87,11 @@
     "trongrid": "^1.2.6",
     "tronweb": "^3.2.3"
   },
+  "husky": {
+    "hooks": {
+      "pre-commit": "yarn lint"
+    }
+  },
   "ava": {
     "files": [
       "src/**/test/**/*.ts",
