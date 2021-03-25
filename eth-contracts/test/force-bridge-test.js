@@ -7,14 +7,16 @@ const {
   generateWallets,
   getUnlockMsgHash,
   generateSignatures,
-  getChangeValidatorsMsgHash
+  getChangeValidatorsMsgHash,
+  assertRevert
 } = require('./utils');
 
 describe('ForceBridge', () => {
   let forceBridge, adminAddress, contractAddress, provider, factory;
   let wallets, validators;
   let multisigThreshold, chainId, DOMAIN_SEPARATOR, unlockTypeHash;
-  let initBlockNumber, latestBlockNumber, historyTxRoot, txRootProofDataVec;
+  let abi, iface;
+  let erc20Token, tokenAddress;
 
   before(async function() {
     // disable timeout
@@ -41,6 +43,21 @@ describe('ForceBridge', () => {
 
     contractAddress = forceBridge.address;
     provider = forceBridge.provider;
+
+    abi = require('../artifacts/contracts/ForceBridge.sol/ForceBridge.json')
+      .abi;
+    iface = new ethers.utils.Interface(abi);
+
+    // deploy ERC20 token
+    const erc20Factory = await ethers.getContractFactory(
+      'contracts/test/ERC20.sol:DAI'
+    );
+
+    erc20Token = await erc20Factory.deploy();
+    await erc20Token.deployTransaction.wait(1);
+    await erc20Token.approve(contractAddress, 100);
+    tokenAddress = erc20Token.address;
+    console.log('tokenAddress', tokenAddress);
   });
 
   describe('correct case', async function() {
@@ -78,10 +95,6 @@ describe('ForceBridge', () => {
       expect(await forceBridge.DOMAIN_SEPARATOR()).to.eq(DOMAIN_SEPARATOR);
     });
     it('should work well for lock and unlock ETH', async function() {
-      const abi = require('../artifacts/contracts/ForceBridge.sol/ForceBridge.json')
-        .abi;
-      const iface = new ethers.utils.Interface(abi);
-
       // lock
       const recipientLockscript = '0x00';
       const sudtExtraData = '0x01';
@@ -149,6 +162,70 @@ describe('ForceBridge', () => {
         expect(r.ckbTxHash).to.equal(res.ckbTxHash);
       }
     });
+    it('should work well for lock and unlock ERC20', async function() {
+      // lock
+      const recipientLockscript = '0x00';
+      const sudtExtraData = '0x01';
+      const amount = 2;
+      const res = await forceBridge.lockToken(
+        tokenAddress,
+        amount,
+        recipientLockscript,
+        sudtExtraData
+      );
+
+      const receipt = await waitingForReceipt(provider, res);
+
+      console.log(receipt);
+      console.dir(receipt, { depth: null });
+      const parsedLog = iface.parseLog(receipt.logs[2]);
+
+      expect(parsedLog.args.token).to.equal(tokenAddress);
+      expect(parsedLog.args.lockedAmount).to.equal(amount);
+      expect(parsedLog.args.sudtExtraData).to.equal(sudtExtraData);
+      expect(parsedLog.args.recipientLockscript).to.equal(recipientLockscript);
+
+      // unlock
+      const records = [
+        {
+          token: tokenAddress,
+          recipient: '0x1000000000000000000000000000000000000001',
+          amount: 1,
+          ckbTxHash: '0x1000000000000000000000000000000000000008'
+        },
+        {
+          token: tokenAddress,
+          recipient: '0x1000000000000000000000000000000000000002',
+          amount: 1,
+          ckbTxHash: '0x1000000000000000000000000000000000000009'
+        }
+      ];
+
+      const msgHash = getUnlockMsgHash(
+        DOMAIN_SEPARATOR,
+        unlockTypeHash,
+        records
+      );
+
+      // 2. generate signatures
+      let signatures = generateSignatures(
+        msgHash,
+        wallets.slice(0, multisigThreshold)
+      );
+
+      const resUnlock = await forceBridge.unlock(records, signatures);
+
+      const receiptUnlock = await waitingForReceipt(provider, resUnlock);
+      // console.dir(receiptUnlock, {depth: null});
+      for (let i = 1; i < receiptUnlock.logs.length; i += 2) {
+        const res = iface.parseLog(receiptUnlock.logs[i]).args;
+        const r = records[(i - 1) / 2];
+        expect(r.recipient).to.equal(res.recipient);
+        expect(r.token).to.equal(res.token);
+        expect(r.amount).to.equal(res.receivedAmount);
+        expect(r.ckbTxHash).to.equal(res.ckbTxHash);
+      }
+    });
     it('should change validators', async function() {
       const newWallets = generateWallets(7);
       newValidators = newWallets.map(wallet => wallet.address);
@@ -172,6 +249,45 @@ describe('ForceBridge', () => {
       console.log('changeValidators result', result);
       expect(await forceBridge.multisigThreshold_()).to.equal(
         newMultisigThreshold
+      );
+    });
+  });
+
+  describe('abnormal case', async function() {
+    // disable timeout
+    this.timeout(0);
+
+    it('multi sign not reach multiSignThreshold', async () => {
+      const msgHash =
+        '0x4ba4d5ff07c10a4326368ad11ed2b6d2bcc4915c4de978759f6f7614884c2af4';
+      // 2. generate signatures
+      let signatures = generateSignatures(
+        msgHash,
+        wallets.slice(0, multisigThreshold)
+      );
+
+      assertRevert(
+        forceBridge.validatorsApprove(
+          msgHash,
+          signatures,
+          multisigThreshold + 1
+        ),
+        'length of signatures must greater than threshold'
+      );
+    });
+    it('invalid sign', async () => {
+      const msgHash =
+        '0x4ba4d5ff07c10a4326368ad11ed2b6d2bcc4915c4de978759f6f7614884c2af4';
+      // 2. generate signatures
+      const newWallets = generateWallets(7);
+      let signatures = generateSignatures(
+        msgHash,
+        newWallets.slice(0, multisigThreshold)
+      );
+
+      assertRevert(
+        forceBridge.validatorsApprove(msgHash, signatures, multisigThreshold),
+        'signatures not verified'
       );
     });
   });
