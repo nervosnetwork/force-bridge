@@ -226,6 +226,13 @@ describe('ForceBridge', () => {
         expect(r.ckbTxHash).to.equal(res.ckbTxHash);
       }
     });
+    it('should change admin', async function() {
+      const newWallets = generateWallets(1);
+      const newAdmin = newWallets[0].address;
+
+      const result = await forceBridge.changeAdmin(newAdmin);
+      expect(await forceBridge.admin()).to.equal(newAdmin);
+    });
     it('should change validators', async function() {
       const newWallets = generateWallets(7);
       newValidators = newWallets.map(wallet => wallet.address);
