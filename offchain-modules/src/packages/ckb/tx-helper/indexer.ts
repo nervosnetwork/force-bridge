@@ -1,7 +1,6 @@
 import axios from 'axios';
 import {
   CollectorOptions,
-  HashType,
   Collector,
   SUDTCollector,
   Cell,
@@ -9,10 +8,11 @@ import {
   Amount,
   AmountUnit,
   OutPoint,
+  Script,
   SUDT,
 } from '@lay2/pw-core';
 import { logger } from '../../utils/logger';
-import { Script } from '@ckb-lumos/base';
+import { Script as LumosScript } from '@ckb-lumos/base';
 import { RPC } from '@ckb-lumos/rpc';
 import { asyncSleep } from '../../utils';
 
@@ -27,9 +27,20 @@ export enum Order {
 }
 
 export interface SearchKey {
-  script: Script;
+  script: LumosScript;
   script_type: ScriptType;
   args_len?: string;
+}
+
+export type HexString = string;
+export type Hash = HexString;
+
+export interface IndexerCell {
+  capacity: HexString;
+  lock: Script;
+  type: Script;
+  outPoint: OutPoint;
+  data: HexString;
 }
 
 export interface TerminatorResult {
@@ -37,7 +48,7 @@ export interface TerminatorResult {
   push: boolean;
 }
 
-export declare type Terminator = (index: number, cell: Cell) => TerminatorResult;
+export declare type Terminator = (index: number, cell: IndexerCell) => TerminatorResult;
 
 const DefaultTerminator: Terminator = (_index, _cell) => {
   return { stop: false, push: true };
@@ -87,8 +98,8 @@ export class CkbIndexer {
     searchKey: SearchKey,
     terminator: Terminator = DefaultTerminator,
     { sizeLimit = 0x100, order = Order.asc }: { sizeLimit?: number; order?: Order } = {},
-  ): Promise<Cell[]> {
-    const infos: Cell[] = [];
+  ): Promise<IndexerCell[]> {
+    const infos: IndexerCell[] = [];
     let cursor = null;
     const index = 0;
     const params = [searchKey, order, `0x${sizeLimit.toString(16)}`, cursor];
@@ -98,9 +109,16 @@ export class CkbIndexer {
       cursor = res.lastCursor;
       logger.debug('liveCells', liveCells[liveCells.length - 1]);
       for (const cell of liveCells) {
-        const { stop, push } = terminator(index, cell);
+        const indexCell = {
+          capacity: cell.output.capacity,
+          lock: Script.fromRPC(cell.output.lock),
+          type: Script.fromRPC(cell.output.type),
+          outPoint: OutPoint.fromRPC(cell.out_point),
+          data: cell.output_data,
+        };
+        const { stop, push } = terminator(index, indexCell);
         if (push) {
-          infos.push(cell);
+          infos.push(indexCell);
         }
         if (stop) {
           return infos;

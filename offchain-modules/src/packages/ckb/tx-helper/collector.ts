@@ -1,9 +1,9 @@
 import { Script as LumosScript } from '@ckb-lumos/base';
-import { Amount, Cell, Script } from '@lay2/pw-core';
-import { CkbIndexer, ScriptType, Terminator } from './indexer';
+import { Amount, Script } from '@lay2/pw-core';
+import { CkbIndexer, IndexerCell, ScriptType, Terminator } from './indexer';
 
 export abstract class Collector {
-  abstract getCellsByLockscriptAndCapacity(lockscript: Script, capacity: Amount): Promise<Cell[]>;
+  abstract getCellsByLockscriptAndCapacity(lockscript: Script, capacity: Amount): Promise<IndexerCell[]>;
 }
 
 export class IndexerCollector extends Collector {
@@ -11,16 +11,17 @@ export class IndexerCollector extends Collector {
     super();
   }
 
-  async getCellsByLockscriptAndCapacity(lockscript: Script, needCapacity: Amount): Promise<Cell[]> {
+  async getCellsByLockscriptAndCapacity(lockscript: Script, needCapacity: Amount): Promise<IndexerCell[]> {
     let accCapacity = Amount.ZERO;
-    const terminator: Terminator = (index, cell) => {
+    const terminator: Terminator = (index, c) => {
+      const cell = c;
       if (accCapacity.gte(needCapacity)) {
         return { stop: true, push: false };
       }
-      if (cell.getData().length / 2 - 1 > 0 || cell.type !== undefined) {
+      if (cell.data.length / 2 - 1 > 0 || cell.type !== undefined) {
         return { stop: false, push: false };
       } else {
-        accCapacity = accCapacity.add(cell.capacity);
+        accCapacity = accCapacity.add(Amount.fromUInt128LE(cell.capacity));
         return { stop: false, push: true };
       }
     };

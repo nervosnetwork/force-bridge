@@ -1,12 +1,17 @@
 // invoke in ckb handler
 import { Connection } from 'typeorm';
-import { CkbMint, CkbBurn, EthUnlock, IEthUnlock, ITronUnlock, TronUnlock } from '@force-bridge/db/model';
+import { CkbMint, CkbBurn, EthUnlock, IEthUnlock, ITronUnlock, TronUnlock, ICkbBurn } from '@force-bridge/db/model';
 
 export class CkbDb {
   constructor(private connection: Connection) {}
   // invoke when getting new burn events
-  async saveCkbBurn(records: CkbBurn[]): Promise<void> {
+  async saveCkbBurn(records: ICkbBurn[]): Promise<void> {
     await this.connection.manager.save(records);
+  }
+
+  async getCkbLatestHeight(): Promise<number> {
+    const rawRes = await this.connection.manager.query('select max(block_number) as max_block_number from ckb_burn');
+    return rawRes[0].max_block_number || 1;
   }
 
   async getCkbMintRecordsToMint(take = 100): Promise<CkbMint[]> {
@@ -21,6 +26,12 @@ export class CkbDb {
   // update mint status
   async updateCkbMint(records: CkbMint[]): Promise<void> {
     await this.connection.manager.save(records);
+  }
+
+  async createCkbBurn(records: ICkbBurn[]): Promise<void> {
+    const ckbBurnRepo = this.connection.getRepository(CkbBurn);
+    const dbRecords = records.map((r) => ckbBurnRepo.create(r));
+    await ckbBurnRepo.save(dbRecords);
   }
 
   /* save chain specific data */

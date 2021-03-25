@@ -23,8 +23,10 @@ const ADDRESS = ckb.utils.pubkeyToAddress(PUB_KEY);
 const deploy = async () => {
   const lockscriptBin = await fs.readFile('../ckb-contracts/build/release/bridge-lockscript');
   const lockscriptCodeHash = utils.bytesToHex(blake2b(lockscriptBin));
+  console.log('lockscriptCodeHash:', lockscriptCodeHash);
   const recipientTypescriptBin = await fs.readFile('../ckb-contracts/build/release/recipient-typescript');
   const recipientTypescriptCodeHash = utils.bytesToHex(blake2b(recipientTypescriptBin));
+  console.log('recipientTypescriptCodeHash:', recipientTypescriptCodeHash);
   const sudtBin = await fs.readFile('./deps/simple_udt');
   const sudtCodeHash = utils.bytesToHex(blake2b(sudtBin));
   // console.dir({lockscriptCodeHash, sudtCodeHash}, {depth: null})

@@ -1,9 +1,17 @@
-import { Entity, PrimaryGeneratedColumn, Column, PrimaryColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  PrimaryColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+  Index,
+} from 'typeorm';
 
 @Entity()
 export class CkbBurn {
   @PrimaryColumn()
-  txHash: string;
+  ckbTxHash: string;
 
   @Column()
   chain: number;
@@ -15,7 +23,11 @@ export class CkbBurn {
   amount: string;
 
   @Column()
-  memo: string;
+  recipientAddress: string;
+
+  @Index()
+  @Column()
+  blockNumber: number;
 
   @CreateDateColumn()
   createdAt: string;
@@ -25,11 +37,11 @@ export class CkbBurn {
 
   from(data: { txHash: string; memo: string; amount: string; asset: string; chain: number }) {
     const record = new CkbBurn();
-    record.txHash = data.txHash;
+    record.ckbTxHash = data.txHash;
     record.chain = data.chain;
     record.asset = data.asset;
     record.amount = data.amount;
-    record.memo = data.memo;
+    record.recipientAddress = data.memo;
     return record;
   }
 }

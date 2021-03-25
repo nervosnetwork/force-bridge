@@ -20,21 +20,25 @@ import { ForceBridgeCore } from '@force-bridge/core';
 import { CkbIndexer } from '@force-bridge/ckb/tx-helper/indexer';
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
 // const { Indexer, CellCollector } = require('@ckb-lumos/indexer');
+const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
+// const LUMOS_DB = './lumos_db';
+const indexer = new CkbIndexer('http://127.0.0.1:8116');
+// indexer.startForever();
+const ckb = new CKB(CKB_URL);
 
 async function main() {
   const conn = await createConnection();
   const ethDb = new EthDb(conn);
   const ckbDb = new CkbDb(conn);
   const PRI_KEY = process.env.PRI_KEY || '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
-  const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
-  // const LUMOS_DB = './lumos_db';
-  const indexer = new CkbIndexer('http://127.0.0.1:8116');
-  // indexer.startForever();
-  const ckb = new CKB(CKB_URL);
+
   const configPath = process.env.CONFIG_PATH || './config.json';
   nconf.env().file({ file: configPath });
   const config: EthConfig = nconf.get('forceBridge:eth');
   logger.debug('config', config);
+  const conf: Config = nconf.get('forceBridge');
+  // init bridge force core
+  await new ForceBridgeCore().init(conf);
   // const ForceBridge = await ethers.getContractFactory("ForceBridge");
   // const bridge = await ForceBridge.deploy();
   // await bridge.deployed();
@@ -88,13 +92,15 @@ async function main() {
   const recipientAddress = '0x1000000000000000000000000000000000000001';
   const balanceBefore = await provider.getBalance(recipientAddress);
   logger.debug('balanceBefore', balanceBefore);
-  const record = {
-    ckbTxHash: genRandomHex(32),
-    asset: ETH_ADDRESS,
-    amount: genRandomHex(4),
-    recipientAddress,
-  };
-  await ckbDb.createEthUnlock([record]);
+  // const record = {
+  //   ckbTxHash: genRandomHex(32),
+  //   asset: ETH_ADDRESS,
+  //   amount: genRandomHex(4),
+  //   recipientAddress,
+  // };
+  // await ckbDb.createEthUnlock([record]);
+  let sendBurn = false;
+  let burnTxHash;
 
   const checkEffect = async () => {
     // check EthLock and CkbMint saved.
@@ -110,7 +116,9 @@ async function main() {
     assert(ethLockRecord.sender === wallet.address);
     assert(ethLockRecord.token === ETH_ADDRESS);
     assert(ethLockRecord.amount === amount.toHexString());
-    assert(ethLockRecord.recipientLockscript === recipientLockscript.toString());
+    logger.debug('ethLockRecords', ethLockRecord.recipientLockscript);
+    logger.debug('ethLockRecords', `0x${toHexString(recipientLockscript)}`);
+    assert(ethLockRecord.recipientLockscript === `0x${toHexString(recipientLockscript)}`);
 
     const ckbMintRecords = await conn.manager.find(CkbMint, {
       where: {
@@ -122,27 +130,33 @@ async function main() {
     const ckbMintRecord = ckbMintRecords[0];
     assert(ckbMintRecord.chain === ChainType.ETH);
     assert(ethLockRecord.sudtExtraData === sudtExtraData);
-    assert(ckbMintRecord.status === 'todo');
+    assert(ckbMintRecord.status === 'success');
     assert(ckbMintRecord.asset === ETH_ADDRESS);
     assert(ckbMintRecord.amount === amount.toHexString());
-    assert(ckbMintRecord.recipientLockscript === uint8ArrayToString(recipientLockscript));
+    assert(ckbMintRecord.recipientLockscript === `0x${toHexString(recipientLockscript)}`);
 
-    // const params = ckbMintRecords.map((r) => {
-    //   return {
-    //     asset: new EthAsset(r.asset),
-    //     amount: new Amount(r.amount),
-    //     recipient: new Address(r.recipientLockscript, AddressType.ckb),
-    //   };
-    // });
-    // logger.debug('params', params);
-    // const account = new Account(PRI_KEY);
-    // const generator = new CkbTxGenerator();
-    // await generator.mint(await account.getLockscript(), params);
+    // send burn tx
+
+    if (!sendBurn) {
+      const account = new Account(PRI_KEY);
+      const generator = new CkbTxGenerator(ckb, new IndexerCollector(indexer));
+      const burnTx = await generator.burn(
+        await account.getLockscript(),
+        recipientAddress,
+        new EthAsset('0x0000000000000000000000000000000000000000'),
+        Amount.fromUInt128LE('0x01'),
+      );
+      const signedTx = ckb.signTransaction(PRI_KEY)(burnTx);
+      burnTxHash = await ckb.rpc.sendTransaction(signedTx);
+      console.log(`burn Transaction has been sent with tx hash ${burnTxHash}`);
+      await waitUntilCommitted(burnTxHash, 60);
+      sendBurn = true;
+    }
 
     // check unlock record send
     const ethUnlockRecords = await conn.manager.find(EthUnlock, {
       where: {
-        ckbTxHash: record.ckbTxHash,
+        ckbTxHash: burnTxHash,
       },
     });
     assert(ethUnlockRecords.length === 1);
@@ -153,9 +167,13 @@ async function main() {
     assert(unlockReceipt.logs.length === 1);
     const parsedLog = iface.parseLog(unlockReceipt.logs[0]);
     logger.debug('parsedLog', parsedLog);
-    assert(parsedLog.args.token === record.asset);
-    assert(record.amount === parsedLog.args.receivedAmount.toHexString());
-    assert(record.recipientAddress === parsedLog.args.recipient);
+    assert(parsedLog.args.token === ethUnlockRecord.asset);
+    logger.debug('parsedLog amount', ethUnlockRecord.amount);
+    logger.debug('parsedLog amount', parsedLog.args.receivedAmount.toHexString());
+    assert(ethUnlockRecord.amount === parsedLog.args.receivedAmount.toHexString());
+    logger.debug('parsedLog recipient', ethUnlockRecord.recipientAddress);
+    logger.debug('parsedLog recipient', parsedLog.args.recipient);
+    assert(ethUnlockRecord.recipientAddress === parsedLog.args.recipient);
   };
 
   // try 100 times and wait for 3 seconds every time.
@@ -171,6 +189,28 @@ async function main() {
     return;
   }
   throw new Error('The eth component integration test failed!');
+}
+
+async function waitUntilCommitted(txHash, timeout) {
+  let waitTime = 0;
+  while (true) {
+    const txStatus = await ckb.rpc.getTransaction(txHash);
+    console.log(`tx ${txHash} status: ${txStatus.txStatus.status}, index: ${waitTime}`);
+    if (txStatus.txStatus.status === 'committed') {
+      return txStatus;
+    }
+    await sleep(1000);
+    waitTime += 1;
+    if (waitTime >= timeout) {
+      return txStatus;
+    }
+  }
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }
 
 main()

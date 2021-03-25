@@ -9,6 +9,7 @@ export enum ChainType {
 export abstract class Asset {
   public chainType: ChainType;
   public abstract toBridgeLockscriptArgs(): string;
+  public abstract getAddress(): string;
 }
 
 export class EthAsset extends Asset {
@@ -25,6 +26,10 @@ export class EthAsset extends Asset {
   toBridgeLockscriptArgs(): string {
     return `0x01${this.address.slice(2)}`;
   }
+
+  getAddress(): string {
+    return this.address;
+  }
 }
 
 export class TronAsset extends Asset {
@@ -40,5 +45,9 @@ export class TronAsset extends Asset {
 
   toBridgeLockscriptArgs(): string {
     return `0x03${this.address.slice(2)}`;
+  }
+
+  getAddress(): string {
+    return this.address;
   }
 }
