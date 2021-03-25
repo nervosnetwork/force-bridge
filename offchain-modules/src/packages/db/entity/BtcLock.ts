@@ -12,10 +12,10 @@ export class BtcLock {
   amount: string;
 
   @Column()
-  receiptAddress: string;
+  recipientAddress: string;
 
-  // @Column()
-  // rawTx: string;
+  @Column("text")
+  rawTx: string;
 
   @Column()
   blockHeight: number;
@@ -31,24 +31,4 @@ export class BtcLock {
 
   @UpdateDateColumn()
   updatedAt: string;
-
-  from(data: {
-    txid: string;
-    txHash: string;
-    amount: string;
-    receiptAddress: string;
-    blockHeight: number;
-    blockHash: string;
-    txIndex: number;
-  }) {
-    const record = new BtcLock();
-    record.txid = data.txid;
-    record.txHash = data.txHash;
-    record.amount = data.amount;
-    record.receiptAddress = data.receiptAddress;
-    record.blockHeight = data.blockHeight;
-    record.blockHash = data.blockHash;
-    record.txIndex = data.txIndex;
-    return record;
-  }
 }

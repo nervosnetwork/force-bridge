@@ -24,8 +24,16 @@ export class BTCChain {
     const privKeys = config.privateKeys;
     this.multiPrivKeys = privKeys.map((pk) => new bitcore.PrivateKey(pk.slice(2)));
     this.multiPubkeys = this.multiPrivKeys.map((pk) => pk.toPublicKey());
-    this.multiAddress = bitcore.Address.createMultisig(this.multiPubkeys, 2, 'testnet').toString();
-    logger.debug(`multiAddress is :  ${this.multiAddress}`);
+    const multiAddress = bitcore.Address.createMultisig(this.multiPubkeys, 2, 'testnet').toString();
+    logger.debug(
+      `the multi sign address by calc privkeys is : ${multiAddress}. the provider lock address is ${config.lockAddress}`,
+    );
+    if (multiAddress !== config.lockAddress) {
+      throw new Error(
+        `the multi sign address by calc privkeys is : ${multiAddress}. which different ${config.lockAddress} in conf.`,
+      );
+    }
+    this.multiAddress = multiAddress;
     this.rpcClient = new RPCClient(clientParams);
   }
 
@@ -39,10 +47,16 @@ export class BTCChain {
       let waitVerifyTxs = block.tx.slice(1);
       for (let txIndex = 0; txIndex < waitVerifyTxs.length; txIndex++) {
         const txVouts = waitVerifyTxs[txIndex].vout;
-        logger.debug('verify block :', blockHeight, 'tx ', waitVerifyTxs[txIndex].hash);
         const ckbBurnTxHashes = await this.getUnockTxData(waitVerifyTxs[txIndex].vin, txVouts);
         if (!isEmptyArray(ckbBurnTxHashes)) {
-          logger.debug('ckbBurnTxHashes ', ckbBurnTxHashes);
+          logger.debug(
+            'verify for unlock event. block',
+            blockHeight,
+            'tx ',
+            waitVerifyTxs[txIndex].hash,
+            'find ckb burn hashes:',
+            ckbBurnTxHashes,
+          );
           for (let i = 0; i < ckbBurnTxHashes.length; i++) {
             await handleUnlockAsyncFunc(ckbBurnTxHashes[i]);
           }
@@ -56,9 +70,9 @@ export class BTCChain {
             rawTx: waitVerifyTxs[txIndex].hex,
             txIndex: txIndex,
             amount: new BigNumber(txVouts[0].value).multipliedBy(Math.pow(10, 8)).toString(),
-            data: new Buffer(txVouts[1].scriptPubKey.hex.substring(4), 'hex').toString(),
+            data: Buffer.from(txVouts[1].scriptPubKey.hex.substring(4), 'hex').toString(),
           };
-          logger.debug('btc lock data: ', data);
+          logger.debug('verify for lock event. btc lock data: ', data);
           await handleLockAsyncFunc(data);
         }
       }
@@ -148,7 +162,7 @@ export class BTCChain {
     if (!(firstVoutScriptAddrList && firstVoutScriptAddrList.length && firstVoutScriptAddrList.length === 1)) {
       return false;
     }
-    const receiveAddr = new Buffer(secondVoutScriptPubKeyHex.substring(4), 'hex').toString();
+    const receiveAddr = Buffer.from(secondVoutScriptPubKeyHex.substring(4), 'hex').toString();
 
     if (receiveAddr.startsWith(BtcLockEventMark)) {
       logger.debug(
@@ -175,7 +189,7 @@ export class BTCChain {
     let waitVerifyTxVouts = txVouts.slice(1);
     for (let i = 0; i < waitVerifyTxVouts.length; i++) {
       const voutPubkeyHex = waitVerifyTxVouts[i].scriptPubKey.hex;
-      const receiveAddr = new Buffer(voutPubkeyHex.substring(4), 'hex').toString();
+      const receiveAddr = Buffer.from(voutPubkeyHex.substring(4), 'hex').toString();
       if (receiveAddr.startsWith(BtcUnlockEventMark)) {
         let ckbTxHashArr = receiveAddr.split(CkbBurnSplitMark);
         if (ckbTxHashArr[0] === BtcUnlockEventMark) {

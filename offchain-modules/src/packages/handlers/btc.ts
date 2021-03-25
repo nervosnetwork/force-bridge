@@ -1,5 +1,5 @@
 import { logger } from '@force-bridge/utils/logger';
-import { asyncSleep } from '@force-bridge/utils';
+import { asyncSleep, isEmptyArray } from '@force-bridge/utils';
 import { ChainType } from '@force-bridge/ckb/model/asset';
 import { BTCChain, BtcLockData } from '@force-bridge/xchain/btc';
 import { BtcDb } from '@force-bridge/db/btc';
@@ -12,50 +12,55 @@ export class BtcHandler {
   async watchLockEvents() {
     logger.debug('start btc watchLockEvents');
     while (true) {
-      const latestHeight = await this.db.getLatestHeight();
-      const nowTips = await this.btcChain.getBtcHeight();
-      logger.debug('btc db lock record latest height: ', latestHeight, 'chain now height: ', nowTips);
-      await this.btcChain.watchBtcTxEvents(
-        latestHeight + 1,
-        nowTips,
-        async (btcLockEventData: BtcLockData) => {
-          logger.debug('btc lock event data :', btcLockEventData);
-          await this.db.createCkbMint([
-            {
-              id: btcLockEventData.txId,
-              chain: ChainType.BTC,
-              amount: btcLockEventData.amount,
-              asset: 'btc',
-              recipientLockscript: btcLockEventData.data,
-            },
-          ]);
-          await this.db.createBtcLock([
-            {
-              txid: btcLockEventData.txId,
-              txIndex: btcLockEventData.txIndex,
-              txHash: btcLockEventData.txHash,
-              amount: btcLockEventData.amount,
-              receiptAddress: btcLockEventData.data,
-              blockHeight: btcLockEventData.blockHeight,
-              blockHash: btcLockEventData.blockHash,
-            },
-          ]);
-          logger.debug(`save CkbMint and BTCLock successful for BTC tx ${btcLockEventData.txHash}.`);
-        },
-        async (ckbTxHash: string) => {
-          const records = await this.db.getNotSuccessUnlockRecord(ckbTxHash);
-          logger.debug('unlock records', records);
-          if (records.length === 0) {
-            return;
-          }
-          if (records.length > 1) {
-            throw new Error(`there are some unlock record which have the same ckb burn hash.  ${records}`);
-          }
-          records[0].status = 'success';
-          await this.db.saveBtcUnlock(records);
-        },
-      );
-      await asyncSleep(1000 * 10);
+      try {
+        const latestHeight = await this.db.getLatestHeight();
+        const nowTips = await this.btcChain.getBtcHeight();
+        logger.debug('btc db lock record latest height: ', latestHeight, 'chain now height: ', nowTips);
+        await this.btcChain.watchBtcTxEvents(
+          latestHeight + 1,
+          nowTips,
+          async (btcLockEventData: BtcLockData) => {
+            logger.debug('btc lock event data :', btcLockEventData);
+            await this.db.createCkbMint([
+              {
+                id: btcLockEventData.txId,
+                chain: ChainType.BTC,
+                amount: btcLockEventData.amount,
+                asset: 'btc',
+                recipientLockscript: btcLockEventData.data,
+              },
+            ]);
+            await this.db.createBtcLock([
+              {
+                txid: btcLockEventData.txId,
+                txIndex: btcLockEventData.txIndex,
+                txHash: btcLockEventData.txHash,
+                rawTx: btcLockEventData.rawTx,
+                amount: btcLockEventData.amount,
+                recipientAddress: btcLockEventData.data,
+                blockHeight: btcLockEventData.blockHeight,
+                blockHash: btcLockEventData.blockHash,
+              },
+            ]);
+            logger.debug(`save CkbMint and BTCLock successful for BTC tx ${btcLockEventData.txHash}.`);
+          },
+          async (ckbTxHash: string) => {
+            const records = await this.db.getNotSuccessUnlockRecord(ckbTxHash);
+            if (isEmptyArray(records)) {
+              return;
+            }
+            logger.debug('unlock records', records);
+            if (records.length > 1) {
+              throw new Error(`there are some unlock record which have the same ckb burn hash.  ${records}`);
+            }
+            records[0].status = 'success';
+            await this.db.saveBtcUnlock(records);
+          },
+        );
+        await asyncSleep(1000 * 10);
+      } catch (e) {
+        logger.error('there is an error occurred during in btc chain watch event', e);
+      }
     }
   }
 
@@ -68,7 +73,7 @@ export class BtcHandler {
       await asyncSleep(1000 * 20);
       logger.debug('get new unlock events and send tx');
       const records = await this.db.getBtcUnlockRecords('todo');
-      if (records.length === 0) {
+      if (isEmptyArray(records)) {
         continue;
       }
       try {
@@ -89,6 +94,7 @@ export class BtcHandler {
           r.message = e.message;
         });
         await this.db.saveBtcUnlock(records);
+        logger.error('there is an error occurred during in btc chain send unlock', e);
       }
     }
   }
