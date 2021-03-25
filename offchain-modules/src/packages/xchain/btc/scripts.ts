@@ -3,11 +3,14 @@ import { BtcLockData, BtcUnlockResult } from '@force-bridge/xchain/btc/type';
 import { BtcUnlock } from '@force-bridge/db/entity/BtcUnlock';
 import { RPCClient } from 'rpc-bitcoin';
 import bitcore from 'bitcore-lib';
+import { ForceBridgeCore } from '@force-bridge/core';
+import { isEmptyArray } from '@force-bridge/utils';
 const BigNumber = require('bignumber.js');
 
 const BtcLockEventMark = 'ck';
 const BtcUnlockEventMark = 'unlock';
 const CkbBurnSplitMark = 'tx';
+const BtcOPReturnCode = '6a';
 
 export class BTCChain {
   protected readonly rpcClient: RPCClient;
@@ -16,24 +19,14 @@ export class BTCChain {
   protected readonly multiPrivKeys;
 
   constructor() {
-    // const config = ForceBridgeCore.config.eth;
-    // const url = config.rpcUrl;
-    const privKeys = [
-      '0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed370',
-      '0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed371',
-      '0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed372',
-      '0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed373',
-    ];
+    const config = ForceBridgeCore.config.btc;
+    const clientParams = config.clientParams;
+    const privKeys = config.privateKeys;
     this.multiPrivKeys = privKeys.map((pk) => new bitcore.PrivateKey(pk.slice(2)));
     this.multiPubkeys = this.multiPrivKeys.map((pk) => pk.toPublicKey());
     this.multiAddress = bitcore.Address.createMultisig(this.multiPubkeys, 2, 'testnet').toString();
-    logger.debug('multiAddress is : ', this.multiAddress);
-    const url = 'http://127.0.0.1';
-    const user = 'test';
-    const pass = 'test';
-    const port = 18443;
-    const timeout = 10000;
-    this.rpcClient = new RPCClient({ url, port, timeout, user, pass });
+    logger.debug(`multiAddress is :  ${this.multiAddress}`);
+    this.rpcClient = new RPCClient(clientParams);
   }
 
   async watchBtcTxEvents(startHeight = 1, endHeight, handleLockAsyncFunc, handleUnlockAsyncFunc) {
@@ -46,9 +39,9 @@ export class BTCChain {
       let waitVerifyTxs = block.tx.slice(1);
       for (let txIndex = 0; txIndex < waitVerifyTxs.length; txIndex++) {
         const txVouts = waitVerifyTxs[txIndex].vout;
-        const ckbBurnTxHashes = await this.getUnockTxData(waitVerifyTxs[txIndex].vin, txVouts);
         logger.debug('verify block :', blockHeight, 'tx ', waitVerifyTxs[txIndex].hash);
-        if (ckbBurnTxHashes && ckbBurnTxHashes.length) {
+        const ckbBurnTxHashes = await this.getUnockTxData(waitVerifyTxs[txIndex].vin, txVouts);
+        if (!isEmptyArray(ckbBurnTxHashes)) {
           logger.debug('ckbBurnTxHashes ', ckbBurnTxHashes);
           for (let i = 0; i < ckbBurnTxHashes.length; i++) {
             await handleUnlockAsyncFunc(ckbBurnTxHashes[i]);
@@ -72,7 +65,7 @@ export class BTCChain {
     }
   }
 
-  async sendLockTxs(fromAdress: string, amount: number, fromPrivKey, recipient: string) {
+  async sendLockTxs(fromAdress: string, amount: number, fromPrivKey, recipient: string): Promise<string> {
     if (!recipient.startsWith(BtcLockEventMark)) {
       throw new Error(`${recipient} must be available ckb address`);
     }
@@ -81,11 +74,15 @@ export class BTCChain {
       action: 'start',
       scanobjects: ['addr(' + fromAdress + ')'],
     });
-    logger.debug('liveUtxos', liveUtxos);
+    logger.debug(`collect live utxos for lock: ${JSON.stringify(liveUtxos, null, 2)}`);
     const utxos = getVins(liveUtxos.unspents, BigNumber(amount));
-    if (!(utxos && utxos.length)) {
+    if (isEmptyArray(utxos)) {
       throw new Error(
-        'the unspend utxo is no for unlock. need :' + amount + '. actual uxtos : ' + JSON.stringify(liveUtxos, null, 2),
+        `the unspend utxo is not enough for lock. need : ${amount}. actual uxtos :  ${JSON.stringify(
+          liveUtxos,
+          null,
+          2,
+        )}`,
       );
     }
     const lockTx = new bitcore.Transaction()
@@ -95,16 +92,20 @@ export class BTCChain {
       .change(fromAdress)
       .sign(fromPrivKey);
     const lockTxHash = await this.rpcClient.sendrawtransaction({ hexstring: lockTx.serialize() });
-    logger.debug('lockTxHash', lockTxHash);
+    logger.debug(`user ${fromAdress} lock ${amount} satoshis; the lock tx hash is ${lockTxHash}`);
+    return lockTxHash;
   }
 
   async sendUnlockTxs(records: BtcUnlock[]): Promise<BtcUnlockResult> {
-    logger.debug('records:', records);
+    if (isEmptyArray(records)) {
+      throw new Error('the unlock records should not be null');
+    }
+    logger.debug('database records which need exec unlock:', records);
     const liveUtxos = await this.rpcClient.scantxoutset({
       action: 'start',
       scanobjects: ['addr(' + this.multiAddress + ')'],
     });
-    logger.debug('liveUtxos:', liveUtxos);
+    logger.debug(`collect live utxos for unlock: ${JSON.stringify(liveUtxos, null, 2)}`);
     let VinNeedAmount = BigNumber(0);
     let unlockVout = [];
     let unlockData = BtcUnlockEventMark;
@@ -114,9 +115,7 @@ export class BTCChain {
       unlockVout.push({ address: r.recipientAddress, satoshis: BigNumber(r.amount).toNumber() });
     });
     const utxos = getVins(liveUtxos.unspents, VinNeedAmount);
-    logger.debug('VinNeedAmount ', VinNeedAmount, 'utxo ', utxos);
-
-    if (!(utxos && utxos.length)) {
+    if (isEmptyArray(utxos)) {
       logger.error(`the unspend utxo is no for unlock. need : ${VinNeedAmount}. actual uxtos : .`, liveUtxos);
     }
     const transaction = new bitcore.Transaction()
@@ -126,11 +125,11 @@ export class BTCChain {
       .addData(unlockData)
       .change(this.multiAddress)
       .sign([this.multiPrivKeys[0], this.multiPrivKeys[3]]);
-    logger.debug('tx', JSON.stringify(transaction, null, 2));
+    logger.debug(`generate unlock tx ${JSON.stringify(transaction, null, 2)}`);
 
     const startHeight = await this.getBtcHeight();
     const txHash = await this.rpcClient.sendrawtransaction({ hexstring: transaction.serialize() });
-    logger.debug('txHash', txHash);
+    logger.debug(`the unlock tx hash is ${txHash} which should in chain after block ${startHeight} `);
     return { startBlockHeight: startHeight, txHash };
   }
 
@@ -145,7 +144,6 @@ export class BTCChain {
     }
     const firstVoutScriptAddrList = txVouts[0].scriptPubKey.addresses;
     const secondVoutScriptPubKeyHex: string = txVouts[1].scriptPubKey.hex;
-    logger.debug('firstVoutScriptAddrList: ', firstVoutScriptAddrList);
 
     if (!(firstVoutScriptAddrList && firstVoutScriptAddrList.length && firstVoutScriptAddrList.length === 1)) {
       return false;
@@ -153,11 +151,16 @@ export class BTCChain {
     const receiveAddr = new Buffer(secondVoutScriptPubKeyHex.substring(4), 'hex').toString();
 
     if (receiveAddr.startsWith(BtcLockEventMark)) {
-      logger.debug('receive addr', receiveAddr);
+      logger.debug(
+        'first vout script addr List ',
+        firstVoutScriptAddrList,
+        `should contain lock address ${this.multiAddress}. receive addr`,
+        receiveAddr,
+      );
     }
     return (
       firstVoutScriptAddrList[0] === this.multiAddress &&
-      secondVoutScriptPubKeyHex.startsWith('6a') &&
+      secondVoutScriptPubKeyHex.startsWith(BtcOPReturnCode) &&
       receiveAddr.startsWith(BtcLockEventMark)
     );
   }
@@ -185,10 +188,9 @@ export class BTCChain {
   }
 
   async isAddressInInput(txVins, address: string): Promise<boolean> {
-    if (!(txVins && txVins.length)) {
+    if (isEmptyArray(txVins)) {
       return false;
     }
-    // logger.debug("txVins :", txVins);
     let inputRawTx = await this.rpcClient.getrawtransaction({ txid: txVins[0].txid, verbose: true });
     let txSenders = inputRawTx.vout[txVins[0].vout].scriptPubKey.addresses;
     for (let i = 0; i < txSenders.length; i++) {
@@ -201,6 +203,9 @@ export class BTCChain {
 }
 
 function getVins(liveUtxos, unlockAmount) {
+  if (isEmptyArray(liveUtxos)) {
+    return [];
+  }
   let utxoAmount = BigNumber(0);
   let vins = [];
   for (let i = 0; utxoAmount.lt(unlockAmount); i++) {

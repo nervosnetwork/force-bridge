@@ -73,3 +73,10 @@ export interface IBtcLock {
   blockHash: string;
   txIndex: number;
 }
+export interface IBtcUnLock {
+  ckbTxHash: string;
+  chain: number;
+  asset: string;
+  amount: string;
+  recipientAddress: string;
+}

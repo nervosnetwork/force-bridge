@@ -3,17 +3,18 @@ import { asyncSleep } from '@force-bridge/utils';
 import { ChainType } from '@force-bridge/ckb/model/asset';
 import { BTCChain, BtcLockData } from '@force-bridge/xchain/btc';
 import { BtcDb } from '@force-bridge/db/btc';
+import { throws } from 'assert';
 
 export class BtcHandler {
   constructor(private db: BtcDb, private btcChain: BTCChain) {}
 
   // listen ETH chain and handle the new lock events
   async watchLockEvents() {
-    logger.debug('start watchLockEvents');
+    logger.debug('start btc watchLockEvents');
     while (true) {
       const latestHeight = await this.db.getLatestHeight();
       const nowTips = await this.btcChain.getBtcHeight();
-      logger.debug('db latest height: ', latestHeight, 'chain now height: ', nowTips);
+      logger.debug('btc db lock record latest height: ', latestHeight, 'chain now height: ', nowTips);
       await this.btcChain.watchBtcTxEvents(
         latestHeight + 1,
         nowTips,
@@ -48,7 +49,7 @@ export class BtcHandler {
             return;
           }
           if (records.length > 1) {
-            logger.error('there are some unlock record which have the same ckb burn hash. ', records);
+            throw new Error(`there are some unlock record which have the same ckb burn hash.  ${records}`);
           }
           records[0].status = 'success';
           await this.db.saveBtcUnlock(records);
@@ -62,12 +63,11 @@ export class BtcHandler {
   // send tx according to the data
   async watchUnlockEvents() {
     // todo: get and handle pending and error records
-    logger.debug('start watchUnlockEvents');
+    logger.debug('start btc watchUnlockEvents');
     while (true) {
       await asyncSleep(1000 * 20);
       logger.debug('get new unlock events and send tx');
       const records = await this.db.getBtcUnlockRecords('todo');
-      logger.debug('unlock records', records);
       if (records.length === 0) {
         continue;
       }
@@ -83,7 +83,6 @@ export class BtcHandler {
           r.btcTxHash = txRes.txHash;
         });
         await this.db.saveBtcUnlock(records);
-        logger.debug('sendUnlockTxs ', txRes);
       } catch (e) {
         records.map((r) => {
           r.status = 'error';
