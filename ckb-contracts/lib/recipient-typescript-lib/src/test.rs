@@ -8,58 +8,58 @@ use ckb_std::ckb_types::{
 };
 use ckb_std::error::SysError;
 use contracts_helper::data_loader::MockDataLoader;
-use core::convert::TryFrom;
-use force_eth_types::config::{SUDT_CODE_HASH, SUDT_HASH_TYPE};
-use force_eth_types::eth_recipient_cell::{ETHAddress, ETHRecipientDataView};
+use force_bridge_types::config::{SUDT_CODE_HASH, SUDT_HASH_TYPE};
+use force_bridge_types::recipient_cell::RecipientDataView;
 use molecule::prelude::{Builder, Entity};
 
 struct TestParams {
     input_sudt_amount: u128,
     output_sudt_amount: u128,
     fee: u128,
-    token_amount: u128,
-    light_client_typescript_hash: [u8; 32],
-    eth_recipient_address: ETHAddress,
-    eth_token_address: ETHAddress,
-    eth_lock_contract_address: ETHAddress,
-    eth_bridge_lock_code_hash: [u8; 32],
-    eth_bridge_lock_hash: [u8; 32],
+    amount: u128,
+    recipient_address: String,
+    chain: u8,
+    asset: String,
+    owner_lock_hash: [u8; 32],
+    bridge_lock_code_hash: [u8; 32],
+    bridge_lock_hash: [u8; 32],
 }
 
 fn get_correct_params() -> TestParams {
-    let eth_recipient_address = ETHAddress::try_from(vec![0; 20]).unwrap();
-    let eth_token_address = ETHAddress::try_from(vec![0; 20]).unwrap();
-    let eth_lock_contract_address = ETHAddress::try_from(vec![0; 20]).unwrap();
-    let eth_bridge_lock_code_hash = [1u8; 32];
-    let eth_bridge_lock_hash = [
-        33u8, 128, 167, 78, 171, 136, 228, 5, 173, 35, 191, 141, 144, 148, 186, 90, 153, 104, 73,
-        131, 30, 154, 184, 165, 113, 41, 201, 242, 100, 41, 140, 197,
+    let recipient_address = "mock_address".to_string();
+    let chain = 1;
+    let asset = "trx".to_string();
+    let owner_lock_hash = [100u8; 32];
+    let bridge_lock_code_hash = [1u8; 32];
+    let bridge_lock_hash = [
+        218u8, 23, 180, 100, 78, 151, 151, 22, 206, 10, 203, 43, 214, 141, 196, 63, 115, 243, 138,
+        86, 163, 57, 218, 146, 244, 255, 64, 70, 230, 209, 238, 159,
     ];
 
     TestParams {
         input_sudt_amount: 100,
         output_sudt_amount: 90,
         fee: 1,
-        token_amount: 10,
-        light_client_typescript_hash: [1u8; 32],
-        eth_recipient_address,
-        eth_token_address,
-        eth_lock_contract_address,
-        eth_bridge_lock_code_hash,
-        eth_bridge_lock_hash,
+        amount: 10,
+        recipient_address,
+        chain,
+        asset,
+        owner_lock_hash,
+        bridge_lock_code_hash,
+        bridge_lock_hash,
     }
 }
 
 fn generate_correct_mock(test_params: TestParams) -> MockDataLoader {
     let mut mock = MockDataLoader::new();
 
-    let data = ETHRecipientDataView {
-        eth_recipient_address: test_params.eth_recipient_address,
-        eth_token_address: test_params.eth_token_address,
-        eth_lock_contract_address: test_params.eth_lock_contract_address,
-        eth_bridge_lock_hash: test_params.eth_bridge_lock_code_hash,
-        light_client_typescript_hash: test_params.light_client_typescript_hash,
-        token_amount: test_params.token_amount,
+    let data = RecipientDataView {
+        recipient_address: test_params.recipient_address,
+        chain: test_params.chain,
+        asset: test_params.asset,
+        bridge_lock_code_hash: test_params.bridge_lock_code_hash,
+        owner_lock_hash: test_params.owner_lock_hash,
+        amount: test_params.amount,
         fee: test_params.fee,
     };
 
@@ -81,7 +81,7 @@ fn generate_correct_mock(test_params: TestParams) -> MockDataLoader {
             }
         });
 
-    let correct_bridge_lock_hash = test_params.eth_bridge_lock_hash;
+    let correct_bridge_lock_hash = test_params.bridge_lock_hash;
     let correct_sudt_script = Script::new_builder()
         .code_hash(packed::Byte32::from_slice(SUDT_CODE_HASH.as_ref()).unwrap())
         .hash_type(SUDT_HASH_TYPE.into())

@@ -9,7 +9,7 @@ use std::str::FromStr;
 mod bridge;
 #[cfg(test)]
 #[cfg(not(tarpaulin))]
-mod eth_recipient_typescript;
+mod recipient_typescript;
 #[cfg(test)]
 mod utils;
 

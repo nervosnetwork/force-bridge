@@ -24,13 +24,13 @@ export class EthChain {
     this.bridge = new ethers.Contract(this.bridgeContractAddr, abi, this.provider).connect(this.wallet);
   }
 
-  watchUnlockRecords(startHeight = 1, handleLogFunc) {
+  watchLockEvents(startHeight = 1, handleLogFunc) {
     const filter = {
       address: this.bridgeContractAddr,
       fromBlock: 'earliest',
-      // topics: [ethers.utils.id('Locked(address,address,uint256,bytes,bytes)')],
+      topics: [ethers.utils.id('Locked(address,address,uint256,bytes,bytes)')],
     };
-    // this.provider.resetEventsBlock(startHeight);
+    this.provider.resetEventsBlock(startHeight);
     this.provider.on(filter, async (log) => {
       logger.debug('log', log);
       const parsedLog = this.iface.parseLog(log);

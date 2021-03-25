@@ -2,12 +2,15 @@ import 'reflect-metadata';
 import 'module-alias/register';
 import nconf from 'nconf';
 import { ForceBridgeCore } from '@force-bridge/core';
-import { CkbDb, EthDb } from '@force-bridge/db';
+import { CkbDb, EthDb, TronDb } from '@force-bridge/db';
 import { CkbHandler } from '@force-bridge/handlers/ckb';
 import { EthHandler } from '@force-bridge/handlers/eth';
 import { Config } from '@force-bridge/config';
 import { createConnection } from 'typeorm';
 import { EthChain } from '@force-bridge/xchain/eth';
+import { EosHandler } from '@force-bridge/handlers/eos';
+import { EosDb } from '@force-bridge/db/eos';
+import { TronHandler } from '@force-bridge/handlers/tron';
 import { BtcDb } from '@force-bridge/db/btc';
 import { BTCChain } from '@force-bridge/xchain/btc';
 import { BtcHandler } from '@force-bridge/handlers/btc';
@@ -25,12 +28,23 @@ async function main() {
   const ckbHandler = new CkbHandler(ckbDb);
   ckbHandler.start();
 
+  if (config.eos !== undefined) {
+    const eosDb = new EosDb(conn);
+    const eosHandler = new EosHandler(eosDb, ForceBridgeCore.config.eos);
+    eosHandler.start();
+  }
+
   // start xchain handlers if config exists
   if (config.eth !== undefined) {
     const ethDb = new EthDb(conn);
     const ethChain = new EthChain();
     const ethHandler = new EthHandler(ethDb, ethChain);
     ethHandler.start();
+  }
+  if (config.tron !== undefined) {
+    const tronDb = new TronDb(conn);
+    const tronHandler = new TronHandler(tronDb);
+    tronHandler.start();
   }
   if (config.btc !== undefined) {
     const btcDb = new BtcDb(conn);

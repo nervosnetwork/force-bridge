@@ -31,6 +31,26 @@ export interface EthConfig {
   privateKey: string;
 }
 
+export interface EosConfig {
+  rpcUrl: string;
+  chainId: string;
+  bridgerAccount: string;
+  bridgerAccountPermission: string;
+  privateKeys: string[];
+  latestAccountActionSeq: number;
+  onlyWatchIrreversibleBlock: boolean;
+}
+
+export interface TronConfig {
+  tronGridUrl: string;
+  committee: {
+    address: string;
+    permissionId: string;
+    keys: string[];
+  };
+  feeLimit: number;
+}
+
 export interface BtcConfig {
   clientParams: {
     url: string;
@@ -46,5 +66,7 @@ export interface BtcConfig {
 export interface Config {
   ckb: CkbConfig;
   eth?: EthConfig;
+  eos?: EosConfig;
+  tron?: TronConfig;
   btc?: BtcConfig;
 }

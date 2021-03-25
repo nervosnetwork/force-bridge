@@ -18,8 +18,10 @@
     "check:eslint": "eslint src/**/*.ts",
     "clean": "rimraf lumos_db dist force-bridge.sqlite",
     "eth-test": "ts-node ./src/scripts/integration-test/eth.ts",
+    "eos-test": "ts-node ./src/scripts/integration-test/eos.ts",
+    "tron-test": "ts-node ./src/scripts/integration-test/tron.ts",
     "btc-test": "ts-node ./src/scripts/integration-test/btc.ts",
-    "xchain-test": "run-s eth-test btc-test",
+    "xchain-test": "run-s eth-test eos-test tron-test btc-test",
     "integration-test": "run-p -r start xchain-test",
     "ci": "run-s clean build deploy integration-test",
     "test:unit": "nyc --silent ava",
@@ -68,6 +70,9 @@
     "bitcore-lib": "^8.25.7",
     "ckb-js-toolkit": "^0.10.2",
     "dotenv": "^8.2.0",
+    "eosjs": "^22.0.0-rc2",
+    "eosjs-api": "^7.0.4",
+    "node-fetch": "^1.7.3",
     "ethers": "^5.0.32",
     "lodash": "^4.17.20",
     "log4js": "^6.3.0",
@@ -78,12 +83,9 @@
     "rpc-bitcoin": "^2.0.0",
     "sqlite3": "^5.0.2",
     "typeorm": "^0.2.31",
-    "typeorm-naming-strategies": "^2.0.0"
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "yarn lint"
-    }
+    "typeorm-naming-strategies": "^2.0.0",
+    "trongrid": "^1.2.6",
+    "tronweb": "^3.2.3"
   },
   "ava": {
     "files": [

@@ -1,0 +1,59 @@
+name: ckb-contracts-ci
+
+on:
+  push:
+    paths:
+      - .github/workflows/ckb-contracts.yml
+      - 'ckb-contracts/**.rs'
+      - 'ckb-contracts/**/Cargo.toml'
+      - 'ckb-contracts/**/Cargo.lock'
+  pull_request:
+    paths:
+      - .github/workflows/ckb-contracts.yml
+      - 'ckb-contracts/**.rs'
+      - 'ckb-contracts/**/Cargo.toml'
+      - 'ckb-contracts/**/Cargo.lock'
+
+defaults:
+  run:
+    working-directory: ckb-contracts
+
+jobs:
+  ckb-contracts-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: check audit
+        run: |
+          cargo install --force cargo-audit
+          for c in $(ls contracts); do echo "enter $c"; cd contracts/$c; cargo audit; echo "audit done"; cd ../..; done
+      - name: Cache cargo crate and target
+        id: cache-contract-target
+        uses: actions/cache@v2
+        with:
+          path: |
+            **/target
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin
+          key: cargo-target-contract-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-target-contract-
+      - name: install-capsule
+        if: steps.cache-contract-target.outputs.cache-hit != 'true'
+        # Too slow to install capsule from source, replace it with download binary directly.
+        # run: cargo install ckb-capsule --git https://github.com/nervosnetwork/capsule.git --tag v0.2.3
+        run: |
+          wget -c https://github.com/nervosnetwork/capsule/releases/download/v0.2.3/capsule_v0.2.3_x86_64-linux.tar.gz
+          tar -zxvf capsule_v0.2.3_x86_64-linux.tar.gz
+          cp capsule_v0.2.3_x86_64-linux/capsule ~/.cargo/bin
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly-2020-10-22
+          override: true
+          components: rustfmt, clippy
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --all --tests -- -D warnings
+      - run: capsule build
+      - run: cargo test -- --nocapture

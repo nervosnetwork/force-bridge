@@ -7,3 +7,4 @@ pub mod config;
 pub mod convert;
 pub mod generated;
 pub mod hasher;
+pub mod recipient_cell;
