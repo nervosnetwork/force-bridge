@@ -8,7 +8,7 @@ import { throws } from 'assert';
 export class BtcHandler {
   constructor(private db: BtcDb, private btcChain: BTCChain) {}
 
-  // listen ETH chain and handle the new lock events
+  // listen BTC chain and handle the new lock events
   async watchLockEvents() {
     logger.debug('start btc watchLockEvents');
     while (true) {
