@@ -18,8 +18,6 @@ contract ForceBridge {
 
     address public admin;
 
-    bool public initialized;
-
     // refer to https://github.com/ethereum/EIPs/blob/master/EIPS/eip-712.md
     uint256 public constant SIGNATURE_SIZE = 65;
     uint256 public constant VALIDATORS_SIZE_LIMIT = 20;
@@ -65,9 +63,6 @@ contract ForceBridge {
     }
 
     constructor(address[] memory validators, uint256 multisigThreshold) {
-        require(!initialized, "Contract instance has already been initialized");
-        initialized = true;
-
         // set DOMAIN_SEPARATOR
         bytes32 hashedName = keccak256(bytes(NAME_712));
         bytes32 hashedVersion = keccak256(bytes("1"));
