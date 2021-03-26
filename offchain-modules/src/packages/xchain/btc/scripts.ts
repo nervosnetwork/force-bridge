@@ -19,7 +19,6 @@ const BtcLockEventMark = 'ck';
 const BtcUnlockEventMark = 'unlock';
 const CkbBurnSplitMark = 'tx';
 const BtcOPReturnCode = '6a';
-// const BtcDecimal = BigInt(Math.pow(10, 8));
 
 export class BTCChain {
   protected readonly rpcClient: RPCClient;
