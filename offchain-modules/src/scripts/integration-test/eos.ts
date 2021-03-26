@@ -6,12 +6,27 @@ import { logger } from '@force-bridge/utils/logger';
 import { JsSignatureProvider } from 'eosjs/dist/eosjs-jssig';
 import { CkbDb } from '@force-bridge/db';
 import { EosLock, getEosLockId } from '@force-bridge/db/entity/EosLock';
-import { asyncSleep, genRandomHex } from '@force-bridge/utils';
+import { asyncSleep, genRandomHex, waitUntilCommitted } from '@force-bridge/utils';
 import assert from 'assert';
 import { CkbMint } from '@force-bridge/db/entity/CkbMint';
-import { ChainType } from '@force-bridge/ckb/model/asset';
+import { ChainType, EosAsset, TronAsset } from '@force-bridge/ckb/model/asset';
 import { EosUnlock } from '@force-bridge/db/entity/EosUnlock';
 import { EosChain } from '@force-bridge/xchain/eos/eosChain';
+import { Account } from '@force-bridge/ckb/model/accounts';
+import { CkbTxGenerator } from '@force-bridge/ckb/tx-helper/generator';
+import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
+import { Amount } from '@lay2/pw-core';
+
+import { CkbIndexer } from '@force-bridge/ckb/tx-helper/indexer';
+
+const PRI_KEY = process.env.PRI_KEY || '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
+const CKB = require('@nervosnetwork/ckb-sdk-core').default;
+// const { Indexer, CellCollector } = require('@ckb-lumos/indexer');
+const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
+// const LUMOS_DB = './lumos_db';
+const indexer = new CkbIndexer('http://127.0.0.1:8116');
+// indexer.startForever();
+const ckb = new CKB(CKB_URL);
 
 type waitFn = () => Promise<boolean>;
 
@@ -42,7 +57,7 @@ async function main() {
   const ckbDb = new CkbDb(conn);
 
   //lock eos
-  const recipientLockscript = '0x00';
+  const recipientLockscript = 'ckt1qyqyph8v9mclls35p6snlaxajeca97tc062sa5gahk';
   const memo = recipientLockscript;
   const lockAmount = '0.0001';
   const lockAsset = 'EOS';
@@ -72,7 +87,7 @@ async function main() {
   const transferActionId = getEosLockId(lockTxHash, 1);
 
   //check EosLock and EosMint saved.
-  const waitTimeout = 1000 * 60 * 3; //3 minutes
+  const waitTimeout = 1000 * 60 * 5; //5 minutes
   await waitFnCompleted(
     waitTimeout,
     async (): Promise<boolean> => {
@@ -106,19 +121,28 @@ async function main() {
       assert(ckbMintRecord.asset === lockAsset);
       assert(ckbMintRecord.amount === lockAmount);
       assert(ckbMintRecord.recipientLockscript === recipientLockscript);
-      return true;
+      return ckbMintRecord.status === 'success';
     },
     1000 * 10,
   );
 
   //unlock eos
-  const unlockRecord = {
-    ckbTxHash: genRandomHex(32),
-    asset: lockAsset,
-    amount: lockAmount,
-    recipientAddress: lockAccount,
-  };
-  await ckbDb.createEosUnlock([unlockRecord]);
+  // const unlockRecord = {
+  //   ckbTxHash: genRandomHex(32),
+  //   asset: lockAsset,
+  //   amount: lockAmount,
+  //   recipientAddress: lockAccount,
+  // };
+  // await ckbDb.createEosUnlock([unlockRecord]);
+  // send burn tx
+  const burnAmount = Amount.fromUInt128LE('0x10270000000000000000000000000000');
+  const account = new Account(PRI_KEY);
+  const generator = new CkbTxGenerator(ckb, new IndexerCollector(indexer));
+  const burnTx = await generator.burn(await account.getLockscript(), lockAccount, new EosAsset(lockAsset), burnAmount);
+  const signedTx = ckb.signTransaction(PRI_KEY)(burnTx);
+  const burnTxHash = await ckb.rpc.sendTransaction(signedTx);
+  console.log(`burn Transaction has been sent with tx hash ${burnTxHash}`);
+  await waitUntilCommitted(ckb, burnTxHash, 60);
 
   //check unlock record send
   let eosUnlockTxHash = '';
@@ -127,7 +151,7 @@ async function main() {
     async () => {
       const eosUnlockRecords = await conn.manager.find(EosUnlock, {
         where: {
-          ckbTxHash: unlockRecord.ckbTxHash,
+          ckbTxHash: burnTxHash,
           status: 'success',
         },
       });
@@ -137,19 +161,21 @@ async function main() {
       logger.debug('EosUnlockRecords', eosUnlockRecords);
       assert(eosUnlockRecords.length === 1);
       const eosUnlockRecord = eosUnlockRecords[0];
-      assert(eosUnlockRecord.recipientAddress == unlockRecord.recipientAddress);
-      assert(eosUnlockRecord.asset === unlockRecord.asset);
-      assert(eosUnlockRecord.amount === unlockRecord.amount);
+      assert(eosUnlockRecord.recipientAddress == lockAccount);
+      assert(eosUnlockRecord.asset === lockAsset);
+      logger.debug('amount: ', eosUnlockRecord.amount);
+      logger.debug('amount: ', burnAmount.toString());
+      assert(eosUnlockRecord.amount === burnAmount.toString());
       eosUnlockTxHash = eosUnlockRecord.eosTxHash;
       return true;
     },
     1000 * 10,
   );
 
-  if (eosUnlockTxHash !== '') {
-    const eosUnlockTx = await chain.getTransaction(eosUnlockTxHash);
-    logger.debug('EosUnlockTx status:', eosUnlockTx.trx.receipt.status);
-  }
+  // if (eosUnlockTxHash !== '') {
+  //   const eosUnlockTx = await chain.getTransaction(eosUnlockTxHash);
+  //   logger.debug('EosUnlockTx status:', eosUnlockTx.trx.receipt.status);
+  // }
 }
 
 main()

@@ -192,6 +192,7 @@ export class EosHandler {
           await asyncSleep(15000);
           continue;
         }
+        logger.debug('todoRecords:', todoRecords);
         await this.processUnLockEvents(todoRecords);
       }
     } catch (e) {
@@ -206,6 +207,8 @@ export class EosHandler {
       const pushTxArgs = await this.buildUnlockTx(record);
       const txHash = getTxIdFromSerializedTx(pushTxArgs.serializedTransaction);
       record.eosTxHash = txHash;
+      const start = new Date().getTime();
+
       await this.db.saveEosUnlock([record]); //save txHash first
       let txRes: TransactResult;
       try {
@@ -214,6 +217,7 @@ export class EosHandler {
           `EosHandler pushSignedTransaction ckbTxHash:${record.ckbTxHash} receiver:${record.recipientAddress} eosTxhash:${record.eosTxHash} amount:${record.amount} asset:${record.asset}`,
         );
       } catch (e) {
+        console.log('=======', new Date().getTime() - start);
         record.status = 'error';
         record.message = e.message;
         logger.error(
@@ -247,7 +251,7 @@ export class EosHandler {
           await asyncSleep(15000);
           continue;
         }
-        let newRecords = new Array<EosUnlock>();
+        const newRecords = new Array<EosUnlock>();
         for (const pendingRecord of pendingRecords) {
           const txRes = await this.chain.getTransaction(pendingRecord.eosTxHash);
           if ('error' in txRes) {
@@ -284,9 +288,9 @@ export class EosHandler {
   }
 
   start() {
-    // this.watchLockEvents();
-    // this.watchUnlockEvents();
-    // this.checkUnlockTxStatus();
+    this.watchLockEvents();
+    this.watchUnlockEvents();
+    this.checkUnlockTxStatus();
     logger.info('eos handler started  🚀');
   }
 }

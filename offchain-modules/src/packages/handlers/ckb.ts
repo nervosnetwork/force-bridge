@@ -2,7 +2,7 @@ import { CkbDb } from '../db';
 import { CkbBurn, EthUnlock, ICkbBurn, transformBurnEvent } from '../db/model';
 import { logger } from '../utils/logger';
 import { asyncSleep, blake2b, fromHexString, uint8ArrayToString } from '../utils';
-import { Asset, ChainType, EthAsset, TronAsset } from '../ckb/model/asset';
+import { Asset, ChainType, EosAsset, EthAsset, TronAsset } from '../ckb/model/asset';
 import { Script as PwScript, Address, Amount, AddressType, Script, HashType } from '@lay2/pw-core';
 import { Account } from '@force-bridge/ckb/model/accounts';
 
@@ -57,6 +57,16 @@ export class CkbHandler {
             },
           ]);
           break;
+        case ChainType.EOS:
+          await this.db.createEosUnlock([
+            {
+              ckbTxHash: burn.ckbTxHash,
+              asset: uint8ArrayToString(fromHexString(burn.asset)).slice(1),
+              amount: burn.amount,
+              recipientAddress: uint8ArrayToString(fromHexString(burn.recipientAddress)).slice(1),
+            },
+          ]);
+          break;
         default:
           throw new Error(`wrong burn chain type: ${burn.chain}`);
       }
@@ -108,6 +118,15 @@ export class CkbHandler {
                 recipientAddress: `0x${recipientData.slice(4, 72)}`,
                 blockNumber: latestHeight,
               };
+            case ChainType.EOS:
+              return {
+                ckbTxHash: tx.hash,
+                asset: `0x${recipientData.slice(28, 34)}`,
+                chain,
+                amount: Amount.fromUInt128LE(`0x${recipientData.slice(34, 66)}`).toString(),
+                recipientAddress: `0x${recipientData.slice(4, 28)}`,
+                blockNumber: latestHeight,
+              };
             default:
               throw new Error(`wrong burn chain type: ${chain}`);
           }
@@ -145,6 +164,14 @@ export class CkbHandler {
         }
         assetAddress = recipientData.slice(72, 78);
         asset = new TronAsset(uint8ArrayToString(fromHexString(assetAddress)));
+        logger.debug('tron asset: ', asset);
+        break;
+      case ChainType.EOS:
+        if (recipientData.length != 2 + 2 + 24 + 6 + 32 + 64 + 64) {
+          return false;
+        }
+        assetAddress = recipientData.slice(28, 34);
+        asset = new EosAsset(uint8ArrayToString(fromHexString(assetAddress)));
         logger.debug('tron asset: ', asset);
         break;
       default:
@@ -212,6 +239,10 @@ export class CkbHandler {
             break;
           case ChainType.TRON:
             asset = new TronAsset(r.asset);
+            recipient = new Address(r.recipientLockscript, AddressType.ckb);
+            break;
+          case ChainType.EOS:
+            asset = new EosAsset(r.asset);
             recipient = new Address(r.recipientLockscript, AddressType.ckb);
             break;
           default:

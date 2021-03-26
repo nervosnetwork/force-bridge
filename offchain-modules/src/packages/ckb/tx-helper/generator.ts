@@ -248,6 +248,13 @@ export class CkbTxGenerator {
           2,
         )}${params.owner_lock_hash.slice(2)}`;
         break;
+      case ChainType.EOS:
+        recipientCellData = `0x0${params.chain}${toHexString(
+          stringToUint8Array(params.recipient_address),
+        )}${toHexString(stringToUint8Array(params.asset))}${params.amount.slice(2)}${params.bridge_lock_code_hash.slice(
+          2,
+        )}${params.owner_lock_hash.slice(2)}`;
+        break;
       default:
         throw new Error('asset not supported!');
     }
@@ -286,7 +293,7 @@ export class CkbTxGenerator {
       };
       outputs.push(changeOutput);
       outputsData.push(changeAmount.toUInt128LE());
-    } else {
+    } else if (total.lt(amount)) {
       throw new Error('sudt amount is not enough!');
     }
     const fee = 100000n;
