@@ -18,13 +18,10 @@ contract ForceBridge {
 
     address public admin;
 
-    bool public initialized;
-
     // refer to https://github.com/ethereum/EIPs/blob/master/EIPS/eip-712.md
     uint256 public constant SIGNATURE_SIZE = 65;
     uint256 public constant VALIDATORS_SIZE_LIMIT = 20;
     string public constant NAME_712 = "Force Bridge";
-    bytes32 public DOMAIN_SEPARATOR;
     // if the number of verified signatures has reached `multisigThreshold_`, validators approve the tx
     uint256 public multisigThreshold_;
     address[] validators_;
@@ -32,6 +29,15 @@ contract ForceBridge {
     // UNLOCK_TYPEHASH = keccak256("unlock(UnlockRecord[] calldata records)");
     bytes32 public constant UNLOCK_TYPEHASH =
         0xf1c18f82536658c0cb1a208d4a52b9915dc9e75640ed0daf3a6be45d02ca5c9f;
+    // SET_NEW_VALIDATORS_TYPEHASH = keccak256("changeValidators(address[] validators, uint256 multisigThreshold)");
+    bytes32 public constant CHANGE_VALIDATORS_TYPEHASH = 
+        0xd2cedd075bf1780178b261ac9c9000261e7fd88d66f6309124bddf24f5d953f8;
+
+    bytes32 private _CACHED_DOMAIN_SEPARATOR;
+    uint256 private _CACHED_CHAIN_ID;
+    bytes32 private _HASHED_NAME;
+    bytes32 private _HASHED_VERSION;
+    bytes32 private _TYPE_HASH;
 
     event Locked(
         address indexed token,
@@ -56,17 +62,63 @@ contract ForceBridge {
         bytes ckbTxHash;
     }
 
-    modifier onlyAdmin {
-        require(msg.sender == admin, "Only admin can call this function.");
-        _;
+    constructor(address[] memory validators, uint256 multisigThreshold) {
+        // set DOMAIN_SEPARATOR
+        bytes32 hashedName = keccak256(bytes(NAME_712));
+        bytes32 hashedVersion = keccak256(bytes("1"));
+        bytes32 typeHash = keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
+        _HASHED_NAME = hashedName;
+        _HASHED_VERSION = hashedVersion;
+        _CACHED_CHAIN_ID = _getChainId();
+        _CACHED_DOMAIN_SEPARATOR = _buildDomainSeparator(typeHash, hashedName, hashedVersion);
+        _TYPE_HASH = typeHash;
+
+        // set validators
+        require(
+            validators.length <= VALIDATORS_SIZE_LIMIT,
+            "number of validators exceeds the limit"
+        );
+        validators_ = validators;
+        require(
+            multisigThreshold <= validators.length,
+            "invalid multisigThreshold"
+        );
+        multisigThreshold_ = multisigThreshold;
     }
 
-    constructor() {
-        admin = msg.sender;
+    function DOMAIN_SEPARATOR() external view returns (bytes32) {
+        return _domainSeparator();
     }
 
-    function changeAdmin(address newAdmin) public onlyAdmin {
-        admin = newAdmin;
+    /**
+     * @dev Returns the domain separator for the current chain.
+     */
+    function _domainSeparator() internal view virtual returns (bytes32) {
+        if (_getChainId() == _CACHED_CHAIN_ID) {
+            return _CACHED_DOMAIN_SEPARATOR;
+        } else {
+            return _buildDomainSeparator(_TYPE_HASH, _HASHED_NAME, _HASHED_VERSION);
+        }
+    }
+
+    function _buildDomainSeparator(bytes32 typeHash, bytes32 name, bytes32 version) private view returns (bytes32) {
+        return keccak256(
+            abi.encode(
+                typeHash,
+                name,
+                version,
+                _getChainId(),
+                address(this)
+            )
+        );
+    }
+
+    function _getChainId() private view returns (uint256 chainId) {
+        this; // silence state mutability warning without generating bytecode - see https://github.com/ethereum/solidity/issues/2691
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            chainId := chainid()
+        }
     }
 
     function changeValidators(
@@ -86,10 +138,10 @@ contract ForceBridge {
             keccak256(
                 abi.encodePacked(
                     "\x19\x01", // solium-disable-line
-                    DOMAIN_SEPARATOR,
+                    _domainSeparator(),
                     keccak256(
                         abi.encode(
-                            UNLOCK_TYPEHASH,
+                            CHANGE_VALIDATORS_TYPEHASH,
                             validators,
                             multisigThreshold
                         )
@@ -97,46 +149,9 @@ contract ForceBridge {
                 )
             );
 
-        uint256 threshold = validators_.length;
-        validatorsApprove(msgHash, signatures, threshold);
+        validatorsApprove(msgHash, signatures, multisigThreshold_);
 
         validators_ = validators;
-        multisigThreshold_ = multisigThreshold;
-    }
-
-    function initialize(address[] memory validators, uint256 multisigThreshold)
-        public
-    {
-        require(!initialized, "Contract instance has already been initialized");
-        initialized = true;
-
-        // set DOMAIN_SEPARATOR
-        uint256 chainId;
-        assembly {
-            chainId := chainid()
-        }
-        DOMAIN_SEPARATOR = keccak256(
-            abi.encode(
-                keccak256(
-                    "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-                ),
-                keccak256(bytes(NAME_712)),
-                keccak256(bytes("1")),
-                chainId,
-                address(this)
-            )
-        );
-
-        // set validators
-        require(
-            validators.length <= VALIDATORS_SIZE_LIMIT,
-            "number of validators exceeds the limit"
-        );
-        validators_ = validators;
-        require(
-            multisigThreshold <= validators.length,
-            "invalid multisigThreshold"
-        );
         multisigThreshold_ = multisigThreshold;
     }
 
@@ -222,7 +237,7 @@ contract ForceBridge {
             keccak256(
                 abi.encodePacked(
                     "\x19\x01", // solium-disable-line
-                    DOMAIN_SEPARATOR,
+                    _domainSeparator(),
                     keccak256(abi.encode(UNLOCK_TYPEHASH, records))
                 )
             );

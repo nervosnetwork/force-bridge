@@ -126,3 +126,21 @@ export function EosLock2CkbMint(record: IEosLock): CkbMint {
     recipientLockscript: record.memo,
   });
 }
+
+export interface IBtcLock {
+  txid: string;
+  txHash: string;
+  amount: string;
+  rawTx: string;
+  data: string;
+  blockHeight: number;
+  blockHash: string;
+  txIndex: number;
+}
+export interface IBtcUnLock {
+  ckbTxHash: string;
+  chain: number;
+  asset: string;
+  amount: string;
+  recipientAddress: string;
+}

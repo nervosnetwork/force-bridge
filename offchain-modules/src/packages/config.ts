@@ -53,9 +53,22 @@ export interface TronConfig {
   feeLimit: number;
 }
 
+export interface BtcConfig {
+  clientParams: {
+    url: string;
+    user: string;
+    pass: string;
+    port: number;
+    timeout?: number;
+  };
+  privateKeys: string[];
+  lockAddress: string;
+}
+
 export interface Config {
   ckb: CkbConfig;
   eth?: EthConfig;
   eos?: EosConfig;
   tron?: TronConfig;
+  btc?: BtcConfig;
 }

@@ -20,7 +20,7 @@ async function main() {
   // const indexer = new CkbIndexer(CKB_INDEXER_URL, CKB_URL);
   // const collector = new IndexerCollector(indexer);
   // const generator = new CkbTxGenerator(collector);
-  const aa = toHexString(stringToUint8Array('trx'));
+  const aa = toHexString(stringToUint8Array('TS6VejPL8cQy6pA8eDGyusmmhCrXHRdJK6'));
   logger.debug('res', aa);
 }
 

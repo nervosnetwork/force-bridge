@@ -1,19 +1,34 @@
-import { Entity, PrimaryGeneratedColumn, Column, PrimaryColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, PrimaryColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
 @Entity()
 export class BtcLock {
   @PrimaryColumn()
-  ckb_tx_hash: string;
+  txid: string;
 
   @Column()
-  chain: number;
-
-  @Column()
-  asset: string;
+  txHash: string;
 
   @Column()
   amount: string;
 
   @Column()
-  recipientAddress: string;
+  data: string;
+
+  @Column('text')
+  rawTx: string;
+
+  @Column()
+  blockHeight: number;
+
+  @Column()
+  blockHash: string;
+
+  @Column()
+  txIndex: number;
+
+  @CreateDateColumn()
+  createdAt: string;
+
+  @UpdateDateColumn()
+  updatedAt: string;
 }

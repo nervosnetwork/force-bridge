@@ -23,9 +23,25 @@
       "latestGlobalActionSeq": 90107392,
       "onlyWatchIrreversibleBlock": false
     },
+    "btc": {
+        "clientParams": {
+            "url": "http://127.0.0.1",
+            "user": "test",
+            "pass": "test",
+            "port": 18443,
+            "timeout": 10000
+        },
+        "privateKeys": [
+            "0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed370",
+            "0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed371",
+            "0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed372",
+            "0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed373"
+        ],
+        "lockAddress": "2N1VV17PQAQbNNicsoQhyUbiLciJwYLadfW"
+    },
     "ckb": {
-      "ckbRpcUrl": "https://127.0.0.1:8114",
-      "ckbIndexerUrl": "https://127.0.0.1:8116",
+      "ckbRpcUrl": "http://127.0.0.1:8114",
+      "ckbIndexerUrl": "http://127.0.0.1:8116",
       "deps": {
         "bridgeLock": {
           "cellDep": {

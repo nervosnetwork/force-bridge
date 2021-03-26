@@ -25,6 +25,12 @@ services:
         target: /config
     ports:
       - "8545:8545"
+  btc:
+    image: tockb/btc-regtest
+    stdin_open: true
+    tty: true
+    ports:
+      - "18443:18443"
 
 volumes:
   geth-dag:

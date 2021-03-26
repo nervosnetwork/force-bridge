@@ -49,3 +49,7 @@ export function stringToUint8Array(str): Uint8Array {
   const tmpUint8Array = new Uint8Array(arr);
   return tmpUint8Array;
 }
+
+export function isEmptyArray<T>(array: T[]): boolean {
+  return !(array && array.length);
+}

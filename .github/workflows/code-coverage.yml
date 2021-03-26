@@ -3,7 +3,7 @@ name: coverage-test
 on: ["push", "pull_request"]
 
 jobs:
-  integration-ci:
+  code-coverage:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2

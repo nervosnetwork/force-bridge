@@ -12,18 +12,16 @@ async function main() {
     process.env.CONFIG_PATH || '../offchain-modules/config.json';
   nconf.env().file({ file: configPath });
 
-  const ForceBridge = await ethers.getContractFactory('ForceBridge');
-  const bridge = await ForceBridge.deploy();
-  await bridge.deployed();
-  nconf.set('forceBridge:eth:contractAddress', bridge.address);
-  nconf.save();
-
   const multiSignKeys = nconf.get('forceBridge:eth:multiSignKeys');
   const wallets = multiSignKeys.map(key => new ethers.Wallet(key));
   const validators = wallets.map(wallet => wallet.address);
 
   const multiSignThreshold = nconf.get('forceBridge:eth:multiSignThreshold');
-  await bridge.initialize(validators, multiSignThreshold);
+  const ForceBridge = await ethers.getContractFactory('ForceBridge');
+  const bridge = await ForceBridge.deploy(validators, multiSignThreshold);
+  await bridge.deployed();
+  nconf.set('forceBridge:eth:contractAddress', bridge.address);
+  nconf.save();
 
   console.log(
     `ForceBridge deployed to: ${bridge.address}, admin: ${await bridge.admin()}`
