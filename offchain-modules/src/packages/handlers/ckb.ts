@@ -125,9 +125,9 @@ export class CkbHandler {
     }
     const recipientData = tx.outputsData[0].toString();
     logger.debug('recipientData:', recipientData);
-    if (recipientData.length != 2 + 2 + 40 + 40 + 32 + 64 + 64) {
-      return false;
-    }
+    // if (recipientData.length != 2 + 2 + 40 + 40 + 32 + 64 + 64) {
+    //   return false;
+    // }
     let asset;
     let assetAddress;
     const chain = Number(recipientData.slice(2, 4));
@@ -144,7 +144,8 @@ export class CkbHandler {
           return false;
         }
         assetAddress = recipientData.slice(72, 78);
-        asset = new TronAsset(`0x${assetAddress}`);
+        asset = new TronAsset(uint8ArrayToString(fromHexString(assetAddress)));
+        logger.debug('tron asset: ', asset);
         break;
       default:
         return false;
@@ -238,7 +239,7 @@ export class CkbHandler {
             bridgeCellLockscript.args,
             bridgeCellLockscript.hashType,
           ).serializeJson() as LumosScript,
-          script_type: ScriptType.type,
+          script_type: ScriptType.lock,
         };
         const bridgeCells = await this.indexer.getCells(searchKey);
         if (bridgeCells.length == 0) {
@@ -311,7 +312,7 @@ export class CkbHandler {
         await this.db.updateCkbMint(mintRecords);
       }
 
-      await asyncSleep(3000);
+      await asyncSleep(60000);
     }
   }
 

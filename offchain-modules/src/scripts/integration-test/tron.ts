@@ -15,7 +15,7 @@ import { Amount } from '@lay2/pw-core';
 import { CkbIndexer } from '@force-bridge/ckb/tx-helper/indexer';
 const TronWeb = require('tronweb');
 
-const PRI_KEY = process.env.PRI_KEY || '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
+const PRI_KEY = '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
 // const { Indexer, CellCollector } = require('@ckb-lumos/indexer');
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
@@ -40,7 +40,7 @@ async function transferTrx(tronWeb, from, to, amount, memo, priv) {
 async function main() {
   const conn = await createConnection();
   const ckbDb = new CkbDb(conn);
-  const PRI_KEY_BURN = '0xd00c06bfd800d27397002dca6fb0993d5ba6399b4238b2f29ee9deb97593d2bc';
+  // const PRI_KEY_BURN = '0xd00c06bfd800d27397002dca6fb0993d5ba6399b4238b2f29ee9deb97593d2bc';
 
   const configPath = process.env.CONFIG_PATH || './config.json';
   nconf.env().file({ file: configPath });
@@ -54,8 +54,8 @@ async function main() {
   const userPrivateKey = 'AECC2FBC0BF175DDD04BD1BC3B64A13DB98738962A512544C89B50F5DDB7EBBD';
   const from = tronWeb.address.fromPrivateKey(userPrivateKey);
   const to = config.committee.address;
-  const amount = 100;
-  const recipientLockscript = 'ckt1qyq2f0uwf3lk7e0nthfucvxgl3zu36v6zuwq6mlzps';
+  const amount = 10;
+  const recipientLockscript = 'ckt1qyqyph8v9mclls35p6snlaxajeca97tc062sa5gahk';
   const sudtExtraData = 'transfer 100 to ckt1qyq2f0uwf3lk7e0nthfucvxgl3zu36v6zuwq6mlzps';
   const memo = recipientLockscript.concat(',').concat(sudtExtraData);
   const lockRes = await transferTrx(tronWeb, from, to, amount, memo, userPrivateKey);
@@ -114,7 +114,7 @@ async function main() {
         new TronAsset('trx'),
         Amount.fromUInt128LE('0x01'),
       );
-      const signedTx = ckb.signTransaction(PRI_KEY_BURN)(burnTx);
+      const signedTx = ckb.signTransaction(PRI_KEY)(burnTx);
       burnTxHash = await ckb.rpc.sendTransaction(signedTx);
       console.log(`burn Transaction has been sent with tx hash ${burnTxHash}`);
       await waitUntilCommitted(ckb, burnTxHash, 60);

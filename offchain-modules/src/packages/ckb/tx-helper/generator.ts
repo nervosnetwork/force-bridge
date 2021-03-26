@@ -220,6 +220,7 @@ export class CkbTxGenerator {
       script_type: ScriptType.type,
     };
     const sudtCells = await this.collector.indexer.getCells(searchKey);
+    // const sudtCells = cells.filter((cell) => cell.lock == fromLockscript);
     logger.debug('burn sudtCells: ', sudtCells);
     let inputCells = [sudtCells[0]];
 
@@ -241,11 +242,11 @@ export class CkbTxGenerator {
         )}${params.amount.slice(2)}${params.bridge_lock_code_hash.slice(2)}${params.owner_lock_hash.slice(2)}`;
         break;
       case ChainType.TRON:
-        recipientCellData = `0x0${params.chain}${toHexString(stringToUint8Array(params.recipient_address)).slice(
+        recipientCellData = `0x0${params.chain}${toHexString(
+          stringToUint8Array(params.recipient_address),
+        )}${toHexString(stringToUint8Array(params.asset))}${params.amount.slice(2)}${params.bridge_lock_code_hash.slice(
           2,
-        )}${toHexString(stringToUint8Array(params.asset)).slice(2)}${params.amount.slice(
-          2,
-        )}${params.bridge_lock_code_hash.slice(2)}${params.owner_lock_hash.slice(2)}`;
+        )}${params.owner_lock_hash.slice(2)}`;
         break;
       default:
         throw new Error('asset not supported!');
@@ -285,6 +286,8 @@ export class CkbTxGenerator {
       };
       outputs.push(changeOutput);
       outputsData.push(changeAmount.toUInt128LE());
+    } else {
+      throw new Error('sudt amount is not enough!');
     }
     const fee = 100000n;
     const outputCap = outputs.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
