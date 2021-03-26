@@ -1,9 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, PrimaryColumn } from 'typeorm';
+import { Entity, Column, PrimaryColumn, Index, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+
+export type BtcUnlockStatus = 'todo' | 'pending' | 'error' | 'success';
 
 @Entity()
 export class BtcUnlock {
   @PrimaryColumn()
-  ckb_tx_hash: string;
+  ckbTxHash: string;
 
   @Column()
   chain: number;
@@ -16,4 +18,20 @@ export class BtcUnlock {
 
   @Column()
   recipientAddress: string;
+
+  @Column({ nullable: true })
+  btcTxHash: string;
+
+  @Index()
+  @Column({ default: 'todo' })
+  status: BtcUnlockStatus;
+
+  @Column({ default: '' })
+  message: string;
+
+  @CreateDateColumn()
+  createdAt: string;
+
+  @UpdateDateColumn()
+  updatedAt: string;
 }

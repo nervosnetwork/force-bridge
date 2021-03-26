@@ -7,11 +7,13 @@ import { CkbHandler } from '@force-bridge/handlers/ckb';
 import { EthHandler } from '@force-bridge/handlers/eth';
 import { Config } from '@force-bridge/config';
 import { createConnection } from 'typeorm';
-import { CkbMint, CkbBurn } from '@force-bridge/db/model';
 import { EthChain } from '@force-bridge/xchain/eth';
 import { EosHandler } from '@force-bridge/handlers/eos';
 import { EosDb } from '@force-bridge/db/eos';
 import { TronHandler } from '@force-bridge/handlers/tron';
+import { BtcDb } from '@force-bridge/db/btc';
+import { BTCChain } from '@force-bridge/xchain/btc';
+import { BtcHandler } from '@force-bridge/handlers/btc';
 
 async function main() {
   const configPath = process.env.CONFIG_PATH || './config.json';
@@ -43,6 +45,12 @@ async function main() {
     const tronDb = new TronDb(conn);
     const tronHandler = new TronHandler(tronDb);
     tronHandler.start();
+  }
+  if (config.btc !== undefined) {
+    const btcDb = new BtcDb(conn);
+    const btcChain = new BTCChain();
+    const btcHandler = new BtcHandler(btcDb, btcChain);
+    btcHandler.start();
   }
 }
 
