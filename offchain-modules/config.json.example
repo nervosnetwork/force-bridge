@@ -20,7 +20,7 @@
         "5KjR55Q7UJpRnUx8zBdNaUC4P2573BsNLJaMR9o9wrJryYYXWU2",
         "5KQG4541B1FtDC11gu3NrErWniqTaPHBpmikSztnX8m36sK5px5"
       ],
-      "latestAccountActionSeq": 1262585,
+      "latestGlobalActionSeq": 90107392,
       "onlyWatchIrreversibleBlock": false
     },
     "ckb": {
