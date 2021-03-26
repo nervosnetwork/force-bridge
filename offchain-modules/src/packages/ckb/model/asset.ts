@@ -1,3 +1,5 @@
+import { stringToUint8Array, toHexString } from '@force-bridge/utils';
+
 export enum ChainType {
   BTC,
   ETH,
@@ -37,14 +39,14 @@ export class TronAsset extends Asset {
   // other address represents ERC20 address
   constructor(public address: string) {
     super();
-    if (!address.startsWith('0x') || address.length !== 42) {
-      throw new Error('invalid Tron asset address');
-    }
+    // if (!address.startsWith('') || address.length !== 42) {
+    //   throw new Error('invalid Tron asset address');
+    // }
     this.chainType = ChainType.TRON;
   }
 
   toBridgeLockscriptArgs(): string {
-    return `0x03${this.address.slice(2)}`;
+    return `0x03${toHexString(stringToUint8Array(this.address))}`;
   }
 
   getAddress(): string {

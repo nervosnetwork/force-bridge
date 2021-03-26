@@ -12,8 +12,26 @@ export function genRandomHex(size: number) {
   return '0x' + [...Array(size)].map(() => Math.floor(Math.random() * 16).toString(16)).join('');
 }
 
+export async function waitUntilCommitted(ckb, txHash, timeout) {
+  let waitTime = 0;
+  while (true) {
+    const txStatus = await ckb.rpc.getTransaction(txHash);
+    console.log(`tx ${txHash} status: ${txStatus.txStatus.status}, index: ${waitTime}`);
+    if (txStatus.txStatus.status === 'committed') {
+      return txStatus;
+    }
+    await asyncSleep(1000);
+    waitTime += 1;
+    if (waitTime >= timeout) {
+      return txStatus;
+    }
+  }
+}
+
 export const fromHexString = (hexString) =>
   new Uint8Array(hexString.match(/.{1,2}/g).map((byte) => parseInt(byte, 16)));
+
+export const toHexString = (bytes) => bytes.reduce((str, byte) => str + byte.toString(16).padStart(2, '0'), '');
 
 export function uint8ArrayToString(data): string {
   let dataString = '';
@@ -21,4 +39,13 @@ export function uint8ArrayToString(data): string {
     dataString += String.fromCharCode(data[i]);
   }
   return dataString;
+}
+
+export function stringToUint8Array(str): Uint8Array {
+  const arr = [];
+  for (let i = 0, j = str.length; i < j; ++i) {
+    arr.push(str.charCodeAt(i));
+  }
+  const tmpUint8Array = new Uint8Array(arr);
+  return tmpUint8Array;
 }

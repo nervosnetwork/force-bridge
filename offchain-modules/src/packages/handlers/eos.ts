@@ -284,9 +284,9 @@ export class EosHandler {
   }
 
   start() {
-    this.watchLockEvents();
-    this.watchUnlockEvents();
-    this.checkUnlockTxStatus();
+    // this.watchLockEvents();
+    // this.watchUnlockEvents();
+    // this.checkUnlockTxStatus();
     logger.info('eos handler started  🚀');
   }
 }

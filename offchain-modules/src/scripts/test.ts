@@ -5,6 +5,7 @@ import { CkbTxGenerator } from '../packages/ckb/tx-helper/generator';
 import PWCore from '@lay2/pw-core';
 import { IndexerCollector } from '../packages/ckb/tx-helper/collector';
 import { CkbIndexer } from '../packages/ckb/tx-helper/indexer';
+import { stringToUint8Array, toHexString } from '../packages/utils';
 
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
 const CKB_INDEXER_URL = process.env.CKB_INDEXER_URL || 'http://127.0.0.1:8116';
@@ -19,6 +20,19 @@ async function main() {
   // const indexer = new CkbIndexer(CKB_INDEXER_URL, CKB_URL);
   // const collector = new IndexerCollector(indexer);
   // const generator = new CkbTxGenerator(collector);
+  const aa = toHexString(stringToUint8Array('trx'));
+  logger.debug('res', aa);
 }
 
 main();
+
+// export function stringToUint8Array(str): Uint8Array {
+//   const arr = [];
+//   for (let i = 0, j = str.length; i < j; ++i) {
+//     arr.push(str.charCodeAt(i));
+//   }
+//   const tmpUint8Array = new Uint8Array(arr);
+//   return tmpUint8Array;
+// }
+//
+// export const toHexString = (bytes) => bytes.reduce((str, byte) => str + byte.toString(16).padStart(2, '0'), '');

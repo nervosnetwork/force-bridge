@@ -21,7 +21,7 @@ const fs = require('fs').promises;
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const utils = require('@nervosnetwork/ckb-sdk-utils');
 
-const PRI_KEY = process.env.PRI_KEY || '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
+const PRI_KEY = '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
 
 // CKB handler
 // 1. Listen CKB chain to get new burn events.
@@ -41,6 +41,17 @@ export class CkbHandler {
             {
               ckbTxHash: burn.ckbTxHash,
               asset: burn.asset,
+              amount: burn.amount,
+              recipientAddress: burn.recipientAddress,
+            },
+          ]);
+          break;
+        case ChainType.TRON:
+          await this.db.createTronUnlock([
+            {
+              ckbTxHash: burn.ckbTxHash,
+              asset: burn.asset,
+              assetType: burn.asset,
               amount: burn.amount,
               recipientAddress: burn.recipientAddress,
             },
@@ -77,14 +88,29 @@ export class CkbHandler {
           const recipientData = tx.outputsData[0].toString();
           logger.debug(`amount: 0x${recipientData.slice(84, 116)}`);
           logger.debug('amount: ', Amount.fromUInt128LE(`0x${recipientData.slice(84, 116)}`).toHexString());
-          return {
-            ckbTxHash: tx.hash,
-            asset: `0x${recipientData.slice(44, 84)}`,
-            chain: Number(recipientData.slice(42, 44)),
-            amount: BigNumber.from(Amount.fromUInt128LE(`0x${recipientData.slice(84, 116)}`)).toHexString(),
-            recipientAddress: `0x${recipientData.slice(2, 42)}`,
-            blockNumber: latestHeight,
-          };
+          const chain = Number(recipientData.slice(2, 4));
+          switch (chain) {
+            case ChainType.ETH:
+              return {
+                ckbTxHash: tx.hash,
+                asset: `0x${recipientData.slice(44, 84)}`,
+                chain,
+                amount: BigNumber.from(Amount.fromUInt128LE(`0x${recipientData.slice(84, 116)}`)).toHexString(),
+                recipientAddress: `0x${recipientData.slice(4, 44)}`,
+                blockNumber: latestHeight,
+              };
+            case ChainType.TRON:
+              return {
+                ckbTxHash: tx.hash,
+                asset: `0x${recipientData.slice(72, 78)}`,
+                chain,
+                amount: BigNumber.from(Amount.fromUInt128LE(`0x${recipientData.slice(78, 110)}`)).toHexString(),
+                recipientAddress: `0x${recipientData.slice(4, 72)}`,
+                blockNumber: latestHeight,
+              };
+            default:
+              throw new Error(`wrong burn chain type: ${chain}`);
+          }
         });
         await this.saveBurnEvent(ckbBurns);
       }
@@ -99,21 +125,30 @@ export class CkbHandler {
     }
     const recipientData = tx.outputsData[0].toString();
     logger.debug('recipientData:', recipientData);
-    if (recipientData.length != 2 + 40 + 2 + 40 + 32 + 64 + 64) {
+    if (recipientData.length != 2 + 2 + 40 + 40 + 32 + 64 + 64) {
       return false;
     }
     let asset;
-    const assetAddress = recipientData.slice(44, 84);
-    const chain = Number(recipientData.slice(42, 44));
+    let assetAddress;
+    const chain = Number(recipientData.slice(2, 4));
     switch (chain) {
       case ChainType.ETH:
+        if (recipientData.length != 2 + 2 + 40 + 40 + 32 + 64 + 64) {
+          return false;
+        }
+        assetAddress = recipientData.slice(44, 84);
         asset = new EthAsset(`0x${assetAddress}`);
         break;
       case ChainType.TRON:
+        if (recipientData.length != 2 + 2 + 68 + 6 + 32 + 64 + 64) {
+          return false;
+        }
+        assetAddress = recipientData.slice(72, 78);
         asset = new TronAsset(`0x${assetAddress}`);
         break;
       default:
-        throw new Error(`wrong burn chain type: ${chain}`);
+        return false;
+      // throw new Error(`wrong burn chain type: ${chain}`);
     }
     // const asset = new EthAsset(recipient.asset);
     const bridgeCellLockscript = {
@@ -168,12 +203,15 @@ export class CkbHandler {
       }
       const records = mintRecords.map((r) => {
         let asset;
+        let recipient;
         switch (r.chain) {
           case ChainType.ETH:
             asset = new EthAsset(r.asset);
+            recipient = new Address(uint8ArrayToString(fromHexString(r.recipientLockscript)).slice(1), AddressType.ckb);
             break;
           case ChainType.TRON:
             asset = new TronAsset(r.asset);
+            recipient = new Address(r.recipientLockscript, AddressType.ckb);
             break;
           default:
             throw new Error('asset not supported!');
@@ -181,27 +219,29 @@ export class CkbHandler {
         return {
           asset,
           amount: new Amount(r.amount),
-          recipient: new Address(uint8ArrayToString(fromHexString(r.recipientLockscript)).slice(1), AddressType.ckb),
+          recipient,
         };
       });
       const newTokens = [];
       for (const record of records) {
+        logger.debug('record:', record);
         const bridgeCellLockscript = {
           codeHash: nconf.get('forceBridge:ckb:deps:bridgeLock:script:codeHash'),
           hashType: nconf.get('forceBridge:ckb:deps:bridgeLock:script:hashType'),
           args: record.asset.toBridgeLockscriptArgs(),
         };
-        const args = this.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
+        logger.debug('record: bridgeCellLockscript ', bridgeCellLockscript);
+        // const args = this.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
         const searchKey = {
           script: new Script(
-            nconf.get('forceBridge:ckb:deps:sudt:script:codeHash'),
-            args,
-            HashType.data,
+            bridgeCellLockscript.codeHash,
+            bridgeCellLockscript.args,
+            bridgeCellLockscript.hashType,
           ).serializeJson() as LumosScript,
           script_type: ScriptType.type,
         };
-        const sudtCells = await this.indexer.getCells(searchKey);
-        if (sudtCells.length == 0) {
+        const bridgeCells = await this.indexer.getCells(searchKey);
+        if (bridgeCells.length == 0) {
           newTokens.push(record);
         }
       }

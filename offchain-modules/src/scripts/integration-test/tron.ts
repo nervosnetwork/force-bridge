@@ -2,13 +2,27 @@ import 'module-alias/register';
 import nconf from 'nconf';
 import { TronConfig } from '@force-bridge/config';
 import { logger } from '@force-bridge/utils/logger';
-import { asyncSleep, genRandomHex } from '@force-bridge/utils';
+import { asyncSleep, genRandomHex, waitUntilCommitted } from '@force-bridge/utils';
 import { createConnection } from 'typeorm';
 import { CkbDb, TronDb } from '@force-bridge/db';
 import { CkbMint, TronLock, TronUnlock } from '@force-bridge/db/model';
 import assert from 'assert';
-import { ChainType } from '@force-bridge/ckb/model/asset';
+import { ChainType, EthAsset, TronAsset } from '@force-bridge/ckb/model/asset';
+import { Account } from '@force-bridge/ckb/model/accounts';
+import { CkbTxGenerator } from '@force-bridge/ckb/tx-helper/generator';
+import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
+import { Amount } from '@lay2/pw-core';
+import { CkbIndexer } from '@force-bridge/ckb/tx-helper/indexer';
 const TronWeb = require('tronweb');
+
+const PRI_KEY = process.env.PRI_KEY || '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
+const CKB = require('@nervosnetwork/ckb-sdk-core').default;
+// const { Indexer, CellCollector } = require('@ckb-lumos/indexer');
+const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
+// const LUMOS_DB = './lumos_db';
+const indexer = new CkbIndexer('http://127.0.0.1:8116');
+// indexer.startForever();
+const ckb = new CKB(CKB_URL);
 
 async function transferTrx(tronWeb, from, to, amount, memo, priv) {
   const from_hex = tronWeb.address.toHex(from);
@@ -26,6 +40,7 @@ async function transferTrx(tronWeb, from, to, amount, memo, priv) {
 async function main() {
   const conn = await createConnection();
   const ckbDb = new CkbDb(conn);
+  const PRI_KEY_BURN = '0xd00c06bfd800d27397002dca6fb0993d5ba6399b4238b2f29ee9deb97593d2bc';
 
   const configPath = process.env.CONFIG_PATH || './config.json';
   nconf.env().file({ file: configPath });
@@ -48,15 +63,16 @@ async function main() {
 
   // create tron unlock
   const recipientAddress = 'TS6VejPL8cQy6pA8eDGyusmmhCrXHRdJK6';
-  const record = {
-    ckbTxHash: genRandomHex(32),
-    asset: 'trx',
-    assetType: 'trx',
-    amount: '100',
-    recipientAddress,
-  };
-  await ckbDb.createTronUnlock([record]);
-
+  // const record = {
+  //   ckbTxHash: genRandomHex(32),
+  //   asset: 'trx',
+  //   assetType: 'trx',
+  //   amount: '100',
+  //   recipientAddress,
+  // };
+  // await ckbDb.createTronUnlock([record]);
+  let sendBurn = false;
+  let burnTxHash;
   const checkEffect = async () => {
     // check TronLock and CkbMint saved.
     const tronLockRecords = await conn.manager.find(TronLock, {
@@ -83,15 +99,31 @@ async function main() {
     const ckbMintRecord = ckbMintRecords[0];
     assert(ckbMintRecord.chain === ChainType.TRON);
     assert(ckbMintRecord.sudtExtraData === sudtExtraData);
-    assert(ckbMintRecord.status === 'todo');
-    assert(ckbMintRecord.asset === 'trx');
+    assert(ckbMintRecord.status === 'success');
+    // assert(ckbMintRecord.asset === 'trx');
     assert(ckbMintRecord.amount === amount.toString());
     assert(ckbMintRecord.recipientLockscript === recipientLockscript);
 
+    // send burn tx
+    if (!sendBurn) {
+      const account = new Account(PRI_KEY);
+      const generator = new CkbTxGenerator(ckb, new IndexerCollector(indexer));
+      const burnTx = await generator.burn(
+        await account.getLockscript(),
+        recipientAddress,
+        new TronAsset('trx'),
+        Amount.fromUInt128LE('0x01'),
+      );
+      const signedTx = ckb.signTransaction(PRI_KEY_BURN)(burnTx);
+      burnTxHash = await ckb.rpc.sendTransaction(signedTx);
+      console.log(`burn Transaction has been sent with tx hash ${burnTxHash}`);
+      await waitUntilCommitted(ckb, burnTxHash, 60);
+      sendBurn = true;
+    }
     // check unlock record send
     const tronUnlockRecords = await conn.manager.find(TronUnlock, {
       where: {
-        ckbTxHash: record.ckbTxHash,
+        ckbTxHash: burnTxHash,
       },
     });
     assert(tronUnlockRecords.length === 1);
