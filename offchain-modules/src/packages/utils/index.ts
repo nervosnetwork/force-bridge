@@ -1,5 +1,4 @@
 import * as utils from '@nervosnetwork/ckb-sdk-utils';
-const nconf = require('nconf');
 
 export function asyncSleep(ms = 0) {
   return new Promise((r) => setTimeout(r, ms));

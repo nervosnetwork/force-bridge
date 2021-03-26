@@ -4,12 +4,9 @@ import { Asset } from '../model/asset';
 import { logger } from '@force-bridge/utils/logger';
 import { ScriptType } from '@force-bridge/ckb/tx-helper/indexer';
 import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
-// import { ForceBridgeCore } from '@force-bridge/core';
 // import { SerializeRecipientCellData } from '@force-bridge/eth_recipient_cell.js';
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
 const nconf = require('nconf');
-
-const PRI_KEY = process.env.PRI_KEY || '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
 
 export interface MintAssetRecord {
   asset: Asset;
@@ -18,9 +15,6 @@ export interface MintAssetRecord {
 }
 
 export class CkbTxGenerator {
-  // private ckb = ForceBridgeCore.ckb;
-  // private indexer = ForceBridgeCore.indexer;
-  // private collector = new IndexerCollector(ForceBridgeCore.indexer);
   constructor(private ckb: typeof CKB, private collector: IndexerCollector) {}
 
   async deploy(fromLockscript: Script, binaries: Buffer[]): Promise<Transaction> {
@@ -237,16 +231,10 @@ export class CkbTxGenerator {
       owner_lock_hash: fromLockscript.codeHash,
     };
     // const recipientCellData: any[] = SerializeRecipientCellData(params);
-
     const recipientCellData = `0x${params.recipient_address.slice(2)}0${params.chain}${params.asset.slice(
       2,
     )}${params.amount.slice(2)}${params.bridge_lock_code_hash.slice(2)}${params.owner_lock_hash.slice(2)}`;
-    // if (JSON.stringify(params).length % 2 == 1) {
-    //   recipientCellData = `0x0${JSON.stringify(params)}`;
-    // } else {
-    //   recipientCellData = `0x${JSON.stringify(params)}`;
-    // }
-    // const recipientCellData = `0x${JSON.stringify(params)}%2==0`;
+
     const { secp256k1Dep } = await this.ckb.loadDeps();
     console.dir({ secp256k1Dep }, { depth: null });
     const outputs = new Array(0);
