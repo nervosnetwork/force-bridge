@@ -11,3 +11,7 @@ export function blake2b(buffer) {
 export function genRandomHex(size: number) {
   return '0x' + [...Array(size)].map(() => Math.floor(Math.random() * 16).toString(16)).join('');
 }
+
+export function isEmptyArray<T>(array: T[]): boolean {
+  return !(array && array.length);
+}
