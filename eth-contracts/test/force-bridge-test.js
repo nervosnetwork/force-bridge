@@ -14,7 +14,11 @@ const {
 describe('ForceBridge', () => {
   let forceBridge, adminAddress, contractAddress, provider, factory;
   let wallets, validators;
-  let multisigThreshold, chainId, DOMAIN_SEPARATOR, unlockTypeHash;
+  let multisigThreshold,
+    chainId,
+    DOMAIN_SEPARATOR,
+    unlockTypeHash,
+    changeValidatorsTypeHash;
   let abi, iface;
   let erc20Token, tokenAddress;
 
@@ -36,10 +40,8 @@ describe('ForceBridge', () => {
       'contracts/ForceBridge.sol:ForceBridge'
     );
 
-    forceBridge = await factory.deploy();
+    forceBridge = await factory.deploy(validators, multisigThreshold);
     await forceBridge.deployTransaction.wait(1);
-    const res = await forceBridge.initialize(validators, multisigThreshold);
-    await res.wait(1);
 
     contractAddress = forceBridge.address;
     provider = forceBridge.provider;
@@ -75,6 +77,16 @@ describe('ForceBridge', () => {
       );
       console.log(`unlockTypeHash`, unlockTypeHash);
       expect(await forceBridge.UNLOCK_TYPEHASH()).to.eq(unlockTypeHash);
+
+      changeValidatorsTypeHash = keccak256(
+        toUtf8Bytes(
+          'changeValidators(address[] validators, uint256 multisigThreshold)'
+        )
+      );
+      console.log(`changeValidatorsTypeHash`, changeValidatorsTypeHash);
+      expect(await forceBridge.CHANGE_VALIDATORS_TYPEHASH()).to.eq(
+        changeValidatorsTypeHash
+      );
 
       DOMAIN_SEPARATOR = keccak256(
         defaultAbiCoder.encode(
@@ -226,13 +238,6 @@ describe('ForceBridge', () => {
         expect(r.ckbTxHash).to.equal(res.ckbTxHash);
       }
     });
-    it('should change admin', async function() {
-      const newWallets = generateWallets(1);
-      const newAdmin = newWallets[0].address;
-
-      const result = await forceBridge.changeAdmin(newAdmin);
-      expect(await forceBridge.admin()).to.equal(newAdmin);
-    });
     it('should change validators', async function() {
       const newWallets = generateWallets(7);
       newValidators = newWallets.map(wallet => wallet.address);
@@ -240,7 +245,7 @@ describe('ForceBridge', () => {
 
       const msgHash = getChangeValidatorsMsgHash(
         DOMAIN_SEPARATOR,
-        unlockTypeHash,
+        changeValidatorsTypeHash,
         newValidators,
         newMultisigThreshold
       );
