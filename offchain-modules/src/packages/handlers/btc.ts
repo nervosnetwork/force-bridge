@@ -1,9 +1,10 @@
 import { logger } from '@force-bridge/utils/logger';
-import { asyncSleep, isEmptyArray } from '@force-bridge/utils';
+import { asyncSleep } from '@force-bridge/utils';
 import { ChainType } from '@force-bridge/ckb/model/asset';
 import { BTCChain, BtcLockData } from '@force-bridge/xchain/btc';
 import { BtcDb } from '@force-bridge/db/btc';
 import { throws } from 'assert';
+import { BtcUnlock } from '@force-bridge/db/entity/BtcUnlock';
 
 export class BtcHandler {
   constructor(private db: BtcDb, private btcChain: BTCChain) {}
@@ -15,12 +16,11 @@ export class BtcHandler {
       try {
         const latestHeight = await this.db.getLatestHeight();
         const nowTips = await this.btcChain.getBtcHeight();
-        logger.debug('btc db lock record latest height: ', latestHeight, 'chain now height: ', nowTips);
+        logger.debug(`'btc db lock record latest height: ${latestHeight} chain now height: ${nowTips}`);
         await this.btcChain.watchBtcTxEvents(
           latestHeight,
           nowTips,
           async (btcLockEventData: BtcLockData) => {
-            logger.debug('btc lock event data :', btcLockEventData);
             await this.db.createCkbMint([
               {
                 id: btcLockEventData.txId,
@@ -45,13 +45,15 @@ export class BtcHandler {
             logger.debug(`save CkbMint and BTCLock successful for BTC tx ${btcLockEventData.txHash}.`);
           },
           async (ckbTxHash: string) => {
-            const records = await this.db.getNotSuccessUnlockRecord(ckbTxHash);
-            if (isEmptyArray(records)) {
+            const records: BtcUnlock[] = await this.db.getNotSuccessUnlockRecord(ckbTxHash);
+            if (records.length === 0) {
               return;
             }
-            logger.debug('unlock records', records);
+            logger.debug(`unlock records: ${JSON.stringify(records, null, 2)}`);
             if (records.length > 1) {
-              throw new Error(`there are some unlock record which have the same ckb burn hash.  ${records}`);
+              throw new Error(
+                `there are some unlock record which have the same ckb burn hash.  ${JSON.stringify(records, null, 2)}`,
+              );
             }
             records[0].status = 'success';
             await this.db.saveBtcUnlock(records);
@@ -71,11 +73,11 @@ export class BtcHandler {
     logger.debug('start btc watchUnlockEvents');
     while (true) {
       await asyncSleep(1000 * 20);
-      logger.debug('get new unlock events and send tx');
-      const records = await this.db.getBtcUnlockRecords('todo');
-      if (isEmptyArray(records)) {
+      const records: BtcUnlock[] = await this.db.getBtcUnlockRecords('todo');
+      if (records.length === 0) {
         continue;
       }
+      logger.debug(`get btc unlock record and send tx ${JSON.stringify(records, null, 2)}`);
       try {
         // write db first, avoid send tx success and fail to write db
         records.map((r) => {
@@ -94,7 +96,7 @@ export class BtcHandler {
           r.message = e.message;
         });
         await this.db.saveBtcUnlock(records);
-        logger.error('there is an error occurred during in btc chain send unlock', e);
+        logger.error(`there is an error occurred during in btc chain send unlock.`, e);
       }
     }
   }
