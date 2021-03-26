@@ -29,6 +29,18 @@ export interface EthConfig {
   rpcUrl: string;
   contractAddress: string;
   privateKey: string;
+  multiSignKeys: string[];
+  multiSignThreshold: number;
+}
+
+export interface EosConfig {
+  rpcUrl: string;
+  chainId: string;
+  bridgerAccount: string;
+  bridgerAccountPermission: string;
+  privateKeys: string[];
+  latestGlobalActionSeq: number;
+  onlyWatchIrreversibleBlock: boolean;
 }
 
 export interface TronConfig {
@@ -44,5 +56,6 @@ export interface TronConfig {
 export interface Config {
   ckb: CkbConfig;
   eth?: EthConfig;
+  eos?: EosConfig;
   tron?: TronConfig;
 }
