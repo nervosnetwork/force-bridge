@@ -11,7 +11,6 @@ import { ChainType } from '@force-bridge/ckb/model/asset';
 import { getEosLockId } from '@force-bridge/db/entity/EosLock';
 import { TransactResult } from 'eosjs/dist/eosjs-api-interfaces';
 
-const EosDecimal = 4;
 const EosTokenAccount = 'eosio.token';
 const EosTokenTransferActionName = 'transfer';
 
@@ -67,9 +66,9 @@ export class EosHandler {
         return;
       }
 
-      let latestActionSeq = await this.db.getLastedAccountActionSeq();
-      if (latestActionSeq < this.config.latestAccountActionSeq) {
-        latestActionSeq = this.config.latestAccountActionSeq;
+      let latestActionSeq = await this.db.getLastedGlobalActionSeq();
+      if (latestActionSeq < this.config.latestGlobalActionSeq) {
+        latestActionSeq = this.config.latestGlobalActionSeq;
       }
 
       let pos = 0;
@@ -89,12 +88,11 @@ export class EosHandler {
 
         const firstAction = actions.actions[0];
         const lastAction = actions.actions[actLen - 1];
-        if (lastAction.account_action_seq > latestActionSeq) {
+        if (lastAction.global_action_seq > latestActionSeq) {
           pos += offset;
           continue;
         }
-        if (firstAction.account_action_seq < latestActionSeq) {
-          //Some actions were been added when last scanning, rescan
+        if (firstAction.global_action_seq < latestActionSeq) {
           pos -= offset;
           continue;
         }
@@ -102,14 +100,14 @@ export class EosHandler {
         let hasReversibleAction = false;
         for (let i = actLen - 1; i >= 0; i--) {
           const action = actions.actions[i];
-          if (action.account_action_seq <= latestActionSeq) {
+          if (action.global_action_seq <= latestActionSeq) {
             continue;
           }
           if (this.config.onlyWatchIrreversibleBlock && action.block_num > actions.last_irreversible_block) {
             hasReversibleAction = true;
             break;
           }
-          latestActionSeq = action.account_action_seq;
+          latestActionSeq = action.global_action_seq;
 
           const actionTrace = action.action_trace;
           const act = actionTrace.act;
@@ -134,13 +132,13 @@ export class EosHandler {
             Memo: data.memo,
           };
           logger.info(
-            `EosHandler watched transfer blockNumber:${actionTrace.block_num} accountActionSeq:${action.account_action_seq} txHash:${actionTrace.trx_id} from:${data.from} to:${data.to} amount:${lockEvent.Amount} asset:${lockEvent.Asset} memo:${data.memo}`,
+            `EosHandler watched transfer blockNumber:${actionTrace.block_num} globalActionSeq:${action.global_action_seq} txHash:${actionTrace.trx_id} from:${data.from} to:${data.to} amount:${lockEvent.Amount} asset:${lockEvent.Asset} memo:${data.memo}`,
           );
           try {
             await this.processLockEvent(lockEvent);
           } catch (err) {
             logger.error(
-              `EosHandler process eosLock event failed. blockNumber:${actionTrace.block_num} tx:${lockEvent.TxHash} from:${lockEvent.From} amount:${lockEvent.Amount} asset:${lockEvent.Asset} memo:${lockEvent.Memo} error:${err}.`,
+              `EosHandler process eosLock event failed. blockNumber:${actionTrace.block_num} globalActionSeq:${action.global_action_seq} tx:${lockEvent.TxHash} from:${lockEvent.From} amount:${lockEvent.Amount} asset:${lockEvent.Asset} memo:${lockEvent.Memo} error:${err}.`,
             );
           }
         }

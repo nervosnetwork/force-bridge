@@ -39,7 +39,7 @@ export interface EosConfig {
   bridgerAccount: string;
   bridgerAccountPermission: string;
   privateKeys: string[];
-  latestAccountActionSeq: number;
+  latestGlobalActionSeq: number;
   onlyWatchIrreversibleBlock: boolean;
 }
 
