@@ -42,8 +42,8 @@ export interface IVin {
   coinbase?: string;
   txid?: string;
   vout?: number;
-  // scriptSig: IscriptSig;
 }
+
 export interface IscriptSig {
   asm: string;
   hex: string;
