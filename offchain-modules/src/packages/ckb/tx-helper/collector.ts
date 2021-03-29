@@ -1,5 +1,5 @@
 import { Script as LumosScript } from '@ckb-lumos/base';
-import { Amount, Script } from '@lay2/pw-core';
+import { Address, Amount, Script } from '@lay2/pw-core';
 import { CkbIndexer, IndexerCell, ScriptType, Terminator } from './indexer';
 
 export abstract class Collector {
@@ -31,5 +31,22 @@ export class IndexerCollector extends Collector {
     };
     const cells = await this.indexer.getCells(searchKey, terminator);
     return cells;
+  }
+
+  async getSUDTBalance(sudtType: Script, address: Address): Promise<Amount> {
+    const searchKey = {
+      script: address.toLockScript().serializeJson() as LumosScript,
+      script_type: ScriptType.lock,
+      filter: {
+        script: sudtType.serializeJson() as Script,
+      },
+    };
+    const cells = await this.indexer.getCells(searchKey);
+    let balance = Amount.ZERO;
+    cells.forEach((cell) => {
+      const amount = Amount.fromUInt128LE(cell.data);
+      balance = balance.add(amount);
+    });
+    return balance;
   }
 }

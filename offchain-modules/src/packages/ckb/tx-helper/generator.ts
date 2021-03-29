@@ -5,9 +5,9 @@ import { logger } from '@force-bridge/utils/logger';
 import { ScriptType } from '@force-bridge/ckb/tx-helper/indexer';
 import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
 import { stringToUint8Array, toHexString } from '@force-bridge/utils';
+import { ForceBridgeCore } from '@force-bridge/core';
 // import { SerializeRecipientCellData } from '@force-bridge/eth_recipient_cell.js';
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
-const nconf = require('nconf');
 
 export interface MintAssetRecord {
   asset: Asset;
@@ -89,8 +89,8 @@ export class CkbTxGenerator {
     for (const record of records) {
       const recipientLockscript = record.recipient.toLockScript();
       const bridgeCellLockscript = {
-        codeHash: nconf.get('forceBridge:ckb:deps:bridgeLock:script:codeHash'),
-        hashType: nconf.get('forceBridge:ckb:deps:bridgeLock:script:hashType'),
+        codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
+        hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
         args: record.asset.toBridgeLockscriptArgs(),
       };
       const searchKey = {
@@ -107,8 +107,8 @@ export class CkbTxGenerator {
       const outputSudtCell = {
         lock: recipientLockscript,
         type: {
-          codeHash: nconf.get('forceBridge:ckb:deps:sudt:script:codeHash'),
-          hashType: 'data',
+          codeHash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
+          hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
           args: sudtArgs,
         },
         capacity: `0x${sudtCellCapacity.toString(16)}`,
@@ -168,12 +168,12 @@ export class CkbTxGenerator {
         },
         // sudt dep
         {
-          outPoint: nconf.get('forceBridge:ckb:deps:sudt:cellDep:outPoint'),
+          outPoint: ForceBridgeCore.config.ckb.deps.sudtType.cellDep.outPoint,
           depType: 'code',
         },
         // bridge lockscript dep
         {
-          outPoint: nconf.get('forceBridge:ckb:deps:bridgeLock:cellDep:outPoint'),
+          outPoint: ForceBridgeCore.config.ckb.deps.bridgeLock.cellDep.outPoint,
           depType: 'code',
         },
       ],
@@ -206,14 +206,14 @@ export class CkbTxGenerator {
     bridgeFee?: Amount,
   ): Promise<CKBComponents.RawTransactionToSign> {
     const bridgeCellLockscript = {
-      codeHash: nconf.get('forceBridge:ckb:deps:bridgeLock:script:codeHash'),
-      hashType: nconf.get('forceBridge:ckb:deps:bridgeLock:script:hashType'),
+      codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
+      hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
       args: asset.toBridgeLockscriptArgs(),
     };
     const args = this.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
     const searchKey = {
       script: new Script(
-        nconf.get('forceBridge:ckb:deps:sudt:script:codeHash'),
+        ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
         args,
         HashType.data,
       ).serializeJson() as LumosScript,
@@ -229,7 +229,7 @@ export class CkbTxGenerator {
       chain: asset.chainType,
       asset: asset.getAddress(),
       amount: amount.toUInt128LE(),
-      bridge_lock_code_hash: nconf.get('forceBridge:ckb:deps:sudt:script:codeHash'),
+      bridge_lock_code_hash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
       owner_lock_hash: fromLockscript.codeHash,
     };
 
@@ -268,8 +268,8 @@ export class CkbTxGenerator {
     const outputsData = new Array(0);
 
     const recipientTypeScript = {
-      codeHash: nconf.get('forceBridge:ckb:deps:recipientType:script:codeHash'),
-      hashType: nconf.get('forceBridge:ckb:deps:recipientType:script:hashType'),
+      codeHash: ForceBridgeCore.config.ckb.deps.recipientType.script.codeHash,
+      hashType: ForceBridgeCore.config.ckb.deps.recipientType.script.hashType,
       args: '0x',
     };
     const recipientCap = (BigInt(recipientCellData.length) + 100n) * 10n ** 8n;
@@ -333,12 +333,12 @@ export class CkbTxGenerator {
         },
         // sudt dep
         {
-          outPoint: nconf.get('forceBridge:ckb:deps:sudt:cellDep:outPoint'),
+          outPoint: ForceBridgeCore.config.ckb.deps.sudtType.cellDep.outPoint,
           depType: 'code',
         },
         // recipient dep
         {
-          outPoint: nconf.get('forceBridge:ckb:deps:recipientType:cellDep:outPoint'),
+          outPoint: ForceBridgeCore.config.ckb.deps.recipientType.cellDep.outPoint,
           depType: 'code',
         },
       ],

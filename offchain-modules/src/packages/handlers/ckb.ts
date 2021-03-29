@@ -8,17 +8,14 @@ import { Account } from '@force-bridge/ckb/model/accounts';
 
 import { CkbTxGenerator } from '@force-bridge/ckb/tx-helper/generator';
 import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
-import { CkbIndexer, ScriptType } from '@force-bridge/ckb/tx-helper/indexer';
-// import { Script } from '@ckb-lumos/base/lib/core';
+import { ScriptType } from '@force-bridge/ckb/tx-helper/indexer';
 import { ForceBridgeCore } from '@force-bridge/core';
 import Transaction = CKBComponents.Transaction;
 import { Script as LumosScript } from '@ckb-lumos/base';
 import { BigNumber } from 'ethers';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const nconf = require('nconf');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+
 const fs = require('fs').promises;
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+
 const utils = require('@nervosnetwork/ckb-sdk-utils');
 
 const PRI_KEY = '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
@@ -180,8 +177,8 @@ export class CkbHandler {
     }
     // const asset = new EthAsset(recipient.asset);
     const bridgeCellLockscript = {
-      codeHash: nconf.get('forceBridge:ckb:deps:bridgeLock:script:codeHash'),
-      hashType: nconf.get('forceBridge:ckb:deps:bridgeLock:script:hashType'),
+      codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
+      hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
       args: asset.toBridgeLockscriptArgs(),
     };
     const sudtArgs = this.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
@@ -195,8 +192,8 @@ export class CkbHandler {
     const sudtType = txPrevious.transaction.outputs[Number(tx.inputs[0].previousOutput.index)].type;
 
     const expectType = {
-      codeHash: nconf.get('forceBridge:ckb:deps:sudt:script:codeHash'),
-      hashType: 'data',
+      codeHash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
+      hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.args,
       args: sudtArgs,
     };
     logger.debug('expectType:', expectType);
@@ -207,11 +204,12 @@ export class CkbHandler {
 
     // verify tx output recipientLockscript: recipient cell.
     const recipientScript = tx.outputs[0].type;
-    const expect = {
-      codeHash: nconf.get('forceBridge:ckb:deps:recipientType:script:codeHash'),
-      hashType: nconf.get('forceBridge:ckb:deps:recipientType:script:hashType'),
-      args: '0x',
-    };
+    const expect = ForceBridgeCore.config.ckb.deps.recipientType.script;
+    // const expect = {
+    //   codeHash: nconf.get('forceBridge:ckb:deps:recipientType:script:codeHash'),
+    //   hashType: nconf.get('forceBridge:ckb:deps:recipientType:script:hashType'),
+    //   args: '0x',
+    // };
     logger.debug('recipientScript:', recipientScript);
     logger.debug('expect:', expect);
     return recipientScript.codeHash == expect.codeHash && recipientScript.args == expect.args;
@@ -258,8 +256,8 @@ export class CkbHandler {
       for (const record of records) {
         logger.debug('record:', record);
         const bridgeCellLockscript = {
-          codeHash: nconf.get('forceBridge:ckb:deps:bridgeLock:script:codeHash'),
-          hashType: nconf.get('forceBridge:ckb:deps:bridgeLock:script:hashType'),
+          codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
+          hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.args,
           args: record.asset.toBridgeLockscriptArgs(),
         };
         logger.debug('record: bridgeCellLockscript ', bridgeCellLockscript);
@@ -268,7 +266,7 @@ export class CkbHandler {
           script: new Script(
             bridgeCellLockscript.codeHash,
             bridgeCellLockscript.args,
-            bridgeCellLockscript.hashType,
+            <HashType>bridgeCellLockscript.hashType,
           ).serializeJson() as LumosScript,
           script_type: ScriptType.lock,
         };
@@ -277,24 +275,7 @@ export class CkbHandler {
           newTokens.push(record);
         }
       }
-      // const newTokens = records.filter(async (r) => {
-      //   const bridgeCellLockscript = {
-      //     codeHash: nconf.get('forceBridge:ckb:deps:bridgeLock:script:codeHash'),
-      //     hashType: nconf.get('forceBridge:ckb:deps:bridgeLock:script:hashType'),
-      //     args: r.asset.toBridgeLockscriptArgs(),
-      //   };
-      //   const args = this.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
-      //   const searchKey = {
-      //     script: new Script(
-      //       nconf.get('forceBridge:ckb:deps:sudt:script:codeHash'),
-      //       args,
-      //       HashType.data,
-      //     ).serializeJson() as LumosScript,
-      //     script_type: ScriptType.type,
-      //   };
-      //   const sudtCells = await ForceBridgeCore.indexer.getCells(searchKey);
-      //   return sudtCells.length > 0;
-      // });
+
       if (newTokens.length > 0) {
         logger.debug('bridge cell is not exist. do create bridge cell.');
         const lockScriptBin = await fs.readFile('../ckb-contracts/build/release/bridge-lockscript');
@@ -302,7 +283,7 @@ export class CkbHandler {
         const scripts = newTokens.map((r) => {
           return {
             codeHash: lockScriptCodeHash,
-            hashType: 'data',
+            hashType: HashType.data,
             args: r.asset.toBridgeLockscriptArgs(),
           };
         });
