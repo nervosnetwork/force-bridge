@@ -1,7 +1,7 @@
 import { CkbDb } from '../db';
 import { CkbBurn, EthUnlock, ICkbBurn, transformBurnEvent } from '../db/model';
 import { logger } from '../utils/logger';
-import { asyncSleep, blake2b, fromHexString, uint8ArrayToString } from '../utils';
+import { asyncSleep, blake2b, fromHexString, toHexString, uint8ArrayToString } from '../utils';
 import { Asset, ChainType, EosAsset, EthAsset, TronAsset } from '../ckb/model/asset';
 import { Script as PwScript, Address, Amount, AddressType, Script, HashType } from '@lay2/pw-core';
 import { Account } from '@force-bridge/ckb/model/accounts';
@@ -137,11 +137,24 @@ export class CkbHandler {
   }
 
   async isBurnTx(tx: Transaction) {
+    const account = new Account(PRI_KEY);
+    const ownLockHash = this.ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
     if (tx.outputs.length < 1) {
       return false;
     }
-    const recipientData = tx.outputsData[0].toString();
+    const recipientData = tx.outputsData[0];
     logger.debug('recipientData:', recipientData);
+    let cellData;
+    try {
+      cellData = new RecipientCellData(fromHexString(recipientData).buffer);
+    } catch (e) {
+      return false;
+    }
+    logger.debug('amount: ', toHexString(new Uint8Array(cellData.getAmount().raw())));
+    logger.debug('recipient address: ', toHexString(new Uint8Array(cellData.getRecipientAddress().raw())));
+    logger.debug('asset: ', toHexString(new Uint8Array(cellData.getAsset().raw())));
+    logger.debug('chain: ', cellData.getChain());
+    logger.debug('bridge lock code hash: ', toHexString(new Uint8Array(cellData.getBridgeLockCodeHash().raw())));
     // if (recipientData.length != 2 + 2 + 40 + 40 + 32 + 64 + 64) {
     //   return false;
     // }
@@ -160,7 +173,7 @@ export class CkbHandler {
           return false;
         }
         assetAddress = recipientData.slice(44, 84);
-        asset = new EthAsset(`0x${assetAddress}`);
+        asset = new EthAsset(`0x${assetAddress}`, ownLockHash);
         break;
       case ChainType.TRON:
         if (recipientData.length != 2 + 2 + 68 + 6 + 32 + 64 + 64) {
@@ -224,6 +237,8 @@ export class CkbHandler {
 
   async handleMintRecords(): Promise<never> {
     const account = new Account(PRI_KEY);
+    // const ownLockHash = (await account.getLockscript()).codeHash;
+    const ownLockHash = this.ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
     logger.debug('ckb handle start: ', account.address);
     const generator = new CkbTxGenerator(this.ckb, new IndexerCollector(this.indexer));
     while (true) {
@@ -239,7 +254,7 @@ export class CkbHandler {
         let recipient;
         switch (r.chain) {
           case ChainType.ETH:
-            asset = new EthAsset(r.asset);
+            asset = new EthAsset(r.asset, ownLockHash);
             recipient = new Address(uint8ArrayToString(fromHexString(r.recipientLockscript)), AddressType.ckb);
             break;
           case ChainType.TRON:

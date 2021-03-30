@@ -1,4 +1,6 @@
-import { stringToUint8Array, toHexString } from '@force-bridge/utils';
+import { fromHexString, stringToUint8Array, toHexString } from '@force-bridge/utils';
+import { SerializeRecipientCellData } from '@force-bridge/ckb/tx-helper/eth_recipient_cell';
+import { SerializeForceBridgeLockscriptArgs } from '@force-bridge/ckb/tx-helper/force_bridge_lockscript';
 
 export enum ChainType {
   BTC,
@@ -17,7 +19,7 @@ export abstract class Asset {
 export class EthAsset extends Asset {
   // '0x00000000000000000000' represents ETH
   // other address represents ERC20 address
-  constructor(public address: string) {
+  constructor(public address: string, public ownLockHash: string) {
     super();
     if (!address.startsWith('0x') || address.length !== 42) {
       throw new Error('invalid ETH asset address');
@@ -26,7 +28,14 @@ export class EthAsset extends Asset {
   }
 
   toBridgeLockscriptArgs(): string {
-    return `0x01${this.address.slice(2)}`;
+    const params = {
+      owner_lock_hash: fromHexString(this.ownLockHash).buffer,
+      chain: new Uint8Array(this.chainType),
+      asset: fromHexString(this.address).buffer,
+    };
+    // const recipientCellData = `0x${toHexString(new Uint8Array(SerializeForceBridgeLockscriptArgs(params)))}`;
+    // new Uint8Array(SerializeForceBridgeLockscriptArgs(params));
+    return `0x${toHexString(new Uint8Array(SerializeForceBridgeLockscriptArgs(params)))}`;
   }
 
   getAddress(): string {

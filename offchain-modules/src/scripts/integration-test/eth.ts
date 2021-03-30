@@ -139,11 +139,12 @@ async function main() {
 
     if (!sendBurn) {
       const account = new Account(PRI_KEY);
+      const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
       const generator = new CkbTxGenerator(ckb, new IndexerCollector(indexer));
       const burnTx = await generator.burn(
         await account.getLockscript(),
         recipientAddress,
-        new EthAsset('0x0000000000000000000000000000000000000000'),
+        new EthAsset('0x0000000000000000000000000000000000000000', ownLockHash),
         Amount.fromUInt128LE('0x01'),
       );
       const signedTx = ckb.signTransaction(PRI_KEY)(burnTx);
