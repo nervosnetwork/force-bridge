@@ -6,6 +6,7 @@ import { ScriptType } from '@force-bridge/ckb/tx-helper/indexer';
 import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
 import { stringToUint8Array, toHexString } from '@force-bridge/utils';
 import { ForceBridgeCore } from '@force-bridge/core';
+import {SerializeRecipientCellData} from "@force-bridge/ckb/tx-helper/eth_recipient_cell";
 // import { SerializeRecipientCellData } from '@force-bridge/eth_recipient_cell.js';
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
 
@@ -233,7 +234,7 @@ export class CkbTxGenerator {
       owner_lock_hash: fromLockscript.codeHash,
     };
 
-    // const recipientCellData: any[] = SerializeRecipientCellData(params);
+    // const recipientCellData = SerializeRecipientCellData(params);
     let recipientCellData;
     switch (params.chain) {
       case ChainType.ETH:
@@ -272,7 +273,7 @@ export class CkbTxGenerator {
       hashType: ForceBridgeCore.config.ckb.deps.recipientType.script.hashType,
       args: '0x',
     };
-    const recipientCap = (BigInt(recipientCellData.length) + 100n) * 10n ** 8n;
+    const recipientCap = (BigInt(recipientCellData.byteLength) + 100n) * 10n ** 8n;
     const recipientOutput = {
       lock: fromLockscript,
       type: recipientTypeScript,

@@ -13,6 +13,7 @@ import { ForceBridgeCore } from '@force-bridge/core';
 import Transaction = CKBComponents.Transaction;
 import { Script as LumosScript } from '@ckb-lumos/base';
 import { BigNumber } from 'ethers';
+import {RecipientCellData} from "@force-bridge/ckb/tx-helper/eth_recipient_cell";
 
 const fs = require('fs').promises;
 
@@ -58,9 +59,9 @@ export class CkbHandler {
           await this.db.createEosUnlock([
             {
               ckbTxHash: burn.ckbTxHash,
-              asset: uint8ArrayToString(fromHexString(burn.asset)).slice(1),
+              asset: uint8ArrayToString(fromHexString(burn.asset)),
               amount: burn.amount,
-              recipientAddress: uint8ArrayToString(fromHexString(burn.recipientAddress)).slice(1),
+              recipientAddress: uint8ArrayToString(fromHexString(burn.recipientAddress)),
             },
           ]);
           break;
@@ -142,6 +143,12 @@ export class CkbHandler {
     const recipientData = tx.outputsData[0].toString();
     logger.debug('recipientData:', recipientData);
     // if (recipientData.length != 2 + 2 + 40 + 40 + 32 + 64 + 64) {
+    //   return false;
+    // }
+    // try {
+    //   const data = new RecipientCellData(recipientData);
+    // } catch (e) {
+    //   logger.debug('invalid recipient cell data.', e);
     //   return false;
     // }
     let asset;
@@ -233,7 +240,7 @@ export class CkbHandler {
         switch (r.chain) {
           case ChainType.ETH:
             asset = new EthAsset(r.asset);
-            recipient = new Address(uint8ArrayToString(fromHexString(r.recipientLockscript)).slice(1), AddressType.ckb);
+            recipient = new Address(uint8ArrayToString(fromHexString(r.recipientLockscript)), AddressType.ckb);
             break;
           case ChainType.TRON:
             asset = new TronAsset(r.asset);
@@ -257,7 +264,7 @@ export class CkbHandler {
         logger.debug('record:', record);
         const bridgeCellLockscript = {
           codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
-          hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.args,
+          hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
           args: record.asset.toBridgeLockscriptArgs(),
         };
         logger.debug('record: bridgeCellLockscript ', bridgeCellLockscript);
