@@ -13,7 +13,7 @@ import { ForceBridgeCore } from '@force-bridge/core';
 import Transaction = CKBComponents.Transaction;
 import { Script as LumosScript } from '@ckb-lumos/base';
 import { BigNumber } from 'ethers';
-import {RecipientCellData} from "@force-bridge/ckb/tx-helper/eth_recipient_cell";
+import { RecipientCellData } from '@force-bridge/ckb/tx-helper/eth_recipient_cell';
 
 const fs = require('fs').promises;
 
