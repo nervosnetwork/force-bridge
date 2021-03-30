@@ -1,4 +1,4 @@
-import { stringToUint8Array, toHexString } from '@force-bridge/utils';
+import { stringToUint8Array, toHexString } from '../../utils';
 
 export enum ChainType {
   BTC,

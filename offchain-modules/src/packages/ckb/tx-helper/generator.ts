@@ -1,11 +1,11 @@
 import { Address, Amount, HashType, Script, Transaction } from '@lay2/pw-core';
 import { Script as LumosScript } from '@ckb-lumos/base';
 import { Asset, ChainType } from '../model/asset';
-import { logger } from '@force-bridge/utils/logger';
-import { ScriptType } from '@force-bridge/ckb/tx-helper/indexer';
-import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
-import { stringToUint8Array, toHexString } from '@force-bridge/utils';
-import { ForceBridgeCore } from '@force-bridge/core';
+import { logger } from '../../utils/logger';
+import { ScriptType } from '../../ckb/tx-helper/indexer';
+import { IndexerCollector } from '../../ckb/tx-helper/collector';
+import { stringToUint8Array, toHexString } from '../../utils';
+import { ForceBridgeCore } from '../../core';
 import { SerializeRecipientCellData } from '@force-bridge/ckb/tx-helper/eth_recipient_cell';
 // import { SerializeRecipientCellData } from '@force-bridge/eth_recipient_cell.js';
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;

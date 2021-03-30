@@ -113,6 +113,9 @@
       "**/*.spec.ts"
     ]
   },
+  "bin": {
+    "forcecli": "./dist/src/apps/cli/index.js"
+  },
   "_moduleAliases": {
     "@force-bridge": "dist/src/packages"
   }
