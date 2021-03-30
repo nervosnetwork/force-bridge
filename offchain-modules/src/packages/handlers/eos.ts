@@ -219,24 +219,24 @@ export class EosHandler {
         logger.info(
           `EosHandler pushSignedTransaction ckbTxHash:${record.ckbTxHash} receiver:${record.recipientAddress} eosTxhash:${record.eosTxHash} amount:${record.amount} asset:${record.asset}`,
         );
+        if (!this.config.onlyWatchIrreversibleBlock) {
+          const txStatus = txRes.processed.receipt.status;
+          if (txStatus === 'executed') {
+            record.status = 'success';
+          } else {
+            record.status = 'error';
+            record.message = `action status:${txStatus} doesn't executed`;
+            logger.error(
+              `EosHandler processUnLockEvents eosTxHash:${txHash} ckbTxHash:${record.ckbTxHash} receiver:${record.recipientAddress} amount:${record.amount} asset:${record.asset} action status:${txStatus} doesn't executed`,
+            );
+          }
+        }
       } catch (e) {
         record.status = 'error';
         record.message = e.message;
         logger.error(
           `EosHandler pushSignedTransaction failed eosTxHash:${txHash} ckbTxHash:${record.ckbTxHash} receiver:${record.recipientAddress} amount:${record.amount} asset:${record.asset} error:${e}`,
         );
-      }
-      if (!this.config.onlyWatchIrreversibleBlock) {
-        const txStatus = txRes.processed.receipt.status;
-        if (txStatus === 'executed') {
-          record.status = 'success';
-        } else {
-          record.status = 'error';
-          record.message = `action status:${txStatus} doesn't executed`;
-          logger.error(
-            `EosHandler processUnLockEvents eosTxHash:${txHash} ckbTxHash:${record.ckbTxHash} receiver:${record.recipientAddress} amount:${record.amount} asset:${record.asset} action status:${txStatus} doesn't executed`,
-          );
-        }
       }
       await this.db.saveEosUnlock([record]);
     }
