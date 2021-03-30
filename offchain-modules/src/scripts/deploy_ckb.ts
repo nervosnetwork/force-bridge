@@ -103,7 +103,7 @@ const deploy = async () => {
         hashType: 'data',
       },
     },
-    sudt: {
+    sudtType: {
       cellDep: {
         depType: 'code',
         outPoint: {

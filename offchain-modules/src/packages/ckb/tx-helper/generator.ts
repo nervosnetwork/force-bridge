@@ -273,7 +273,7 @@ export class CkbTxGenerator {
       hashType: ForceBridgeCore.config.ckb.deps.recipientType.script.hashType,
       args: '0x',
     };
-    const recipientCap = (BigInt(recipientCellData.byteLength) + 100n) * 10n ** 8n;
+    const recipientCap = (BigInt(recipientCellData.length) + 100n) * 10n ** 8n;
     const recipientOutput = {
       lock: fromLockscript,
       type: recipientTypeScript,

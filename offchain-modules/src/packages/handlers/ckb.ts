@@ -200,7 +200,7 @@ export class CkbHandler {
 
     const expectType = {
       codeHash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
-      hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.args,
+      hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
       args: sudtArgs,
     };
     logger.debug('expectType:', expectType);
@@ -219,7 +219,7 @@ export class CkbHandler {
     // };
     logger.debug('recipientScript:', recipientScript);
     logger.debug('expect:', expect);
-    return recipientScript.codeHash == expect.codeHash && recipientScript.args == expect.args;
+    return recipientScript.codeHash == expect.codeHash;
   }
 
   async handleMintRecords(): Promise<never> {
