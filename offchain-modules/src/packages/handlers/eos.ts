@@ -67,7 +67,7 @@ export class EosHandler {
       }
 
       let latestActionSeq = await this.db.getLastedGlobalActionSeq();
-      if (latestActionSeq < this.config.latestGlobalActionSeq) {
+      if (latestActionSeq < this.config.latestGlobalActionSeq && this.config.latestGlobalActionSeq !== 0) {
         latestActionSeq = this.config.latestGlobalActionSeq;
       }
 
@@ -87,6 +87,10 @@ export class EosHandler {
         }
 
         const firstAction = actions.actions[0];
+        if (latestActionSeq < 0) {
+          //init
+          latestActionSeq = firstAction.global_action_seq;
+        }
         const lastAction = actions.actions[actLen - 1];
         if (lastAction.global_action_seq > latestActionSeq) {
           pos += offset;
