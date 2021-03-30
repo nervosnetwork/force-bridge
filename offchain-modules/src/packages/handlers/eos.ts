@@ -168,6 +168,7 @@ export class EosHandler {
       memo: lockEvent.Memo,
       blockNumber: lockEvent.BlockNumber,
     };
+    const fragments = lockRecord.memo.split(',');
 
     await this.db.createCkbMint([
       {
@@ -175,7 +176,8 @@ export class EosHandler {
         chain: ChainType.EOS,
         amount: lockRecord.amount,
         asset: lockRecord.token,
-        recipientLockscript: lockEvent.Memo,
+        recipientLockscript: fragments[0] === undefined ? '' : fragments[0],
+        sudtExtraData: fragments[1] === undefined ? '' : fragments[1],
       },
     ]);
     await this.db.createEosLock([lockRecord]);
@@ -247,7 +249,7 @@ export class EosHandler {
           await asyncSleep(15000);
           continue;
         }
-        let newRecords = new Array<EosUnlock>();
+        const newRecords = new Array<EosUnlock>();
         for (const pendingRecord of pendingRecords) {
           const txRes = await this.chain.getTransaction(pendingRecord.eosTxHash);
           if ('error' in txRes) {
