@@ -2,7 +2,7 @@ import 'module-alias/register';
 import { logger } from '@force-bridge/utils/logger';
 import { RPCClient } from 'rpc-bitcoin';
 import bitcore from 'bitcore-lib';
-import { asyncSleep, isEmptyArray } from '@force-bridge/utils';
+import { asyncSleep } from '@force-bridge/utils';
 import { createConnection } from 'typeorm';
 import { CkbDb } from '@force-bridge/db';
 import { Config } from '@force-bridge/config';
@@ -12,6 +12,8 @@ import { ChainType } from '@force-bridge/ckb/model/asset';
 import nconf from 'nconf';
 import { ForceBridgeCore } from '@force-bridge/core';
 import assert from 'assert';
+import { BtcUnlock } from '@force-bridge/db/entity/BtcUnlock';
+import { BtcLock } from '@force-bridge/db/entity/BtcLock';
 
 async function main() {
   logger.debug('start btc test lock and unlock');
@@ -77,15 +79,15 @@ async function main() {
       recipientAddress: userAddr.toString(),
     },
   ]);
-  let records = await btcDb.getNotSuccessUnlockRecord(ckbBurnHash);
+  let records: BtcUnlock[] = await btcDb.getNotSuccessUnlockRecord(ckbBurnHash);
   logger.debug(`database ckb burn data ${records}. the mock data ckb burn hash ${ckbBurnHash} `);
-  while (!isEmptyArray(records)) {
+  while (records.length != 0) {
     await asyncSleep(1000 * 10);
     records = await btcDb.getNotSuccessUnlockRecord(ckbBurnHash);
   }
-  const lockRecords = await btcDb.getLockRecord(lockTxHash);
+  const lockRecords: BtcLock[] = await btcDb.getLockRecord(lockTxHash);
   logger.debug('successful lock records', lockRecords);
-  const unlockRecords = await btcDb.getBtcUnlockRecords('success');
+  const unlockRecords: BtcUnlock[] = await btcDb.getBtcUnlockRecords('success');
   logger.debug('successful unlock records ', unlockRecords);
   assert(lockRecords[0].data === LockEventReceipent);
   assert(unlockRecords[0].recipientAddress === userAddr.toString());
