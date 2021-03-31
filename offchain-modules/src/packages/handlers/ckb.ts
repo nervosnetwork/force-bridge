@@ -149,7 +149,7 @@ export class CkbHandler {
         logger.debug('tron asset: ', asset);
         break;
       case ChainType.EOS:
-        asset = new EosAsset(uint8ArrayToString(fromHexString(assetAddress)));
+        asset = new EosAsset(uint8ArrayToString(fromHexString(assetAddress)), ownLockHash);
         logger.debug('eos asset: ', asset);
         break;
       default:
@@ -205,25 +205,29 @@ export class CkbHandler {
       const records = mintRecords.map((r) => {
         let asset;
         let recipient;
+        let amount;
         switch (r.chain) {
           case ChainType.ETH:
             asset = new EthAsset(r.asset, ownLockHash);
             recipient = new Address(uint8ArrayToString(fromHexString(r.recipientLockscript)), AddressType.ckb);
+            amount = Amount.fromUInt128LE(r.amount);
             break;
           case ChainType.TRON:
             asset = new TronAsset(r.asset, ownLockHash);
             recipient = new Address(r.recipientLockscript, AddressType.ckb);
+            amount = new Amount(r.amount);
             break;
           case ChainType.EOS:
-            asset = new EosAsset(r.asset);
+            asset = new EosAsset(r.asset, ownLockHash);
             recipient = new Address(r.recipientLockscript, AddressType.ckb);
+            amount = new Amount(r.amount);
             break;
           default:
             throw new Error('asset not supported!');
         }
         return {
           asset,
-          amount: Amount.fromUInt128LE(r.amount),
+          amount,
           recipient,
         };
       });

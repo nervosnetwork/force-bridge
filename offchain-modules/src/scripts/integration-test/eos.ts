@@ -1,7 +1,7 @@
 import { createConnection } from 'typeorm';
 import 'module-alias/register';
 import nconf from 'nconf';
-import { EosConfig } from '@force-bridge/config';
+import { Config, EosConfig } from '@force-bridge/config';
 import { logger } from '@force-bridge/utils/logger';
 import { JsSignatureProvider } from 'eosjs/dist/eosjs-jssig';
 import { CkbDb } from '@force-bridge/db';
@@ -18,6 +18,7 @@ import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
 import { Amount } from '@lay2/pw-core';
 
 import { CkbIndexer } from '@force-bridge/ckb/tx-helper/indexer';
+import { ForceBridgeCore } from '@force-bridge/core';
 
 const PRI_KEY = process.env.PRI_KEY || '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
@@ -48,6 +49,9 @@ async function main() {
   nconf.env().file({ file: configPath });
   const config: EosConfig = nconf.get('forceBridge:eos');
   logger.debug('EosConfig:', config);
+  const conf: Config = nconf.get('forceBridge');
+  // init bridge force core
+  await new ForceBridgeCore().init(conf);
 
   const rpcUrl = config.rpcUrl;
   const lockAccount = 'spongebob111';
@@ -137,8 +141,14 @@ async function main() {
   // send burn tx
   const burnAmount = Amount.fromUInt128LE('0x10270000000000000000000000000000');
   const account = new Account(PRI_KEY);
+  const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
   const generator = new CkbTxGenerator(ckb, new IndexerCollector(indexer));
-  const burnTx = await generator.burn(await account.getLockscript(), lockAccount, new EosAsset(lockAsset), burnAmount);
+  const burnTx = await generator.burn(
+    await account.getLockscript(),
+    lockAccount,
+    new EosAsset(lockAsset, ownLockHash),
+    burnAmount,
+  );
   const signedTx = ckb.signTransaction(PRI_KEY)(burnTx);
   const burnTxHash = await ckb.rpc.sendTransaction(signedTx);
   console.log(`burn Transaction has been sent with tx hash ${burnTxHash}`);

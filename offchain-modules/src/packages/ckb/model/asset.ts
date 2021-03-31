@@ -66,7 +66,7 @@ export class TronAsset extends Asset {
 export class EosAsset extends Asset {
   // '0x00000000000000000000' represents ETH
   // other address represents ERC20 address
-  constructor(public address: string) {
+  constructor(public address: string, public ownLockHash: string) {
     super();
     // if (!address.startsWith('') || address.length !== 42) {
     //   throw new Error('invalid Tron asset address');
@@ -75,10 +75,15 @@ export class EosAsset extends Asset {
   }
 
   toBridgeLockscriptArgs(): string {
-    return `0x02${toHexString(stringToUint8Array(this.address))}`;
+    const params = {
+      owner_lock_hash: fromHexString(this.ownLockHash).buffer,
+      chain: this.chainType,
+      asset: fromHexString(toHexString(stringToUint8Array(this.address))).buffer,
+    };
+    return `0x${toHexString(new Uint8Array(SerializeForceBridgeLockscriptArgs(params)))}`;
   }
 
   getAddress(): string {
-    return this.address;
+    return toHexString(stringToUint8Array(this.address));
   }
 }
