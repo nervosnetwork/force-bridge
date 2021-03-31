@@ -223,7 +223,7 @@ export class CkbHandler {
         }
         return {
           asset,
-          amount: new Amount(r.amount),
+          amount: Amount.fromUInt128LE(r.amount),
           recipient,
         };
       });

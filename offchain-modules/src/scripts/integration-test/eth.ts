@@ -3,7 +3,7 @@ import { ethers } from 'ethers';
 import nconf from 'nconf';
 import { Config, EthConfig } from '@force-bridge/config';
 import { logger } from '@force-bridge/utils/logger';
-import { asyncSleep, genRandomHex } from '@force-bridge/utils';
+import { asyncSleep } from '@force-bridge/utils';
 import { createConnection } from 'typeorm';
 import { CkbDb, EthDb } from '@force-bridge/db';
 import { ETH_ADDRESS } from '@force-bridge/xchain/eth';
@@ -11,18 +11,20 @@ import { CkbMint, EthLock, EthUnlock } from '@force-bridge/db/model';
 import assert from 'assert';
 import { ChainType, EthAsset } from '@force-bridge/ckb/model/asset';
 import { abi } from '@force-bridge/xchain/eth/abi/ForceBridge.json';
-import { Address, AddressType, Amount } from '@lay2/pw-core';
+import { Address, AddressType, Amount, Script } from '@lay2/pw-core';
 import { Account } from '@force-bridge/ckb/model/accounts';
 import { CkbTxGenerator } from '@force-bridge/ckb/tx-helper/generator';
 import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
 // import {CkbIndexer} from "@force-bridge/ckb/tx-helper/indexer";
 import { ForceBridgeCore } from '@force-bridge/core';
 import { CkbIndexer } from '@force-bridge/ckb/tx-helper/indexer';
+
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
 // const { Indexer, CellCollector } = require('@ckb-lumos/indexer');
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
 // const LUMOS_DB = './lumos_db';
 const indexer = new CkbIndexer('http://127.0.0.1:8116');
+const collector = new IndexerCollector(indexer);
 // indexer.startForever();
 const ckb = new CKB(CKB_URL);
 
@@ -82,6 +84,7 @@ async function main() {
   logger.debug('recipientLockscript', toHexString(recipientLockscript));
   const sudtExtraData = '0x01';
   const amount = ethers.utils.parseEther('0.1');
+  logger.debug('amount', amount);
   const lockRes = await bridgeWithSigner.lockETH(recipientLockscript, sudtExtraData, { value: amount });
   logger.debug('lockRes', lockRes);
   const txHash = lockRes.hash;
@@ -134,6 +137,31 @@ async function main() {
     assert(ckbMintRecord.asset === ETH_ADDRESS);
     assert(ckbMintRecord.amount === amount.toHexString());
     assert(ckbMintRecord.recipientLockscript === `0x${toHexString(recipientLockscript)}`);
+    const account = new Account(PRI_KEY);
+    const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
+    const asset = new EthAsset('0x0000000000000000000000000000000000000000', ownLockHash);
+    const bridgeCellLockscript = {
+      codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
+      hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
+      args: asset.toBridgeLockscriptArgs(),
+    };
+    const sudtArgs = ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
+    const sudtType = {
+      codeHash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
+      hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
+      args: sudtArgs,
+    };
+    const balance = await collector.getSUDTBalance(
+      new Script(sudtType.codeHash, sudtType.args, sudtType.hashType),
+      // new Address('ckt1qyqyph8v9mclls35p6snlaxajeca97tc062sa5gahk', AddressType.ckb),
+      await account.getLockscript(),
+    );
+
+    if (!sendBurn) {
+      logger.debug('sudt balance:', balance.toHexString());
+      logger.debug('expect balance:', Amount.fromUInt128LE(amount.toHexString()).toHexString());
+      assert(balance.eq(Amount.fromUInt128LE(amount.toHexString())));
+    }
 
     // send burn tx
 
@@ -152,7 +180,19 @@ async function main() {
       console.log(`burn Transaction has been sent with tx hash ${burnTxHash}`);
       await waitUntilCommitted(burnTxHash, 60);
       sendBurn = true;
+      // balance = await collector.getSUDTBalance(
+      //   new Script(sudtType.codeHash, sudtType.args, sudtType.hashType),
+      //   await account.getLockscript(),
+      // );
+      // logger.debug('after burn. sudt balance:', balance);
+      // assert(balance.eq(Amount.fromUInt128LE(amount.toHexString()).sub(Amount.fromUInt128LE('0x01'))));
     }
+    logger.debug('sudt balance:', balance.toHexString());
+    logger.debug(
+      'expect balance:',
+      Amount.fromUInt128LE(amount.toHexString()).sub(Amount.fromUInt128LE('0x01')).toHexString(),
+    );
+    assert(balance.eq(Amount.fromUInt128LE(amount.toHexString()).sub(Amount.fromUInt128LE('0x01'))));
 
     // check unlock record send
     const ethUnlockRecords = await conn.manager.find(EthUnlock, {

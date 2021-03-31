@@ -6,7 +6,7 @@ import PWCore, { Amount } from '@lay2/pw-core';
 import { IndexerCollector } from '../packages/ckb/tx-helper/collector';
 import { CkbIndexer } from '../packages/ckb/tx-helper/indexer';
 import { fromHexString, stringToUint8Array, toHexString, uint8ArrayToString } from '../packages/utils';
-import { BigNumber } from 'ethers';
+import { BigNumber, ethers } from 'ethers';
 import { ForceBridgeCore } from '@force-bridge/core';
 import { Bytes, RecipientCellData, SerializeRecipientCellData } from '../packages/ckb/tx-helper/eth_recipient_cell';
 import { Reader } from 'ckb-js-toolkit';
@@ -27,31 +27,36 @@ async function main() {
   // const bb = BigNumber.from('0.0001');
   // const bb = new Amount('0.0001');
   // const bb = Amount.fromUInt128LE('0x0001');
-  // const cc = Amount.fromUInt128LE('0x10270000000000000000000000000000');
+  const amount = ethers.utils.parseEther('0.1').toHexString();
+  const cc = Amount.ZERO.add(Amount.fromUInt128LE('0x0000000000008a5d7845630100000000')).toHexString();
+  const dd = BigNumber.from('0x016345785d8a0000').toHexString();
+  const xx = Amount.fromUInt128LE('0x016345785d8a0000');
+
+  logger.debug('result:', cc, amount, dd);
   // // const dd = BigAmount.fromUInt128LE(`0x10270000000000000000000000000000`);
   //
   // const aa = uint8ArrayToString(fromHexString('0x454f53')).slice(1);
-  const params = {
-    recipient_address: fromHexString('0x10270000000000000000000000000000').buffer,
-    chain: 1,
-    asset: fromHexString('0x10270000000000000000000000000000').buffer,
-    amount: fromHexString('0x10270000000000000000000000000000').buffer,
-    bridge_lock_code_hash: fromHexString('0x1027000000000000000000000000000010270000000000000000000000000000').buffer,
-    owner_lock_hash: fromHexString('0x1027000000000000000000000000000010270000000000000000000000000000').buffer,
-    fee: fromHexString('0x10270000000000000000000000000000').buffer,
-  };
-
-  const recipientCellData = SerializeRecipientCellData(params);
-  logger.debug('seri data: ', recipientCellData);
-  logger.debug('seri data: ', toHexString(new Uint8Array(recipientCellData)));
-
-  const cellData = new RecipientCellData(
-    fromHexString(
-      '0xb1000000200000003800000039000000510000007100000091000000a1000000140000001000000000000000000000000000000000000001011400000000000000000000000000000000000000000000000e95396c13c9f0dfb48fedfe0dd670eaa228fb8fb6f5a82b8b8dfe89c8c1bb379bd7e06f3ecf4be0f2fcd2188b23f1b9fcc88e5d4b65a8637b17723bbda3cce80100000000000000000000000000000000000000000000000000000000000000',
-    ).buffer,
-  );
-  logger.debug('amount: ', toHexString(new Uint8Array(cellData.getAmount().raw())));
-  logger.debug('recipient address: ', toHexString(new Uint8Array(cellData.getRecipientAddress().raw())));
+  // const params = {
+  //   recipient_address: fromHexString('0x10270000000000000000000000000000').buffer,
+  //   chain: 1,
+  //   asset: fromHexString('0x10270000000000000000000000000000').buffer,
+  //   amount: fromHexString('0x10270000000000000000000000000000').buffer,
+  //   bridge_lock_code_hash: fromHexString('0x1027000000000000000000000000000010270000000000000000000000000000').buffer,
+  //   owner_lock_hash: fromHexString('0x1027000000000000000000000000000010270000000000000000000000000000').buffer,
+  //   fee: fromHexString('0x10270000000000000000000000000000').buffer,
+  // };
+  //
+  // const recipientCellData = SerializeRecipientCellData(params);
+  // logger.debug('seri data: ', recipientCellData);
+  // logger.debug('seri data: ', toHexString(new Uint8Array(recipientCellData)));
+  //
+  // const cellData = new RecipientCellData(
+  //   fromHexString(
+  //     '0xb1000000200000003800000039000000510000007100000091000000a1000000140000001000000000000000000000000000000000000001011400000000000000000000000000000000000000000000000e95396c13c9f0dfb48fedfe0dd670eaa228fb8fb6f5a82b8b8dfe89c8c1bb379bd7e06f3ecf4be0f2fcd2188b23f1b9fcc88e5d4b65a8637b17723bbda3cce80100000000000000000000000000000000000000000000000000000000000000',
+  //   ).buffer,
+  // );
+  // logger.debug('amount: ', toHexString(new Uint8Array(cellData.getAmount().raw())));
+  // logger.debug('recipient address: ', toHexString(new Uint8Array(cellData.getRecipientAddress().raw())));
 
   // logger.debug('res', bb.toString(), dd);
 }

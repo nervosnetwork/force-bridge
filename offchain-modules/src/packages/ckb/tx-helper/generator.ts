@@ -119,7 +119,7 @@ export class CkbTxGenerator {
         capacity: bridgeCell.capacity,
       };
       outputs.push(outputSudtCell);
-      outputsData.push(bigintToSudtAmount(record.amount.toBigInt()));
+      outputsData.push(record.amount.toUInt128LE());
       outputs.push(outputBridgeCell);
       outputsData.push('0x');
       bridgeCells.push(bridgeCell);
@@ -228,8 +228,14 @@ export class CkbTxGenerator {
     logger.debug('burn sudtCells: ', sudtCells);
     let inputCells = [sudtCells[0]];
     const ownerLockHash = this.ckb.utils.scriptToHash(<CKBComponents.Script>fromLockscript);
+    let recipientAddr;
+    if (asset.chainType == ChainType.ETH) {
+      recipientAddr = fromHexString(recipientAddress).buffer;
+    } else {
+      recipientAddr = fromHexString(toHexString(stringToUint8Array(recipientAddress))).buffer;
+    }
     const params = {
-      recipient_address: fromHexString(toHexString(stringToUint8Array(recipientAddress))).buffer,
+      recipient_address: recipientAddr,
       chain: asset.chainType,
       asset: fromHexString(asset.getAddress()).buffer,
       amount: fromHexString(amount.toUInt128LE()).buffer,
