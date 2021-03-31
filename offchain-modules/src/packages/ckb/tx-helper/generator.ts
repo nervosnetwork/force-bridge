@@ -228,7 +228,7 @@ export class CkbTxGenerator {
     const ownerLockHash = this.ckb.utils.scriptToHash(<CKBComponents.Script>fromLockscript);
     const params = {
       recipient_address: fromHexString(recipientAddress).buffer,
-      chain: new Uint8Array(asset.chainType),
+      chain: asset.chainType,
       asset: fromHexString(asset.getAddress()).buffer,
       amount: fromHexString(amount.toUInt128LE()).buffer,
       bridge_lock_code_hash: fromHexString(ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash).buffer,

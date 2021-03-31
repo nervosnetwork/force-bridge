@@ -30,11 +30,9 @@ export class EthAsset extends Asset {
   toBridgeLockscriptArgs(): string {
     const params = {
       owner_lock_hash: fromHexString(this.ownLockHash).buffer,
-      chain: new Uint8Array(this.chainType),
+      chain: this.chainType,
       asset: fromHexString(this.address).buffer,
     };
-    // const recipientCellData = `0x${toHexString(new Uint8Array(SerializeForceBridgeLockscriptArgs(params)))}`;
-    // new Uint8Array(SerializeForceBridgeLockscriptArgs(params));
     return `0x${toHexString(new Uint8Array(SerializeForceBridgeLockscriptArgs(params)))}`;
   }
 
@@ -48,9 +46,6 @@ export class TronAsset extends Asset {
   // other address represents ERC20 address
   constructor(public address: string) {
     super();
-    // if (!address.startsWith('') || address.length !== 42) {
-    //   throw new Error('invalid Tron asset address');
-    // }
     this.chainType = ChainType.TRON;
   }
 
