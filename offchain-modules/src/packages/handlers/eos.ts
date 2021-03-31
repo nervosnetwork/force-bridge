@@ -230,6 +230,7 @@ export class EosHandler {
               `EosHandler processUnLockEvents eosTxHash:${txHash} ckbTxHash:${record.ckbTxHash} receiver:${record.recipientAddress} amount:${record.amount} asset:${record.asset} action status:${txStatus} doesn't executed`,
             );
           }
+          await this.db.saveEosUnlock([record]);
         }
       } catch (e) {
         record.status = 'error';
@@ -237,8 +238,8 @@ export class EosHandler {
         logger.error(
           `EosHandler pushSignedTransaction failed eosTxHash:${txHash} ckbTxHash:${record.ckbTxHash} receiver:${record.recipientAddress} amount:${record.amount} asset:${record.asset} error:${e}`,
         );
+        await this.db.saveEosUnlock([record]);
       }
-      await this.db.saveEosUnlock([record]);
     }
   }
 
