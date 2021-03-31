@@ -219,15 +219,17 @@ export class CkbTxGenerator {
         HashType.data,
       ).serializeJson() as LumosScript,
       script_type: ScriptType.type,
+      filter: {
+        script: fromLockscript.serializeJson() as LumosScript,
+      },
     };
     logger.debug('burn searchKey script: ', searchKey.script);
     const sudtCells = await this.collector.indexer.getCells(searchKey);
-    // const sudtCells = cells.filter((cell) => cell.lock == fromLockscript);
     logger.debug('burn sudtCells: ', sudtCells);
     let inputCells = [sudtCells[0]];
     const ownerLockHash = this.ckb.utils.scriptToHash(<CKBComponents.Script>fromLockscript);
     const params = {
-      recipient_address: fromHexString(recipientAddress).buffer,
+      recipient_address: fromHexString(toHexString(stringToUint8Array(recipientAddress))).buffer,
       chain: asset.chainType,
       asset: fromHexString(asset.getAddress()).buffer,
       amount: fromHexString(amount.toUInt128LE()).buffer,

@@ -145,7 +145,7 @@ export class CkbHandler {
         asset = new EthAsset(`0x${assetAddress}`, ownLockHash);
         break;
       case ChainType.TRON:
-        asset = new TronAsset(uint8ArrayToString(fromHexString(assetAddress)));
+        asset = new TronAsset(uint8ArrayToString(fromHexString(assetAddress)), ownLockHash);
         logger.debug('tron asset: ', asset);
         break;
       case ChainType.EOS:
@@ -211,7 +211,7 @@ export class CkbHandler {
             recipient = new Address(uint8ArrayToString(fromHexString(r.recipientLockscript)), AddressType.ckb);
             break;
           case ChainType.TRON:
-            asset = new TronAsset(r.asset);
+            asset = new TronAsset(r.asset, ownLockHash);
             recipient = new Address(r.recipientLockscript, AddressType.ckb);
             break;
           case ChainType.EOS:
