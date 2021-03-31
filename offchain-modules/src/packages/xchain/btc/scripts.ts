@@ -8,17 +8,18 @@ import {
   IUnspents,
   IVin,
   IVout,
+  MainnetFee,
 } from '@force-bridge/xchain/btc/type';
 import { BtcUnlock } from '@force-bridge/db/entity/BtcUnlock';
 import { RPCClient } from 'rpc-bitcoin';
 import bitcore from 'bitcore-lib';
 import { ForceBridgeCore } from '@force-bridge/core';
+import axios from 'axios';
 
 const Unit = bitcore.Unit;
 const BtcLockEventMark = 'ck';
-const BtcUnlockEventMark = 'unlock';
-const CkbBurnSplitMark = 'tx';
 const BtcOPReturnCode = '6a';
+const CkbTxHashLen = 64;
 
 export class BTCChain {
   protected readonly rpcClient: RPCClient;
@@ -118,6 +119,9 @@ export class BTCChain {
     if (records.length === 0) {
       throw new Error('the unlock records should not be null');
     }
+    if (records.length > 2) {
+      throw new Error('the limit of op_return output size is 80 bytes which can contain 2 ckb tx hash (32*2 bytes)');
+    }
     logger.debug('database records which need exec unlock:', records);
     const liveUtxos: IBalance = await this.rpcClient.scantxoutset({
       action: 'start',
@@ -126,12 +130,18 @@ export class BTCChain {
     logger.debug(`collect live utxos for unlock: ${JSON.stringify(liveUtxos, null, 2)}`);
     let VinNeedAmount = BigInt(0);
     let unlockVout = [];
-    let unlockData = BtcUnlockEventMark;
+    let unlockData = '';
     records.map((r) => {
-      unlockData = unlockData + CkbBurnSplitMark + r.ckbTxHash;
+      let tx_hash = r.ckbTxHash;
+      if (tx_hash.startsWith('0x')) {
+        tx_hash = tx_hash.substring(2);
+      }
+      unlockData = unlockData + tx_hash;
       VinNeedAmount = VinNeedAmount + BigInt(r.amount);
       unlockVout.push({ address: r.recipientAddress, satoshis: Number(r.amount) });
     });
+    let BurnTxHashes = Buffer.from(unlockData, 'hex');
+
     const utxos = getVins(liveUtxos, VinNeedAmount);
     if (utxos.length === 0) {
       throw new Error(
@@ -142,14 +152,30 @@ export class BTCChain {
         )}`,
       );
     }
+
+    const transactionWithoutFee = new bitcore.Transaction()
+      .from(utxos, this.multiPubkeys, 2)
+      .to(unlockVout)
+      .addData(BurnTxHashes)
+      .change(this.multiAddress)
+      .sign([this.multiPrivKeys[0], this.multiPrivKeys[3]]);
+    const txSize = transactionWithoutFee.serialize().length / 2;
+    const feeRate = await getBtcMainnetFee();
     const transaction = new bitcore.Transaction()
       .from(utxos, this.multiPubkeys, 2)
       .to(unlockVout)
-      .fee(1500)
-      .addData(unlockData)
+      .fee(feeRate.hourFee * txSize)
+      .addData(BurnTxHashes)
       .change(this.multiAddress)
       .sign([this.multiPrivKeys[0], this.multiPrivKeys[3]]);
-    logger.debug(`generate unlock tx ${JSON.stringify(transaction, null, 2)}`);
+
+    logger.debug(
+      `generate unlock tx ${JSON.stringify(transaction, null, 2)}. the tx fee rate is ${JSON.stringify(
+        feeRate,
+        null,
+        2,
+      )}. the tx size is  ${txSize}. all the tx fee is ${feeRate.hourFee * txSize}`,
+    );
 
     const startHeight = await this.getBtcHeight();
     const txHash = await this.rpcClient.sendrawtransaction({ hexstring: transaction.serialize() });
@@ -193,13 +219,9 @@ export class BTCChain {
     let waitVerifyTxVouts = txVouts.slice(1);
     for (let i = 0; i < waitVerifyTxVouts.length; i++) {
       const voutPubkeyHex = waitVerifyTxVouts[i].scriptPubKey.hex;
-      const receiveAddr = Buffer.from(voutPubkeyHex.substring(4), 'hex').toString();
-      if (receiveAddr.startsWith(BtcUnlockEventMark)) {
-        let ckbTxHashArr = receiveAddr.split(CkbBurnSplitMark);
-        if (ckbTxHashArr[0] === BtcUnlockEventMark) {
-          ckbTxHashArr.shift();
-        }
-        return ckbTxHashArr;
+      if (voutPubkeyHex.startsWith(BtcOPReturnCode)) {
+        logger.debug(`verify op return output data : ${voutPubkeyHex}`);
+        return splitTxhash(voutPubkeyHex.substring(4));
       }
     }
     return [];
@@ -231,4 +253,26 @@ function getVins(balance: IBalance, unlockAmount: BigInt): IUnspents[] {
     vins.push(balance.unspents[i]);
   }
   return vins;
+}
+
+function splitTxhash(burnHashesStr: string): string[] {
+  if (burnHashesStr.length % CkbTxHashLen != 0) {
+    return [];
+  }
+  let index = 0;
+  let burnHashes = [];
+  while (index < burnHashesStr.length) {
+    burnHashes.push(burnHashesStr.slice(index, (index += CkbTxHashLen)));
+  }
+  return burnHashes;
+}
+
+//Todo: the url is for maintain. not fount testnet fee info yet.
+async function getBtcMainnetFee(): Promise<MainnetFee> {
+  try {
+    const res = await axios.get('https://bitcoinfees.earn.com/api/v1/fees/recommended');
+    return res.data;
+  } catch (err) {
+    console.error('failed get btc mainnet recommended fee. by error : ', err.response.data);
+  }
 }

@@ -72,3 +72,9 @@ export interface IUnspents {
   amount: string;
   height: string;
 }
+
+export interface MainnetFee {
+  fastestFee: number;
+  halfHourFee: number;
+  hourFee: number;
+}
