@@ -1,6 +1,6 @@
 import 'module-alias/register';
 import nconf from 'nconf';
-import { TronConfig } from '@force-bridge/config';
+import { Config, TronConfig } from '@force-bridge/config';
 import { logger } from '@force-bridge/utils/logger';
 import { asyncSleep, genRandomHex, waitUntilCommitted } from '@force-bridge/utils';
 import { createConnection } from 'typeorm';
@@ -13,6 +13,7 @@ import { CkbTxGenerator } from '@force-bridge/ckb/tx-helper/generator';
 import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
 import { Amount } from '@lay2/pw-core';
 import { CkbIndexer } from '@force-bridge/ckb/tx-helper/indexer';
+import { ForceBridgeCore } from '@force-bridge/core';
 const TronWeb = require('tronweb');
 
 const PRI_KEY = '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
@@ -46,6 +47,9 @@ async function main() {
   nconf.env().file({ file: configPath });
   const config: TronConfig = nconf.get('forceBridge:tron');
   logger.debug('config', config);
+  const conf: Config = nconf.get('forceBridge');
+  // init bridge force core
+  await new ForceBridgeCore().init(conf);
 
   const tronWeb = new TronWeb({
     fullHost: config.tronGridUrl,
@@ -56,7 +60,7 @@ async function main() {
   const to = config.committee.address;
   const amount = 10;
   const recipientLockscript = 'ckt1qyqyph8v9mclls35p6snlaxajeca97tc062sa5gahk';
-  const sudtExtraData = 'transfer 100 to ckt1qyq2f0uwf3lk7e0nthfucvxgl3zu36v6zuwq6mlzps';
+  const sudtExtraData = 'transfer 100 to ckt1qyqyph8v9mclls35p6snlaxajeca97tc062sa5gahk';
   const memo = recipientLockscript.concat(',').concat(sudtExtraData);
   const lockRes = await transferTrx(tronWeb, from, to, amount, memo, userPrivateKey);
   const txHash: string = lockRes.transaction.txID;
@@ -107,11 +111,12 @@ async function main() {
     // send burn tx
     if (!sendBurn) {
       const account = new Account(PRI_KEY);
+      const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
       const generator = new CkbTxGenerator(ckb, new IndexerCollector(indexer));
       const burnTx = await generator.burn(
         await account.getLockscript(),
         recipientAddress,
-        new TronAsset('trx'),
+        new TronAsset('trx', ownLockHash),
         Amount.fromUInt128LE('0x01'),
       );
       const signedTx = ckb.signTransaction(PRI_KEY)(burnTx);

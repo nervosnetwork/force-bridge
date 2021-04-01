@@ -4,9 +4,9 @@ import { Asset, ChainType } from '../model/asset';
 import { logger } from '../../utils/logger';
 import { ScriptType } from '../../ckb/tx-helper/indexer';
 import { IndexerCollector } from '../../ckb/tx-helper/collector';
-import { stringToUint8Array, toHexString } from '../../utils';
+import { fromHexString, stringToUint8Array, toHexString } from '../../utils';
 import { ForceBridgeCore } from '../../core';
-import { SerializeRecipientCellData } from '@force-bridge/ckb/tx-helper/eth_recipient_cell';
+import { SerializeRecipientCellData } from '../../ckb/tx-helper/eth_recipient_cell';
 // import { SerializeRecipientCellData } from '@force-bridge/eth_recipient_cell.js';
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
 
@@ -28,7 +28,7 @@ export class CkbTxGenerator {
     bridgeLockscripts: any[],
   ): Promise<CKBComponents.RawTransactionToSign> {
     logger.debug('createBredgeCell:', bridgeLockscripts);
-    const bridgeCellCapacity = 100n * 10n ** 8n;
+    const bridgeCellCapacity = 200n * 10n ** 8n;
     const outputsData = ['0x'];
     const outputBridgeCells = bridgeLockscripts.map((s) => {
       outputsData.push('0x');
@@ -119,7 +119,7 @@ export class CkbTxGenerator {
         capacity: bridgeCell.capacity,
       };
       outputs.push(outputSudtCell);
-      outputsData.push(bigintToSudtAmount(record.amount.toBigInt()));
+      outputsData.push(record.amount.toUInt128LE());
       outputs.push(outputBridgeCell);
       outputsData.push('0x');
       bridgeCells.push(bridgeCell);
@@ -219,46 +219,56 @@ export class CkbTxGenerator {
         HashType.data,
       ).serializeJson() as LumosScript,
       script_type: ScriptType.type,
+      filter: {
+        script: fromLockscript.serializeJson() as LumosScript,
+      },
     };
+    logger.debug('burn searchKey script: ', searchKey.script);
     const sudtCells = await this.collector.indexer.getCells(searchKey);
-    // const sudtCells = cells.filter((cell) => cell.lock == fromLockscript);
     logger.debug('burn sudtCells: ', sudtCells);
     let inputCells = [sudtCells[0]];
-
+    const ownerLockHash = this.ckb.utils.scriptToHash(<CKBComponents.Script>fromLockscript);
+    let recipientAddr;
+    if (asset.chainType == ChainType.ETH) {
+      recipientAddr = fromHexString(recipientAddress).buffer;
+    } else {
+      recipientAddr = fromHexString(toHexString(stringToUint8Array(recipientAddress))).buffer;
+    }
     const params = {
-      recipient_address: recipientAddress,
+      recipient_address: recipientAddr,
       chain: asset.chainType,
-      asset: asset.getAddress(),
-      amount: amount.toUInt128LE(),
-      bridge_lock_code_hash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
-      owner_lock_hash: fromLockscript.codeHash,
+      asset: fromHexString(asset.getAddress()).buffer,
+      amount: fromHexString(amount.toUInt128LE()).buffer,
+      bridge_lock_code_hash: fromHexString(ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash).buffer,
+      owner_lock_hash: fromHexString(ownerLockHash).buffer,
+      fee: new Uint8Array(16).buffer,
     };
 
-    // const recipientCellData = SerializeRecipientCellData(params);
-    let recipientCellData;
-    switch (params.chain) {
-      case ChainType.ETH:
-        recipientCellData = `0x0${params.chain}${params.recipient_address.slice(2)}${params.asset.slice(
-          2,
-        )}${params.amount.slice(2)}${params.bridge_lock_code_hash.slice(2)}${params.owner_lock_hash.slice(2)}`;
-        break;
-      case ChainType.TRON:
-        recipientCellData = `0x0${params.chain}${toHexString(
-          stringToUint8Array(params.recipient_address),
-        )}${toHexString(stringToUint8Array(params.asset))}${params.amount.slice(2)}${params.bridge_lock_code_hash.slice(
-          2,
-        )}${params.owner_lock_hash.slice(2)}`;
-        break;
-      case ChainType.EOS:
-        recipientCellData = `0x0${params.chain}${toHexString(
-          stringToUint8Array(params.recipient_address),
-        )}${toHexString(stringToUint8Array(params.asset))}${params.amount.slice(2)}${params.bridge_lock_code_hash.slice(
-          2,
-        )}${params.owner_lock_hash.slice(2)}`;
-        break;
-      default:
-        throw new Error('asset not supported!');
-    }
+    const recipientCellData = `0x${toHexString(new Uint8Array(SerializeRecipientCellData(params)))}`;
+    // let recipientCellData;
+    // switch (params.chain) {
+    //   case ChainType.ETH:
+    //     recipientCellData = `0x0${params.chain}${params.recipient_address.slice(2)}${params.asset.slice(
+    //       2,
+    //     )}${params.amount.slice(2)}${params.bridge_lock_code_hash.slice(2)}${params.owner_lock_hash.slice(2)}`;
+    //     break;
+    //   case ChainType.TRON:
+    //     recipientCellData = `0x0${params.chain}${toHexString(
+    //       stringToUint8Array(params.recipient_address),
+    //     )}${toHexString(stringToUint8Array(params.asset))}${params.amount.slice(2)}${params.bridge_lock_code_hash.slice(
+    //       2,
+    //     )}${params.owner_lock_hash.slice(2)}`;
+    //     break;
+    //   case ChainType.EOS:
+    //     recipientCellData = `0x0${params.chain}${toHexString(
+    //       stringToUint8Array(params.recipient_address),
+    //     )}${toHexString(stringToUint8Array(params.asset))}${params.amount.slice(2)}${params.bridge_lock_code_hash.slice(
+    //       2,
+    //     )}${params.owner_lock_hash.slice(2)}`;
+    //     break;
+    //   default:
+    //     throw new Error('asset not supported!');
+    // }
     // const recipientCellData = `0x0${params.chain}${params.recipient_address.slice(2)}${params.asset.slice(
     //   2,
     // )}${params.amount.slice(2)}${params.bridge_lock_code_hash.slice(2)}${params.owner_lock_hash.slice(2)}`;

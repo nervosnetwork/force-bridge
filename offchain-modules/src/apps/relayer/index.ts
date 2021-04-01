@@ -28,11 +28,11 @@ async function main() {
   const ckbHandler = new CkbHandler(ckbDb);
   ckbHandler.start();
 
-  if (config.eos !== undefined) {
-    const eosDb = new EosDb(conn);
-    const eosHandler = new EosHandler(eosDb, ForceBridgeCore.config.eos);
-    eosHandler.start();
-  }
+  // if (config.eos !== undefined) {
+  //   const eosDb = new EosDb(conn);
+  //   const eosHandler = new EosHandler(eosDb, ForceBridgeCore.config.eos);
+  //   eosHandler.start();
+  // }
 
   // start xchain handlers if config exists
   if (config.eth !== undefined) {
@@ -41,17 +41,17 @@ async function main() {
     const ethHandler = new EthHandler(ethDb, ethChain);
     ethHandler.start();
   }
-  if (config.tron !== undefined) {
-    const tronDb = new TronDb(conn);
-    const tronHandler = new TronHandler(tronDb);
-    tronHandler.start();
-  }
-  if (config.btc !== undefined) {
-    const btcDb = new BtcDb(conn);
-    const btcChain = new BTCChain();
-    const btcHandler = new BtcHandler(btcDb, btcChain);
-    btcHandler.start();
-  }
+  // if (config.tron !== undefined) {
+  //   const tronDb = new TronDb(conn);
+  //   const tronHandler = new TronHandler(tronDb);
+  //   tronHandler.start();
+  // }
+  // if (config.btc !== undefined) {
+  //   const btcDb = new BtcDb(conn);
+  //   const btcChain = new BTCChain();
+  //   const btcHandler = new BtcHandler(btcDb, btcChain);
+  //   btcHandler.start();
+  // }
 }
 
 main();
