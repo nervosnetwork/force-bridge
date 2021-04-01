@@ -1,5 +1,3 @@
-// import CKB from '@nervosnetwork/ckb-sdk-core';
-// import { CellDep, ConfigItem } from '@lay2/pw-core';
 import { Config } from './config';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;

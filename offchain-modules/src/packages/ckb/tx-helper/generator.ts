@@ -1,4 +1,4 @@
-import { Address, Amount, HashType, Script, Transaction } from '@lay2/pw-core';
+import { Address, Amount, HashType, Script } from '@lay2/pw-core';
 import { Script as LumosScript } from '@ckb-lumos/base';
 import { Asset, ChainType } from '../model/asset';
 import { logger } from '@force-bridge/utils/logger';
@@ -7,7 +7,6 @@ import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
 import { fromHexString, stringToUint8Array, toHexString } from '@force-bridge/utils';
 import { ForceBridgeCore } from '@force-bridge/core';
 import { SerializeRecipientCellData } from '@force-bridge/ckb/tx-helper/eth_recipient_cell';
-// import { SerializeRecipientCellData } from '@force-bridge/eth_recipient_cell.js';
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
 
 export interface MintAssetRecord {
@@ -19,17 +18,13 @@ export interface MintAssetRecord {
 export class CkbTxGenerator {
   constructor(private ckb: typeof CKB, private collector: IndexerCollector) {}
 
-  async deploy(fromLockscript: Script, binaries: Buffer[]): Promise<Transaction> {
-    throw new Error('not implemented');
-  }
-
   async createBridgeCell(
     fromLockscript: Script,
     bridgeLockscripts: any[],
   ): Promise<CKBComponents.RawTransactionToSign> {
     logger.debug('createBredgeCell:', bridgeLockscripts);
     const bridgeCellCapacity = 200n * 10n ** 8n;
-    const outputsData = ['0x'];
+    const outputsData = [];
     const outputBridgeCells = bridgeLockscripts.map((s) => {
       outputsData.push('0x');
       return {
@@ -48,20 +43,7 @@ export class CkbTxGenerator {
     const inputs = supplyCapCells.map((cell) => {
       return { previousOutput: cell.outPoint, since: '0x0' };
     });
-    const inputCap = supplyCapCells.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
-    const changeCellCapacity = inputCap - needSupplyCap;
-    if (changeCellCapacity > 64n * 10n ** 8n) {
-      const changeLockScript = {
-        codeHash: fromLockscript.codeHash,
-        hashType: fromLockscript.hashType,
-        args: fromLockscript.args,
-      };
-      const changeCell = {
-        lock: changeLockScript,
-        capacity: `0x${changeCellCapacity.toString(16)}`,
-      };
-      outputs.push(changeCell);
-    }
+    this.handleChangeCell(supplyCapCells, outputs, outputsData, fromLockscript, fee);
     const { secp256k1Dep } = await this.ckb.loadDeps();
     const rawTx = {
       version: '0x0',
@@ -82,7 +64,7 @@ export class CkbTxGenerator {
   }
 
   async mint(userLockscript: Script, records: MintAssetRecord[]): Promise<CKBComponents.RawTransactionToSign> {
-    logger.debug('start to mint records: ', records.length);
+    logger.debug('start to mint records: ', records);
     const bridgeCells = new Array(0);
     const outputs = new Array(0);
     const outputsData = new Array(0);
@@ -133,51 +115,32 @@ export class CkbTxGenerator {
       Amount.fromUInt128LE(bigintToSudtAmount(needSupplyCap)),
     );
     const inputCells = supplyCapCells.concat(bridgeCells);
-
-    const { secp256k1Dep } = await this.ckb.loadDeps();
-    console.dir({ secp256k1Dep }, { depth: null });
-
-    // const txTemp = await this.supplyCap(userLockscript, bridgeCells, outputs, outputsData, fee);
     const inputs = inputCells.map((cell) => {
       return { previousOutput: cell.outPoint, since: '0x0' };
     });
-    const inputCap = inputCells.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
-    const outputCap = outputs.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
-    const changeCellCapacity = inputCap - outputCap - fee;
-    //FIXME: if changeCellCapacity < 64 * 10n ** 8n
-    if (changeCellCapacity > 64n * 10n ** 8n) {
-      const changeLockScript = {
-        codeHash: userLockscript.codeHash,
-        hashType: userLockscript.hashType,
-        args: userLockscript.args,
-      };
-      const changeCell = {
-        lock: changeLockScript,
-        capacity: `0x${changeCellCapacity.toString(16)}`,
-      };
-      outputs.push(changeCell);
-      outputsData.push('0x');
-    }
+    this.handleChangeCell(inputCells, outputs, outputsData, userLockscript, fee);
+
+    const { secp256k1Dep } = await this.ckb.loadDeps();
+    const cellDeps = [
+      {
+        outPoint: secp256k1Dep.outPoint,
+        depType: secp256k1Dep.depType,
+      },
+      // sudt dep
+      {
+        outPoint: ForceBridgeCore.config.ckb.deps.sudtType.cellDep.outPoint,
+        depType: 'code',
+      },
+      // bridge lockscript dep
+      {
+        outPoint: ForceBridgeCore.config.ckb.deps.bridgeLock.cellDep.outPoint,
+        depType: 'code',
+      },
+    ];
 
     const rawTx = {
       version: '0x0',
-      cellDeps: [
-        // secp256k1Dep
-        {
-          outPoint: secp256k1Dep.outPoint,
-          depType: secp256k1Dep.depType,
-        },
-        // sudt dep
-        {
-          outPoint: ForceBridgeCore.config.ckb.deps.sudtType.cellDep.outPoint,
-          depType: 'code',
-        },
-        // bridge lockscript dep
-        {
-          outPoint: ForceBridgeCore.config.ckb.deps.bridgeLock.cellDep.outPoint,
-          depType: 'code',
-        },
-      ],
+      cellDeps,
       headerDeps: [],
       inputs,
       outputs,
@@ -197,7 +160,7 @@ export class CkbTxGenerator {
     owner_lock_hash: Byte32,
     amount: Uint128,
     fee: Uint128,
-}
+  }
    */
   async burn(
     fromLockscript: Script,
@@ -223,7 +186,6 @@ export class CkbTxGenerator {
         script: fromLockscript.serializeJson() as LumosScript,
       },
     };
-    logger.debug('burn searchKey script: ', searchKey.script);
     const sudtCells = await this.collector.indexer.getCells(searchKey);
     logger.debug('burn sudtCells: ', sudtCells);
     let inputCells = [sudtCells[0]];
@@ -245,36 +207,7 @@ export class CkbTxGenerator {
     };
 
     const recipientCellData = `0x${toHexString(new Uint8Array(SerializeRecipientCellData(params)))}`;
-    // let recipientCellData;
-    // switch (params.chain) {
-    //   case ChainType.ETH:
-    //     recipientCellData = `0x0${params.chain}${params.recipient_address.slice(2)}${params.asset.slice(
-    //       2,
-    //     )}${params.amount.slice(2)}${params.bridge_lock_code_hash.slice(2)}${params.owner_lock_hash.slice(2)}`;
-    //     break;
-    //   case ChainType.TRON:
-    //     recipientCellData = `0x0${params.chain}${toHexString(
-    //       stringToUint8Array(params.recipient_address),
-    //     )}${toHexString(stringToUint8Array(params.asset))}${params.amount.slice(2)}${params.bridge_lock_code_hash.slice(
-    //       2,
-    //     )}${params.owner_lock_hash.slice(2)}`;
-    //     break;
-    //   case ChainType.EOS:
-    //     recipientCellData = `0x0${params.chain}${toHexString(
-    //       stringToUint8Array(params.recipient_address),
-    //     )}${toHexString(stringToUint8Array(params.asset))}${params.amount.slice(2)}${params.bridge_lock_code_hash.slice(
-    //       2,
-    //     )}${params.owner_lock_hash.slice(2)}`;
-    //     break;
-    //   default:
-    //     throw new Error('asset not supported!');
-    // }
-    // const recipientCellData = `0x0${params.chain}${params.recipient_address.slice(2)}${params.asset.slice(
-    //   2,
-    // )}${params.amount.slice(2)}${params.bridge_lock_code_hash.slice(2)}${params.owner_lock_hash.slice(2)}`;
 
-    const { secp256k1Dep } = await this.ckb.loadDeps();
-    console.dir({ secp256k1Dep }, { depth: null });
     const outputs = new Array(0);
     const outputsData = new Array(0);
 
@@ -314,45 +247,33 @@ export class CkbTxGenerator {
       Amount.fromUInt128LE(bigintToSudtAmount(outputCap - sudtCellCapacity + fee)),
     );
     inputCells = inputCells.concat(needSupplyCapCells);
-    const inputCap = inputCells.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
-    // await this.supplyCap(fromLockscript, inputCells, outputs, outputsData, fee);
-    const changeCellCapacity = inputCap - outputCap - fee;
-    if (changeCellCapacity > 64n * 10n ** 8n) {
-      const changeLockScript = {
-        codeHash: fromLockscript.codeHash,
-        hashType: fromLockscript.hashType,
-        args: fromLockscript.args,
-      };
-      const changeCell = {
-        lock: changeLockScript,
-        capacity: `0x${changeCellCapacity.toString(16)}`,
-      };
-      outputs.push(changeCell);
-      outputsData.push('0x');
-    }
+    this.handleChangeCell(inputCells, outputs, outputsData, fromLockscript, fee);
+
     const inputs = inputCells.map((cell) => {
       return { previousOutput: cell.outPoint, since: '0x0' };
     });
 
+    const { secp256k1Dep } = await this.ckb.loadDeps();
+    const cellDeps = [
+      {
+        outPoint: secp256k1Dep.outPoint,
+        depType: secp256k1Dep.depType,
+      },
+      // sudt dep
+      {
+        outPoint: ForceBridgeCore.config.ckb.deps.sudtType.cellDep.outPoint,
+        depType: 'code',
+      },
+      // recipient dep
+      {
+        outPoint: ForceBridgeCore.config.ckb.deps.recipientType.cellDep.outPoint,
+        depType: 'code',
+      },
+    ];
+
     const rawTx = {
       version: '0x0',
-      cellDeps: [
-        // secp256k1Dep
-        {
-          outPoint: secp256k1Dep.outPoint,
-          depType: secp256k1Dep.depType,
-        },
-        // sudt dep
-        {
-          outPoint: ForceBridgeCore.config.ckb.deps.sudtType.cellDep.outPoint,
-          depType: 'code',
-        },
-        // recipient dep
-        {
-          outPoint: ForceBridgeCore.config.ckb.deps.recipientType.cellDep.outPoint,
-          depType: 'code',
-        },
-      ],
+      cellDeps,
       headerDeps: [],
       inputs,
       outputs,
@@ -361,7 +282,26 @@ export class CkbTxGenerator {
     };
     console.dir({ rawTx }, { depth: null });
     return rawTx;
-    // throw new Error('not implemented');
+  }
+
+  handleChangeCell(inputCells, outputs, outputsData, userLockscript, fee): void {
+    const inputCap = inputCells.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
+    const outputCap = outputs.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
+    const changeCellCapacity = inputCap - outputCap - fee;
+    //FIXME: if changeCellCapacity < 64 * 10n ** 8n
+    if (changeCellCapacity > 64n * 10n ** 8n) {
+      const changeLockScript = {
+        codeHash: userLockscript.codeHash,
+        hashType: userLockscript.hashType,
+        args: userLockscript.args,
+      };
+      const changeCell = {
+        lock: changeLockScript,
+        capacity: `0x${changeCellCapacity.toString(16)}`,
+      };
+      outputs.push(changeCell);
+      outputsData.push('0x');
+    }
   }
 
   async supplyCap(lockscript, inputsCell, outputs, outputsData, fee) {

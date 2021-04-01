@@ -1,9 +1,9 @@
 import { CkbDb } from '../db';
-import { CkbBurn, EthUnlock, ICkbBurn, transformBurnEvent } from '../db/model';
+import { CkbMint, ICkbBurn } from '../db/model';
 import { logger } from '../utils/logger';
 import { asyncSleep, blake2b, fromHexString, toHexString, uint8ArrayToString } from '../utils';
 import { Asset, ChainType, EosAsset, EthAsset, TronAsset } from '../ckb/model/asset';
-import { Script as PwScript, Address, Amount, AddressType, Script, HashType } from '@lay2/pw-core';
+import { Address, Amount, AddressType, Script, HashType } from '@lay2/pw-core';
 import { Account } from '@force-bridge/ckb/model/accounts';
 
 import { CkbTxGenerator } from '@force-bridge/ckb/tx-helper/generator';
@@ -19,14 +19,13 @@ const fs = require('fs').promises;
 
 const utils = require('@nervosnetwork/ckb-sdk-utils');
 
-const PRI_KEY = '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
-
 // CKB handler
 // 1. Listen CKB chain to get new burn events.
 // 2. Listen database to get new mint events, send tx.
 export class CkbHandler {
   private ckb = ForceBridgeCore.ckb;
   private indexer = ForceBridgeCore.indexer;
+  private PRI_KEY = ForceBridgeCore.config.ckb.privateKey;
   constructor(private db: CkbDb) {}
 
   // save unlock event first and then
@@ -127,17 +126,15 @@ export class CkbHandler {
     }
   }
 
-  async isBurnTx(tx: Transaction, cellData: RecipientCellData) {
-    const account = new Account(PRI_KEY);
-    const ownLockHash = this.ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
+  async isBurnTx(tx: Transaction, cellData: RecipientCellData): Promise<boolean> {
     if (tx.outputs.length < 1) {
       return false;
     }
+    const ownLockHash = await this.getOwnLockHash();
     logger.debug('amount: ', toHexString(new Uint8Array(cellData.getAmount().raw())));
     logger.debug('recipient address: ', toHexString(new Uint8Array(cellData.getRecipientAddress().raw())));
     logger.debug('asset: ', toHexString(new Uint8Array(cellData.getAsset().raw())));
     logger.debug('chain: ', cellData.getChain());
-    logger.debug('bridge lock code hash: ', toHexString(new Uint8Array(cellData.getBridgeLockCodeHash().raw())));
     let asset;
     const assetAddress = toHexString(new Uint8Array(cellData.getAsset().raw()));
     switch (cellData.getChain()) {
@@ -146,21 +143,13 @@ export class CkbHandler {
         break;
       case ChainType.TRON:
         asset = new TronAsset(uint8ArrayToString(fromHexString(assetAddress)), ownLockHash);
-        logger.debug('tron asset: ', asset);
         break;
       case ChainType.EOS:
         asset = new EosAsset(uint8ArrayToString(fromHexString(assetAddress)), ownLockHash);
-        logger.debug('eos asset: ', asset);
         break;
       default:
         return false;
     }
-    const bridgeCellLockscript = {
-      codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
-      hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
-      args: asset.toBridgeLockscriptArgs(),
-    };
-    const sudtArgs = this.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
 
     // verify tx input: sudt cell.
     const preHash = tx.inputs[0].previousOutput.txHash;
@@ -169,11 +158,10 @@ export class CkbHandler {
       return false;
     }
     const sudtType = txPrevious.transaction.outputs[Number(tx.inputs[0].previousOutput.index)].type;
-
     const expectType = {
       codeHash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
       hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
-      args: sudtArgs,
+      args: this.getBridgeLockHash(asset),
     };
     logger.debug('expectType:', expectType);
     logger.debug('sudtType:', sudtType);
@@ -190,9 +178,8 @@ export class CkbHandler {
   }
 
   async handleMintRecords(): Promise<never> {
-    const account = new Account(PRI_KEY);
-    const ownLockHash = this.ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
-    logger.debug('ckb handle start: ', account.address);
+    const account = new Account(this.PRI_KEY);
+    const ownLockHash = await this.getOwnLockHash();
     const generator = new CkbTxGenerator(this.ckb, new IndexerCollector(this.indexer));
     while (true) {
       const mintRecords = await this.db.getCkbMintRecordsToMint();
@@ -202,75 +189,12 @@ export class CkbHandler {
         await asyncSleep(3000);
         continue;
       }
-      const records = mintRecords.map((r) => {
-        let asset;
-        let recipient;
-        let amount;
-        switch (r.chain) {
-          case ChainType.ETH:
-            asset = new EthAsset(r.asset, ownLockHash);
-            recipient = new Address(uint8ArrayToString(fromHexString(r.recipientLockscript)), AddressType.ckb);
-            amount = Amount.fromUInt128LE(r.amount);
-            break;
-          case ChainType.TRON:
-            asset = new TronAsset(r.asset, ownLockHash);
-            recipient = new Address(r.recipientLockscript, AddressType.ckb);
-            amount = new Amount(r.amount);
-            break;
-          case ChainType.EOS:
-            asset = new EosAsset(r.asset, ownLockHash);
-            recipient = new Address(r.recipientLockscript, AddressType.ckb);
-            amount = new Amount(r.amount);
-            break;
-          default:
-            throw new Error('asset not supported!');
-        }
-        return {
-          asset,
-          amount,
-          recipient,
-        };
-      });
-      const newTokens = [];
-      for (const record of records) {
-        logger.debug('record:', record);
-        const bridgeCellLockscript = {
-          codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
-          hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
-          args: record.asset.toBridgeLockscriptArgs(),
-        };
-        logger.debug('record: bridgeCellLockscript ', bridgeCellLockscript);
-        // const args = this.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
-        const searchKey = {
-          script: new Script(
-            bridgeCellLockscript.codeHash,
-            bridgeCellLockscript.args,
-            <HashType>bridgeCellLockscript.hashType,
-          ).serializeJson() as LumosScript,
-          script_type: ScriptType.lock,
-        };
-        const bridgeCells = await this.indexer.getCells(searchKey);
-        if (bridgeCells.length == 0) {
-          newTokens.push(record);
-        }
-      }
+      const records = mintRecords.map((r) => this.filterMintRecords(r, ownLockHash));
+      const newTokens = await this.filterNewTokens(records);
 
       if (newTokens.length > 0) {
         logger.debug('bridge cell is not exist. do create bridge cell.');
-        const lockScriptBin = await fs.readFile('../ckb-contracts/build/release/bridge-lockscript');
-        const lockScriptCodeHash = utils.bytesToHex(blake2b(lockScriptBin));
-        const scripts = newTokens.map((r) => {
-          return {
-            codeHash: lockScriptCodeHash,
-            hashType: HashType.data,
-            args: r.asset.toBridgeLockscriptArgs(),
-          };
-        });
-        const rawTx = await generator.createBridgeCell(await account.getLockscript(), scripts);
-        const signedTx = this.ckb.signTransaction(PRI_KEY)(rawTx);
-        const tx_hash = await this.ckb.rpc.sendTransaction(signedTx);
-        await this.waitUntilCommitted(tx_hash, 60);
-        await asyncSleep(10000);
+        await this.createBridgeCell(newTokens, generator);
       }
 
       try {
@@ -279,7 +203,7 @@ export class CkbHandler {
         });
         await this.db.updateCkbMint(mintRecords);
         const rawTx = await generator.mint(await account.getLockscript(), records);
-        const signedTx = this.ckb.signTransaction(PRI_KEY)(rawTx);
+        const signedTx = this.ckb.signTransaction(this.PRI_KEY)(rawTx);
         const mintTxHash = await this.ckb.rpc.sendTransaction(signedTx);
         console.log(`Mint Transaction has been sent with tx hash ${mintTxHash}`);
         const txStatus = await this.waitUntilCommitted(mintTxHash, 60);
@@ -307,7 +231,93 @@ export class CkbHandler {
     }
   }
 
-  async waitUntilCommitted(txHash, timeout) {
+  filterMintRecords(r: CkbMint, ownLockHash: string): any {
+    switch (r.chain) {
+      case ChainType.ETH:
+        return {
+          asset: new EthAsset(r.asset, ownLockHash),
+          recipient: new Address(uint8ArrayToString(fromHexString(r.recipientLockscript)), AddressType.ckb),
+          amount: Amount.fromUInt128LE(r.amount),
+        };
+      case ChainType.TRON:
+        return {
+          asset: new TronAsset(r.asset, ownLockHash),
+          amount: new Amount(r.amount),
+          recipient: new Address(r.recipientLockscript, AddressType.ckb),
+        };
+      case ChainType.EOS:
+        return {
+          asset: new TronAsset(r.asset, ownLockHash),
+          amount: new Amount(r.amount),
+          recipient: new Address(r.recipientLockscript, AddressType.ckb),
+        };
+      default:
+        throw new Error('asset not supported!');
+    }
+  }
+
+  async filterNewTokens(records: any[]): Promise<any[]> {
+    const newTokens = [];
+    for (const record of records) {
+      logger.debug('record:', record);
+      const bridgeCellLockscript = {
+        codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
+        hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
+        args: record.asset.toBridgeLockscriptArgs(),
+      };
+      logger.debug('record: bridgeCellLockscript ', bridgeCellLockscript);
+      // const args = this.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
+      const searchKey = {
+        script: new Script(
+          bridgeCellLockscript.codeHash,
+          bridgeCellLockscript.args,
+          <HashType>bridgeCellLockscript.hashType,
+        ).serializeJson() as LumosScript,
+        script_type: ScriptType.lock,
+      };
+      const bridgeCells = await this.indexer.getCells(searchKey);
+      if (bridgeCells.length == 0) {
+        newTokens.push(record);
+      }
+    }
+    return newTokens;
+  }
+
+  async createBridgeCell(newTokens: any[], generator: CkbTxGenerator) {
+    const account = new Account(this.PRI_KEY);
+    const lockScriptBin = await fs.readFile('../ckb-contracts/build/release/bridge-lockscript');
+    const lockScriptCodeHash = utils.bytesToHex(blake2b(lockScriptBin));
+    const scripts = newTokens.map((r) => {
+      return {
+        codeHash: lockScriptCodeHash,
+        hashType: HashType.data,
+        args: r.asset.toBridgeLockscriptArgs(),
+      };
+    });
+    const rawTx = await generator.createBridgeCell(await account.getLockscript(), scripts);
+    const signedTx = this.ckb.signTransaction(this.PRI_KEY)(rawTx);
+    const tx_hash = await this.ckb.rpc.sendTransaction(signedTx);
+    await this.waitUntilCommitted(tx_hash, 60);
+    await asyncSleep(10000);
+  }
+
+  async getOwnLockHash(): Promise<string> {
+    const account = new Account(this.PRI_KEY);
+    const ownLockHash = this.ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
+    return ownLockHash;
+  }
+
+  getBridgeLockHash(asset: Asset): string {
+    const bridgeCellLockscript = {
+      codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
+      hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
+      args: asset.toBridgeLockscriptArgs(),
+    };
+    const bridgeLockHash = this.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
+    return bridgeLockHash;
+  }
+
+  async waitUntilCommitted(txHash: string, timeout: number) {
     let waitTime = 0;
     while (true) {
       const txStatus = await this.ckb.rpc.getTransaction(txHash);
