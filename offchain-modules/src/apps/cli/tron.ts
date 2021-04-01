@@ -1,11 +1,12 @@
 import commander from 'commander';
-import { parseOptions } from './utils';
-import { TronAsset } from '../../packages/ckb/model/asset';
+import { getSudtBalance, parseOptions } from './utils';
+import { EthAsset, TronAsset } from '../../packages/ckb/model/asset';
 import { Account } from '../../packages/ckb/model/accounts';
 import { CkbTxGenerator } from '../../packages/ckb/tx-helper/generator';
 import { IndexerCollector } from '../../packages/ckb/tx-helper/collector';
 import { Amount } from '@lay2/pw-core';
 import { ForceBridgeCore } from '../../packages/core';
+import { ethers } from 'ethers';
 
 const TronWeb = require('tronweb');
 
@@ -29,7 +30,8 @@ tronCmd
 
 tronCmd
   .command('balanceOf')
-  .requiredOption('-addr, --address', 'account to query')
+  .option('-p, --privateKey', 'private key of locked address on ckb')
+  .option('-addr, --address', 'address on tron')
   .action(doBalanceOf)
   .description('query balance of address on tron');
 
@@ -61,11 +63,12 @@ async function doUnlock(opts: any, command: any) {
   const privateKey = options.get('privateKey');
 
   const account = new Account(privateKey);
+  const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
   const generator = new CkbTxGenerator(ForceBridgeCore.ckb, new IndexerCollector(ForceBridgeCore.indexer));
   const burnTx = await generator.burn(
     await account.getLockscript(),
     recipientAddress,
-    new TronAsset('trx'),
+    new TronAsset('trx', ownLockHash),
     Amount.fromUInt128LE(`0x${BigInt(amount).toString(16)}`),
   );
   const signedTx = ForceBridgeCore.ckb.signTransaction(privateKey)(burnTx);
@@ -78,7 +81,21 @@ async function doUnlock(opts: any, command: any) {
 async function doBalanceOf(opts: any, command: any) {
   const options = parseOptions(opts, command);
   const address = options.get('address');
-  const tronWeb = new TronWeb({ fullHost: ForceBridgeCore.config.tron.tronGridUrl });
-  const accountInfo = await tronWeb.trx.getAccount(address);
-  console.log(accountInfo);
+  const privateKey = options.get('privateKey');
+  if (!address && !privateKey) {
+    console.log('address or privateKey are required');
+    return;
+  }
+  if (address) {
+    const tronWeb = new TronWeb({ fullHost: ForceBridgeCore.config.tron.tronGridUrl });
+    const accountInfo = await tronWeb.trx.getAccount(address);
+    console.log(accountInfo);
+  }
+  if (privateKey) {
+    const account = new Account(privateKey);
+    const ownLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
+    const asset = new TronAsset('trx', ownLockHash);
+    const balance = await getSudtBalance(privateKey, asset);
+    console.log(`BalanceOf address:${account.address} on ckb is ${balance}`);
+  }
 }

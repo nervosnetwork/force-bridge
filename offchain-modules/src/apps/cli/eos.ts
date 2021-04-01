@@ -1,12 +1,12 @@
 import commander from 'commander';
 import { JsSignatureProvider } from 'eosjs/dist/eosjs-jssig';
 import { EosChain } from '../../packages/xchain/eos/eosChain';
-import { parseOptions } from './utils';
-import { EosAsset } from '../../packages/ckb/model/asset';
+import { getSudtBalance, parseOptions } from './utils';
+import { EosAsset, EthAsset } from '../../packages/ckb/model/asset';
 import { Account } from '../../packages/ckb/model/accounts';
 import { CkbTxGenerator } from '../../packages/ckb/tx-helper/generator';
 import { IndexerCollector } from '../../packages/ckb/tx-helper/collector';
-import { Amount } from '@lay2/pw-core';
+import { Amount, Script } from '@lay2/pw-core';
 import { ForceBridgeCore } from '../../packages/core';
 
 export const eosCmd = new commander.Command('eos');
@@ -30,8 +30,9 @@ eosCmd
 
 eosCmd
   .command('balanceOf')
-  .requiredOption('-acc, --account', 'account to query')
-  .option('-v, --detail', 'show detail information of balance')
+  .option('-acc, --account', 'account on eos to query')
+  .option('-v, --detail', 'show detail information of balance on eos')
+  .option('-p, --privateKey', 'private key of locked address on ckb')
   .action(doBalanceOf)
   .description('query balance of account');
 
@@ -86,21 +87,34 @@ async function doUnlock(opts: any, command: any) {
 async function doBalanceOf(opts: any, command: any) {
   const options = parseOptions(opts, command);
   const account = options.get('account');
-  const chain = createEosChain(ForceBridgeCore.config.eos.rpcUrl, null);
-  const accountInfo = await chain.getAccountInfo(account);
-  if (opts.detail) {
-    console.log(accountInfo);
+  const privateKey = options.get('privateKey');
+  if (!account && !privateKey) {
+    console.log('account or privateKey are required');
     return;
   }
-  const balance = {
-    account_name: accountInfo.account_name,
-    head_block_num: accountInfo.head_block_num,
-    core_liquid_balance: accountInfo.core_liquid_balance,
-    ram_quota: accountInfo.ram_quota,
-    net_weight: accountInfo.net_weight,
-    cpu_weight: accountInfo.cpu_weight,
-  };
-  console.log(balance);
+  if (account) {
+    const chain = createEosChain(ForceBridgeCore.config.eos.rpcUrl, null);
+    const accountInfo = await chain.getAccountInfo(account);
+    if (opts.detail) {
+      console.log(accountInfo);
+      return;
+    }
+    const balance = {
+      account_name: accountInfo.account_name,
+      head_block_num: accountInfo.head_block_num,
+      core_liquid_balance: accountInfo.core_liquid_balance,
+      ram_quota: accountInfo.ram_quota,
+      net_weight: accountInfo.net_weight,
+      cpu_weight: accountInfo.cpu_weight,
+    };
+    console.log(balance);
+  }
+  if (privateKey) {
+    const account = new Account(privateKey);
+    const asset = new EosAsset('EOS');
+    const balance = await getSudtBalance(privateKey, asset);
+    console.log(`BalanceOf address:${account.address} on ckb is ${balance}`);
+  }
 }
 
 function createEosChain(rpcUrl: string, privateKeys: string): EosChain {
