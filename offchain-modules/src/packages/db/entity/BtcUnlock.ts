@@ -26,7 +26,7 @@ export class BtcUnlock {
   @Column({ default: 'todo' })
   status: BtcUnlockStatus;
 
-  @Column({ default: '' })
+  @Column({ type: 'text', nullable: true })
   message: string;
 
   @CreateDateColumn()
