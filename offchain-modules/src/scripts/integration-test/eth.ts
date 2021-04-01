@@ -137,6 +137,8 @@ async function main() {
     assert(ckbMintRecord.asset === ETH_ADDRESS);
     assert(ckbMintRecord.amount === amount.toHexString());
     assert(ckbMintRecord.recipientLockscript === `0x${toHexString(recipientLockscript)}`);
+
+    // check sudt balance.
     const account = new Account(PRI_KEY);
     const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
     const asset = new EthAsset('0x0000000000000000000000000000000000000000', ownLockHash);
@@ -153,7 +155,6 @@ async function main() {
     };
     const balance = await collector.getSUDTBalance(
       new Script(sudtType.codeHash, sudtType.args, sudtType.hashType),
-      // new Address('ckt1qyqyph8v9mclls35p6snlaxajeca97tc062sa5gahk', AddressType.ckb),
       await account.getLockscript(),
     );
 
@@ -164,7 +165,6 @@ async function main() {
     }
 
     // send burn tx
-
     if (!sendBurn) {
       const account = new Account(PRI_KEY);
       const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
@@ -180,12 +180,6 @@ async function main() {
       console.log(`burn Transaction has been sent with tx hash ${burnTxHash}`);
       await waitUntilCommitted(burnTxHash, 60);
       sendBurn = true;
-      // balance = await collector.getSUDTBalance(
-      //   new Script(sudtType.codeHash, sudtType.args, sudtType.hashType),
-      //   await account.getLockscript(),
-      // );
-      // logger.debug('after burn. sudt balance:', balance);
-      // assert(balance.eq(Amount.fromUInt128LE(amount.toHexString()).sub(Amount.fromUInt128LE('0x01'))));
     }
     logger.debug('sudt balance:', balance.toHexString());
     logger.debug(

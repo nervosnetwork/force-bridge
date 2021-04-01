@@ -142,25 +142,17 @@ export class TronHandler {
 
   // listen Tron chain and handle the new lock events
   async watchLockEvents(): Promise<void> {
-    let startTimestamp = Date.now();
-    const lastTimestamp = await this.db.getLatestTimestamp();
-    if (lastTimestamp != 1) {
-      startTimestamp = lastTimestamp;
-    }
-    logger.debug('start time', startTimestamp);
-
-    let minTimestamp = startTimestamp;
     try {
       while (true) {
         logger.debug('get new lock events and save to db');
 
-        logger.debug('min timestamp', minTimestamp);
+        const minTimestamp = await this.db.getLatestTimestamp();
+        logger.debug('mintimestamp', minTimestamp);
 
         const ckbMintRecords: ICkbMint[] = [];
         const tronLockRecords: ITronLock[] = [];
         const trxAndTrc10Events = await this.getTrxAndTrc10LockEvents(minTimestamp);
         const trc20LockEvents = await this.getTrc20TxsLockEvents(minTimestamp);
-
         const totalLockEvents = trxAndTrc10Events.concat(trc20LockEvents);
         logger.debug('total lock events', totalLockEvents.length);
 
@@ -173,16 +165,8 @@ export class TronHandler {
           const tronLock = this.transferEventToTronLock(event);
           tronLockRecords.push(tronLock);
         }
-
         await this.db.createCkbMint(ckbMintRecords);
         await this.db.createTronLock(tronLockRecords);
-
-        if (trxAndTrc10Events.length != 0) {
-          minTimestamp = Math.max(trxAndTrc10Events[trxAndTrc10Events.length - 1].timestamp, minTimestamp);
-        }
-        if (trc20LockEvents.length != 0) {
-          minTimestamp = Math.max(trc20LockEvents[trc20LockEvents.length - 1].timestamp, minTimestamp);
-        }
 
         await asyncSleep(3000);
       }

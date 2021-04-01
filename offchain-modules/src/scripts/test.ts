@@ -27,12 +27,6 @@ async function main() {
   // const bb = BigNumber.from('0.0001');
   // const bb = new Amount('0.0001');
   // const bb = Amount.fromUInt128LE('0x0001');
-  const amount = ethers.utils.parseEther('0.1').toHexString();
-  const cc = Amount.ZERO.add(Amount.fromUInt128LE('0x0000000000008a5d7845630100000000')).toHexString();
-  const dd = BigNumber.from('0x016345785d8a0000').toHexString();
-  const xx = Amount.fromUInt128LE('0x016345785d8a0000');
-
-  logger.debug('result:', cc, amount, dd);
   // // const dd = BigAmount.fromUInt128LE(`0x10270000000000000000000000000000`);
   //
   // const aa = uint8ArrayToString(fromHexString('0x454f53')).slice(1);

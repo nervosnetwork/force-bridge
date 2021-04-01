@@ -1,7 +1,7 @@
 import { CkbDb } from '../db';
 import { CkbMint, ICkbBurn } from '../db/model';
 import { logger } from '../utils/logger';
-import { asyncSleep, blake2b, fromHexString, toHexString, uint8ArrayToString } from '../utils';
+import { asyncSleep, blake2b, fromHexString, toHexString, uint8ArrayToString, bigintToSudtAmount } from '../utils';
 import { Asset, ChainType, EosAsset, EthAsset, TronAsset } from '../ckb/model/asset';
 import { Address, Amount, AddressType, Script, HashType } from '@lay2/pw-core';
 import { Account } from '@force-bridge/ckb/model/accounts';
@@ -58,9 +58,9 @@ export class CkbHandler {
           await this.db.createEosUnlock([
             {
               ckbTxHash: burn.ckbTxHash,
-              asset: uint8ArrayToString(fromHexString(burn.asset)),
+              asset: burn.asset,
               amount: burn.amount,
-              recipientAddress: uint8ArrayToString(fromHexString(burn.recipientAddress)),
+              recipientAddress: burn.recipientAddress,
             },
           ]);
           break;
@@ -102,22 +102,52 @@ export class CkbHandler {
         const ckbBurns = [];
         burnTxs.forEach((v: RecipientCellData, k: string) => {
           const chain = v.getChain();
-          let amount;
-          if (chain == ChainType.EOS) {
-            amount = Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.getAmount().raw()))}`).toString();
-          } else {
-            amount = BigNumber.from(
-              Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.getAmount().raw()))}`),
-            ).toHexString();
+          let burn;
+          switch (chain) {
+            case ChainType.ETH:
+              burn = {
+                ckbTxHash: k,
+                asset: `0x${toHexString(new Uint8Array(v.getAsset().raw()))}`,
+                chain,
+                amount: BigNumber.from(
+                  Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.getAmount().raw()))}`),
+                ).toHexString(),
+                recipientAddress: `0x${toHexString(new Uint8Array(v.getRecipientAddress().raw()))}`,
+                blockNumber: latestHeight,
+              };
+              break;
+            case ChainType.TRON:
+              burn = {
+                ckbTxHash: k,
+                asset: uint8ArrayToString(new Uint8Array(v.getAsset().raw())),
+                chain,
+                amount: BigNumber.from(
+                  Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.getAmount().raw()))}`),
+                ).toHexString(),
+                recipientAddress: uint8ArrayToString(new Uint8Array(v.getRecipientAddress().raw())),
+                blockNumber: latestHeight,
+              };
+              break;
+            case ChainType.EOS:
+              burn = {
+                ckbTxHash: k,
+                asset: uint8ArrayToString(new Uint8Array(v.getAsset().raw())),
+                chain,
+                amount: Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.getAmount().raw()))}`).toString(),
+                recipientAddress: uint8ArrayToString(new Uint8Array(v.getRecipientAddress().raw())),
+                blockNumber: latestHeight,
+              };
+              break;
           }
-          ckbBurns.push({
-            ckbTxHash: k,
-            asset: `0x${toHexString(new Uint8Array(v.getAsset().raw()))}`,
-            chain,
-            amount,
-            recipientAddress: `0x${toHexString(new Uint8Array(v.getRecipientAddress().raw()))}`,
-            blockNumber: latestHeight,
-          });
+          // let amount;
+          // if (chain == ChainType.EOS) {
+          //   amount = Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.getAmount().raw()))}`).toString();
+          // } else {
+          //   amount = BigNumber.from(
+          //     Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.getAmount().raw()))}`),
+          //   ).toHexString();
+          // }
+          ckbBurns.push(burn);
         });
         await this.saveBurnEvent(ckbBurns);
       }
@@ -242,12 +272,12 @@ export class CkbHandler {
       case ChainType.TRON:
         return {
           asset: new TronAsset(r.asset, ownLockHash),
-          amount: new Amount(r.amount),
+          amount: Amount.fromUInt128LE(bigintToSudtAmount(BigInt(r.amount))),
           recipient: new Address(r.recipientLockscript, AddressType.ckb),
         };
       case ChainType.EOS:
         return {
-          asset: new TronAsset(r.asset, ownLockHash),
+          asset: new EosAsset(r.asset, ownLockHash),
           amount: new Amount(r.amount),
           recipient: new Address(r.recipientLockscript, AddressType.ckb),
         };

@@ -4,7 +4,7 @@ import { Asset, ChainType } from '../model/asset';
 import { logger } from '@force-bridge/utils/logger';
 import { ScriptType } from '@force-bridge/ckb/tx-helper/indexer';
 import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
-import { fromHexString, stringToUint8Array, toHexString } from '@force-bridge/utils';
+import { fromHexString, stringToUint8Array, toHexString, bigintToSudtAmount } from '@force-bridge/utils';
 import { ForceBridgeCore } from '@force-bridge/core';
 import { SerializeRecipientCellData } from '@force-bridge/ckb/tx-helper/eth_recipient_cell';
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
@@ -334,7 +334,3 @@ export class CkbTxGenerator {
     };
   }
 }
-
-const bigintToSudtAmount = (n) => {
-  return `0x${Buffer.from(n.toString(16).padStart(32, '0'), 'hex').reverse().toString('hex')}`;
-};

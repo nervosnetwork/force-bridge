@@ -2,7 +2,7 @@ import 'module-alias/register';
 import nconf from 'nconf';
 import { Config, TronConfig } from '@force-bridge/config';
 import { logger } from '@force-bridge/utils/logger';
-import { asyncSleep, genRandomHex, waitUntilCommitted } from '@force-bridge/utils';
+import { asyncSleep, genRandomHex, waitUntilCommitted, bigintToSudtAmount } from '@force-bridge/utils';
 import { createConnection } from 'typeorm';
 import { CkbDb, TronDb } from '@force-bridge/db';
 import { CkbMint, TronLock, TronUnlock } from '@force-bridge/db/model';
@@ -11,18 +11,17 @@ import { ChainType, EthAsset, TronAsset } from '@force-bridge/ckb/model/asset';
 import { Account } from '@force-bridge/ckb/model/accounts';
 import { CkbTxGenerator } from '@force-bridge/ckb/tx-helper/generator';
 import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
-import { Amount } from '@lay2/pw-core';
+import { Amount, Script } from '@lay2/pw-core';
 import { CkbIndexer } from '@force-bridge/ckb/tx-helper/indexer';
 import { ForceBridgeCore } from '@force-bridge/core';
+import { BigNumber } from 'ethers';
 const TronWeb = require('tronweb');
 
 const PRI_KEY = '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
-// const { Indexer, CellCollector } = require('@ckb-lumos/indexer');
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
-// const LUMOS_DB = './lumos_db';
 const indexer = new CkbIndexer('http://127.0.0.1:8116');
-// indexer.startForever();
+const collector = new IndexerCollector(indexer);
 const ckb = new CKB(CKB_URL);
 
 async function transferTrx(tronWeb, from, to, amount, memo, priv) {
@@ -108,6 +107,32 @@ async function main() {
     assert(ckbMintRecord.amount === amount.toString());
     assert(ckbMintRecord.recipientLockscript === recipientLockscript);
 
+    // check sudt balance.
+    const account = new Account(PRI_KEY);
+    const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
+    const asset = new TronAsset('trx', ownLockHash);
+    const bridgeCellLockscript = {
+      codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
+      hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
+      args: asset.toBridgeLockscriptArgs(),
+    };
+    const sudtArgs = ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
+    const sudtType = {
+      codeHash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
+      hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
+      args: sudtArgs,
+    };
+    const balance = await collector.getSUDTBalance(
+      new Script(sudtType.codeHash, sudtType.args, sudtType.hashType),
+      await account.getLockscript(),
+    );
+
+    if (!sendBurn) {
+      logger.debug('sudt balance:', balance.toHexString());
+      logger.debug('expect balance:', Amount.fromUInt128LE(bigintToSudtAmount(amount)).toHexString());
+      assert(balance.eq(Amount.fromUInt128LE(bigintToSudtAmount(amount))));
+    }
+
     // send burn tx
     if (!sendBurn) {
       const account = new Account(PRI_KEY);
@@ -125,6 +150,11 @@ async function main() {
       await waitUntilCommitted(ckb, burnTxHash, 60);
       sendBurn = true;
     }
+
+    logger.debug('sudt balance:', balance.toHexString());
+    logger.debug('expect balance:', Amount.fromUInt128LE(bigintToSudtAmount(amount)).sub(Amount.fromUInt128LE('0x01')));
+    assert(balance.eq(Amount.fromUInt128LE(bigintToSudtAmount(amount)).sub(Amount.fromUInt128LE('0x01'))));
+
     // check unlock record send
     const tronUnlockRecords = await conn.manager.find(TronUnlock, {
       where: {

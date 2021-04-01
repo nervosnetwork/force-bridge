@@ -6,7 +6,7 @@ import { logger } from '@force-bridge/utils/logger';
 import { JsSignatureProvider } from 'eosjs/dist/eosjs-jssig';
 import { CkbDb } from '@force-bridge/db';
 import { EosLock, getEosLockId } from '@force-bridge/db/entity/EosLock';
-import { asyncSleep, genRandomHex, waitUntilCommitted } from '@force-bridge/utils';
+import { asyncSleep, bigintToSudtAmount, genRandomHex, waitUntilCommitted } from '@force-bridge/utils';
 import assert from 'assert';
 import { CkbMint } from '@force-bridge/db/entity/CkbMint';
 import { ChainType, EosAsset, TronAsset } from '@force-bridge/ckb/model/asset';
@@ -15,17 +15,18 @@ import { EosChain } from '@force-bridge/xchain/eos/eosChain';
 import { Account } from '@force-bridge/ckb/model/accounts';
 import { CkbTxGenerator } from '@force-bridge/ckb/tx-helper/generator';
 import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
-import { Amount } from '@lay2/pw-core';
+import { Amount, Script } from '@lay2/pw-core';
 
 import { CkbIndexer } from '@force-bridge/ckb/tx-helper/indexer';
 import { ForceBridgeCore } from '@force-bridge/core';
 
-const PRI_KEY = process.env.PRI_KEY || '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
+// const PRI_KEY = process.env.PRI_KEY || '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
 // const { Indexer, CellCollector } = require('@ckb-lumos/indexer');
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
 // const LUMOS_DB = './lumos_db';
 const indexer = new CkbIndexer('http://127.0.0.1:8116');
+const collector = new IndexerCollector(indexer);
 // indexer.startForever();
 const ckb = new CKB(CKB_URL);
 
@@ -54,6 +55,7 @@ async function main() {
   await new ForceBridgeCore().init(conf);
 
   const rpcUrl = config.rpcUrl;
+  const PRI_KEY = ForceBridgeCore.config.ckb.privateKey;
   const lockAccount = 'spongebob111';
   const lockAccountPri = ['5KQ1LgoXrSLiUMS8HZp6rSuyyJP5i6jTi1KWbZNerQQLFeTrxac'];
   const chain = new EosChain(rpcUrl, new JsSignatureProvider(lockAccountPri));
@@ -130,6 +132,36 @@ async function main() {
     1000 * 10,
   );
 
+  // check sudt balance.
+  const account = new Account(PRI_KEY);
+  const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
+  const asset = new EosAsset(lockAsset, ownLockHash);
+  const bridgeCellLockscript = {
+    codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
+    hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
+    args: asset.toBridgeLockscriptArgs(),
+  };
+  const sudtArgs = ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
+  const sudtType = {
+    codeHash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
+    hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
+    args: sudtArgs,
+  };
+  await waitFnCompleted(
+    waitTimeout,
+    async (): Promise<boolean> => {
+      const balance = await collector.getSUDTBalance(
+        new Script(sudtType.codeHash, sudtType.args, sudtType.hashType),
+        await account.getLockscript(),
+      );
+
+      logger.debug('sudt balance:', balance.toHexString());
+      logger.debug('expect balance:', new Amount(lockAmount).toUInt128LE());
+      return balance.eq(new Amount(lockAmount));
+    },
+    1000 * 10,
+  );
+
   //unlock eos
   // const unlockRecord = {
   //   ckbTxHash: genRandomHex(32),
@@ -140,8 +172,8 @@ async function main() {
   // await ckbDb.createEosUnlock([unlockRecord]);
   // send burn tx
   const burnAmount = Amount.fromUInt128LE('0x10270000000000000000000000000000');
-  const account = new Account(PRI_KEY);
-  const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
+  // const account = new Account(PRI_KEY);
+  // const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
   const generator = new CkbTxGenerator(ckb, new IndexerCollector(indexer));
   const burnTx = await generator.burn(
     await account.getLockscript(),
@@ -153,6 +185,21 @@ async function main() {
   const burnTxHash = await ckb.rpc.sendTransaction(signedTx);
   console.log(`burn Transaction has been sent with tx hash ${burnTxHash}`);
   await waitUntilCommitted(ckb, burnTxHash, 60);
+
+  await waitFnCompleted(
+    waitTimeout,
+    async (): Promise<boolean> => {
+      const balance = await collector.getSUDTBalance(
+        new Script(sudtType.codeHash, sudtType.args, sudtType.hashType),
+        await account.getLockscript(),
+      );
+
+      logger.debug('sudt balance:', balance.toHexString());
+      logger.debug('expect balance:', new Amount(lockAmount).sub(burnAmount).toHexString());
+      return balance.eq(new Amount(lockAmount).sub(burnAmount));
+    },
+    1000 * 10,
+  );
 
   //check unlock record send
   let eosUnlockTxHash = '';

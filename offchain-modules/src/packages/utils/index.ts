@@ -28,6 +28,10 @@ export async function waitUntilCommitted(ckb, txHash, timeout) {
   }
 }
 
+export const bigintToSudtAmount = (n) => {
+  return `0x${Buffer.from(n.toString(16).padStart(32, '0'), 'hex').reverse().toString('hex')}`;
+};
+
 export const fromHexString = (hexString) =>
   new Uint8Array(hexString.match(/[\da-f]{2}/gi).map((byte) => parseInt(byte, 16)));
 
