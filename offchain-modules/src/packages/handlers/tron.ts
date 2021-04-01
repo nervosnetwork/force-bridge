@@ -2,10 +2,15 @@ import { TronDb } from '../db';
 import { logger } from '../utils/logger';
 import { asyncSleep } from '../utils';
 import { ForceBridgeCore } from '../core';
-import { ITronLock, TronUnlock, ICkbMint } from '@force-bridge/db/model';
+import { ITronLock, TronUnlock, ICkbMint, TronLock } from '@force-bridge/db/model';
 import { ChainType } from '@force-bridge/ckb/model/asset';
+import { promises } from 'fs';
+import { sign } from '@force-bridge/ckb/tx-helper/signer';
 const TronWeb = require('tronweb');
 const TronGrid = require('trongrid');
+
+const TRX_ASSET_LENGTH = 3;
+const TRC10_ASSET_LENGTH = 7;
 
 type TronLockEvent = {
   tx_hash: string;
@@ -28,49 +33,63 @@ export class TronHandler {
   }
 
   private async getTrxAndTrc10LockEvents(min_timestamp: number): Promise<TronLockEvent[]> {
-    const txs = await this.tronGrid.account.getTransactions(this.committee.address, {
-      only_to: true,
-      only_confirmed: true,
-      min_timestamp: min_timestamp,
-    });
-
     const lockEvents: TronLockEvent[] = [];
-    for (const data of txs.data) {
-      const asset_data = data.raw_data.contract[0].parameter.value;
-      const event = {
-        tx_hash: data.txID,
-        index: 0,
-        sender: this.tronWeb.address.fromHex(asset_data.owner_address),
-        asset: asset_data.asset_name ? asset_data.asset_name : 'trx',
-        amount: asset_data.amount,
-        memo: this.tronWeb.toUtf8(data.raw_data.data),
-        timestamp: data.block_timestamp,
-      };
-      lockEvents.push(event);
+
+    let fingerprint = '';
+    while (fingerprint != null) {
+      const txs = await this.tronGrid.account.getTransactions(this.committee.address, {
+        only_to: true,
+        only_confirmed: true,
+        min_timestamp: min_timestamp,
+        order_by: 'timestamp,asc',
+        limit: 200,
+        fingerprint: fingerprint,
+      });
+      for (const data of txs.data) {
+        const asset_data = data.raw_data.contract[0].parameter.value;
+        const event = {
+          tx_hash: data.txID,
+          index: 0,
+          sender: this.tronWeb.address.fromHex(asset_data.owner_address),
+          asset: asset_data.asset_name ? asset_data.asset_name : 'trx',
+          amount: asset_data.amount,
+          memo: data.raw_data.data ? this.tronWeb.toUtf8(data.raw_data.data) : 'no memo',
+          timestamp: data.block_timestamp,
+        };
+        lockEvents.push(event);
+      }
+      fingerprint = txs.meta.fingerprint;
     }
     return lockEvents;
   }
 
   private async getTrc20TxsLockEvents(min_timestamp: number): Promise<TronLockEvent[]> {
-    const txs = await this.tronGrid.account.getTrc20Transactions(this.committee.address, {
-      only_confirmed: true,
-      only_to: true,
-      min_timestamp: min_timestamp,
-    });
-
     const lockEvents: TronLockEvent[] = [];
-    for (const data of txs.data) {
-      const tx = await this.tronWeb.trx.getTransaction(data.transaction_id);
-      const event = {
-        tx_hash: data.transaction_id,
-        index: 0,
-        sender: data.from,
-        asset: this.tronWeb.address.fromHex(data.token_info).address,
-        amount: data.value,
-        memo: this.tronWeb.toUtf8(tx.raw_data.data),
-        timestamp: data.block_timestamp,
-      };
-      lockEvents.push(event);
+
+    let fingerprint = '';
+    while (fingerprint != null) {
+      const txs = await this.tronGrid.account.getTrc20Transactions(this.committee.address, {
+        only_confirmed: true,
+        only_to: true,
+        min_timestamp: min_timestamp,
+        order_by: 'timestamp,asc',
+        limit: 200,
+        fingerprint: fingerprint,
+      });
+      for (const data of txs.data) {
+        const tx = await this.tronWeb.trx.getTransaction(data.transaction_id);
+        const event = {
+          tx_hash: data.transaction_id,
+          index: 0,
+          sender: data.from,
+          asset: this.tronWeb.address.fromHex(data.token_info).address,
+          amount: data.value,
+          memo: this.tronWeb.toUtf8(tx.raw_data.data),
+          timestamp: data.block_timestamp,
+        };
+        lockEvents.push(event);
+      }
+      fingerprint = txs.meta.fingerprint;
     }
     return lockEvents;
   }
@@ -81,8 +100,18 @@ export class TronHandler {
     const ckbRecipient = splitted[0];
     const sudtExtraData = splitted[1];
 
-    //todo, check ckb_address valid
     return { ckbRecipient, sudtExtraData };
+  }
+
+  private getAssetTypeByAsset(asset: string) {
+    switch (asset.length) {
+      case TRX_ASSET_LENGTH:
+        return 'trx';
+      case TRC10_ASSET_LENGTH:
+        return 'trc10';
+      default:
+        return 'trc20';
+    }
   }
 
   private transferEventToCkbMint(event: TronLockEvent) {
@@ -97,13 +126,13 @@ export class TronHandler {
     };
   }
 
-  private transferEventToTronLock(event: TronLockEvent) {
-    const tronLock = {
+  private transferEventToTronLock(event: TronLockEvent): ITronLock {
+    const tronLock: ITronLock = {
       txHash: event.tx_hash,
       txIndex: 0,
       sender: event.sender,
       asset: event.asset,
-      assetType: event.asset,
+      assetType: this.getAssetTypeByAsset(event.asset),
       amount: event.amount,
       memo: event.memo,
       timestamp: event.timestamp,
@@ -113,30 +142,37 @@ export class TronHandler {
 
   // listen Tron chain and handle the new lock events
   async watchLockEvents(): Promise<void> {
-    while (true) {
-      logger.debug('get new lock events and save to db');
+    try {
+      while (true) {
+        logger.debug('get new lock events and save to db');
 
-      const minTimestamp = await this.db.getLatestTimestamp();
+        const minTimestamp = await this.db.getLatestTimestamp();
+        logger.debug('mintimestamp', minTimestamp);
 
-      const ckbMintRecords: ICkbMint[] = [];
-      const tronLockRecords: ITronLock[] = [];
-      const trxAndTrc10Events = await this.getTrxAndTrc10LockEvents(minTimestamp);
-      const trc20LockEvents = await this.getTrc20TxsLockEvents(minTimestamp);
-      const totalLockEvents = trxAndTrc10Events.concat(trc20LockEvents);
+        const ckbMintRecords: ICkbMint[] = [];
+        const tronLockRecords: ITronLock[] = [];
+        const trxAndTrc10Events = await this.getTrxAndTrc10LockEvents(minTimestamp);
+        const trc20LockEvents = await this.getTrc20TxsLockEvents(minTimestamp);
+        const totalLockEvents = trxAndTrc10Events.concat(trc20LockEvents);
+        logger.debug('total lock events', totalLockEvents.length);
 
-      for (const event of totalLockEvents) {
-        if (event.timestamp < minTimestamp) {
-          continue;
+        for (const event of totalLockEvents) {
+          if (event.timestamp < minTimestamp) {
+            continue;
+          }
+          const ckbMint = this.transferEventToCkbMint(event);
+          ckbMintRecords.push(ckbMint);
+          const tronLock = this.transferEventToTronLock(event);
+          tronLockRecords.push(tronLock);
         }
-        const ckbMint = this.transferEventToCkbMint(event);
-        ckbMintRecords.push(ckbMint);
-        const tronLock = this.transferEventToTronLock(event);
-        tronLockRecords.push(tronLock);
-      }
-      await this.db.createCkbMint(ckbMintRecords);
-      await this.db.createTronLock(tronLockRecords);
+        await this.db.createCkbMint(ckbMintRecords);
+        await this.db.createTronLock(tronLockRecords);
 
-      await asyncSleep(3000);
+        await asyncSleep(3000);
+      }
+    } catch (e) {
+      logger.error('TronHandler watchLockEvents error:', e);
+      setTimeout(this.watchLockEvents, 3000);
     }
   }
 
@@ -156,8 +192,7 @@ export class TronHandler {
       signed_tx = await this.tronWeb.trx.multiSign(signed_tx, key);
     }
 
-    const broad_tx = await this.tronWeb.trx.broadcast(signed_tx);
-    return broad_tx.txid;
+    return signed_tx;
   }
 
   private async multiSignTransferTrc10(unlockRecord: TronUnlock) {
@@ -177,8 +212,7 @@ export class TronHandler {
       signed_tx = await this.tronWeb.trx.multiSign(signed_tx, key);
     }
 
-    const broad_tx = await this.tronWeb.trx.broadcast(signed_tx);
-    return broad_tx.txid;
+    return signed_tx;
   }
 
   private async multiSignTransferTrc20(unlockRecord: TronUnlock) {
@@ -215,44 +249,66 @@ export class TronHandler {
     for (const key of this.committee.keys) {
       signed_tx = await this.tronWeb.trx.multiSign(signed_tx, key);
     }
-    const broad_tx = await this.tronWeb.trx.broadcast(signed_tx);
-    return broad_tx.txid;
+    return signed_tx;
   }
 
   // watch the tron_unlock table and handle the new unlock events
   // send tx according to the data
   async watchUnlockEvents(): Promise<void> {
-    while (true) {
-      logger.debug('flush pending tx to confirm');
-      const pendingRecords = await this.db.getTronUnlockRecords('pending');
-      for (const pendingRecord of pendingRecords) {
-        // todo: check tx is confirmed
-        pendingRecord.status = 'success';
-      }
-      await this.db.saveTronUnlock(pendingRecords);
-
-      logger.debug('get new unlock events and send tx');
-      const unlockRecords = await this.db.getTronUnlockRecords('todo');
-      for (const unlockRecord of unlockRecords) {
-        let txid: string;
-        switch (unlockRecord.assetType) {
-          case 'trx':
-            txid = await this.multiSignTransferTrx(unlockRecord);
-            break;
-          case 'trc10':
-            txid = await this.multiSignTransferTrc10(unlockRecord);
-            break;
-          case 'trc20':
-            txid = await this.multiSignTransferTrc20(unlockRecord);
-            break;
+    try {
+      while (true) {
+        logger.debug('flush pending tx to confirm');
+        const pendingRecords = await this.db.getTronUnlockRecords('pending');
+        for (const pendingRecord of pendingRecords) {
+          // todo: check tx is confirmed
+          try {
+            const confirmedTx = await this.tronWeb.trx.getConfirmedTransaction(pendingRecord.tronTxHash);
+            console.log(confirmedTx);
+            if (confirmedTx.ret[0].contractRet == 'SUCCESS') {
+              pendingRecord.status = 'success';
+            } else {
+              pendingRecord.status = 'error';
+            }
+          } catch (e) {
+            logger.debug(`${pendingRecord.tronTxHash} not confirmed yet`, e);
+          }
         }
-        unlockRecord.tronTxHash = txid;
-        unlockRecord.tronTxIndex = 0;
-        unlockRecord.status = 'pending';
-      }
-      await this.db.saveTronUnlock(unlockRecords);
+        await this.db.saveTronUnlock(pendingRecords);
 
-      await asyncSleep(3000);
+        logger.debug('get new unlock events and send tx');
+        const unlockRecords = await this.db.getTronUnlockRecords('todo');
+        for (const unlockRecord of unlockRecords) {
+          let signedTx;
+          switch (unlockRecord.assetType) {
+            case 'trx':
+              signedTx = await this.multiSignTransferTrx(unlockRecord);
+              break;
+            case 'trc10':
+              signedTx = await this.multiSignTransferTrc10(unlockRecord);
+              break;
+            case 'trc20':
+              signedTx = await this.multiSignTransferTrc20(unlockRecord);
+              break;
+          }
+          unlockRecord.tronTxHash = signedTx.txID;
+          unlockRecord.tronTxIndex = 0;
+          unlockRecord.status = 'pending';
+
+          await this.db.saveTronUnlock([unlockRecord]);
+
+          try {
+            await this.tronWeb.trx.broadcast(signedTx);
+          } catch (e) {
+            logger.error(`TronHandler watchUnlockEvents broadcast tx ${signedTx} error: ${e}`);
+            unlockRecord.status = 'error';
+            await this.db.saveTronUnlock([unlockRecord]);
+          }
+        }
+        await asyncSleep(3000);
+      }
+    } catch (e) {
+      logger.error('TronHandler watchUnlockEvents error:', e);
+      setTimeout(this.watchLockEvents, 3000);
     }
   }
 
