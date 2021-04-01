@@ -35,13 +35,21 @@ export class CkbBurn {
   @UpdateDateColumn()
   updatedAt: string;
 
-  from(data: { txHash: string; memo: string; amount: string; asset: string; chain: number }) {
+  from(data: {
+    ckbTxHash: string;
+    recipientAddress: string;
+    amount: string;
+    asset: string;
+    chain: number;
+    blockNumber: number;
+  }) {
     const record = new CkbBurn();
-    record.ckbTxHash = data.txHash;
+    record.ckbTxHash = data.ckbTxHash;
     record.chain = data.chain;
     record.asset = data.asset;
     record.amount = data.amount;
-    record.recipientAddress = data.memo;
+    record.recipientAddress = data.recipientAddress;
+    record.blockNumber = data.blockNumber;
     return record;
   }
 }
