@@ -10,6 +10,8 @@
     - [offchain modules](#offchain-modules)
   - [本地运行](#本地运行)
 
+> 本简介基于 tag [`audit-v1.0`](https://github.com/nervosnetwork/force-bridge/tree/audit-v1.0)。
+
 Force Bridge 是一个连接 CKB 和其它公链的通用多签见证跨链桥。
 
 Force Bridge 的跨链流程概述（以 BTC 为例）：
@@ -47,7 +49,7 @@ Force Bridge 的跨链流程概述（以 BTC 为例）：
 
 ### CKB 合约
 
-所有 CKB 合约位于文件夹 [ckb-contracts](https://github.com/nervosnetwork/force-bridge/tree/audit-v0.1/ckb-contracts) 下。
+所有 CKB 合约位于文件夹 [ckb-contracts](https://github.com/nervosnetwork/force-bridge/tree/audit-v1.0/ckb-contracts) 下。
 
 #### bridge lockscript
 
@@ -142,7 +144,7 @@ table RecipientCellData {
 
 以太坊没有原生多签地址，使用合约接收用户锁定的资产，提供 committee 多签签名解锁资产。
 
-合约地址为：<https://github.com/nervosnetwork/force-bridge/blob/audit-v0.1/eth-contracts/contracts/ForceBridge.sol>。
+合约地址为：<https://github.com/nervosnetwork/force-bridge/blob/audit-v1.0/eth-contracts/contracts/ForceBridge.sol>。
 
 主要接口说明：
 
