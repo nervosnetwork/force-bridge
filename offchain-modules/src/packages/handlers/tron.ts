@@ -165,7 +165,7 @@ export class TronHandler {
         logger.debug('total lock events', totalLockEvents.length);
 
         for (const event of totalLockEvents) {
-          if (event.timestamp < minTimestamp) {
+          if (event.timestamp <= minTimestamp) {
             continue;
           }
           const ckbMint = this.transferEventToCkbMint(event);
