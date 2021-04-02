@@ -24,7 +24,7 @@ async function main() {
   nconf.save();
 
   console.log(
-    `ForceBridge deployed to: ${bridge.address}, admin: ${await bridge.admin()}`
+    `ForceBridge deployed to: ${bridge.address}`
   );
 }
 
