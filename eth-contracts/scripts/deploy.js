@@ -23,9 +23,7 @@ async function main() {
   nconf.set('forceBridge:eth:contractAddress', bridge.address);
   nconf.save();
 
-  console.log(
-    `ForceBridge deployed to: ${bridge.address}`
-  );
+  console.log(`ForceBridge deployed to: ${bridge.address}`);
 }
 
 main()
