@@ -7,20 +7,13 @@ import {SafeERC20} from "./libraries/SafeERC20.sol";
 import {Address} from "./libraries/Address.sol";
 import {MultisigUtils} from "./libraries/MultisigUtils.sol";
 
-import "hardhat/console.sol";
-
-// todo:
-// 1. Change the admin to a committee. Ref: https://github.com/nervosnetwork/force-bridge-eth/blob/b1d392bd5b3fb4a800d0eb7614faa4f16ba8e0a9/eth-contracts/contracts/CKBChain.sol#L22-L29
-
 contract ForceBridge {
     using Address for address;
     using SafeERC20 for IERC20;
 
-    address public admin;
-
     // refer to https://github.com/ethereum/EIPs/blob/master/EIPS/eip-712.md
     uint256 public constant SIGNATURE_SIZE = 65;
-    uint256 public constant VALIDATORS_SIZE_LIMIT = 20;
+    uint256 public constant VALIDATORS_SIZE_LIMIT = 50;
     string public constant NAME_712 = "Force Bridge";
     // if the number of verified signatures has reached `multisigThreshold_`, validators approve the tx
     uint256 public multisigThreshold_;
@@ -29,7 +22,7 @@ contract ForceBridge {
     // UNLOCK_TYPEHASH = keccak256("unlock(UnlockRecord[] calldata records)");
     bytes32 public constant UNLOCK_TYPEHASH =
         0xf1c18f82536658c0cb1a208d4a52b9915dc9e75640ed0daf3a6be45d02ca5c9f;
-    // SET_NEW_VALIDATORS_TYPEHASH = keccak256("changeValidators(address[] validators, uint256 multisigThreshold)");
+    // CHANGE_VALIDATORS_TYPEHASH = keccak256("changeValidators(address[] validators, uint256 multisigThreshold)");
     bytes32 public constant CHANGE_VALIDATORS_TYPEHASH = 
         0xd2cedd075bf1780178b261ac9c9000261e7fd88d66f6309124bddf24f5d953f8;
 
@@ -64,6 +57,7 @@ contract ForceBridge {
 
     constructor(address[] memory validators, uint256 multisigThreshold) {
         // set DOMAIN_SEPARATOR
+        // refer: https://github.com/OpenZeppelin/openzeppelin-contracts/blob/24a0bc23cfe3fbc76f8f2510b78af1e948ae6651/contracts/utils/cryptography/draft-EIP712.sol
         bytes32 hashedName = keccak256(bytes(NAME_712));
         bytes32 hashedVersion = keccak256(bytes("1"));
         bytes32 typeHash = keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
