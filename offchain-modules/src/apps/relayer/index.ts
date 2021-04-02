@@ -41,17 +41,17 @@ async function main() {
     const ethHandler = new EthHandler(ethDb, ethChain);
     ethHandler.start();
   }
-  if (config.tron !== undefined) {
-    const tronDb = new TronDb(conn);
-    const tronHandler = new TronHandler(tronDb);
-    tronHandler.start();
-  }
-  if (config.btc !== undefined) {
-    const btcDb = new BtcDb(conn);
-    const btcChain = new BTCChain();
-    const btcHandler = new BtcHandler(btcDb, btcChain);
-    btcHandler.start();
-  }
+  // if (config.tron !== undefined) {
+  //   const tronDb = new TronDb(conn);
+  //   const tronHandler = new TronHandler(tronDb);
+  //   tronHandler.start();
+  // }
+  // if (config.btc !== undefined) {
+  //   const btcDb = new BtcDb(conn);
+  //   const btcChain = new BTCChain();
+  //   const btcHandler = new BtcHandler(btcDb, btcChain);
+  //   btcHandler.start();
+  // }
 }
 
 main();
