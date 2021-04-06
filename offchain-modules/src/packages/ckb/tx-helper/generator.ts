@@ -59,7 +59,7 @@ export class CkbTxGenerator {
       witnesses: [{ lock: '', inputType: '', outputType: '' }],
       outputsData,
     };
-    console.dir({ rawTx }, { depth: null });
+    logger.debug('createBridgeCell rawTx:', rawTx);
     return rawTx;
   }
 
@@ -85,6 +85,9 @@ export class CkbTxGenerator {
         script_type: ScriptType.lock,
       };
       const cells = await this.collector.indexer.getCells(searchKey);
+      if (cells.length == 0) {
+        throw new Error('failed to generate mint tx. the live cell is not found!');
+      }
       const bridgeCell = cells[0];
       const sudtArgs = this.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
       const outputSudtCell = {
@@ -129,12 +132,12 @@ export class CkbTxGenerator {
       // sudt dep
       {
         outPoint: ForceBridgeCore.config.ckb.deps.sudtType.cellDep.outPoint,
-        depType: 'code',
+        depType: ForceBridgeCore.config.ckb.deps.sudtType.cellDep.depType,
       },
       // bridge lockscript dep
       {
         outPoint: ForceBridgeCore.config.ckb.deps.bridgeLock.cellDep.outPoint,
-        depType: 'code',
+        depType: ForceBridgeCore.config.ckb.deps.bridgeLock.cellDep.depType,
       },
     ];
 
@@ -147,7 +150,7 @@ export class CkbTxGenerator {
       witnesses: [{ lock: '', inputType: '', outputType: '' }],
       outputsData,
     };
-    console.dir({ rawTx }, { depth: null });
+    logger.debug('generate mint rawTx:', rawTx);
     return rawTx;
   }
 
@@ -187,6 +190,9 @@ export class CkbTxGenerator {
       },
     };
     const sudtCells = await this.collector.indexer.getCells(searchKey);
+    if (sudtCells.length == 0) {
+      throw new Error('failed to generate burn tx. the live sudt cell is not found!');
+    }
     logger.debug('burn sudtCells: ', sudtCells);
     let inputCells = [sudtCells[0]];
     const ownerLockHash = this.ckb.utils.scriptToHash(<CKBComponents.Script>fromLockscript);
@@ -262,12 +268,12 @@ export class CkbTxGenerator {
       // sudt dep
       {
         outPoint: ForceBridgeCore.config.ckb.deps.sudtType.cellDep.outPoint,
-        depType: 'code',
+        depType: ForceBridgeCore.config.ckb.deps.sudtType.cellDep.depType,
       },
       // recipient dep
       {
         outPoint: ForceBridgeCore.config.ckb.deps.recipientType.cellDep.outPoint,
-        depType: 'code',
+        depType: ForceBridgeCore.config.ckb.deps.recipientType.cellDep.depType,
       },
     ];
 
@@ -280,7 +286,7 @@ export class CkbTxGenerator {
       witnesses: [{ lock: '', inputType: '', outputType: '' }],
       outputsData,
     };
-    console.dir({ rawTx }, { depth: null });
+    logger.debug('generate burn rawTx:', rawTx);
     return rawTx;
   }
 

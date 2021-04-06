@@ -1,4 +1,5 @@
 import * as utils from '@nervosnetwork/ckb-sdk-utils';
+import { logger } from '@force-bridge/utils/logger';
 
 export function asyncSleep(ms = 0) {
   return new Promise((r) => setTimeout(r, ms));
@@ -10,22 +11,6 @@ export function blake2b(buffer) {
 
 export function genRandomHex(size: number) {
   return '0x' + [...Array(size)].map(() => Math.floor(Math.random() * 16).toString(16)).join('');
-}
-
-export async function waitUntilCommitted(ckb, txHash, timeout) {
-  let waitTime = 0;
-  while (true) {
-    const txStatus = await ckb.rpc.getTransaction(txHash);
-    console.log(`tx ${txHash} status: ${txStatus.txStatus.status}, index: ${waitTime}`);
-    if (txStatus.txStatus.status === 'committed') {
-      return txStatus;
-    }
-    await asyncSleep(1000);
-    waitTime += 1;
-    if (waitTime >= timeout) {
-      return txStatus;
-    }
-  }
 }
 
 export const bigintToSudtAmount = (n) => {
@@ -50,8 +35,7 @@ export function stringToUint8Array(str): Uint8Array {
   for (let i = 0, j = str.length; i < j; ++i) {
     arr.push(str.charCodeAt(i));
   }
-  const tmpUint8Array = new Uint8Array(arr);
-  return tmpUint8Array;
+  return new Uint8Array(arr);
 }
 
 export function isEmptyArray<T>(array: T[]): boolean {

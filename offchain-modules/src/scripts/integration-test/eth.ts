@@ -3,7 +3,7 @@ import { ethers } from 'ethers';
 import nconf from 'nconf';
 import { Config, EthConfig } from '@force-bridge/config';
 import { logger } from '@force-bridge/utils/logger';
-import { asyncSleep } from '@force-bridge/utils';
+import { asyncSleep, stringToUint8Array, toHexString } from '@force-bridge/utils';
 import { createConnection } from 'typeorm';
 import { CkbDb, EthDb } from '@force-bridge/db';
 import { ETH_ADDRESS } from '@force-bridge/xchain/eth';
@@ -178,7 +178,7 @@ async function main() {
       const signedTx = ckb.signTransaction(PRI_KEY)(burnTx);
       burnTxHash = await ckb.rpc.sendTransaction(signedTx);
       console.log(`burn Transaction has been sent with tx hash ${burnTxHash}`);
-      await waitUntilCommitted(burnTxHash, 60);
+      await waitUntilCommitted(ckb, burnTxHash, 60);
       sendBurn = true;
     }
     logger.debug('sudt balance:', balance.toHexString());
@@ -226,11 +226,11 @@ async function main() {
   throw new Error('The eth component integration test failed!');
 }
 
-async function waitUntilCommitted(txHash, timeout) {
+export async function waitUntilCommitted(ckb, txHash, timeout) {
   let waitTime = 0;
   while (true) {
     const txStatus = await ckb.rpc.getTransaction(txHash);
-    console.log(`tx ${txHash} status: ${txStatus.txStatus.status}, index: ${waitTime}`);
+    logger.debug(`tx ${txHash} status: ${txStatus.txStatus.status}, index: ${waitTime}`);
     if (txStatus.txStatus.status === 'committed') {
       return txStatus;
     }
@@ -255,23 +255,23 @@ main()
     process.exit(1);
   });
 
-function stringToUint8Array(str): Uint8Array {
-  const arr = [];
-  for (let i = 0, j = str.length; i < j; ++i) {
-    arr.push(str.charCodeAt(i));
-  }
-  const tmpUint8Array = new Uint8Array(arr);
-  return tmpUint8Array;
-}
-
-function uint8ArrayToString(fileData): string {
-  let dataString = '';
-  for (let i = 0; i < fileData.length; i++) {
-    dataString += String.fromCharCode(fileData[i]);
-  }
-  return dataString;
-}
-
-const fromHexString = (hexString) => new Uint8Array(hexString.match(/.{1,2}/g).map((byte) => parseInt(byte, 16)));
-
-const toHexString = (bytes) => bytes.reduce((str, byte) => str + byte.toString(16).padStart(2, '0'), '');
+// function stringToUint8Array(str): Uint8Array {
+//   const arr = [];
+//   for (let i = 0, j = str.length; i < j; ++i) {
+//     arr.push(str.charCodeAt(i));
+//   }
+//   const tmpUint8Array = new Uint8Array(arr);
+//   return tmpUint8Array;
+// }
+//
+// function uint8ArrayToString(fileData): string {
+//   let dataString = '';
+//   for (let i = 0; i < fileData.length; i++) {
+//     dataString += String.fromCharCode(fileData[i]);
+//   }
+//   return dataString;
+// }
+//
+// const fromHexString = (hexString) => new Uint8Array(hexString.match(/.{1,2}/g).map((byte) => parseInt(byte, 16)));
+//
+// const toHexString = (bytes) => bytes.reduce((str, byte) => str + byte.toString(16).padStart(2, '0'), '');

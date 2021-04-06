@@ -315,11 +315,9 @@ export class CkbHandler {
 
   async createBridgeCell(newTokens: any[], generator: CkbTxGenerator) {
     const account = new Account(this.PRI_KEY);
-    const lockScriptBin = await fs.readFile('../ckb-contracts/build/release/bridge-lockscript');
-    const lockScriptCodeHash = utils.bytesToHex(blake2b(lockScriptBin));
     const scripts = newTokens.map((r) => {
       return {
-        codeHash: lockScriptCodeHash,
+        codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
         hashType: HashType.data,
         args: r.asset.toBridgeLockscriptArgs(),
       };
@@ -351,7 +349,7 @@ export class CkbHandler {
     let waitTime = 0;
     while (true) {
       const txStatus = await this.ckb.rpc.getTransaction(txHash);
-      console.log(`tx ${txHash} status: ${txStatus.txStatus.status}, index: ${waitTime}`);
+      logger.debug(`tx ${txHash} status: ${txStatus.txStatus.status}, index: ${waitTime}`);
       if (txStatus.txStatus.status === 'committed') {
         return txStatus;
       }

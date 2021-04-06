@@ -6,10 +6,10 @@ import { logger } from '@force-bridge/utils/logger';
 import { JsSignatureProvider } from 'eosjs/dist/eosjs-jssig';
 import { CkbDb } from '@force-bridge/db';
 import { EosLock, getEosLockId } from '@force-bridge/db/entity/EosLock';
-import { asyncSleep, bigintToSudtAmount, genRandomHex, waitUntilCommitted } from '@force-bridge/utils';
+import { asyncSleep } from '@force-bridge/utils';
 import assert from 'assert';
 import { CkbMint } from '@force-bridge/db/entity/CkbMint';
-import { ChainType, EosAsset, TronAsset } from '@force-bridge/ckb/model/asset';
+import { ChainType, EosAsset } from '@force-bridge/ckb/model/asset';
 import { EosUnlock } from '@force-bridge/db/entity/EosUnlock';
 import { EosChain } from '@force-bridge/xchain/eos/eosChain';
 import { Account } from '@force-bridge/ckb/model/accounts';
@@ -19,15 +19,12 @@ import { Amount, Script } from '@lay2/pw-core';
 
 import { CkbIndexer } from '@force-bridge/ckb/tx-helper/indexer';
 import { ForceBridgeCore } from '@force-bridge/core';
+import { waitUntilCommitted } from './eth';
 
-// const PRI_KEY = process.env.PRI_KEY || '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
-// const { Indexer, CellCollector } = require('@ckb-lumos/indexer');
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
-// const LUMOS_DB = './lumos_db';
 const indexer = new CkbIndexer('http://127.0.0.1:8116');
 const collector = new IndexerCollector(indexer);
-// indexer.startForever();
 const ckb = new CKB(CKB_URL);
 
 type waitFn = () => Promise<boolean>;

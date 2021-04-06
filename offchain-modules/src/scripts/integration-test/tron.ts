@@ -2,7 +2,7 @@ import 'module-alias/register';
 import nconf from 'nconf';
 import { Config, TronConfig } from '@force-bridge/config';
 import { logger } from '@force-bridge/utils/logger';
-import { asyncSleep, genRandomHex, waitUntilCommitted, bigintToSudtAmount } from '@force-bridge/utils';
+import { asyncSleep, bigintToSudtAmount } from '@force-bridge/utils';
 import { createConnection } from 'typeorm';
 import { CkbDb, TronDb } from '@force-bridge/db';
 import { CkbMint, TronLock, TronUnlock } from '@force-bridge/db/model';
@@ -14,6 +14,7 @@ import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
 import { Amount, Script } from '@lay2/pw-core';
 import { CkbIndexer } from '@force-bridge/ckb/tx-helper/indexer';
 import { ForceBridgeCore } from '@force-bridge/core';
+import { waitUntilCommitted } from './eth';
 import { BigNumber } from 'ethers';
 const TronWeb = require('tronweb');
 
