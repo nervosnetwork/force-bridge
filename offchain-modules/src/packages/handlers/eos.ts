@@ -180,8 +180,8 @@ export class EosHandler {
         chain: ChainType.EOS,
         amount: lockRecord.amount,
         asset: lockRecord.token,
-        recipientLockscript: fragments[0] === undefined ? '' : fragments[0],
-        sudtExtraData: fragments[1] === undefined ? '' : fragments[1],
+        recipientLockscript: fragments[0] === undefined ? '0x' : fragments[0],
+        sudtExtraData: fragments[1] === undefined ? '0x' : fragments[1],
       },
     ]);
     await this.db.createEosLock([lockRecord]);
