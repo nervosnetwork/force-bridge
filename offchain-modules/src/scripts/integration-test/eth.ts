@@ -226,7 +226,7 @@ async function main() {
   throw new Error('The eth component integration test failed!');
 }
 
-export async function waitUntilCommitted(ckb, txHash, timeout) {
+async function waitUntilCommitted(ckb, txHash, timeout) {
   let waitTime = 0;
   while (true) {
     const txStatus = await ckb.rpc.getTransaction(txHash);
@@ -234,18 +234,12 @@ export async function waitUntilCommitted(ckb, txHash, timeout) {
     if (txStatus.txStatus.status === 'committed') {
       return txStatus;
     }
-    await sleep(1000);
+    await asyncSleep(1000);
     waitTime += 1;
     if (waitTime >= timeout) {
       return txStatus;
     }
   }
-}
-
-function sleep(ms) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
 }
 
 main()

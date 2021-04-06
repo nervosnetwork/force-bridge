@@ -19,7 +19,6 @@ import { Amount, Script } from '@lay2/pw-core';
 
 import { CkbIndexer } from '@force-bridge/ckb/tx-helper/indexer';
 import { ForceBridgeCore } from '@force-bridge/core';
-import { waitUntilCommitted } from './eth';
 
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
@@ -230,6 +229,22 @@ async function main() {
   //   const eosUnlockTx = await chain.getTransaction(eosUnlockTxHash);
   //   logger.debug('EosUnlockTx status:', eosUnlockTx.trx.receipt.status);
   // }
+}
+
+async function waitUntilCommitted(ckb, txHash, timeout) {
+  let waitTime = 0;
+  while (true) {
+    const txStatus = await ckb.rpc.getTransaction(txHash);
+    logger.debug(`tx ${txHash} status: ${txStatus.txStatus.status}, index: ${waitTime}`);
+    if (txStatus.txStatus.status === 'committed') {
+      return txStatus;
+    }
+    await asyncSleep(1000);
+    waitTime += 1;
+    if (waitTime >= timeout) {
+      return txStatus;
+    }
+  }
 }
 
 main()

@@ -14,7 +14,6 @@ import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
 import { Amount, Script } from '@lay2/pw-core';
 import { CkbIndexer } from '@force-bridge/ckb/tx-helper/indexer';
 import { ForceBridgeCore } from '@force-bridge/core';
-import { waitUntilCommitted } from './eth';
 import { BigNumber } from 'ethers';
 const TronWeb = require('tronweb');
 
@@ -189,6 +188,22 @@ async function main() {
     return;
   }
   throw new Error('The tron component integration test failed!');
+}
+
+async function waitUntilCommitted(ckb, txHash, timeout) {
+  let waitTime = 0;
+  while (true) {
+    const txStatus = await ckb.rpc.getTransaction(txHash);
+    logger.debug(`tx ${txHash} status: ${txStatus.txStatus.status}, index: ${waitTime}`);
+    if (txStatus.txStatus.status === 'committed') {
+      return txStatus;
+    }
+    await asyncSleep(1000);
+    waitTime += 1;
+    if (waitTime >= timeout) {
+      return txStatus;
+    }
+  }
 }
 
 main()
