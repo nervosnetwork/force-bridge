@@ -23,7 +23,7 @@ const CKB = require('@nervosnetwork/ckb-sdk-core').default;
 // const { Indexer, CellCollector } = require('@ckb-lumos/indexer');
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
 // const LUMOS_DB = './lumos_db';
-const indexer = new CkbIndexer('http://127.0.0.1:8116');
+const indexer = new CkbIndexer('http://127.0.0.1:8114', 'http://127.0.0.1:8116');
 const collector = new IndexerCollector(indexer);
 // indexer.startForever();
 const ckb = new CKB(CKB_URL);

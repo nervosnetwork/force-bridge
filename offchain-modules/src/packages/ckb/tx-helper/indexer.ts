@@ -57,8 +57,8 @@ const DefaultTerminator: Terminator = (_index, _cell) => {
 export class CkbIndexer {
   private ckbRpc: RPC;
 
-  constructor(public ckbIndexerUrl: string) {
-    this.ckbRpc = new RPC(ckbIndexerUrl);
+  constructor(public ckbRpcUrl: string, public ckbIndexerUrl: string) {
+    this.ckbRpc = new RPC(ckbRpcUrl);
   }
 
   async waitUntilSync(): Promise<void> {

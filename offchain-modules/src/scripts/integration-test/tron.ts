@@ -21,7 +21,7 @@ const TronWeb = require('tronweb');
 const PRI_KEY = '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
-const indexer = new CkbIndexer('http://127.0.0.1:8116');
+const indexer = new CkbIndexer('http://127.0.0.1:8114', 'http://127.0.0.1:8116');
 const collector = new IndexerCollector(indexer);
 const ckb = new CKB(CKB_URL);
 

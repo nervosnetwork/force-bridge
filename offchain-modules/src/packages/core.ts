@@ -13,7 +13,7 @@ export class ForceBridgeCore {
   async init(config: Config): Promise<ForceBridgeCore> {
     ForceBridgeCore.config = config;
     ForceBridgeCore.ckb = new CKB(config.ckb.ckbRpcUrl);
-    ForceBridgeCore.indexer = new CkbIndexer(config.ckb.ckbIndexerUrl);
+    ForceBridgeCore.indexer = new CkbIndexer(config.ckb.ckbRpcUrl, config.ckb.ckbIndexerUrl);
     return this;
   }
 }
