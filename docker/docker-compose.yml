@@ -1,5 +1,12 @@
 version: "3.3"
 services:
+  mysql:
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: forcebridge
+    ports:
+      - 3306:3306
   ckb:
     image: tockb/ckb-dev:v0.39.2
     ports:
