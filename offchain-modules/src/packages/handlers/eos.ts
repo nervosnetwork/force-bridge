@@ -67,7 +67,7 @@ export class EosHandler {
       }
 
       let latestActionSeq = await this.db.getLastedGlobalActionSeq();
-      if (latestActionSeq < this.config.latestGlobalActionSeq) {
+      if (latestActionSeq < this.config.latestGlobalActionSeq && this.config.latestGlobalActionSeq !== 0) {
         latestActionSeq = this.config.latestGlobalActionSeq;
       }
 
@@ -87,6 +87,10 @@ export class EosHandler {
         }
 
         const firstAction = actions.actions[0];
+        if (latestActionSeq < 0) {
+          //init
+          latestActionSeq = firstAction.global_action_seq;
+        }
         const lastAction = actions.actions[actLen - 1];
         if (lastAction.global_action_seq > latestActionSeq) {
           pos += offset;
@@ -168,6 +172,7 @@ export class EosHandler {
       memo: lockEvent.Memo,
       blockNumber: lockEvent.BlockNumber,
     };
+    const fragments = lockRecord.memo.split(',');
 
     await this.db.createCkbMint([
       {
@@ -175,7 +180,8 @@ export class EosHandler {
         chain: ChainType.EOS,
         amount: lockRecord.amount,
         asset: lockRecord.token,
-        recipientLockscript: lockEvent.Memo,
+        recipientLockscript: fragments[0] === undefined ? '0x' : fragments[0],
+        sudtExtraData: fragments[1] === undefined ? '0x' : fragments[1],
       },
     ]);
     await this.db.createEosLock([lockRecord]);
@@ -213,26 +219,27 @@ export class EosHandler {
         logger.info(
           `EosHandler pushSignedTransaction ckbTxHash:${record.ckbTxHash} receiver:${record.recipientAddress} eosTxhash:${record.eosTxHash} amount:${record.amount} asset:${record.asset}`,
         );
+        if (!this.config.onlyWatchIrreversibleBlock) {
+          const txStatus = txRes.processed.receipt.status;
+          if (txStatus === 'executed') {
+            record.status = 'success';
+          } else {
+            record.status = 'error';
+            record.message = `action status:${txStatus} doesn't executed`;
+            logger.error(
+              `EosHandler processUnLockEvents eosTxHash:${txHash} ckbTxHash:${record.ckbTxHash} receiver:${record.recipientAddress} amount:${record.amount} asset:${record.asset} action status:${txStatus} doesn't executed`,
+            );
+          }
+          await this.db.saveEosUnlock([record]);
+        }
       } catch (e) {
         record.status = 'error';
         record.message = e.message;
         logger.error(
           `EosHandler pushSignedTransaction failed eosTxHash:${txHash} ckbTxHash:${record.ckbTxHash} receiver:${record.recipientAddress} amount:${record.amount} asset:${record.asset} error:${e}`,
         );
+        await this.db.saveEosUnlock([record]);
       }
-      if (!this.config.onlyWatchIrreversibleBlock) {
-        const txStatus = txRes.processed.receipt.status;
-        if (txStatus === 'executed') {
-          record.status = 'success';
-        } else {
-          record.status = 'error';
-          record.message = `action status:${txStatus} doesn't executed`;
-          logger.error(
-            `EosHandler processUnLockEvents eosTxHash:${txHash} ckbTxHash:${record.ckbTxHash} receiver:${record.recipientAddress} amount:${record.amount} asset:${record.asset} action status:${txStatus} doesn't executed`,
-          );
-        }
-      }
-      await this.db.saveEosUnlock([record]);
     }
   }
 
@@ -247,7 +254,7 @@ export class EosHandler {
           await asyncSleep(15000);
           continue;
         }
-        let newRecords = new Array<EosUnlock>();
+        const newRecords = new Array<EosUnlock>();
         for (const pendingRecord of pendingRecords) {
           const txRes = await this.chain.getTransaction(pendingRecord.eosTxHash);
           if ('error' in txRes) {
