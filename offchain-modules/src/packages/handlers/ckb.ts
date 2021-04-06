@@ -1,7 +1,7 @@
 import { CkbDb } from '../db';
 import { CkbMint, ICkbBurn } from '../db/model';
 import { logger } from '../utils/logger';
-import { asyncSleep, blake2b, fromHexString, toHexString, uint8ArrayToString, bigintToSudtAmount } from '../utils';
+import { asyncSleep, fromHexString, toHexString, uint8ArrayToString, bigintToSudtAmount } from '../utils';
 import { Asset, ChainType, EosAsset, EthAsset, TronAsset } from '../ckb/model/asset';
 import { Address, Amount, AddressType, Script, HashType } from '@lay2/pw-core';
 import { Account } from '@force-bridge/ckb/model/accounts';
@@ -13,11 +13,7 @@ import { ForceBridgeCore } from '@force-bridge/core';
 import Transaction = CKBComponents.Transaction;
 import { Script as LumosScript } from '@ckb-lumos/base';
 import { BigNumber } from 'ethers';
-import { RecipientCellData } from '@force-bridge/ckb/tx-helper/eth_recipient_cell';
-
-const fs = require('fs').promises;
-
-const utils = require('@nervosnetwork/ckb-sdk-utils');
+import { RecipientCellData } from '@force-bridge/ckb/tx-helper/generated/eth_recipient_cell';
 
 // CKB handler
 // 1. Listen CKB chain to get new burn events.
@@ -237,7 +233,6 @@ export class CkbHandler {
         const mintTxHash = await this.ckb.rpc.sendTransaction(signedTx);
         console.log(`Mint Transaction has been sent with tx hash ${mintTxHash}`);
         const txStatus = await this.waitUntilCommitted(mintTxHash, 60);
-        await asyncSleep(10000);
         if (txStatus.txStatus.status === 'committed') {
           mintRecords.map((r) => {
             r.status = 'success';
@@ -256,8 +251,7 @@ export class CkbHandler {
         });
         await this.db.updateCkbMint(mintRecords);
       }
-
-      await asyncSleep(60000);
+      await this.indexer.waitUntilSync();
     }
   }
 
@@ -326,7 +320,7 @@ export class CkbHandler {
     const signedTx = this.ckb.signTransaction(this.PRI_KEY)(rawTx);
     const tx_hash = await this.ckb.rpc.sendTransaction(signedTx);
     await this.waitUntilCommitted(tx_hash, 60);
-    await asyncSleep(10000);
+    await this.indexer.waitUntilSync();
   }
 
   async getOwnLockHash(): Promise<string> {

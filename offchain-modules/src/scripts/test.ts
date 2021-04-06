@@ -8,7 +8,6 @@ import { CkbIndexer } from '../packages/ckb/tx-helper/indexer';
 import { fromHexString, stringToUint8Array, toHexString, uint8ArrayToString } from '../packages/utils';
 import { BigNumber, ethers } from 'ethers';
 import { ForceBridgeCore } from '@force-bridge/core';
-import { Bytes, RecipientCellData, SerializeRecipientCellData } from '../packages/ckb/tx-helper/eth_recipient_cell';
 import { Reader } from 'ckb-js-toolkit';
 
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
