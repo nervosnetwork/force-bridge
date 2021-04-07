@@ -7,6 +7,7 @@ import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
 import { fromHexString, stringToUint8Array, toHexString, bigintToSudtAmount } from '@force-bridge/utils';
 import { ForceBridgeCore } from '@force-bridge/core';
 import { SerializeRecipientCellData } from '@force-bridge/ckb/tx-helper/generated/eth_recipient_cell';
+import { BigNumber } from 'ethers';
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
 
 export interface MintAssetRecord {

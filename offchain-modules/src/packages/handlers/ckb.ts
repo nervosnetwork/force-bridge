@@ -105,9 +105,7 @@ export class CkbHandler {
                 ckbTxHash: k,
                 asset: `0x${toHexString(new Uint8Array(v.getAsset().raw()))}`,
                 chain,
-                amount: BigNumber.from(
-                  Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.getAmount().raw()))}`),
-                ).toHexString(),
+                amount: Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.getAmount().raw()))}`).toString(),
                 recipientAddress: `0x${toHexString(new Uint8Array(v.getRecipientAddress().raw()))}`,
                 blockNumber: latestHeight,
               };
@@ -261,7 +259,7 @@ export class CkbHandler {
         return {
           asset: new EthAsset(r.asset, ownLockHash),
           recipient: new Address(uint8ArrayToString(fromHexString(r.recipientLockscript)), AddressType.ckb),
-          amount: Amount.fromUInt128LE(r.amount),
+          amount: new Amount(BigNumber.from(r.amount).toString()),
         };
       case ChainType.TRON:
         return {

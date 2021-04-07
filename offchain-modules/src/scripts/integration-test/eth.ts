@@ -159,12 +159,13 @@ async function main() {
     );
 
     if (!sendBurn) {
-      logger.debug('sudt balance:', balance.toHexString());
-      logger.debug('expect balance:', Amount.fromUInt128LE(amount.toHexString()).toHexString());
-      assert(balance.eq(Amount.fromUInt128LE(amount.toHexString())));
+      logger.debug('sudt balance:', balance);
+      logger.debug('expect balance:', new Amount(amount.toString()));
+      assert(balance.eq(new Amount(amount.toString())));
     }
 
     // send burn tx
+    const burnAmount = ethers.utils.parseEther('0.01');
     if (!sendBurn) {
       const account = new Account(PRI_KEY);
       const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
@@ -173,7 +174,8 @@ async function main() {
         await account.getLockscript(),
         recipientAddress,
         new EthAsset('0x0000000000000000000000000000000000000000', ownLockHash),
-        Amount.fromUInt128LE('0x01'),
+        // Amount.fromUInt128LE('0x01'),
+        new Amount(burnAmount.toString()),
       );
       const signedTx = ckb.signTransaction(PRI_KEY)(burnTx);
       burnTxHash = await ckb.rpc.sendTransaction(signedTx);
@@ -181,12 +183,10 @@ async function main() {
       await waitUntilCommitted(ckb, burnTxHash, 60);
       sendBurn = true;
     }
-    logger.debug('sudt balance:', balance.toHexString());
-    logger.debug(
-      'expect balance:',
-      Amount.fromUInt128LE(amount.toHexString()).sub(Amount.fromUInt128LE('0x01')).toHexString(),
-    );
-    assert(balance.eq(Amount.fromUInt128LE(amount.toHexString()).sub(Amount.fromUInt128LE('0x01'))));
+    const expectBalance = new Amount(amount.toString()).sub(new Amount(burnAmount.toString()));
+    logger.debug('sudt balance:', balance);
+    logger.debug('expect balance:', expectBalance);
+    assert(balance.eq(expectBalance));
 
     // check unlock record send
     const ethUnlockRecords = await conn.manager.find(EthUnlock, {
@@ -204,8 +204,8 @@ async function main() {
     logger.debug('parsedLog', parsedLog);
     assert(parsedLog.args.token === ethUnlockRecord.asset);
     logger.debug('parsedLog amount', ethUnlockRecord.amount);
-    logger.debug('parsedLog amount', parsedLog.args.receivedAmount.toHexString());
-    assert(ethUnlockRecord.amount === parsedLog.args.receivedAmount.toHexString());
+    logger.debug('parsedLog amount', parsedLog.args.receivedAmount.toString());
+    assert(ethUnlockRecord.amount === parsedLog.args.receivedAmount.toString());
     logger.debug('parsedLog recipient', ethUnlockRecord.recipientAddress);
     logger.debug('parsedLog recipient', parsedLog.args.recipient);
     assert(ethUnlockRecord.recipientAddress === parsedLog.args.recipient);
