@@ -32,7 +32,7 @@ export class CkbHandler {
         case ChainType.BTC:
           await this.db.createBtcUnlock([
             {
-              ckbTxHash: burn.ckbTxHash.slice(2),
+              ckbTxHash: burn.ckbTxHash,
               asset: burn.asset,
               amount: burn.amount,
               chain: burn.chain,
