@@ -115,9 +115,10 @@ export class CkbHandler {
                 ckbTxHash: k,
                 asset: uint8ArrayToString(new Uint8Array(v.getAsset().raw())),
                 chain,
-                amount: BigNumber.from(
-                  Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.getAmount().raw()))}`),
-                ).toHexString(),
+                // amount: BigNumber.from(
+                //   Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.getAmount().raw()))}`),
+                // ).toHexString(),
+                amount: Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.getAmount().raw()))}`).toString(),
                 recipientAddress: uint8ArrayToString(new Uint8Array(v.getRecipientAddress().raw())),
                 blockNumber: latestHeight,
               };
@@ -264,7 +265,8 @@ export class CkbHandler {
       case ChainType.TRON:
         return {
           asset: new TronAsset(r.asset, ownLockHash),
-          amount: Amount.fromUInt128LE(bigintToSudtAmount(BigInt(r.amount))),
+          // amount: Amount.fromUInt128LE(bigintToSudtAmount(BigInt(r.amount))),
+          amount: new Amount(r.amount),
           recipient: new Address(r.recipientLockscript, AddressType.ckb),
         };
       case ChainType.EOS:

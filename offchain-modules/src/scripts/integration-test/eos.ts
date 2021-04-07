@@ -151,8 +151,8 @@ async function main() {
         await account.getLockscript(),
       );
 
-      logger.debug('sudt balance:', balance.toHexString());
-      logger.debug('expect balance:', new Amount(lockAmount).toUInt128LE());
+      logger.debug('sudt balance:', balance);
+      logger.debug('expect balance:', new Amount(lockAmount));
       return balance.eq(new Amount(lockAmount));
     },
     1000 * 10,
@@ -167,7 +167,7 @@ async function main() {
   // };
   // await ckbDb.createEosUnlock([unlockRecord]);
   // send burn tx
-  const burnAmount = Amount.fromUInt128LE('0x10270000000000000000000000000000');
+  const burnAmount = new Amount('0.0001');
   // const account = new Account(PRI_KEY);
   // const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
   const generator = new CkbTxGenerator(ckb, new IndexerCollector(indexer));
@@ -190,8 +190,8 @@ async function main() {
         await account.getLockscript(),
       );
 
-      logger.debug('sudt balance:', balance.toHexString());
-      logger.debug('expect balance:', new Amount(lockAmount).sub(burnAmount).toHexString());
+      logger.debug('sudt balance:', balance);
+      logger.debug('expect balance:', new Amount(lockAmount).sub(burnAmount));
       return balance.eq(new Amount(lockAmount).sub(burnAmount));
     },
     1000 * 10,

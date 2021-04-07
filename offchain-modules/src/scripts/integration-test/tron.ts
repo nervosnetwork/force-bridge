@@ -128,11 +128,13 @@ async function main() {
     );
 
     if (!sendBurn) {
-      logger.debug('sudt balance:', balance.toHexString());
-      logger.debug('expect balance:', Amount.fromUInt128LE(bigintToSudtAmount(amount)).toHexString());
-      assert(balance.eq(Amount.fromUInt128LE(bigintToSudtAmount(amount))));
+      logger.debug('sudt balance:', balance);
+      // logger.debug('expect balance:', Amount.fromUInt128LE(bigintToSudtAmount(amount)).toHexString());
+      logger.debug('expect balance:', new Amount(amount.toString()));
+      assert(balance.eq(new Amount(amount.toString())));
     }
 
+    const burnAmount = 1;
     // send burn tx
     if (!sendBurn) {
       const account = new Account(PRI_KEY);
@@ -142,7 +144,7 @@ async function main() {
         await account.getLockscript(),
         recipientAddress,
         new TronAsset('trx', ownLockHash),
-        Amount.fromUInt128LE('0x01'),
+        new Amount(burnAmount.toString()),
       );
       const signedTx = ckb.signTransaction(PRI_KEY)(burnTx);
       burnTxHash = await ckb.rpc.sendTransaction(signedTx);
@@ -151,9 +153,11 @@ async function main() {
       sendBurn = true;
     }
 
-    logger.debug('sudt balance:', balance.toHexString());
-    logger.debug('expect balance:', Amount.fromUInt128LE(bigintToSudtAmount(amount)).sub(Amount.fromUInt128LE('0x01')));
-    assert(balance.eq(Amount.fromUInt128LE(bigintToSudtAmount(amount)).sub(Amount.fromUInt128LE('0x01'))));
+    logger.debug('sudt balance:', balance);
+    const expectBalance = new Amount((amount - burnAmount).toString());
+    logger.debug('expect sudt balance:', expectBalance);
+    // logger.debug('expect balance:', Amount.fromUInt128LE(bigintToSudtAmount(amount)).sub(Amount.fromUInt128LE('0x01')));
+    assert(balance.eq(expectBalance));
 
     // check unlock record send
     const tronUnlockRecords = await conn.manager.find(TronUnlock, {
