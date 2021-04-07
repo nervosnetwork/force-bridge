@@ -97,11 +97,9 @@ export class BTCChain {
     const utxos = getVins(liveUtxos, BigInt(amount));
     if (utxos.length === 0) {
       throw new Error(
-        `the unspend utxo is not enough for lock. need : ${amount}. actual uxtos :  ${JSON.stringify(
-          liveUtxos,
-          null,
-          2,
-        )}`,
+        `the unspent utxo is not enough for lock. need : ${amount}. actual :${Unit.fromBTC(
+          liveUtxos.total_amount,
+        ).toSatoshis()}`,
       );
     }
     const lockTx = new bitcore.Transaction()
@@ -145,11 +143,9 @@ export class BTCChain {
     const utxos = getVins(liveUtxos, VinNeedAmount);
     if (utxos.length === 0) {
       throw new Error(
-        `the unspend utxo is no for unlock. need : ${VinNeedAmount}. actual uxtos : ${JSON.stringify(
-          liveUtxos,
-          null,
-          2,
-        )}`,
+        `the unspent utxo is not enough for unlock. need : ${VinNeedAmount}. actual amount : ${Unit.fromBTC(
+          liveUtxos.total_amount,
+        ).toSatoshis()}`,
       );
     }
 

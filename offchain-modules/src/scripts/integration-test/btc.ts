@@ -178,7 +178,7 @@ async function main() {
     async () => {
       const btcUnlockRecords = await conn.manager.find(BtcUnlock, {
         where: {
-          ckbTxHash: burnTxHash.slice(2),
+          ckbTxHash: burnTxHash,
           status: 'success',
         },
       });

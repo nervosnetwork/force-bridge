@@ -45,6 +45,9 @@ export class BtcHandler {
             logger.debug(`save CkbMint and BTCLock successful for BTC tx ${btcLockEventData.txHash}.`);
           },
           async (ckbTxHash: string) => {
+            if (!ckbTxHash.startsWith('0x')) {
+              ckbTxHash = '0x' + ckbTxHash;
+            }
             const records: BtcUnlock[] = await this.db.getNotSuccessUnlockRecord(ckbTxHash);
             if (records.length === 0) {
               return;
