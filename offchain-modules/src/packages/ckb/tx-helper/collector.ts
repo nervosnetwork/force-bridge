@@ -1,7 +1,7 @@
 import { Script as LumosScript } from '@ckb-lumos/base';
 import { Address, Amount, Script } from '@lay2/pw-core';
 import { CkbIndexer, IndexerCell, ScriptType, Terminator } from './indexer';
-import { logger } from '@force-bridge/utils/logger';
+import { logger } from '../../utils/logger';
 
 export abstract class Collector {
   abstract getCellsByLockscriptAndCapacity(lockscript: Script, capacity: Amount): Promise<IndexerCell[]>;
