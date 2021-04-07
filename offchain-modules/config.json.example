@@ -85,7 +85,7 @@
       }
     },
     "tron": {
-      "tronGridUrl": "https://nile.trongrid.io/",
+      "tronGridUrl": "https://api.shasta.trongrid.io",
       "committee": {
         "address": "TX3MGfWT5aGv81vTSdZtr6hbHxhMVh1FFM",
         "permissionId": 2,
