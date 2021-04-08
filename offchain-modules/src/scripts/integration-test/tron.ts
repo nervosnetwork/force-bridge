@@ -113,6 +113,29 @@ async function main() {
   const recipientAddress = 'TS6VejPL8cQy6pA8eDGyusmmhCrXHRdJK6';
 
   let burnTxHash;
+
+  const getBalance = async (assetName) => {
+    const account = new Account(PRI_KEY);
+    const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
+    const asset = new TronAsset(assetName, ownLockHash);
+    const bridgeCellLockscript = {
+      codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
+      hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
+      args: asset.toBridgeLockscriptArgs(),
+    };
+    const sudtArgs = ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
+    const sudtType = {
+      codeHash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
+      hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
+      args: sudtArgs,
+    };
+    const balance = await collector.getSUDTBalance(
+      new Script(sudtType.codeHash, sudtType.args, sudtType.hashType),
+      await account.getLockscript(),
+    );
+    return balance;
+  };
+
   const checkLock = async (txHash, assetName, assetType, sendBurn) => {
     // check TronLock and CkbMint saved.
     const tronLockRecords = await conn.manager.find(TronLock, {
@@ -145,31 +168,13 @@ async function main() {
     assert(ckbMintRecord.recipientLockscript === recipientLockscript);
 
     // check sudt balance.
-    const account = new Account(PRI_KEY);
-    const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
-    const asset = new TronAsset(assetName, ownLockHash);
-    const bridgeCellLockscript = {
-      codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
-      hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
-      args: asset.toBridgeLockscriptArgs(),
-    };
-    const sudtArgs = ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
-    const sudtType = {
-      codeHash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
-      hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
-      args: sudtArgs,
-    };
-    const balance = await collector.getSUDTBalance(
-      new Script(sudtType.codeHash, sudtType.args, sudtType.hashType),
-      await account.getLockscript(),
-    );
+    const balance = await getBalance(assetName);
 
     if (!sendBurn) {
       logger.debug('assetName', assetName);
       logger.debug('sudt balance:', balance);
-      // logger.debug('expect balance:', Amount.fromUInt128LE(bigintToSudtAmount(amount)).toHexString());
       logger.debug('expect balance:', new Amount(amount.toString()));
-      //assert(balance.eq(new Amount(amount.toString())));
+      assert(balance.eq(new Amount(amount.toString())));
     }
   };
 
@@ -194,13 +199,14 @@ async function main() {
     return txHash;
   };
 
-  const checkUnlock = async (burnTxHash) => {
+  const checkUnlock = async (burnTxHash, assetName) => {
     const burnAmount = 1;
-    // logger.debug('sudt balance:', balance);
-    // const expectBalance = new Amount((amount - burnAmount).toString());
-    // logger.debug('expect sudt balance:', expectBalance);
-    // // logger.debug('expect balance:', Amount.fromUInt128LE(bigintToSudtAmount(amount)).sub(Amount.fromUInt128LE('0x01')));
-    // assert(balance.eq(expectBalance));
+    const balance = await getBalance(assetName);
+
+    logger.debug('sudt balance:', balance);
+    const expectBalance = new Amount((amount - burnAmount).toString());
+    logger.debug('expect sudt balance:', expectBalance);
+    assert(balance.eq(expectBalance));
 
     // check unlock record send
     const tronUnlockRecords = await conn.manager.find(TronUnlock, {
@@ -225,12 +231,12 @@ async function main() {
       await checkLock(trxTxHash, 'trx', 'trx', trxSendBurn);
       burnTrxTxHash = await burn(trxSendBurn, 'trx', burnTrxTxHash);
       trxSendBurn = true;
-      await checkUnlock(burnTrxTxHash);
+      await checkUnlock(burnTrxTxHash, 'trx');
 
       await checkLock(trc10TxHash, '1000696', 'trc10', trc10SendBurn);
       burnTrc10TxHash = await burn(trc10SendBurn, '1000696', burnTrc10TxHash);
       trc10SendBurn = true;
-      await checkUnlock(burnTrc10TxHash);
+      await checkUnlock(burnTrc10TxHash, '1000696');
 
       //await checkEffect(trc20TxHash, 'TVWvkCasxAJUyzPKMQ2Rus1NtmBwrkVyBR', 'trc20');
     } catch (e) {
