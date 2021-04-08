@@ -221,7 +221,6 @@ export class TronHandler {
     for (const key of this.committee.keys) {
       signed_tx = await this.tronWeb.trx.multiSign(signed_tx, key);
     }
-    logger.debug(signed_tx);
     return signed_tx;
   }
 
