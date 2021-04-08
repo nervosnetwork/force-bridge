@@ -6,6 +6,7 @@ import { ITronLock, TronUnlock, ICkbMint, TronLock } from '@force-bridge/db/mode
 import { ChainType } from '@force-bridge/ckb/model/asset';
 import { promises } from 'fs';
 import { sign } from '@force-bridge/ckb/tx-helper/signer';
+import { getAssetTypeByAsset } from '@force-bridge/xchain/tron/utils';
 const TronWeb = require('tronweb');
 const TronGrid = require('trongrid');
 
@@ -107,17 +108,6 @@ export class TronHandler {
     return { ckbRecipient, sudtExtraData };
   }
 
-  private getAssetTypeByAsset(asset: string) {
-    switch (asset.length) {
-      case TRX_ASSET_LENGTH:
-        return 'trx';
-      case TRC10_ASSET_LENGTH:
-        return 'trc10';
-      default:
-        return 'trc20';
-    }
-  }
-
   private transferEventToCkbMint(event: TronLockEvent) {
     const { ckbRecipient, sudtExtraData } = this.analyzeMemo(event.memo);
     return {
@@ -136,7 +126,7 @@ export class TronHandler {
       txIndex: 0,
       sender: event.sender,
       asset: event.asset,
-      assetType: this.getAssetTypeByAsset(event.asset),
+      assetType: getAssetTypeByAsset(event.asset),
       amount: event.amount,
       memo: event.memo,
       timestamp: event.timestamp,
@@ -231,7 +221,7 @@ export class TronHandler {
     for (const key of this.committee.keys) {
       signed_tx = await this.tronWeb.trx.multiSign(signed_tx, key);
     }
-
+    logger.debug(signed_tx);
     return signed_tx;
   }
 
@@ -309,6 +299,7 @@ export class TronHandler {
               signedTx = await this.multiSignTransferTrc20(unlockRecord);
               break;
           }
+
           unlockRecord.tronTxHash = signedTx.txID;
           unlockRecord.tronTxIndex = 0;
           unlockRecord.status = 'pending';

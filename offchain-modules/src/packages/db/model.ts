@@ -33,6 +33,15 @@ export interface IEthLock {
   blockHash: string;
 }
 
+export interface ICkbBurn {
+  ckbTxHash: string;
+  chain: number;
+  asset: string;
+  amount: string;
+  recipientAddress: string;
+  blockNumber: number;
+}
+
 export interface IEthUnlock {
   ckbTxHash: string;
   asset: string;

@@ -41,6 +41,7 @@ export class ForceBridgeEventEmitter {
     this.emitter = new EventEmitter();
   }
 
+  // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   addHandler(type: string, handler: (Event) => void) {
     this.emitter.on(type, handler);
   }

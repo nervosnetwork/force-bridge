@@ -1,4 +1,5 @@
 import { Transaction } from '@lay2/pw-core';
+import RawTransaction = CKBComponents.RawTransaction;
 
 export async function sign(tx: Transaction, privateKey: string): Promise<Transaction> {
   throw new Error('not implemented');
