@@ -41,8 +41,6 @@ export class EthAsset extends Asset {
 }
 
 export class TronAsset extends Asset {
-  // '0x00000000000000000000' represents ETH
-  // other address represents ERC20 address
   constructor(public address: string, public ownLockHash: string) {
     super();
     this.chainType = ChainType.TRON;
@@ -63,13 +61,8 @@ export class TronAsset extends Asset {
 }
 
 export class EosAsset extends Asset {
-  // '0x00000000000000000000' represents ETH
-  // other address represents ERC20 address
   constructor(public address: string, public ownLockHash: string) {
     super();
-    // if (!address.startsWith('') || address.length !== 42) {
-    //   throw new Error('invalid Tron asset address');
-    // }
     this.chainType = ChainType.EOS;
   }
 
@@ -88,13 +81,8 @@ export class EosAsset extends Asset {
 }
 
 export class BtcAsset extends Asset {
-  // '0x00000000000000000000' represents ETH
-  // other address represents ERC20 address
   constructor(public address: string, public ownLockHash: string) {
     super();
-    // if (!address.startsWith('') || address.length !== 42) {
-    //   throw new Error('invalid Tron asset address');
-    // }
     this.chainType = ChainType.BTC;
   }
 
