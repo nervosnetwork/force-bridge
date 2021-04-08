@@ -40,15 +40,14 @@ async function doLock(opts: any, command: any) {
   const amount = options.get('amount');
   const recipient = options.get('recipient');
   const extra = options.get('extra');
-  const memo = extra === undefined ? recipient : `${recipient},${extra}`;
 
   const provider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
   const bridge = new ethers.Contract(ForceBridgeCore.config.eth.contractAddress, abi, provider);
   const wallet = new ethers.Wallet(privateKey, provider);
   const bridgeWithSigner = bridge.connect(wallet);
-  const fragments = memo.split(',');
-  const recipientLockscript = '0x' + Buffer.from(fragments[0]).toString('hex');
-  const sudtExtraData = fragments[1] !== undefined ? '0x' + Buffer.from(fragments[1]).toString('hex') : '0x';
+
+  const recipientLockscript = '0x' + Buffer.from(recipient).toString('hex');
+  const sudtExtraData = extra !== undefined ? '0x' + Buffer.from(extra).toString('hex') : '0x';
   const lockRes = await bridgeWithSigner.lockETH(recipientLockscript, sudtExtraData, {
     value: ethers.utils.parseEther(amount),
   });
@@ -69,7 +68,7 @@ async function doUnlock(opts: any, command: any) {
     await account.getLockscript(),
     recipientAddress,
     new EthAsset('0x0000000000000000000000000000000000000000', ownLockHash),
-    new Amount(ethers.utils.parseEther('0.1').toString()),
+    new Amount(ethers.utils.parseEther(amount).toString()),
   );
 
   const signedTx = ForceBridgeCore.ckb.signTransaction(privateKey)(burnTx);

@@ -1,5 +1,5 @@
 import { Script } from '@lay2/pw-core';
-import { ForceBridgeCore } from '@force-bridge/core';
+import { ForceBridgeCore } from '../../core';
 
 export class Account {
   public publicKey: string;
