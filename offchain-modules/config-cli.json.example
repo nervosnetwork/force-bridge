@@ -1,0 +1,81 @@
+{
+  "forceBridge": {
+    "eth": {
+      "rpcUrl": "http://47.56.233.149:3045",
+      "privateKey": "0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed37a",
+      "multiSignThreshold": 2,
+      "contractAddress": "0x8326e1d621Cd32752920ed2A44B49bB1a96c7391"
+    },
+    "eos": {
+      "rpcUrl": "https://jungle3.cryptolions.io:443",
+      "chainId": "2a02a0053e5a8cf73a56ba0fda11e4d92e0238a4a2aa74fccf46d5a910746840",
+      "bridgerAccount": "forcebridge1",
+      "bridgerAccountPermission": "active",
+      "latestGlobalActionSeq": -1,
+      "onlyWatchIrreversibleBlock": false
+    },
+    "btc": {
+      "clientParams": {
+        "url": "http://47.56.233.149",
+        "user": "test",
+        "pass": "test",
+        "port": 3043,
+        "timeout": 10000
+      },
+      "lockAddress": "2N1VV17PQAQbNNicsoQhyUbiLciJwYLadfW"
+    },
+    "ckb": {
+      "ckbRpcUrl": "http://47.56.233.149:3054",
+      "ckbIndexerUrl": "http://47.56.233.149:3056",
+      "deps": {
+        "bridgeLock": {
+          "cellDep": {
+            "depType": "code",
+            "outPoint": {
+              "txHash": "0xbbcbb5355d4604731027358c7baf25e5d9b3d20ddce4308cd835794aa5c409e4",
+              "index": "0x0"
+            }
+          },
+          "script": {
+            "codeHash": "0x8aa08e1154cbd2cb7dbb63f2a8b2f14c1fc7ec622f234e4ae6be37d757a4d106",
+            "hashType": "data"
+          }
+        },
+        "sudtType": {
+          "cellDep": {
+            "depType": "code",
+            "outPoint": {
+              "txHash": "0xbbcbb5355d4604731027358c7baf25e5d9b3d20ddce4308cd835794aa5c409e4",
+              "index": "0x2"
+            }
+          },
+          "script": {
+            "codeHash": "0xe1e354d6d643ad42724d40967e334984534e0367405c5ae42a9d7d63d77df419",
+            "hashType": "data"
+          }
+        },
+        "recipientType": {
+          "cellDep": {
+            "depType": "code",
+            "outPoint": {
+              "txHash": "0xbbcbb5355d4604731027358c7baf25e5d9b3d20ddce4308cd835794aa5c409e4",
+              "index": "0x3"
+            }
+          },
+          "script": {
+            "codeHash": "0xccfc7603253b4d495d09fb6813d0ad2504a12b650e8640878234552e9cd503ee",
+            "hashType": "data"
+          }
+        }
+      }
+    },
+    "tron": {
+      "tronGridUrl": "https://api.shasta.trongrid.io",
+      "committee": {
+        "address": "TX3MGfWT5aGv81vTSdZtr6hbHxhMVh1FFM",
+        "permissionId": 2
+      },
+      "feeLimit": 1000000
+    }
+  }
+}
