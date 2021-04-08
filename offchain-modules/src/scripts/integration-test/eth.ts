@@ -15,6 +15,7 @@ import { Address, AddressType, Amount, Script } from '@lay2/pw-core';
 import { Account } from '@force-bridge/ckb/model/accounts';
 import { CkbTxGenerator } from '@force-bridge/ckb/tx-helper/generator';
 import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
+import { waitUntilCommitted } from './util';
 // import {CkbIndexer} from "@force-bridge/ckb/tx-helper/indexer";
 import { ForceBridgeCore } from '@force-bridge/core';
 import { CkbIndexer } from '@force-bridge/ckb/tx-helper/indexer';
@@ -95,16 +96,9 @@ async function main() {
   const recipientAddress = '0x1000000000000000000000000000000000000001';
   const balanceBefore = await provider.getBalance(recipientAddress);
   logger.debug('balanceBefore', balanceBefore);
-  // const record = {
-  //   ckbTxHash: genRandomHex(32),
-  //   asset: ETH_ADDRESS,
-  //   amount: genRandomHex(4),
-  //   recipientAddress,
-  // };
-  // await ckbDb.createEthUnlock([record]);
+
   let sendBurn = false;
   let burnTxHash;
-
   const checkEffect = async () => {
     // check EthLock and CkbMint saved.
     const ethLockRecords = await conn.manager.find(EthLock, {
@@ -226,46 +220,9 @@ async function main() {
   throw new Error('The eth component integration test failed!');
 }
 
-async function waitUntilCommitted(ckb, txHash, timeout) {
-  let waitTime = 0;
-  while (true) {
-    const txStatus = await ckb.rpc.getTransaction(txHash);
-    logger.debug(`tx ${txHash} status: ${txStatus.txStatus.status}, index: ${waitTime}`);
-    if (txStatus.txStatus.status === 'committed') {
-      return txStatus;
-    }
-    await asyncSleep(1000);
-    waitTime += 1;
-    if (waitTime >= timeout) {
-      return txStatus;
-    }
-  }
-}
-
 main()
   .then(() => process.exit(0))
   .catch((error) => {
     console.error(error);
     process.exit(1);
   });
-
-// function stringToUint8Array(str): Uint8Array {
-//   const arr = [];
-//   for (let i = 0, j = str.length; i < j; ++i) {
-//     arr.push(str.charCodeAt(i));
-//   }
-//   const tmpUint8Array = new Uint8Array(arr);
-//   return tmpUint8Array;
-// }
-//
-// function uint8ArrayToString(fileData): string {
-//   let dataString = '';
-//   for (let i = 0; i < fileData.length; i++) {
-//     dataString += String.fromCharCode(fileData[i]);
-//   }
-//   return dataString;
-// }
-//
-// const fromHexString = (hexString) => new Uint8Array(hexString.match(/.{1,2}/g).map((byte) => parseInt(byte, 16)));
-//
-// const toHexString = (bytes) => bytes.reduce((str, byte) => str + byte.toString(16).padStart(2, '0'), '');

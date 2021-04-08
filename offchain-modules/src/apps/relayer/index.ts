@@ -46,12 +46,12 @@ async function main() {
     const tronHandler = new TronHandler(tronDb);
     tronHandler.start();
   }
-  // if (config.btc !== undefined) {
-  //   const btcDb = new BtcDb(conn);
-  //   const btcChain = new BTCChain();
-  //   const btcHandler = new BtcHandler(btcDb, btcChain);
-  //   btcHandler.start();
-  // }
+  if (config.btc !== undefined) {
+    const btcDb = new BtcDb(conn);
+    const btcChain = new BTCChain();
+    const btcHandler = new BtcHandler(btcDb, btcChain);
+    btcHandler.start();
+  }
 }
 
 main();

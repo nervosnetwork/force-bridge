@@ -8,19 +8,21 @@ import { CkbDb } from '@force-bridge/db';
 import { Config } from '@force-bridge/config';
 import { BTCChain } from '@force-bridge/xchain/btc';
 import { BtcDb } from '@force-bridge/db/btc';
-import { BtcAsset, ChainType, EosAsset } from '@force-bridge/ckb/model/asset';
+import { BtcAsset, ChainType } from '@force-bridge/ckb/model/asset';
 import nconf from 'nconf';
 import { ForceBridgeCore } from '@force-bridge/core';
 import assert from 'assert';
 import { BtcUnlock } from '@force-bridge/db/entity/BtcUnlock';
 import { BtcLock } from '@force-bridge/db/entity/BtcLock';
-import { CkbMint, EosLock, EosUnlock, EthLock, IBtcUnLock } from '@force-bridge/db/model';
+import { CkbMint } from '@force-bridge/db/model';
 import { Amount, Script } from '@lay2/pw-core';
 import { CkbTxGenerator } from '@force-bridge/ckb/tx-helper/generator';
 import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
 import { CkbIndexer } from '@force-bridge/ckb/tx-helper/indexer';
 import { Account } from '@force-bridge/ckb/model/accounts';
+import { waitUntilCommitted, waitFnCompleted } from './util';
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
+
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
 const indexer = new CkbIndexer('http://127.0.0.1:8114', 'http://127.0.0.1:8116');
 const collector = new IndexerCollector(indexer);
@@ -206,36 +208,36 @@ async function main() {
   logger.debug('end btc test lock and unlock');
 }
 
-type waitFn = () => Promise<boolean>;
+// type waitFn = () => Promise<boolean>;
+//
+// async function waitFnCompleted(timeout: number, fn: waitFn, sleepTime = 1000) {
+//   const start = new Date().getTime();
+//   while (true) {
+//     if (await fn()) {
+//       return;
+//     }
+//     if (new Date().getTime() - start >= timeout) {
+//       throw new Error(`waitFnCompleted timeout after:${timeout}`);
+//     }
+//     await asyncSleep(sleepTime);
+//   }
+// }
 
-async function waitFnCompleted(timeout: number, fn: waitFn, sleepTime = 1000) {
-  const start = new Date().getTime();
-  while (true) {
-    if (await fn()) {
-      return;
-    }
-    if (new Date().getTime() - start >= timeout) {
-      throw new Error(`waitFnCompleted timeout after:${timeout}`);
-    }
-    await asyncSleep(sleepTime);
-  }
-}
-
-async function waitUntilCommitted(ckb, txHash, timeout) {
-  let waitTime = 0;
-  while (true) {
-    const txStatus = await ckb.rpc.getTransaction(txHash);
-    logger.debug(`tx ${txHash} status: ${txStatus.txStatus.status}, index: ${waitTime}`);
-    if (txStatus.txStatus.status === 'committed') {
-      return txStatus;
-    }
-    await asyncSleep(1000);
-    waitTime += 1;
-    if (waitTime >= timeout) {
-      return txStatus;
-    }
-  }
-}
+// async function waitUntilCommitted(ckb, txHash, timeout) {
+//   let waitTime = 0;
+//   while (true) {
+//     const txStatus = await ckb.rpc.getTransaction(txHash);
+//     logger.debug(`tx ${txHash} status: ${txStatus.txStatus.status}, index: ${waitTime}`);
+//     if (txStatus.txStatus.status === 'committed') {
+//       return txStatus;
+//     }
+//     await asyncSleep(1000);
+//     waitTime += 1;
+//     if (waitTime >= timeout) {
+//       return txStatus;
+//     }
+//   }
+// }
 
 main()
   .then(() => process.exit(0))
