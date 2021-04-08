@@ -115,9 +115,6 @@ export class CkbHandler {
                 ckbTxHash: k,
                 asset: uint8ArrayToString(new Uint8Array(v.getAsset().raw())),
                 chain,
-                // amount: BigNumber.from(
-                //   Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.getAmount().raw()))}`),
-                // ).toHexString(),
                 amount: Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.getAmount().raw()))}`).toString(),
                 recipientAddress: uint8ArrayToString(new Uint8Array(v.getRecipientAddress().raw())),
                 blockNumber: latestHeight,
@@ -134,14 +131,6 @@ export class CkbHandler {
               };
               break;
           }
-          // let amount;
-          // if (chain == ChainType.EOS) {
-          //   amount = Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.getAmount().raw()))}`).toString();
-          // } else {
-          //   amount = BigNumber.from(
-          //     Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.getAmount().raw()))}`),
-          //   ).toHexString();
-          // }
           ckbBurns.push(burn);
         });
         await this.saveBurnEvent(ckbBurns);
@@ -265,7 +254,6 @@ export class CkbHandler {
       case ChainType.TRON:
         return {
           asset: new TronAsset(r.asset, ownLockHash),
-          // amount: Amount.fromUInt128LE(bigintToSudtAmount(BigInt(r.amount))),
           amount: new Amount(r.amount),
           recipient: new Address(r.recipientLockscript, AddressType.ckb),
         };
@@ -290,7 +278,6 @@ export class CkbHandler {
         args: record.asset.toBridgeLockscriptArgs(),
       };
       logger.debug('record: bridgeCellLockscript ', bridgeCellLockscript);
-      // const args = this.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
       const searchKey = {
         script: new Script(
           bridgeCellLockscript.codeHash,
