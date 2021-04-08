@@ -21,8 +21,9 @@ test('ckb db works', async (t) => {
     amount: '0x1',
     asset: '0x00000000000000000000',
     chain: 0,
-    txHash: '0x12',
-    memo: '',
+    ckbTxHash: '0x12',
+    recipientAddress: '',
+    blockNumber: 100,
   };
   const ckbBurn = new CkbBurn().from(data);
   await manager.save(ckbBurn);
