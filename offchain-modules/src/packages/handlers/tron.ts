@@ -77,6 +77,10 @@ export class TronHandler {
         fingerprint: fingerprint,
       });
       for (const data of txs.data) {
+        if (Object.keys(data.token_info).length == 0) {
+          logger.debug('invalid trc20 tx, token info is undefined', data);
+          continue;
+        }
         const tx = await this.tronWeb.trx.getTransaction(data.transaction_id);
         const event = {
           tx_hash: data.transaction_id,
@@ -162,7 +166,7 @@ export class TronHandler {
         const trc20LockEvents = await this.getTrc20TxsLockEvents(minTimestamp);
 
         const totalLockEvents = trxAndTrc10Events.concat(trc20LockEvents);
-        logger.debug('total lock events', totalLockEvents.length);
+        logger.debug('total lock events', totalLockEvents);
 
         for (const event of totalLockEvents) {
           if (event.timestamp <= minTimestamp) {
@@ -276,7 +280,6 @@ export class TronHandler {
         logger.debug('flush pending tx to confirm');
         const pendingRecords = await this.db.getTronUnlockRecords('pending');
         for (const pendingRecord of pendingRecords) {
-          // todo: check tx is confirmed
           try {
             const confirmedTx = await this.tronWeb.trx.getConfirmedTransaction(pendingRecord.tronTxHash);
             console.log(confirmedTx);

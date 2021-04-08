@@ -23,6 +23,36 @@ async function transferTrx(tronWeb, from, to, amount, memo, priv) {
   return broad_tx;
 }
 
+async function transferTrc10(tronWeb, from, to, amount, tokenID, memo, priv) {
+  const unsigned_tx = await tronWeb.transactionBuilder.sendToken(to, amount, tokenID, from);
+  const unsignedWithMemoTx = await tronWeb.transactionBuilder.addUpdateData(unsigned_tx, memo, 'utf8');
+  const signed_tx = await tronWeb.trx.sign(unsignedWithMemoTx, priv);
+  const broad_tx = await tronWeb.trx.broadcast(signed_tx);
+  return broad_tx;
+}
+
+async function transferTrc20(tronWeb, from, to, amount, contractAddress, memo, priv) {
+  const options = {};
+  const functionSelector = 'transfer(address,uint256)';
+  const params = [
+    { type: 'address', value: to },
+    { type: 'uint256', value: amount },
+  ];
+
+  const unsigned_tx = await tronWeb.transactionBuilder.triggerSmartContract(
+    contractAddress,
+    functionSelector,
+    options,
+    params,
+    from,
+  );
+  const unsignedWithMemoTx = await tronWeb.transactionBuilder.addUpdateData(unsigned_tx.transaction, memo, 'utf8');
+
+  const signed_tx = await tronWeb.trx.sign(unsignedWithMemoTx, priv);
+  const broad_tx = await tronWeb.trx.broadcast(signed_tx);
+  return broad_tx;
+}
+
 async function main() {
   const conn = await createConnection();
   const ckbDb = new CkbDb(conn);
@@ -43,21 +73,50 @@ async function main() {
   const recipientLockscript = 'ckt1qyq2f0uwf3lk7e0nthfucvxgl3zu36v6zuwq6mlzps';
   const sudtExtraData = 'transfer 100 to ckt1qyq2f0uwf3lk7e0nthfucvxgl3zu36v6zuwq6mlzps';
   const memo = recipientLockscript.concat(',').concat(sudtExtraData);
-  const lockRes = await transferTrx(tronWeb, from, to, amount, memo, userPrivateKey);
-  const txHash: string = lockRes.transaction.txID;
+
+  const trxLockRes = await transferTrx(tronWeb, from, to, amount, memo, userPrivateKey);
+  const trxTxHash: string = trxLockRes.transaction.txID;
+
+  const trc10LockRes = await transferTrc10(tronWeb, from, to, amount, '1000696', memo, userPrivateKey);
+  const trc10TxHash: string = trc10LockRes.transaction.txID;
+
+  const trc20LockRes = await transferTrc20(
+    tronWeb,
+    from,
+    to,
+    amount,
+    'TVWvkCasxAJUyzPKMQ2Rus1NtmBwrkVyBR',
+    memo,
+    userPrivateKey,
+  );
+  const trc20TxHash: string = trc20LockRes.transaction.txID;
 
   // create tron unlock
   const recipientAddress = 'TS6VejPL8cQy6pA8eDGyusmmhCrXHRdJK6';
-  const record = {
+  const trxRecord = {
     ckbTxHash: genRandomHex(32),
     asset: 'trx',
     assetType: 'trx',
     amount: '100',
     recipientAddress,
   };
-  await ckbDb.createTronUnlock([record]);
+  const trc10Record = {
+    ckbTxHash: genRandomHex(32),
+    asset: '1000696',
+    assetType: 'trc10',
+    amount: '100',
+    recipientAddress,
+  };
+  const trc20Record = {
+    ckbTxHash: genRandomHex(32),
+    asset: 'TVWvkCasxAJUyzPKMQ2Rus1NtmBwrkVyBR',
+    assetType: 'trc20',
+    amount: '100',
+    recipientAddress,
+  };
+  await ckbDb.createTronUnlock([trxRecord, trc10Record, trc20Record]);
 
-  const checkEffect = async () => {
+  const checkEffect = async (txHash, ckbTxHash, asset, assetType) => {
     // check TronLock and CkbMint saved.
     const tronLockRecords = await conn.manager.find(TronLock, {
       where: {
@@ -70,8 +129,8 @@ async function main() {
 
     assert(tronLockRecord.memo === memo);
     assert(tronLockRecord.sender === from);
-    assert(tronLockRecord.asset === 'trx');
-    assert(tronLockRecord.assetType === 'trx');
+    assert(tronLockRecord.asset === asset);
+    assert(tronLockRecord.assetType === assetType);
 
     const ckbMintRecords = await conn.manager.find(CkbMint, {
       where: {
@@ -84,35 +143,28 @@ async function main() {
     assert(ckbMintRecord.chain === ChainType.TRON);
     assert(ckbMintRecord.sudtExtraData === sudtExtraData);
     assert(ckbMintRecord.status === 'todo');
-    assert(ckbMintRecord.asset === 'trx');
+    assert(ckbMintRecord.asset === asset);
     assert(ckbMintRecord.amount === amount.toString());
     assert(ckbMintRecord.recipientLockscript === recipientLockscript);
 
     // check unlock record send
     const tronUnlockRecords = await conn.manager.find(TronUnlock, {
       where: {
-        ckbTxHash: record.ckbTxHash,
+        ckbTxHash: ckbTxHash,
       },
     });
     assert(tronUnlockRecords.length === 1);
     const tronUnlockRecord = tronUnlockRecords[0];
     assert(tronUnlockRecord.status === 'success');
-
-    // const unlockReceipt = await provider.getTransactionReceipt(ethUnlockRecord.ethTxHash);
-    // logger.debug('unlockReceipt', unlockReceipt);
-    // assert(unlockReceipt.logs.length === 1);
-    // const parsedLog = iface.parseLog(unlockReceipt.logs[0]);
-    // logger.debug('parsedLog', parsedLog);
-    // assert(parsedLog.args.token === record.asset);
-    // assert(record.amount === parsedLog.args.receivedAmount.toHexString());
-    // assert(record.recipientAddress === parsedLog.args.recipient);
   };
 
   // try 100 times and wait for 3 seconds every time.
   for (let i = 0; i < 100; i++) {
     await asyncSleep(10000);
     try {
-      await checkEffect();
+      await checkEffect(trxTxHash, trxRecord.ckbTxHash, 'trx', 'trx');
+      await checkEffect(trc10TxHash, trc10Record.ckbTxHash, '1000696', 'trc10');
+      //await checkEffect(trc20TxHash, trc20Record.ckbTxHash, 'TVWvkCasxAJUyzPKMQ2Rus1NtmBwrkVyBR', 'trc20');
     } catch (e) {
       logger.warn('The tron component integration not pass yet.', { i, e });
       continue;
