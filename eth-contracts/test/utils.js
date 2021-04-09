@@ -84,7 +84,8 @@ const getChangeValidatorsMsgHash = (
   DOMAIN_SEPARATOR,
   typeHash,
   validators,
-  multisigThreshold
+  multisigThreshold,
+  nonce
 ) => {
   return keccak256(
     solidityPack(
@@ -95,8 +96,8 @@ const getChangeValidatorsMsgHash = (
         DOMAIN_SEPARATOR,
         keccak256(
           defaultAbiCoder.encode(
-            ['bytes32', 'address[]', 'uint256'],
-            [typeHash, validators, multisigThreshold]
+            ['bytes32', 'address[]', 'uint256', 'uint256'],
+            [typeHash, validators, multisigThreshold, nonce]
           )
         )
       ]

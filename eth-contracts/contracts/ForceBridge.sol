@@ -33,8 +33,11 @@ contract ForceBridge {
     bytes32 private _HASHED_VERSION;
     bytes32 private _TYPE_HASH;
 
-    mapping(uint256 => bool) private usedNonces;
-    uint256 public latestNonce_;
+    mapping(uint256 => bool) private unlockUsedNonces;
+    uint256 public latestUnlockNonce_;
+
+    mapping(uint256 => bool) private changeValidatorsUsedNonces;
+    uint256 public latestChangeValidatorsNonce_;
 
     event Locked(
         address indexed token,
@@ -130,8 +133,13 @@ contract ForceBridge {
     function changeValidators(
         address[] memory validators,
         uint256 multisigThreshold,
+        uint256 nonce,
         bytes memory signatures
     ) public {
+        require(!changeValidatorsUsedNonces[nonce], "changeValidators nonce is used");
+        changeValidatorsUsedNonces[nonce] = true;
+        latestChangeValidatorsNonce_ = SafeMath.add(nonce, 1);
+
         require(
             validators.length > 0,
             "validators are none"
@@ -167,7 +175,8 @@ contract ForceBridge {
                         abi.encode(
                             CHANGE_VALIDATORS_TYPEHASH,
                             validators,
-                            multisigThreshold
+                            multisigThreshold,
+                            nonce
                         )
                     )
                 )
@@ -257,9 +266,9 @@ contract ForceBridge {
         public
     {
         // check nonce hasn't been used
-        require(!usedNonces[nonce], "nonce is used");
-        usedNonces[nonce] = true;
-        latestNonce_ = SafeMath.add(nonce, 1);
+        require(!unlockUsedNonces[nonce], "unlock nonce is used");
+        unlockUsedNonces[nonce] = true;
+        latestUnlockNonce_ = SafeMath.add(nonce, 1);
 
         // 1. calc msgHash
         bytes32 msgHash =

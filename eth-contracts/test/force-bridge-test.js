@@ -175,7 +175,7 @@ describe('ForceBridge', () => {
         expect(r.amount).to.equal(res.receivedAmount);
         expect(r.ckbTxHash).to.equal(res.ckbTxHash);
       }
-      expect(await forceBridge.latestNonce_()).to.equal(1);
+      expect(await forceBridge.latestUnlockNonce_()).to.equal(1);
     });
     it('should work well for lock and unlock ERC20', async function() {
       // lock
@@ -216,7 +216,7 @@ describe('ForceBridge', () => {
         }
       ];
 
-      const nonce = await forceBridge.latestNonce_();
+      const nonce = await forceBridge.latestUnlockNonce_();
       const msgHash = getUnlockMsgHash(
         DOMAIN_SEPARATOR,
         unlockTypeHash,
@@ -248,11 +248,13 @@ describe('ForceBridge', () => {
       newValidators = newWallets.map(wallet => wallet.address);
       newMultisigThreshold = 6;
 
+      const nonce = 0;
       const msgHash = getChangeValidatorsMsgHash(
         DOMAIN_SEPARATOR,
         changeValidatorsTypeHash,
         newValidators,
-        newMultisigThreshold
+        newMultisigThreshold,
+        nonce
       );
 
       // 2. generate signatures
@@ -261,12 +263,14 @@ describe('ForceBridge', () => {
       const result = await forceBridge.changeValidators(
         newValidators,
         newMultisigThreshold,
+        nonce,
         signatures
       );
       console.log('changeValidators result', result);
       expect(await forceBridge.multisigThreshold_()).to.equal(
         newMultisigThreshold
       );
+      expect(await forceBridge.latestChangeValidatorsNonce_()).to.equal(1);
     });
   });
 
@@ -317,11 +321,13 @@ describe('ForceBridge', () => {
       newValidators[6] = newValidators[1];
       newMultisigThreshold = 6;
 
+      const nonce = await forceBridge.latestChangeValidatorsNonce_();
       const msgHash = getChangeValidatorsMsgHash(
         DOMAIN_SEPARATOR,
         changeValidatorsTypeHash,
         newValidators,
-        newMultisigThreshold
+        newMultisigThreshold,
+        nonce
       );
 
       // 2. generate signatures
@@ -332,6 +338,7 @@ describe('ForceBridge', () => {
           forceBridge.changeValidators(
             newValidators,
             newMultisigThreshold,
+            nonce,
             signatures
           ),
           'repeated validators'
@@ -355,7 +362,7 @@ describe('ForceBridge', () => {
         }
       ];
 
-      const nonce = (await forceBridge.latestNonce_()) - 1;
+      const nonce = (await forceBridge.latestUnlockNonce_()) - 1;
       const msgHash = getUnlockMsgHash(
         DOMAIN_SEPARATOR,
         unlockTypeHash,
@@ -373,7 +380,37 @@ describe('ForceBridge', () => {
       expect(
         await assertRevert(
           forceBridge.unlock(records, nonce, signatures),
-          'nonce is used'
+          'unlock nonce is used'
+        )
+      ).to.be.true;
+    });
+    it('should not change validators when nonce used', async function() {
+      const newWallets = generateWallets(7);
+      newValidators = newWallets.map(wallet => wallet.address);
+      newValidators[6] = newValidators[1];
+      newMultisigThreshold = 6;
+
+      const nonce = (await forceBridge.latestChangeValidatorsNonce_()) - 1;
+      const msgHash = getChangeValidatorsMsgHash(
+        DOMAIN_SEPARATOR,
+        changeValidatorsTypeHash,
+        newValidators,
+        newMultisigThreshold,
+        nonce
+      );
+
+      // 2. generate signatures
+      let signatures = generateSignatures(msgHash, wallets.slice(0, 7));
+
+      expect(
+        await assertRevert(
+          forceBridge.changeValidators(
+            newValidators,
+            newMultisigThreshold,
+            nonce,
+            signatures
+          ),
+          'changeValidators nonce is used'
         )
       ).to.be.true;
     });
