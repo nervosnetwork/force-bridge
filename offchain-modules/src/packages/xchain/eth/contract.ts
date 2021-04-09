@@ -59,7 +59,7 @@ export class EthChain {
     const nonce = await this.bridge.latestUnlockNonce_();
     const signatures = this.signUnlockRecords(domainSeparator, typeHash, params, nonce);
     logger.debug('sendUnlockTxs params', params);
-    return this.bridge.unlock(params, signatures);
+    return this.bridge.unlock(params, nonce, signatures);
   }
 
   private signUnlockRecords(domainSeparator: string, typeHash: string, records, nonce) {
