@@ -1,3 +1,4 @@
+const assert = require('assert');
 const { ecsign, toRpcSig } = require('ethereumjs-util');
 const { keccak256, defaultAbiCoder, solidityPack } = ethers.utils;
 
@@ -119,6 +120,10 @@ const assertRevert = async (promise, message) => {
     }
     const revertFound = error.message.search('revert') >= 0;
     assert(revertFound, `Expected "revert", got ${error} instead`);
+    assert.equal(
+      `VM Exception while processing transaction: revert ${message}`,
+      error.message
+    );
   }
 };
 

@@ -302,5 +302,30 @@ describe('ForceBridge', () => {
         'signatures not verified'
       );
     });
+    it('should not change validators when validators are repeated', async function() {
+      const newWallets = generateWallets(7);
+      newValidators = newWallets.map(wallet => wallet.address);
+      newValidators[6] = newValidators[1];
+      newMultisigThreshold = 6;
+
+      const msgHash = getChangeValidatorsMsgHash(
+        DOMAIN_SEPARATOR,
+        changeValidatorsTypeHash,
+        newValidators,
+        newMultisigThreshold
+      );
+
+      // 2. generate signatures
+      let signatures = generateSignatures(msgHash, wallets.slice(0, 7));
+
+      assertRevert(
+        forceBridge.changeValidators(
+          newValidators,
+          newMultisigThreshold,
+          signatures
+        ),
+        'repeated validators'
+      );
+    });
   });
 });

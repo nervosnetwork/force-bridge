@@ -128,6 +128,16 @@ contract ForceBridge {
             multisigThreshold <= validators.length,
             "invalid multisigThreshold"
         );
+
+        for (uint256 i = 0; i < validators.length; i++) {
+            for (uint256 j = i + 1; j < validators.length; j ++) {
+                require(
+                    validators[i] != validators[j],
+                    "repeated validators"
+                );
+            }
+        }
+
         bytes32 msgHash =
             keccak256(
                 abi.encodePacked(
