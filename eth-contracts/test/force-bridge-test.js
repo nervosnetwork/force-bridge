@@ -7,8 +7,8 @@ const {
   generateWallets,
   getUnlockMsgHash,
   generateSignatures,
-  getChangeValidatorsMsgHash,
-  assertRevert
+  assertRevert,
+  getChangeValidatorsMsgHash
 } = require('./utils');
 
 describe('ForceBridge', () => {
@@ -146,10 +146,12 @@ describe('ForceBridge', () => {
         }
       ];
 
+      const nonce = 0;
       const msgHash = getUnlockMsgHash(
         DOMAIN_SEPARATOR,
         unlockTypeHash,
-        records
+        records,
+        nonce
       );
 
       console.log('msg hash ', msgHash);
@@ -159,7 +161,7 @@ describe('ForceBridge', () => {
         wallets.slice(0, multisigThreshold)
       );
 
-      const resUnlock = await forceBridge.unlock(records, signatures);
+      const resUnlock = await forceBridge.unlock(records, nonce, signatures);
 
       const receiptUnlock = await waitingForReceipt(provider, resUnlock);
       // console.dir(receiptUnlock, {depth: null});
@@ -173,6 +175,7 @@ describe('ForceBridge', () => {
         expect(r.amount).to.equal(res.receivedAmount);
         expect(r.ckbTxHash).to.equal(res.ckbTxHash);
       }
+      expect(await forceBridge.latestNonce_()).to.equal(1);
     });
     it('should work well for lock and unlock ERC20', async function() {
       // lock
@@ -213,10 +216,12 @@ describe('ForceBridge', () => {
         }
       ];
 
+      const nonce = await forceBridge.latestNonce_();
       const msgHash = getUnlockMsgHash(
         DOMAIN_SEPARATOR,
         unlockTypeHash,
-        records
+        records,
+        nonce
       );
 
       // 2. generate signatures
@@ -225,7 +230,7 @@ describe('ForceBridge', () => {
         wallets.slice(0, multisigThreshold)
       );
 
-      const resUnlock = await forceBridge.unlock(records, signatures);
+      const resUnlock = await forceBridge.unlock(records, nonce, signatures);
 
       const receiptUnlock = await waitingForReceipt(provider, resUnlock);
       // console.dir(receiptUnlock, {depth: null});
@@ -278,14 +283,16 @@ describe('ForceBridge', () => {
         wallets.slice(0, multisigThreshold)
       );
 
-      assertRevert(
-        forceBridge.validatorsApprove(
-          msgHash,
-          signatures,
-          multisigThreshold + 1
-        ),
-        'length of signatures must greater than threshold'
-      );
+      expect(
+        await assertRevert(
+          forceBridge.validatorsApprove(
+            msgHash,
+            signatures,
+            multisigThreshold + 1
+          ),
+          'length of signatures must greater than threshold'
+        )
+      ).to.be.true;
     });
     it('invalid sign', async () => {
       const msgHash =
@@ -297,10 +304,12 @@ describe('ForceBridge', () => {
         newWallets.slice(0, multisigThreshold)
       );
 
-      assertRevert(
-        forceBridge.validatorsApprove(msgHash, signatures, multisigThreshold),
-        'signatures not verified'
-      );
+      expect(
+        await assertRevert(
+          forceBridge.validatorsApprove(msgHash, signatures, multisigThreshold),
+          'signatures not verified'
+        )
+      ).to.be.true;
     });
     it('should not change validators when validators are repeated', async function() {
       const newWallets = generateWallets(7);
@@ -318,14 +327,55 @@ describe('ForceBridge', () => {
       // 2. generate signatures
       let signatures = generateSignatures(msgHash, wallets.slice(0, 7));
 
-      assertRevert(
-        forceBridge.changeValidators(
-          newValidators,
-          newMultisigThreshold,
-          signatures
-        ),
-        'repeated validators'
+      expect(
+        await assertRevert(
+          forceBridge.changeValidators(
+            newValidators,
+            newMultisigThreshold,
+            signatures
+          ),
+          'repeated validators'
+        )
+      ).to.be.true;
+    });
+    it('should not unlock when nonce used', async function() {
+      // unlock
+      const records = [
+        {
+          token: '0x0000000000000000000000000000000000000000',
+          recipient: '0x1000000000000000000000000000000000000001',
+          amount: ethers.utils.parseEther('0.06'),
+          ckbTxHash: '0x1000000000000000000000000000000000000008'
+        },
+        {
+          token: '0x0000000000000000000000000000000000000000',
+          recipient: '0x1000000000000000000000000000000000000002',
+          amount: ethers.utils.parseEther('0.04'),
+          ckbTxHash: '0x1000000000000000000000000000000000000009'
+        }
+      ];
+
+      const nonce = (await forceBridge.latestNonce_()) - 1;
+      const msgHash = getUnlockMsgHash(
+        DOMAIN_SEPARATOR,
+        unlockTypeHash,
+        records,
+        nonce
       );
+
+      console.log('msg hash ', msgHash);
+      // 2. generate signatures
+      let signatures = generateSignatures(
+        msgHash,
+        wallets.slice(0, multisigThreshold)
+      );
+
+      expect(
+        await assertRevert(
+          forceBridge.unlock(records, nonce, signatures),
+          'nonce is used'
+        )
+      ).to.be.true;
     });
   });
 });

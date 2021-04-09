@@ -1,4 +1,5 @@
-const assert = require('assert');
+const { expect } = require('chai');
+const { assert } = require('console');
 const { ecsign, toRpcSig } = require('ethereumjs-util');
 const { keccak256, defaultAbiCoder, solidityPack } = ethers.utils;
 
@@ -47,7 +48,7 @@ const generateSignatures = (msgHash, wallets) => {
   return signatures;
 };
 
-const getUnlockMsgHash = (DOMAIN_SEPARATOR, typeHash, records) => {
+const getUnlockMsgHash = (DOMAIN_SEPARATOR, typeHash, records, nonce) => {
   return keccak256(
     solidityPack(
       ['bytes1', 'bytes1', 'bytes32', 'bytes32'],
@@ -68,9 +69,10 @@ const getUnlockMsgHash = (DOMAIN_SEPARATOR, typeHash, records) => {
                 ],
                 name: 'records',
                 type: 'tuple[]'
-              }
+              },
+              'uint256'
             ],
-            [typeHash, records]
+            [typeHash, records, nonce]
           )
         )
       ]
@@ -103,28 +105,18 @@ const getChangeValidatorsMsgHash = (
 };
 
 const assertRevert = async (promise, message) => {
-  let noFailureMessage;
   try {
     await promise;
-
-    if (!message) {
-      noFailureMessage = 'Expected revert not received';
-    } else {
-      noFailureMessage = message;
-    }
-
-    assert.fail();
   } catch (error) {
-    if (noFailureMessage) {
-      assert.fail(0, 1, message);
+    const expected = `VM Exception while processing transaction: revert ${message}`;
+    const actual = error.message;
+    console.log('expected error', expected, 'actual error', actual);
+
+    if (expected == actual) {
+      return true;
     }
-    const revertFound = error.message.search('revert') >= 0;
-    assert(revertFound, `Expected "revert", got ${error} instead`);
-    assert.equal(
-      `VM Exception while processing transaction: revert ${message}`,
-      error.message
-    );
   }
+  return false;
 };
 
 module.exports = {

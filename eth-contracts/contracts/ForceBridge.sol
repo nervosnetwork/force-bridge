@@ -6,6 +6,7 @@ import {IERC20} from "./interfaces/IERC20.sol";
 import {SafeERC20} from "./libraries/SafeERC20.sol";
 import {Address} from "./libraries/Address.sol";
 import {MultisigUtils} from "./libraries/MultisigUtils.sol";
+import {SafeMath} from "./libraries/SafeMath.sol";
 
 contract ForceBridge {
     using Address for address;
@@ -31,6 +32,9 @@ contract ForceBridge {
     bytes32 private _HASHED_NAME;
     bytes32 private _HASHED_VERSION;
     bytes32 private _TYPE_HASH;
+
+    mapping(uint256 => bool) private usedNonces;
+    uint256 public latestNonce_;
 
     event Locked(
         address indexed token,
@@ -68,6 +72,14 @@ contract ForceBridge {
         _TYPE_HASH = typeHash;
 
         // set validators
+        require(
+            validators.length > 0,
+            "validators are none"
+        );
+        require(
+            multisigThreshold > 0,
+            "invalid multisigThreshold"
+        );
         require(
             validators.length <= VALIDATORS_SIZE_LIMIT,
             "number of validators exceeds the limit"
@@ -120,6 +132,14 @@ contract ForceBridge {
         uint256 multisigThreshold,
         bytes memory signatures
     ) public {
+        require(
+            validators.length > 0,
+            "validators are none"
+        );
+        require(
+            multisigThreshold > 0,
+            "invalid multisigThreshold"
+        );
         require(
             validators.length <= VALIDATORS_SIZE_LIMIT,
             "number of validators exceeds the limit"
@@ -233,16 +253,21 @@ contract ForceBridge {
         require(verifiedNum >= threshold, "signatures not verified");
     }
 
-    function unlock(UnlockRecord[] calldata records, bytes calldata signatures)
+    function unlock(UnlockRecord[] calldata records, uint256 nonce, bytes calldata signatures)
         public
     {
+        // check nonce hasn't been used
+        require(!usedNonces[nonce], "nonce is used");
+        usedNonces[nonce] = true;
+        latestNonce_ = SafeMath.add(nonce, 1);
+
         // 1. calc msgHash
         bytes32 msgHash =
             keccak256(
                 abi.encodePacked(
                     "\x19\x01", // solium-disable-line
                     _domainSeparator(),
-                    keccak256(abi.encode(UNLOCK_TYPEHASH, records))
+                    keccak256(abi.encode(UNLOCK_TYPEHASH, records, nonce))
                 )
             );
 
