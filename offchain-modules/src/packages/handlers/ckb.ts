@@ -14,6 +14,7 @@ import Transaction = CKBComponents.Transaction;
 import { Script as LumosScript } from '@ckb-lumos/base';
 import { BigNumber } from 'ethers';
 import { RecipientCellData } from '@force-bridge/ckb/tx-helper/generated/eth_recipient_cell';
+import { getAssetTypeByAsset } from '@force-bridge/xchain/tron/utils';
 
 // CKB handler
 // 1. Listen CKB chain to get new burn events.
@@ -55,7 +56,7 @@ export class CkbHandler {
             {
               ckbTxHash: burn.ckbTxHash,
               asset: burn.asset,
-              assetType: burn.asset,
+              assetType: getAssetTypeByAsset(burn.asset),
               amount: burn.amount,
               recipientAddress: burn.recipientAddress,
             },
