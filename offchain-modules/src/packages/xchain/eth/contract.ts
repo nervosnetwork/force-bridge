@@ -56,12 +56,13 @@ export class EthChain {
     });
     const domainSeparator = await this.bridge.DOMAIN_SEPARATOR();
     const typeHash = await this.bridge.UNLOCK_TYPEHASH();
-    const signatures = this.signUnlockRecords(domainSeparator, typeHash, params);
+    const nonce = await this.bridge.latestUnlockNonce_();
+    const signatures = this.signUnlockRecords(domainSeparator, typeHash, params, nonce);
     logger.debug('sendUnlockTxs params', params);
-    return this.bridge.unlock(params, signatures);
+    return this.bridge.unlock(params, nonce, signatures);
   }
 
-  private signUnlockRecords(domainSeparator: string, typeHash: string, records) {
+  private signUnlockRecords(domainSeparator: string, typeHash: string, records, nonce) {
     const msg = ethers.utils.keccak256(
       ethers.utils.solidityPack(
         ['bytes1', 'bytes1', 'bytes32', 'bytes32'],
@@ -83,8 +84,9 @@ export class EthChain {
                   name: 'records',
                   type: 'tuple[]',
                 }),
+                'uint256',
               ],
-              [typeHash, records],
+              [typeHash, records, nonce],
             ),
           ),
         ],
