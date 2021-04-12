@@ -5,11 +5,13 @@ import {
   CkbBurn,
   EthUnlock,
   EosUnlock,
+  BtcUnlock,
   IEosUnlock,
   IEthUnlock,
   ITronUnlock,
   TronUnlock,
   ICkbBurn,
+  IBtcUnLock,
 } from '@force-bridge/db/model';
 
 export class CkbDb {
@@ -64,5 +66,11 @@ export class CkbDb {
     const tronUnlockRepo = this.connection.getRepository(TronUnlock);
     const dbRecords = records.map((r) => tronUnlockRepo.create(r));
     await tronUnlockRepo.save(dbRecords);
+  }
+
+  async createBtcUnlock(records: IBtcUnLock[]): Promise<void> {
+    const btcUnlockRepo = this.connection.getRepository(BtcUnlock);
+    const dbRecords = records.map((r) => btcUnlockRepo.create(r));
+    await btcUnlockRepo.save(dbRecords);
   }
 }
