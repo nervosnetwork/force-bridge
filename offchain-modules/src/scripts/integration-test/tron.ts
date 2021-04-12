@@ -14,7 +14,7 @@ import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
 import { Amount, Script } from '@lay2/pw-core';
 import { CkbIndexer } from '@force-bridge/ckb/tx-helper/indexer';
 import { ForceBridgeCore } from '@force-bridge/core';
-import { BigNumber } from 'ethers';
+import { waitUntilCommitted } from './util';
 const TronWeb = require('tronweb');
 
 const PRI_KEY = '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
@@ -69,8 +69,6 @@ async function transferTrc20(tronWeb, from, to, amount, contractAddress, memo, p
 
 async function main() {
   const conn = await createConnection();
-  const ckbDb = new CkbDb(conn);
-  // const PRI_KEY_BURN = '0xd00c06bfd800d27397002dca6fb0993d5ba6399b4238b2f29ee9deb97593d2bc';
 
   const configPath = process.env.CONFIG_PATH || './config.json';
   nconf.env().file({ file: configPath });
@@ -111,7 +109,6 @@ async function main() {
 
   // create tron unlock
   const recipientAddress = 'TS6VejPL8cQy6pA8eDGyusmmhCrXHRdJK6';
-
   let burnTxHash;
 
   const getBalance = async (assetName) => {
@@ -247,22 +244,6 @@ async function main() {
     return;
   }
   throw new Error('The tron component integration test failed!');
-}
-
-async function waitUntilCommitted(ckb, txHash, timeout) {
-  let waitTime = 0;
-  while (true) {
-    const txStatus = await ckb.rpc.getTransaction(txHash);
-    logger.debug(`tx ${txHash} status: ${txStatus.txStatus.status}, index: ${waitTime}`);
-    if (txStatus.txStatus.status === 'committed') {
-      return txStatus;
-    }
-    await asyncSleep(1000);
-    waitTime += 1;
-    if (waitTime >= timeout) {
-      return txStatus;
-    }
-  }
 }
 
 main()

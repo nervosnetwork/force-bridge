@@ -19,27 +19,13 @@ import { Amount, Script } from '@lay2/pw-core';
 
 import { CkbIndexer } from '@force-bridge/ckb/tx-helper/indexer';
 import { ForceBridgeCore } from '@force-bridge/core';
+import { waitUntilCommitted, waitFnCompleted } from './util';
 
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
 const indexer = new CkbIndexer('http://127.0.0.1:8114', 'http://127.0.0.1:8116');
 const collector = new IndexerCollector(indexer);
 const ckb = new CKB(CKB_URL);
-
-type waitFn = () => Promise<boolean>;
-
-async function waitFnCompleted(timeout: number, fn: waitFn, sleepTime = 1000) {
-  const start = new Date().getTime();
-  while (true) {
-    if (await fn()) {
-      return;
-    }
-    if (new Date().getTime() - start >= timeout) {
-      throw new Error(`waitFnCompleted timeout after:${timeout}`);
-    }
-    await asyncSleep(sleepTime);
-  }
-}
 
 async function main() {
   const configPath = process.env.CONFIG_PATH || './config.json';
@@ -56,8 +42,6 @@ async function main() {
   const lockAccountPri = ['5KQ1LgoXrSLiUMS8HZp6rSuyyJP5i6jTi1KWbZNerQQLFeTrxac'];
   const chain = new EosChain(rpcUrl, new JsSignatureProvider(lockAccountPri));
   const conn = await createConnection();
-  const ckbDb = new CkbDb(conn);
-
   //lock eos
   const recipientLockscript = 'ckt1qyqyph8v9mclls35p6snlaxajeca97tc062sa5gahk';
   const memo = recipientLockscript;
@@ -168,8 +152,6 @@ async function main() {
   // await ckbDb.createEosUnlock([unlockRecord]);
   // send burn tx
   const burnAmount = new Amount('0.0001');
-  // const account = new Account(PRI_KEY);
-  // const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
   const generator = new CkbTxGenerator(ckb, new IndexerCollector(indexer));
   const burnTx = await generator.burn(
     await account.getLockscript(),
@@ -224,27 +206,6 @@ async function main() {
     },
     1000 * 10,
   );
-
-  // if (eosUnlockTxHash !== '') {
-  //   const eosUnlockTx = await chain.getTransaction(eosUnlockTxHash);
-  //   logger.debug('EosUnlockTx status:', eosUnlockTx.trx.receipt.status);
-  // }
-}
-
-async function waitUntilCommitted(ckb, txHash, timeout) {
-  let waitTime = 0;
-  while (true) {
-    const txStatus = await ckb.rpc.getTransaction(txHash);
-    logger.debug(`tx ${txHash} status: ${txStatus.txStatus.status}, index: ${waitTime}`);
-    if (txStatus.txStatus.status === 'committed') {
-      return txStatus;
-    }
-    await asyncSleep(1000);
-    waitTime += 1;
-    if (waitTime >= timeout) {
-      return txStatus;
-    }
-  }
 }
 
 main()
