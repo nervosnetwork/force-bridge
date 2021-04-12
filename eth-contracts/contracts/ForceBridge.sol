@@ -33,10 +33,7 @@ contract ForceBridge {
     bytes32 private _HASHED_VERSION;
     bytes32 private _TYPE_HASH;
 
-    mapping(uint256 => bool) private unlockUsedNonces;
     uint256 public latestUnlockNonce_;
-
-    mapping(uint256 => bool) private changeValidatorsUsedNonces;
     uint256 public latestChangeValidatorsNonce_;
 
     event Locked(
@@ -136,8 +133,7 @@ contract ForceBridge {
         uint256 nonce,
         bytes memory signatures
     ) public {
-        require(!changeValidatorsUsedNonces[nonce], "changeValidators nonce is used");
-        changeValidatorsUsedNonces[nonce] = true;
+        require(nonce == latestChangeValidatorsNonce_, "changeValidators nonce invalid");
         latestChangeValidatorsNonce_ = SafeMath.add(nonce, 1);
 
         require(
@@ -266,8 +262,7 @@ contract ForceBridge {
         public
     {
         // check nonce hasn't been used
-        require(!unlockUsedNonces[nonce], "unlock nonce is used");
-        unlockUsedNonces[nonce] = true;
+        require(latestUnlockNonce_ == nonce, "unlock nonce invalid");
         latestUnlockNonce_ = SafeMath.add(nonce, 1);
 
         // 1. calc msgHash
