@@ -69,6 +69,7 @@ export class CkbTxGenerator {
     const outputs = new Array(0);
     const outputsData = new Array(0);
     const sudtCellCapacity = 300n * 10n ** 8n;
+    const assets = new Array(0);
     for (const record of records) {
       const recipientLockscript = record.recipient.toLockScript();
       const bridgeCellLockscript = {
@@ -76,6 +77,25 @@ export class CkbTxGenerator {
         hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
         args: record.asset.toBridgeLockscriptArgs(),
       };
+
+      const sudtArgs = this.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
+      const outputSudtCell = {
+        lock: recipientLockscript,
+        type: {
+          codeHash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
+          hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
+          args: sudtArgs,
+        },
+        capacity: `0x${sudtCellCapacity.toString(16)}`,
+      };
+      outputs.push(outputSudtCell);
+      outputsData.push(record.amount.toUInt128LE());
+
+      if (assets.indexOf(record.asset.toBridgeLockscriptArgs()) != -1) {
+        continue;
+      }
+      assets.push(record.asset.toBridgeLockscriptArgs());
+
       const searchKey = {
         script: new Script(
           bridgeCellLockscript.codeHash,
@@ -89,22 +109,10 @@ export class CkbTxGenerator {
         throw new Error('failed to generate mint tx. the live cell is not found!');
       }
       const bridgeCell = cells[0];
-      const sudtArgs = this.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
-      const outputSudtCell = {
-        lock: recipientLockscript,
-        type: {
-          codeHash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
-          hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
-          args: sudtArgs,
-        },
-        capacity: `0x${sudtCellCapacity.toString(16)}`,
-      };
       const outputBridgeCell = {
         lock: bridgeCellLockscript,
         capacity: bridgeCell.capacity,
       };
-      outputs.push(outputSudtCell);
-      outputsData.push(record.amount.toUInt128LE());
       outputs.push(outputBridgeCell);
       outputsData.push('0x');
       bridgeCells.push(bridgeCell);

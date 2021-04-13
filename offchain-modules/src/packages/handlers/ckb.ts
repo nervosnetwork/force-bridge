@@ -300,7 +300,13 @@ export class CkbHandler {
 
   async filterNewTokens(records: any[]): Promise<any[]> {
     const newTokens = [];
+    const assets = [];
     for (const record of records) {
+      if (assets.indexOf(record.asset.toBridgeLockscriptArgs()) != -1) {
+        continue;
+      }
+      assets.push(record.asset.toBridgeLockscriptArgs());
+
       logger.debug('record:', record);
       const bridgeCellLockscript = {
         codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
