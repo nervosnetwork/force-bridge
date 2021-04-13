@@ -6,6 +6,7 @@ import { ITronLock, TronUnlock, ICkbMint, TronLock } from '@force-bridge/db/mode
 import { ChainType } from '@force-bridge/ckb/model/asset';
 import { promises } from 'fs';
 import { sign } from '@force-bridge/ckb/tx-helper/signer';
+import { getAssetTypeByAsset } from '@force-bridge/xchain/tron/utils';
 const TronWeb = require('tronweb');
 const TronGrid = require('trongrid');
 
@@ -77,6 +78,10 @@ export class TronHandler {
         fingerprint: fingerprint,
       });
       for (const data of txs.data) {
+        if (Object.keys(data.token_info).length == 0) {
+          logger.debug('invalid trc20 tx, token info is undefined', data);
+          continue;
+        }
         const tx = await this.tronWeb.trx.getTransaction(data.transaction_id);
         const event = {
           tx_hash: data.transaction_id,
@@ -103,17 +108,6 @@ export class TronHandler {
     return { ckbRecipient, sudtExtraData };
   }
 
-  private getAssetTypeByAsset(asset: string) {
-    switch (asset.length) {
-      case TRX_ASSET_LENGTH:
-        return 'trx';
-      case TRC10_ASSET_LENGTH:
-        return 'trc10';
-      default:
-        return 'trc20';
-    }
-  }
-
   private transferEventToCkbMint(event: TronLockEvent) {
     const { ckbRecipient, sudtExtraData } = this.analyzeMemo(event.memo);
     return {
@@ -132,7 +126,7 @@ export class TronHandler {
       txIndex: 0,
       sender: event.sender,
       asset: event.asset,
-      assetType: this.getAssetTypeByAsset(event.asset),
+      assetType: getAssetTypeByAsset(event.asset),
       amount: event.amount,
       memo: event.memo,
       timestamp: event.timestamp,
@@ -162,7 +156,7 @@ export class TronHandler {
         const trc20LockEvents = await this.getTrc20TxsLockEvents(minTimestamp);
 
         const totalLockEvents = trxAndTrc10Events.concat(trc20LockEvents);
-        logger.debug('total lock events', totalLockEvents.length);
+        logger.debug('total lock events', totalLockEvents);
 
         for (const event of totalLockEvents) {
           if (event.timestamp <= minTimestamp) {
@@ -227,7 +221,6 @@ export class TronHandler {
     for (const key of this.committee.keys) {
       signed_tx = await this.tronWeb.trx.multiSign(signed_tx, key);
     }
-
     return signed_tx;
   }
 
@@ -276,7 +269,6 @@ export class TronHandler {
         logger.debug('flush pending tx to confirm');
         const pendingRecords = await this.db.getTronUnlockRecords('pending');
         for (const pendingRecord of pendingRecords) {
-          // todo: check tx is confirmed
           try {
             const confirmedTx = await this.tronWeb.trx.getConfirmedTransaction(pendingRecord.tronTxHash);
             console.log(confirmedTx);
@@ -306,6 +298,7 @@ export class TronHandler {
               signedTx = await this.multiSignTransferTrc20(unlockRecord);
               break;
           }
+
           unlockRecord.tronTxHash = signedTx.txID;
           unlockRecord.tronTxIndex = 0;
           unlockRecord.status = 'pending';

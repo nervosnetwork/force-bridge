@@ -95,7 +95,7 @@
           "EE782FE170F680D6CAB340ECA5ED2F6E05B0B9809082CF745207E87734211C72"
         ]
       },
-      "feeLimit": 1000000
+      "feeLimit": 10000000
     }
   }
 }
