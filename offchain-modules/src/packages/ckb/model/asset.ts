@@ -1,5 +1,5 @@
-import { fromHexString, stringToUint8Array, toHexString } from '@force-bridge/utils';
-import { SerializeForceBridgeLockscriptArgs } from '@force-bridge/ckb/tx-helper/generated/force_bridge_lockscript';
+import { fromHexString, stringToUint8Array, toHexString } from '../../utils';
+import { SerializeForceBridgeLockscriptArgs } from '../../ckb/tx-helper/generated/force_bridge_lockscript';
 
 export enum ChainType {
   BTC,

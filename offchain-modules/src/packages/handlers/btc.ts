@@ -6,6 +6,8 @@ import { BtcDb } from '@force-bridge/db/btc';
 import { throws } from 'assert';
 import { BtcUnlock } from '@force-bridge/db/entity/BtcUnlock';
 
+const CkbAddressLen = 46;
+
 export class BtcHandler {
   constructor(private db: BtcDb, private btcChain: BTCChain) {}
 
@@ -27,7 +29,7 @@ export class BtcHandler {
                 chain: ChainType.BTC,
                 amount: btcLockEventData.amount,
                 asset: 'btc',
-                recipientLockscript: btcLockEventData.data,
+                recipientLockscript: btcLockEventData.data.slice(0, CkbAddressLen),
               },
             ]);
             await this.db.createBtcLock([

@@ -70,23 +70,24 @@
     "axios": "^0.21.1",
     "bitcore-lib": "^8.25.7",
     "ckb-js-toolkit": "^0.10.2",
+    "commander": "^7.2.0",
     "dotenv": "^8.2.0",
     "eosjs": "^22.0.0-rc2",
     "eosjs-api": "^7.0.4",
-    "node-fetch": "^1.7.3",
     "ethers": "^5.0.32",
     "lodash": "^4.17.20",
     "log4js": "^6.3.0",
     "module-alias": "^2.2.2",
     "mysql2": "^2.2.5",
     "nconf": "^0.11.2",
+    "node-fetch": "^1.7.3",
     "reflect-metadata": "^0.1.13",
     "rpc-bitcoin": "^2.0.0",
     "sqlite3": "^5.0.2",
-    "typeorm": "^0.2.31",
-    "typeorm-naming-strategies": "^2.0.0",
     "trongrid": "^1.2.6",
-    "tronweb": "^3.2.3"
+    "tronweb": "^3.2.3",
+    "typeorm": "^0.2.31",
+    "typeorm-naming-strategies": "^2.0.0"
   },
   "husky": {
     "hooks": {
@@ -106,6 +107,9 @@
       "ts-node/register",
       "tsconfig-paths/register"
     ]
+  },
+  "bin": {
+    "forcecli": "./dist/src/apps/cli/index.js"
   },
   "nyc": {
     "extends": "@istanbuljs/nyc-config-typescript",

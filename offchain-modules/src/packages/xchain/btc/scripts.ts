@@ -19,6 +19,7 @@ import axios from 'axios';
 const Unit = bitcore.Unit;
 const BtcLockEventMark = 'ck';
 const BtcOPReturnCode = '6a';
+const BtcDataIndex = 4;
 const CkbTxHashLen = 64;
 
 export class BTCChain {
@@ -56,7 +57,7 @@ export class BTCChain {
       let waitVerifyTxs = block.tx.slice(1);
       for (let txIndex = 0; txIndex < waitVerifyTxs.length; txIndex++) {
         const txVouts = waitVerifyTxs[txIndex].vout;
-        const ckbBurnTxHashes: string[] = await this.getUnockTxData(waitVerifyTxs[txIndex].vin, txVouts);
+        const ckbBurnTxHashes: string[] = await this.getUnlockTxData(waitVerifyTxs[txIndex].vin, txVouts);
         if (ckbBurnTxHashes.length != 0) {
           logger.debug(
             `verify for unlock event. block ${blockHeight} tx ${waitVerifyTxs[txIndex].hash}. find ckb burn hashes:  ${ckbBurnTxHashes}`,
@@ -83,33 +84,55 @@ export class BTCChain {
     }
   }
 
-  async sendLockTxs(fromAdress: string, amount: number, fromPrivKey, recipient: string): Promise<string> {
-    if (!recipient.startsWith(BtcLockEventMark)) {
-      throw new Error(`${recipient} must be available ckb address`);
+  async sendLockTxs(
+    fromAdress: string,
+    amount: number,
+    fromPrivKey: bitcore.PrivateKey,
+    memo: string,
+    feeRate: number,
+  ): Promise<string> {
+    logger.debug(
+      `lock tx params: fromAdress ${fromAdress}. amount ${amount}. fromPrivKey ${fromPrivKey.toString()}. memo ${memo}`,
+    );
+    if (!memo.startsWith(BtcLockEventMark)) {
+      throw new Error(`${memo} must start with available ckb address`);
     }
-    logger.debug(`lock tx params: fromAdress ${fromAdress}. amount ${amount}. fromPrivKey ${fromPrivKey.toString()}`);
     const liveUtxos: IBalance = await this.rpcClient.scantxoutset({
       action: 'start',
       scanobjects: [`addr(${fromAdress})`],
     });
 
-    logger.debug(`collect live utxos for lock: ${JSON.stringify(liveUtxos, null, 2)}`);
+    logger.debug(`collect live utxos for lock. total_amount is : ${liveUtxos.total_amount} btc`);
     const utxos = getVins(liveUtxos, BigInt(amount));
     if (utxos.length === 0) {
       throw new Error(
-        `the unspent utxo is not enough for lock. need : ${amount}. actual :${Unit.fromBTC(
-          liveUtxos.total_amount,
-        ).toSatoshis()}`,
+        `the unspend utxo is not enough for lock. need : ${amount}. actual uxtos :  ${JSON.stringify(
+          liveUtxos,
+          null,
+          2,
+        )}`,
       );
     }
+    const transactionWithoutFee = new bitcore.Transaction()
+      .from(utxos)
+      .to(this.multiAddress, amount)
+      .addData(memo)
+      .change(fromAdress)
+      .sign(fromPrivKey);
+    const txSize = transactionWithoutFee.serialize().length / 2;
     const lockTx = new bitcore.Transaction()
       .from(utxos)
       .to(this.multiAddress, amount)
-      .addData(recipient)
+      .fee(feeRate * txSize)
+      .addData(memo)
       .change(fromAdress)
       .sign(fromPrivKey);
     const lockTxHash = await this.rpcClient.sendrawtransaction({ hexstring: lockTx.serialize() });
-    logger.debug(`user ${fromAdress} lock ${amount} satoshis; the lock tx hash is ${lockTxHash}`);
+    logger.debug(
+      `user ${fromAdress} lock ${amount} satoshis; the lock tx hash is ${lockTxHash}. the tx fee rate is ${feeRate}. the tx fee is ${
+        feeRate * txSize
+      }`,
+    );
     return lockTxHash;
   }
 
@@ -143,9 +166,11 @@ export class BTCChain {
     const utxos = getVins(liveUtxos, VinNeedAmount);
     if (utxos.length === 0) {
       throw new Error(
-        `the unspent utxo is not enough for unlock. need : ${VinNeedAmount}. actual amount : ${Unit.fromBTC(
-          liveUtxos.total_amount,
-        ).toSatoshis()}`,
+        `the unspend utxo is no for unlock. need : ${VinNeedAmount}. actual uxtos : ${JSON.stringify(
+          liveUtxos,
+          null,
+          2,
+        )}`,
       );
     }
 
@@ -194,7 +219,7 @@ export class BTCChain {
     if (firstVoutScriptAddrList.length != 1) {
       return false;
     }
-    const receiveAddr = Buffer.from(secondVoutScriptPubKeyHex.substring(4), 'hex').toString();
+    const receiveAddr = Buffer.from(secondVoutScriptPubKeyHex.substring(BtcDataIndex), 'hex').toString();
 
     if (receiveAddr.startsWith(BtcLockEventMark)) {
       logger.debug(
@@ -208,7 +233,7 @@ export class BTCChain {
     );
   }
 
-  async getUnockTxData(txVins: IVin[], txVouts: IVout[]): Promise<string[]> {
+  async getUnlockTxData(txVins: IVin[], txVouts: IVout[]): Promise<string[]> {
     if (!(await this.isAddressInInput(txVins, this.multiAddress)) || txVouts.length < 2) {
       return [];
     }
@@ -217,7 +242,7 @@ export class BTCChain {
       const voutPubkeyHex = waitVerifyTxVouts[i].scriptPubKey.hex;
       if (voutPubkeyHex.startsWith(BtcOPReturnCode)) {
         logger.debug(`verify op return output data : ${voutPubkeyHex}`);
-        return splitTxhash(voutPubkeyHex.substring(4));
+        return splitTxhash(voutPubkeyHex.substring(BtcDataIndex));
       }
     }
     return [];
@@ -264,7 +289,7 @@ function splitTxhash(burnHashesStr: string): string[] {
 }
 
 //Todo: the url is for maintain. not fount testnet fee info yet.
-async function getBtcMainnetFee(): Promise<MainnetFee> {
+export async function getBtcMainnetFee(): Promise<MainnetFee> {
   try {
     const res = await axios.get('https://bitcoinfees.earn.com/api/v1/fees/recommended');
     return res.data;
