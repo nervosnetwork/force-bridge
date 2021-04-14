@@ -54,7 +54,12 @@ enum BridgeTransactionStatus {
   Failed = 'Failed',
 }
 
-type TransactionSummary = { fromAsset: FungibleAsset<Ident>; toAsset: FungibleAsset<Ident> };
+type TransactionSummary = {
+  fromAsset: FungibleAsset<Ident>;
+  toAsset: FungibleAsset<Ident>;
+  fromTransaction: IdentWithTransaction;
+  toTransaction: IdentWithTransaction;
+};
 type FailedTransactionSummary = TransactionSummary & { status: BridgeTransactionStatus.Failed; message: string };
 type UnFailedTransactionSummary = TransactionSummary & {
   status: BridgeTransactionStatus.Pending | BridgeTransactionStatus.Successful;
