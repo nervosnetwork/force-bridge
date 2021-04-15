@@ -130,6 +130,7 @@ export function EosLock2CkbMint(record: IEosLock): CkbMint {
 export interface IBtcLock {
   txid: string;
   txHash: string;
+  sender: string;
   amount: string;
   rawTx: string;
   data: string;
