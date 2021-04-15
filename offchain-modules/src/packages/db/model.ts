@@ -148,21 +148,21 @@ export interface IBtcUnLock {
 }
 
 export interface LockRecord {
-  from: string;
+  sender: string;
   recipient: string;
-  lockAmount: string;
-  mintAmount: string;
-  lockTxHash: string;
-  ckbMintTxHash?: string;
+  lock_amount: string;
+  mint_amount: string;
+  lock_hash: string;
+  ckb_mint_hash?: string;
 }
 
 export interface UnlockRecord {
-  from: string;
+  sender: string;
   recipient: string;
-  burnAmount: string;
-  unlockAmount: string;
-  ckbBurnTxHash: string;
-  unlockTxHash: string;
+  burn_amount: string;
+  unlock_amount: string;
+  burn_hash: string;
+  unlock_hash: string;
 }
 
 export interface IQuery {
