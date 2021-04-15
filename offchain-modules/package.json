@@ -71,6 +71,7 @@
     "axios": "^0.21.1",
     "bitcore-lib": "^8.25.7",
     "ckb-js-toolkit": "^0.10.2",
+    "commander": "^7.2.0",
     "dotenv": "^8.2.0",
     "eosjs": "^22.0.0-rc2",
     "eosjs-api": "^7.0.4",
@@ -108,6 +109,9 @@
       "ts-node/register",
       "tsconfig-paths/register"
     ]
+  },
+  "bin": {
+    "forcecli": "./dist/src/apps/cli/index.js"
   },
   "nyc": {
     "extends": "@istanbuljs/nyc-config-typescript",

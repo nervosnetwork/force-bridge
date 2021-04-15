@@ -298,6 +298,7 @@ export class TronHandler {
               signedTx = await this.multiSignTransferTrc20(unlockRecord);
               break;
           }
+          logger.debug('tron unlock signed tx', signedTx);
 
           unlockRecord.tronTxHash = signedTx.txID;
           unlockRecord.tronTxIndex = 0;
@@ -306,10 +307,16 @@ export class TronHandler {
           await this.db.saveTronUnlock([unlockRecord]);
 
           try {
-            await this.tronWeb.trx.broadcast(signedTx);
+            const broadTx = await this.tronWeb.trx.broadcast(signedTx);
+            if (broadTx.result == true) {
+              logger.debug('broad tx success', broadTx);
+            } else {
+              throw new Error(`broad tx failed ${broadTx}`);
+            }
           } catch (e) {
             logger.error(`TronHandler watchUnlockEvents broadcast tx ${signedTx} error: ${e}`);
             unlockRecord.status = 'error';
+            unlockRecord.message = `tx error: ${e}`;
             await this.db.saveTronUnlock([unlockRecord]);
           }
         }

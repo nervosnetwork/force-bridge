@@ -1,12 +1,13 @@
 import { Address, Amount, HashType, Script } from '@lay2/pw-core';
 import { Script as LumosScript } from '@ckb-lumos/base';
 import { Asset, ChainType } from '../model/asset';
-import { logger } from '@force-bridge/utils/logger';
-import { ScriptType } from '@force-bridge/ckb/tx-helper/indexer';
-import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
-import { fromHexString, stringToUint8Array, toHexString, bigintToSudtAmount } from '@force-bridge/utils';
-import { ForceBridgeCore } from '@force-bridge/core';
-import { SerializeRecipientCellData } from '@force-bridge/ckb/tx-helper/generated/eth_recipient_cell';
+import { logger } from '../../utils/logger';
+import { ScriptType } from '../../ckb/tx-helper/indexer';
+import { IndexerCollector } from '../../ckb/tx-helper/collector';
+import { fromHexString, stringToUint8Array, toHexString, bigintToSudtAmount } from '../../utils';
+import { ForceBridgeCore } from '../../core';
+import { SerializeRecipientCellData } from '../../ckb/tx-helper/generated/eth_recipient_cell';
+
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
 
 export interface MintAssetRecord {
@@ -69,6 +70,7 @@ export class CkbTxGenerator {
     const outputs = new Array(0);
     const outputsData = new Array(0);
     const sudtCellCapacity = 300n * 10n ** 8n;
+    const assets = new Array(0);
     for (const record of records) {
       const recipientLockscript = record.recipient.toLockScript();
       const bridgeCellLockscript = {
@@ -76,6 +78,25 @@ export class CkbTxGenerator {
         hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
         args: record.asset.toBridgeLockscriptArgs(),
       };
+
+      const sudtArgs = this.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
+      const outputSudtCell = {
+        lock: recipientLockscript,
+        type: {
+          codeHash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
+          hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
+          args: sudtArgs,
+        },
+        capacity: `0x${sudtCellCapacity.toString(16)}`,
+      };
+      outputs.push(outputSudtCell);
+      outputsData.push(record.amount.toUInt128LE());
+
+      if (assets.indexOf(record.asset.toBridgeLockscriptArgs()) != -1) {
+        continue;
+      }
+      assets.push(record.asset.toBridgeLockscriptArgs());
+
       const searchKey = {
         script: new Script(
           bridgeCellLockscript.codeHash,
@@ -89,22 +110,10 @@ export class CkbTxGenerator {
         throw new Error('failed to generate mint tx. the live cell is not found!');
       }
       const bridgeCell = cells[0];
-      const sudtArgs = this.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
-      const outputSudtCell = {
-        lock: recipientLockscript,
-        type: {
-          codeHash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
-          hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
-          args: sudtArgs,
-        },
-        capacity: `0x${sudtCellCapacity.toString(16)}`,
-      };
       const outputBridgeCell = {
         lock: bridgeCellLockscript,
         capacity: bridgeCell.capacity,
       };
-      outputs.push(outputSudtCell);
-      outputsData.push(record.amount.toUInt128LE());
       outputs.push(outputBridgeCell);
       outputsData.push('0x');
       bridgeCells.push(bridgeCell);
