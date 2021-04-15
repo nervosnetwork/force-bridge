@@ -32,6 +32,9 @@ export class TronUnlock {
   @Column({ default: 'todo' })
   status: string;
 
+  @Column({ default: '' })
+  message: string;
+
   @CreateDateColumn()
   createdAt: Date;
 
