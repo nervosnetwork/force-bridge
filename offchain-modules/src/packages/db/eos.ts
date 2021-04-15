@@ -1,10 +1,19 @@
 // invoke in eos handler
 
 import { Connection, Repository } from 'typeorm';
-import { CkbMint, EosUnlock, EosLock, ICkbMint, IEosLock } from '@force-bridge/db/model';
+import {
+  CkbMint,
+  EosUnlock,
+  EosLock,
+  ICkbMint,
+  IEosLock,
+  IQuery,
+  LockRecord,
+  UnlockRecord,
+} from '@force-bridge/db/model';
 import { EosUnlockStatus } from '@force-bridge/db/entity/EosUnlock';
 
-export class EosDb {
+export class EosDb implements IQuery {
   private ckbMintRepository: Repository<CkbMint>;
   private eosLockRepository: Repository<EosLock>;
   private eosUnlockRepository: Repository<EosUnlock>;
@@ -41,5 +50,17 @@ export class EosDb {
       },
       take,
     });
+  }
+
+  async getLockRecordsByUser(): Promise<LockRecord[]> {
+    return await this.conn.manager.query(
+      'select  ckb.recipient_lockscript as recipient , btc.amount as lock_amount,ckb.amount as mint_amount,btc.txid as lock_hash FROM btc_lock btc join ckb_mint ckb on btc.txid = ckb.id',
+    );
+  }
+
+  async getUnlockRecordsByUser(ckbAddr: string): Promise<UnlockRecord[]> {
+    return await this.conn.manager.query(
+      'select  ckb.recipient_lockscript as recipient , btc.amount as lock_amount,ckb.amount as mint_amount,btc.txid as lock_hash FROM btc_lock btc join ckb_mint ckb on btc.txid = ckb.id',
+    );
   }
 }

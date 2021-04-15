@@ -1,9 +1,19 @@
 // invoke in BTC handler
-import { CkbMint, BtcLock, BtcUnlock, ICkbMint, IBtcLock, IBtcUnLock } from '@force-bridge/db/model';
+import {
+  BtcLock,
+  BtcUnlock,
+  CkbMint,
+  IBtcLock,
+  IBtcUnLock,
+  ICkbMint,
+  IQuery,
+  LockRecord,
+  UnlockRecord,
+} from '@force-bridge/db/model';
 import { Connection, Not, Repository } from 'typeorm';
 import { BtcUnlockStatus } from '@force-bridge/db/entity/BtcUnlock';
 
-export class BtcDb {
+export class BtcDb implements IQuery {
   private ckbMintRepository: Repository<CkbMint>;
   private btcLockRepository: Repository<BtcLock>;
   private btcUnlockRepository: Repository<BtcUnlock>;
@@ -37,7 +47,7 @@ export class BtcDb {
     await this.btcLockRepository.save(dbRecords);
   }
 
-  async getNotSuccessUnlockRecord(ckbTxHash): Promise<BtcUnlock[]> {
+  async getNotSuccessUnlockRecord(ckbTxHash: string): Promise<BtcUnlock[]> {
     const successStatus: BtcUnlockStatus = 'success';
     return await this.btcUnlockRepository.find({
       status: Not(successStatus),
@@ -45,7 +55,7 @@ export class BtcDb {
     });
   }
 
-  async getLockRecord(btcLockHash): Promise<BtcLock[]> {
+  async getLockRecordByHash(btcLockHash: string): Promise<BtcLock[]> {
     return await this.btcLockRepository.find({
       txHash: btcLockHash,
     });
@@ -58,5 +68,17 @@ export class BtcDb {
       },
       take,
     });
+  }
+
+  async getLockRecordsByUser(userAddr: string): Promise<LockRecord[]> {
+    return await this.connection.manager.query(
+      'select  ckb.recipient_lockscript as recipient , btc.amount as lock_amount,ckb.amount as mint_amount,btc.txid as lock_hash FROM btc_lock btc join ckb_mint ckb on btc.txid = ckb.id',
+    );
+  }
+
+  async getUnlockRecordsByUser(ckbAddr: string): Promise<UnlockRecord[]> {
+    return await this.connection.manager.query(
+      'select  ckb.recipient_lockscript as recipient , btc.amount as lock_amount,ckb.amount as mint_amount,btc.txid as lock_hash FROM btc_lock btc join ckb_mint ckb on btc.txid = ckb.id',
+    );
   }
 }

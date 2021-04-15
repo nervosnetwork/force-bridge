@@ -1,9 +1,18 @@
 // invoke in eth handler
-import { CkbMint, EthLock, EthUnlock, ICkbMint, IEthLock } from '@force-bridge/db/model';
+import {
+  CkbMint,
+  EthLock,
+  EthUnlock,
+  ICkbMint,
+  IEthLock,
+  IQuery,
+  LockRecord,
+  UnlockRecord,
+} from '@force-bridge/db/model';
 import { Connection, Repository } from 'typeorm';
 import { EthUnlockStatus } from '@force-bridge/db/entity/EthUnlock';
 
-export class EthDb {
+export class EthDb implements IQuery {
   private ckbMintRepository: Repository<CkbMint>;
   private ethLockRepository: Repository<EthLock>;
   private ethUnlockRepository: Repository<EthUnlock>;
@@ -40,5 +49,13 @@ export class EthDb {
       },
       take,
     });
+  }
+
+  async getLockRecordsByUser(userAddr: string): Promise<LockRecord[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  async getUnlockRecordsByUser(ckbAddr: string): Promise<UnlockRecord[]> {
+    return Promise.resolve([]);
   }
 }

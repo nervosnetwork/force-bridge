@@ -145,3 +145,26 @@ export interface IBtcUnLock {
   amount: string;
   recipientAddress: string;
 }
+
+export interface LockRecord {
+  from: string;
+  recipient: string;
+  lockAmount: string;
+  mintAmount: string;
+  lockTxHash: string;
+  ckbMintTxHash: string;
+}
+
+export interface UnlockRecord {
+  from: string;
+  recipient: string;
+  burnAmount: string;
+  unlockAmount: string;
+  ckbBurnTxHash: string;
+  unlockTxHash: string;
+}
+
+export interface IQuery {
+  getLockRecordsByUser(userAddr: string): Promise<LockRecord[]>;
+  getUnlockRecordsByUser(ckbAddr: string): Promise<UnlockRecord[]>;
+}

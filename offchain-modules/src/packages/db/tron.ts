@@ -1,9 +1,18 @@
 // invoke in tron handler
-import { CkbMint, TronLock, TronUnlock, ICkbMint, ITronLock } from '@force-bridge/db/model';
+import {
+  CkbMint,
+  TronLock,
+  TronUnlock,
+  ICkbMint,
+  ITronLock,
+  IQuery,
+  LockRecord,
+  UnlockRecord,
+} from '@force-bridge/db/model';
 import { Connection, Repository } from 'typeorm';
 import { TronUnlockStatus } from '@force-bridge/db/entity/TronUnlock';
 
-export class TronDb {
+export class TronDb implements IQuery {
   private ckbMintRepository: Repository<CkbMint>;
   private tronLockRepository: Repository<TronLock>;
   private tronUnlockRepository: Repository<TronUnlock>;
@@ -41,5 +50,13 @@ export class TronDb {
         status: status,
       },
     });
+  }
+
+  async getLockRecordsByUser(userAddr: string): Promise<LockRecord[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  getUnlockRecordsByUser(ckbAddr: string): Promise<UnlockRecord[]> {
+    return Promise.resolve([]);
   }
 }

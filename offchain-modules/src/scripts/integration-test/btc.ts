@@ -199,7 +199,7 @@ async function main() {
     1000 * 10,
   );
 
-  const lockRecords: BtcLock[] = await btcDb.getLockRecord(lockTxHash);
+  const lockRecords: BtcLock[] = await btcDb.getLockRecordByHash(lockTxHash);
   logger.debug(`successful lock records ${JSON.stringify(lockRecords, null, 2)}`);
   const unlockRecords: BtcUnlock[] = await btcDb.getBtcUnlockRecords('success');
   logger.debug(`successful unlock records  ${JSON.stringify(unlockRecords, null, 2)}`);
