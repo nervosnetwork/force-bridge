@@ -68,12 +68,14 @@ type TransactionSummaryWithStatus = UnFailedTransactionSummary | FailedTransacti
 
 type GenerateBridgeInTransactionPayload = {
   asset: FungibleAsset<Ident>;
-  user: Ident;
+  sender: Ident;
+  recipient: Script;
 };
 
 type GenerateBridgeOutNervosTransactionPayload = {
   asset: NervosShadowSUDT<Ident>;
-  user: Script;
+  sender: Script;
+  recipient: Ident;
 };
 
 type GenerateTransactionResponse = {
