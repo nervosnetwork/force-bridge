@@ -52,10 +52,16 @@ export class EthDb implements IQuery {
   }
 
   async getLockRecordsByUser(userAddr: string): Promise<LockRecord[]> {
-    throw new Error('Method not implemented.');
+    return await this.connection.manager.query(
+      `select eth.sender as sender, ckb.recipient_lockscript as recipient , eth.amount as lock_amount,ckb.amount as mint_amount,eth.tx_hash as lock_hash FROM eth_lock eth join ckb_mint ckb on eth.tx_hash = ckb.id where eth.sender = ?`,
+      [userAddr],
+    );
   }
 
-  async getUnlockRecordsByUser(ckbAddr: string): Promise<UnlockRecord[]> {
-    return Promise.resolve([]);
+  async getUnlockRecordsByUser(ckbLockScriptHash: string): Promise<UnlockRecord[]> {
+    return await this.connection.manager.query(
+      `select ckb.sender_lock_hash as sender, ckb.recipient_address as recipient , ckb.amount as burn_amount, eth.amount as unlock_amount,ckb.ckb_tx_hash as burn_hash,eth.eth_tx_hash as unlock_hash FROM eth_unlock eth join ckb_burn ckb on eth.ckb_tx_hash = ckb.ckb_tx_hash where eth.status = 'success' and ckb.sender_lock_hash = ?`,
+      [ckbLockScriptHash],
+    );
   }
 }

@@ -34,6 +34,7 @@ export interface IEthLock {
 }
 
 export interface ICkbBurn {
+  senderLockHash: string;
   ckbTxHash: string;
   chain: number;
   asset: string;
@@ -152,7 +153,7 @@ export interface LockRecord {
   lockAmount: string;
   mintAmount: string;
   lockTxHash: string;
-  ckbMintTxHash: string;
+  ckbMintTxHash?: string;
 }
 
 export interface UnlockRecord {

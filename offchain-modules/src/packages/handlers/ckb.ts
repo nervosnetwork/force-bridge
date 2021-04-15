@@ -1,20 +1,21 @@
 import { CkbDb } from '../db';
 import { CkbMint, ICkbBurn } from '../db/model';
 import { logger } from '../utils/logger';
-import { asyncSleep, fromHexString, toHexString, uint8ArrayToString, bigintToSudtAmount } from '../utils';
+import { asyncSleep, fromHexString, toHexString, uint8ArrayToString } from '../utils';
 import { Asset, BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '../ckb/model/asset';
-import { Address, Amount, AddressType, Script, HashType } from '@lay2/pw-core';
+import { Address, AddressType, Amount, HashType, Script } from '@lay2/pw-core';
 import { Account } from '@force-bridge/ckb/model/accounts';
 
 import { CkbTxGenerator } from '@force-bridge/ckb/tx-helper/generator';
 import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
 import { ScriptType } from '@force-bridge/ckb/tx-helper/indexer';
 import { ForceBridgeCore } from '@force-bridge/core';
-import Transaction = CKBComponents.Transaction;
 import { Script as LumosScript } from '@ckb-lumos/base';
 import { BigNumber } from 'ethers';
 import { RecipientCellData } from '@force-bridge/ckb/tx-helper/generated/eth_recipient_cell';
 import { getAssetTypeByAsset } from '@force-bridge/xchain/tron/utils';
+import Transaction = CKBComponents.Transaction;
+import TransactionWithStatus = CKBComponents.TransactionWithStatus;
 
 // CKB handler
 // 1. Listen CKB chain to get new burn events.
@@ -102,53 +103,75 @@ export class CkbHandler {
           continue;
         }
         if (await this.isBurnTx(tx, cellData)) {
-          burnTxs.set(tx.hash, cellData);
+          const burnPreviousTx: TransactionWithStatus = await this.ckb.rpc.getTransaction(
+            tx.inputs[0].previousOutput.txHash,
+          );
+          const senderLockHash = this.ckb.utils.scriptToHash(
+            burnPreviousTx.transaction.outputs[Number(tx.inputs[0].previousOutput.index)].lock,
+          );
+          const data: BurnDbData = {
+            senderLockScriptHash: senderLockHash,
+            cellData: cellData,
+          };
+          burnTxs.set(tx.hash, data);
         }
       }
       logger.debug('get new burn events and save to db', burnTxs);
       if (burnTxs.size > 0) {
         const ckbBurns = [];
-        burnTxs.forEach((v: RecipientCellData, k: string) => {
-          const chain = v.getChain();
-          let burn;
+        burnTxs.forEach((v: BurnDbData, k: string) => {
+          const chain = v.cellData.getChain();
+          let burn: ICkbBurn;
           switch (chain) {
             case ChainType.BTC:
               burn = {
+                senderLockHash: v.senderLockScriptHash,
                 ckbTxHash: k,
-                asset: uint8ArrayToString(new Uint8Array(v.getAsset().raw())),
+                asset: uint8ArrayToString(new Uint8Array(v.cellData.getAsset().raw())),
                 chain,
-                amount: Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.getAmount().raw()))}`).toString(),
-                recipientAddress: uint8ArrayToString(new Uint8Array(v.getRecipientAddress().raw())),
+                amount: Amount.fromUInt128LE(
+                  `0x${toHexString(new Uint8Array(v.cellData.getAmount().raw()))}`,
+                ).toString(),
+                recipientAddress: uint8ArrayToString(new Uint8Array(v.cellData.getRecipientAddress().raw())),
                 blockNumber: latestHeight,
               };
               break;
             case ChainType.ETH:
               burn = {
+                senderLockHash: v.senderLockScriptHash,
                 ckbTxHash: k,
-                asset: `0x${toHexString(new Uint8Array(v.getAsset().raw()))}`,
+                asset: `0x${toHexString(new Uint8Array(v.cellData.getAsset().raw()))}`,
                 chain,
-                amount: Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.getAmount().raw()))}`).toString(),
-                recipientAddress: `0x${toHexString(new Uint8Array(v.getRecipientAddress().raw()))}`,
+                amount: Amount.fromUInt128LE(
+                  `0x${toHexString(new Uint8Array(v.cellData.getAmount().raw()))}`,
+                ).toString(),
+                recipientAddress: `0x${toHexString(new Uint8Array(v.cellData.getRecipientAddress().raw()))}`,
                 blockNumber: latestHeight,
               };
               break;
             case ChainType.TRON:
               burn = {
+                senderLockHash: v.senderLockScriptHash,
                 ckbTxHash: k,
-                asset: uint8ArrayToString(new Uint8Array(v.getAsset().raw())),
+                asset: uint8ArrayToString(new Uint8Array(v.cellData.getAsset().raw())),
                 chain,
-                amount: Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.getAmount().raw()))}`).toString(),
-                recipientAddress: uint8ArrayToString(new Uint8Array(v.getRecipientAddress().raw())),
+                amount: Amount.fromUInt128LE(
+                  `0x${toHexString(new Uint8Array(v.cellData.getAmount().raw()))}`,
+                ).toString(),
+                recipientAddress: uint8ArrayToString(new Uint8Array(v.cellData.getRecipientAddress().raw())),
                 blockNumber: latestHeight,
               };
               break;
             case ChainType.EOS:
               burn = {
+                senderLockHash: v.senderLockScriptHash,
                 ckbTxHash: k,
-                asset: uint8ArrayToString(new Uint8Array(v.getAsset().raw())),
+                asset: uint8ArrayToString(new Uint8Array(v.cellData.getAsset().raw())),
                 chain,
-                amount: Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.getAmount().raw()))}`).toString(),
-                recipientAddress: uint8ArrayToString(new Uint8Array(v.getRecipientAddress().raw())),
+                amount: Amount.fromUInt128LE(
+                  `0x${toHexString(new Uint8Array(v.cellData.getAmount().raw()))}`,
+                ).toString(),
+                recipientAddress: uint8ArrayToString(new Uint8Array(v.cellData.getRecipientAddress().raw())),
                 blockNumber: latestHeight,
               };
               break;
@@ -379,3 +402,8 @@ export class CkbHandler {
     logger.info('ckb handler started 🚀');
   }
 }
+
+type BurnDbData = {
+  cellData: RecipientCellData;
+  senderLockScriptHash: string;
+};

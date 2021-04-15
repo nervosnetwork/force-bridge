@@ -52,15 +52,17 @@ export class EosDb implements IQuery {
     });
   }
 
-  async getLockRecordsByUser(): Promise<LockRecord[]> {
+  async getLockRecordsByUser(userAddr: string): Promise<LockRecord[]> {
     return await this.conn.manager.query(
-      'select  ckb.recipient_lockscript as recipient , btc.amount as lock_amount,ckb.amount as mint_amount,btc.txid as lock_hash FROM btc_lock btc join ckb_mint ckb on btc.txid = ckb.id',
+      `select eos.sender as sender, ckb.recipient_lockscript as recipient , eos.amount as lock_amount,ckb.amount as mint_amount,eos.id as lock_hash FROM eos_lock eos join ckb_mint ckb on eos.id = ckb.id where eos.sender = ?`,
+      [userAddr],
     );
   }
 
-  async getUnlockRecordsByUser(ckbAddr: string): Promise<UnlockRecord[]> {
+  async getUnlockRecordsByUser(ckbLockScriptHash: string): Promise<UnlockRecord[]> {
     return await this.conn.manager.query(
-      'select  ckb.recipient_lockscript as recipient , btc.amount as lock_amount,ckb.amount as mint_amount,btc.txid as lock_hash FROM btc_lock btc join ckb_mint ckb on btc.txid = ckb.id',
+      `select ckb.sender_lock_hash as sender, ckb.recipient_address as recipient , ckb.amount as burn_amount, eos.amount as unlock_amount,ckb.ckb_tx_hash as burn_hash,eos.eos_tx_hash as unlock_hash FROM eos_unlock eos join ckb_burn ckb on eos.ckb_tx_hash = ckb.ckb_tx_hash where eos.status = 'success' and ckb.sender_lock_hash = ?`,
+      [ckbLockScriptHash],
     );
   }
 }

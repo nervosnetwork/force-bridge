@@ -53,10 +53,16 @@ export class TronDb implements IQuery {
   }
 
   async getLockRecordsByUser(userAddr: string): Promise<LockRecord[]> {
-    throw new Error('Method not implemented.');
+    return await this.connection.manager.query(
+      `select tron.sender as sender, ckb.recipient_lockscript as recipient , tron.amount as lock_amount,ckb.amount as mint_amount,tron.tx_hash as lock_hash FROM tron_lock tron join ckb_mint ckb on tron.tx_hash = ckb.id where tron.sender = ?`,
+      [userAddr],
+    );
   }
 
-  getUnlockRecordsByUser(ckbAddr: string): Promise<UnlockRecord[]> {
-    return Promise.resolve([]);
+  async getUnlockRecordsByUser(ckbLockScriptHash: string): Promise<UnlockRecord[]> {
+    return await this.connection.manager.query(
+      `select ckb.sender_lock_hash as sender, ckb.recipient_address as recipient , ckb.amount as burn_amount, tron.amount as unlock_amount,ckb.ckb_tx_hash as burn_hash,tron.tron_tx_hash as unlock_hash FROM tron_unlock tron join ckb_burn ckb on tron.ckb_tx_hash = ckb.ckb_tx_hash where tron.status = 'success' and ckb.sender_lock_hash = ?`,
+      [ckbLockScriptHash],
+    );
   }
 }

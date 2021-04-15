@@ -16,6 +16,10 @@ export class CkbBurn {
   @Column()
   chain: number;
 
+  @Index()
+  @Column()
+  senderLockHash: string;
+
   @Column()
   asset: string;
 
