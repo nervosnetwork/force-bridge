@@ -1,10 +1,9 @@
 import { CkbDb } from '../db';
 import { CkbMint, ICkbBurn } from '../db/model';
 import { logger } from '../utils/logger';
-import { asyncSleep, fromHexString, toHexString, uint8ArrayToString, bigintToSudtAmount } from '../utils';
+import { asyncSleep, fromHexString, toHexString, uint8ArrayToString } from '../utils';
 import { Asset, BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '../ckb/model/asset';
 import { Address, Amount, AddressType, Script, HashType } from '@lay2/pw-core';
-import { Account } from '@force-bridge/ckb/model/accounts';
 
 import { CkbTxGenerator } from '@force-bridge/ckb/tx-helper/generator';
 import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
@@ -14,15 +13,33 @@ import Transaction = CKBComponents.Transaction;
 import { Script as LumosScript } from '@ckb-lumos/base';
 import { BigNumber } from 'ethers';
 import { RecipientCellData } from '@force-bridge/ckb/tx-helper/generated/eth_recipient_cell';
+import { Indexer } from '@ckb-lumos/indexer';
+import {
+  fromPrivateKey,
+  multisigLockScript,
+  serializedMultisigScript,
+} from '@force-bridge/ckb/tx-helper/multisig/multisig_helper';
+import { sealTransaction } from '@ckb-lumos/helpers';
+import { key } from '@ckb-lumos/hd';
+import TransactionManager from '@ckb-lumos/transaction-manager';
+import { RPC } from '@ckb-lumos/rpc';
+const infos = require('../ckb/tx-helper/multisig/infos.json');
 
 // CKB handler
 // 1. Listen CKB chain to get new burn events.
 // 2. Listen database to get new mint events, send tx.
 export class CkbHandler {
-  private ckb = ForceBridgeCore.ckb;
-  private indexer = ForceBridgeCore.indexer;
-  private PRI_KEY = ForceBridgeCore.config.ckb.privateKey;
-  constructor(private db: CkbDb) {}
+  private ckb;
+  private indexer;
+  private ckbIndexer;
+  private transactionManager;
+  constructor(private db: CkbDb) {
+    this.ckb = ForceBridgeCore.ckb;
+    this.indexer = new Indexer(ForceBridgeCore.config.ckb.ckbRpcUrl, './indexer-data');
+    this.ckbIndexer = ForceBridgeCore.ckbIndexer;
+    this.indexer.startForever();
+    this.transactionManager = new TransactionManager(this.indexer);
+  }
 
   // save unlock event first and then
   async saveBurnEvent(burns: ICkbBurn[]): Promise<void> {
@@ -86,14 +103,13 @@ export class CkbHandler {
       logger.debug('watch burn event height: ', latestHeight);
       const block = await this.ckb.rpc.getBlockByNumber(BigInt(latestHeight));
       if (block == null) {
-        logger.debug('waitting for new ckb block');
+        logger.debug('waiting for new ckb block');
         await asyncSleep(5000);
         continue;
       }
       const burnTxs = new Map();
       for (const tx of block.transactions) {
         const recipientData = tx.outputsData[0];
-        logger.debug('recipientData:', recipientData);
         let cellData;
         try {
           cellData = new RecipientCellData(fromHexString(recipientData).buffer);
@@ -112,6 +128,8 @@ export class CkbHandler {
           let burn;
           switch (chain) {
             case ChainType.BTC:
+            case ChainType.TRON:
+            case ChainType.EOS:
               burn = {
                 ckbTxHash: k,
                 asset: uint8ArrayToString(new Uint8Array(v.getAsset().raw())),
@@ -131,26 +149,26 @@ export class CkbHandler {
                 blockNumber: latestHeight,
               };
               break;
-            case ChainType.TRON:
-              burn = {
-                ckbTxHash: k,
-                asset: uint8ArrayToString(new Uint8Array(v.getAsset().raw())),
-                chain,
-                amount: Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.getAmount().raw()))}`).toString(),
-                recipientAddress: uint8ArrayToString(new Uint8Array(v.getRecipientAddress().raw())),
-                blockNumber: latestHeight,
-              };
-              break;
-            case ChainType.EOS:
-              burn = {
-                ckbTxHash: k,
-                asset: uint8ArrayToString(new Uint8Array(v.getAsset().raw())),
-                chain,
-                amount: Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.getAmount().raw()))}`).toString(),
-                recipientAddress: uint8ArrayToString(new Uint8Array(v.getRecipientAddress().raw())),
-                blockNumber: latestHeight,
-              };
-              break;
+            // case ChainType.TRON:
+            //   burn = {
+            //     ckbTxHash: k,
+            //     asset: uint8ArrayToString(new Uint8Array(v.getAsset().raw())),
+            //     chain,
+            //     amount: Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.getAmount().raw()))}`).toString(),
+            //     recipientAddress: uint8ArrayToString(new Uint8Array(v.getRecipientAddress().raw())),
+            //     blockNumber: latestHeight,
+            //   };
+            //   break;
+            // case ChainType.EOS:
+            //   burn = {
+            //     ckbTxHash: k,
+            //     asset: uint8ArrayToString(new Uint8Array(v.getAsset().raw())),
+            //     chain,
+            //     amount: Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.getAmount().raw()))}`).toString(),
+            //     recipientAddress: uint8ArrayToString(new Uint8Array(v.getRecipientAddress().raw())),
+            //     blockNumber: latestHeight,
+            //   };
+            //   break;
           }
           ckbBurns.push(burn);
         });
@@ -216,9 +234,9 @@ export class CkbHandler {
   }
 
   async handleMintRecords(): Promise<never> {
-    const account = new Account(this.PRI_KEY);
+    // const account = new Account(this.PRI_KEY);
     const ownLockHash = await this.getOwnLockHash();
-    const generator = new CkbTxGenerator(this.ckb, new IndexerCollector(this.indexer));
+    const generator = new CkbTxGenerator(this.ckb, new IndexerCollector(this.ckbIndexer));
     while (true) {
       const mintRecords = await this.db.getCkbMintRecordsToMint();
       logger.debug('new mintRecords: ', mintRecords);
@@ -232,19 +250,25 @@ export class CkbHandler {
 
       if (newTokens.length > 0) {
         logger.debug('bridge cell is not exist. do create bridge cell.');
+        await this.waitUntilSync();
         await this.createBridgeCell(newTokens, generator);
       }
-
       try {
         mintRecords.map((r) => {
           r.status = 'pending';
         });
         await this.db.updateCkbMint(mintRecords);
-        const rawTx = await generator.mint(await account.getLockscript(), records);
-        const signedTx = this.ckb.signTransaction(this.PRI_KEY)(rawTx);
-        const mintTxHash = await this.ckb.rpc.sendTransaction(signedTx);
-        console.log(`Mint Transaction has been sent with tx hash ${mintTxHash}`);
-        const txStatus = await this.waitUntilCommitted(mintTxHash, 60);
+        await this.waitUntilSync();
+        const txSkeleton = await generator.mint(records[0], this.indexer);
+        const content0 = key.signRecoverable(txSkeleton.get('signingEntries').get(0).message, fromPrivateKey);
+        let content1 = serializedMultisigScript;
+        for (let i = 0; i < infos.keys.length; i++) {
+          content1 += key.signRecoverable(txSkeleton.get('signingEntries').get(1).message, infos.keys[i]).slice(2);
+        }
+        const tx = sealTransaction(txSkeleton, [content0, content1]);
+        console.log('tx:', JSON.stringify(tx, null, 2));
+        const txHash = await this.transactionManager.send_transaction(tx);
+        const txStatus = await this.waitUntilCommitted(txHash, 60);
         if (txStatus.txStatus.status === 'committed') {
           mintRecords.map((r) => {
             r.status = 'success';
@@ -263,7 +287,6 @@ export class CkbHandler {
         });
         await this.db.updateCkbMint(mintRecords);
       }
-      await this.indexer.waitUntilSync();
     }
   }
 
@@ -316,7 +339,7 @@ export class CkbHandler {
         ).serializeJson() as LumosScript,
         script_type: ScriptType.lock,
       };
-      const bridgeCells = await this.indexer.getCells(searchKey);
+      const bridgeCells = await this.ckbIndexer.getCells(searchKey);
       if (bridgeCells.length == 0) {
         newTokens.push(record);
       }
@@ -325,7 +348,6 @@ export class CkbHandler {
   }
 
   async createBridgeCell(newTokens: any[], generator: CkbTxGenerator) {
-    const account = new Account(this.PRI_KEY);
     const scripts = newTokens.map((r) => {
       return {
         codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
@@ -333,16 +355,44 @@ export class CkbHandler {
         args: r.asset.toBridgeLockscriptArgs(),
       };
     });
-    const rawTx = await generator.createBridgeCell(await account.getLockscript(), scripts);
-    const signedTx = this.ckb.signTransaction(this.PRI_KEY)(rawTx);
-    const tx_hash = await this.ckb.rpc.sendTransaction(signedTx);
-    await this.waitUntilCommitted(tx_hash, 60);
-    await this.indexer.waitUntilSync();
+
+    const txSkeleton = await generator.createBridgeCell(scripts[0], this.indexer);
+    console.log('signingEntries length:', txSkeleton.get('signingEntries').size);
+    const message0 = txSkeleton.get('signingEntries').get(0).message;
+    const content0 = key.signRecoverable(message0, fromPrivateKey);
+    const message1 = txSkeleton.get('signingEntries').get(1).message;
+    let content1 = serializedMultisigScript;
+    for (let i = 0; i < infos.keys.length; i++) {
+      content1 += key.signRecoverable(message1, infos.keys[i]).slice(2);
+    }
+    const tx = sealTransaction(txSkeleton, [content0, content1]);
+    console.log('tx:', JSON.stringify(tx, null, 2));
+    const txHash = await this.transactionManager.send_transaction(tx);
+    await this.waitUntilCommitted(txHash, 60);
+  }
+
+  async waitUntilSync(): Promise<void> {
+    const ckbRpc = new RPC(ForceBridgeCore.config.ckb.ckbRpcUrl);
+    const rpcTipNumber = parseInt((await ckbRpc.get_tip_header()).number, 16);
+    logger.debug('rpcTipNumber', rpcTipNumber);
+    let index = 0;
+    while (true) {
+      const indexerTipNumber = parseInt((await this.indexer.tip()).block_number, 16);
+      logger.debug('indexerTipNumber', indexerTipNumber);
+      if (indexerTipNumber >= rpcTipNumber) {
+        return;
+      }
+      logger.debug(`wait until indexer sync. index: ${index++}`);
+      await asyncSleep(1000);
+    }
   }
 
   async getOwnLockHash(): Promise<string> {
-    const account = new Account(this.PRI_KEY);
-    const ownLockHash = this.ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
+    const ownLockHash = this.ckb.utils.scriptToHash(<CKBComponents.Script>{
+      codeHash: multisigLockScript.code_hash,
+      hashType: multisigLockScript.hash_type,
+      args: multisigLockScript.args,
+    });
     return ownLockHash;
   }
 

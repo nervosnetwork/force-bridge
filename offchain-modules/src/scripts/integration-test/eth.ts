@@ -19,6 +19,7 @@ import { waitUntilCommitted } from './util';
 // import {CkbIndexer} from "@force-bridge/ckb/tx-helper/indexer";
 import { ForceBridgeCore } from '@force-bridge/core';
 import { CkbIndexer } from '@force-bridge/ckb/tx-helper/indexer';
+import { multisigLockScript } from '@force-bridge/ckb/tx-helper/multisig/multisig_helper';
 
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
 // const { Indexer, CellCollector } = require('@ckb-lumos/indexer');
@@ -134,7 +135,12 @@ async function main() {
 
     // check sudt balance.
     const account = new Account(PRI_KEY);
-    const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
+    // const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
+    const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>{
+      codeHash: multisigLockScript.code_hash,
+      hashType: multisigLockScript.hash_type,
+      args: multisigLockScript.args,
+    });
     const asset = new EthAsset('0x0000000000000000000000000000000000000000', ownLockHash);
     const bridgeCellLockscript = {
       codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
@@ -162,7 +168,7 @@ async function main() {
     const burnAmount = ethers.utils.parseEther('0.01');
     if (!sendBurn) {
       const account = new Account(PRI_KEY);
-      const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
+      // const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
       const generator = new CkbTxGenerator(ckb, new IndexerCollector(indexer));
       const burnTx = await generator.burn(
         await account.getLockscript(),

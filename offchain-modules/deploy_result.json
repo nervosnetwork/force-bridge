@@ -1,0 +1,9 @@
+{
+  "tx_hash": "0x4f744de0aa10cd9225ee252849a9365a508c93013e6a4e8ead8514746aa4d4f6",
+  "index": "0x0",
+  "type": {
+    "code_hash": "0x00000000000000000000000000000000000000000000000000545950455f4944",
+    "hash_type": "type",
+    "args": "0xdb55be036ecd39cbd39dc1d824db22c138bcd0c517bad271c3610de5cd24a8cd"
+  }
+}

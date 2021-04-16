@@ -36,6 +36,7 @@ const deploy = async () => {
   const contractBinLength = BigInt(lockscriptBin.length);
   console.log({ contractBinLength });
   const { secp256k1Dep } = await ckb.loadDeps();
+  console.log('secp256k1Dep', JSON.stringify(secp256k1Dep, null, 2));
   const lock = { ...secp256k1Dep, args: ARGS };
   nconf.set('userLockscript', lock);
   const cells = await ckb.loadCells({ indexer, CellCollector, lock });

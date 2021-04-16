@@ -20,6 +20,7 @@ import { Amount, Script } from '@lay2/pw-core';
 import { CkbIndexer } from '@force-bridge/ckb/tx-helper/indexer';
 import { ForceBridgeCore } from '@force-bridge/core';
 import { waitUntilCommitted, waitFnCompleted } from './util';
+import { multisigLockScript } from '@force-bridge/ckb/tx-helper/multisig/multisig_helper';
 
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
@@ -114,7 +115,11 @@ async function main() {
 
   // check sudt balance.
   const account = new Account(PRI_KEY);
-  const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
+  const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>{
+    codeHash: multisigLockScript.code_hash,
+    hashType: multisigLockScript.hash_type,
+    args: multisigLockScript.args,
+  });
   const asset = new EosAsset(lockAsset, ownLockHash);
   const bridgeCellLockscript = {
     codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,

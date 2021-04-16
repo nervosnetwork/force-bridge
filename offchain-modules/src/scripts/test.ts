@@ -9,6 +9,7 @@ import { fromHexString, stringToUint8Array, toHexString, uint8ArrayToString } fr
 import { BigNumber, ethers } from 'ethers';
 import { ForceBridgeCore } from '@force-bridge/core';
 import { Reader } from 'ckb-js-toolkit';
+import { RPC } from '@ckb-lumos/rpc';
 
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
 const CKB_INDEXER_URL = process.env.CKB_INDEXER_URL || 'http://127.0.0.1:8116';
@@ -21,10 +22,15 @@ async function main() {
   // logger.debug('address', account.address);
   // const pw = await new PWCore(CKB_URL).init();
   // const indexer = new CkbIndexer(CKB_INDEXER_URL, CKB_URL);
+  // const ckbRpc = new RPC('http://127.0.0.1:8114');
+  // // const tx = await ckbRpc.get_transaction('0x3e41080968db4f2b4db5d546ffb886a2e46a4444c57b0653563482de84d6da59');
+  // const tx = await ckbRpc.get_live_cell({tx_hash: '0x3e41080968db4f2b4db5d546ffb886a2e46a4444c57b0653563482de84d6da59', index: '0x0'}, false);
+  // console.dir(tx, {depth: null})
   // const collector = new IndexerCollector(indexer);
   // const generator = new CkbTxGenerator(collector);
   // const bb = BigNumber.from('0.0001');
-  // const bb = new Amount('0.0001');
+  const bb = new Amount('1', 0);
+  console.log('res:', bb.toBigInt());
   // const bb = Amount.fromUInt128LE('0x0001');
   // // const dd = BigAmount.fromUInt128LE(`0x10270000000000000000000000000000`);
   //

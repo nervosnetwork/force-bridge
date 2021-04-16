@@ -1,5 +1,9 @@
 // todo: remove lumos indexer dep, use collector in packages/ckb/tx-helper/collector
-import { blake2b, asyncSleep as sleep } from '../packages/utils';
+import { blake2b, asyncSleep as sleep, asyncSleep } from '../packages/utils';
+import { logger } from '@force-bridge/utils/logger';
+import { RPC } from '@ckb-lumos/rpc';
+import { generateTypeIDScript } from '../packages/ckb/tx-helper/multisig/typeid';
+import { HashType } from '@ckb-lumos/base';
 
 const fs = require('fs').promises;
 const nconf = require('nconf');
@@ -33,6 +37,7 @@ const deploy = async () => {
   const contractBinLength = BigInt(lockscriptBin.length);
   console.log({ contractBinLength });
   const { secp256k1Dep } = await ckb.loadDeps();
+  console.log('secp256k1Dep', JSON.stringify(secp256k1Dep, null, 2));
   const lock = { ...secp256k1Dep, args: ARGS };
   // nconf.set('userLockscript', lock);
   const cells = await ckb.loadCells({ indexer, CellCollector, lock });
@@ -41,7 +46,7 @@ const deploy = async () => {
   const rawTx = ckb.generateRawTransaction({
     fromAddress: ADDRESS,
     toAddress: ADDRESS,
-    capacity: (contractBinLength + 100n) * 10n ** 8n,
+    capacity: (contractBinLength + 200n) * 10n ** 8n,
     fee: 10000000n,
     safeMode: true,
     cells: emptyCells,
@@ -49,14 +54,14 @@ const deploy = async () => {
     deps: secp256k1Dep,
   });
   // add sudt
-  const sudtCodeCellCapacity = (BigInt(sudtBin.length) + 100n) * 10n ** 8n;
+  const sudtCodeCellCapacity = (BigInt(sudtBin.length) + 200n) * 10n ** 8n;
   rawTx.outputs.push({
     ...rawTx.outputs[0],
     capacity: `0x${sudtCodeCellCapacity.toString(16)}`,
   });
   rawTx.outputsData.push(utils.bytesToHex(sudtBin));
   // add recipient typescript
-  const recipientTypescriptCodeCellCapacity = (BigInt(recipientTypescriptBin.length) + 100n) * 10n ** 8n;
+  const recipientTypescriptCodeCellCapacity = (BigInt(recipientTypescriptBin.length) + 200n) * 10n ** 8n;
   rawTx.outputs.push({
     ...rawTx.outputs[0],
     capacity: `0x${recipientTypescriptCodeCellCapacity.toString(16)}`,
@@ -80,6 +85,24 @@ const deploy = async () => {
   // modify change cell
   const changeCellCap = BigInt(rawTx.outputs[1].capacity) - sudtCodeCellCapacity - recipientTypescriptCodeCellCapacity;
   rawTx.outputs[1].capacity = `0x${changeCellCap.toString(16)}`;
+  const firstInput = {
+    previous_output: {
+      tx_hash: rawTx.inputs[0].previousOutput.txHash,
+      index: rawTx.inputs[0].previousOutput.index,
+    },
+    since: '0x0',
+  };
+
+  for (let i = 0; i < rawTx.outputs.length; i++) {
+    if (i != 1) {
+      const typeIDScript = generateTypeIDScript(firstInput, `0x${i}`);
+      rawTx.outputs[i].type = {
+        codeHash: typeIDScript.code_hash,
+        hashType: typeIDScript.hash_type,
+        args: typeIDScript.args,
+      };
+    }
+  }
   console.dir({ rawTx }, { depth: null });
 
   // return
@@ -147,9 +170,31 @@ const waitUntilCommitted = async (txHash) => {
   }
 };
 
+async function waitUntilSync(): Promise<void> {
+  const ckbRpc = new RPC('http://127.0.0.1:8114');
+  const rpcTipNumber = parseInt((await ckbRpc.get_tip_header()).number, 16);
+  console.log('rpcTipNumber', rpcTipNumber);
+  const index = 0;
+  while (true) {
+    const tip = await indexer.tip();
+    console.log('tip', tip);
+    if (tip == undefined) {
+      await sleep(1000);
+      continue;
+    }
+    const indexerTipNumber = parseInt((await indexer.tip()).block_number, 16);
+    console.log('indexerTipNumber', indexerTipNumber);
+    if (indexerTipNumber >= rpcTipNumber) {
+      return;
+    }
+    console.log(`wait until indexer sync. index: ${index}`);
+    await sleep(1000);
+  }
+}
+
 const main = async () => {
   console.log('\n\n\n---------start deploy -----------\n');
-  await indexer.waitForSync();
+  await waitUntilSync();
   nconf.env().file({ file: configPath });
   await deploy();
   console.log('\n\n\n---------end deploy -----------\n');
