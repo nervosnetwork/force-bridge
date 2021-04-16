@@ -26,9 +26,8 @@ export class EosLock {
   @Column()
   memo: string;
 
-  @Index()
   @Column()
-  accountActionSeq: number;
+  actionPos: number;
 
   @Index()
   @Column()

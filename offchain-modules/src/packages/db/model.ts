@@ -100,7 +100,7 @@ export function EthLock2CkbMint(record: EthLock): CkbMint {
 export interface IEosLock {
   id: string;
   globalActionSeq: number;
-  accountActionSeq: number;
+  actionPos: number;
   txHash: string;
   actionIndex: number;
   sender: string;

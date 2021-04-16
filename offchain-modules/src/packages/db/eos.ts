@@ -30,6 +30,13 @@ export class EosDb implements IQuery {
     return rawRes[0].lasted_global_seq || -1;
   }
 
+  async getActionPos(globalActionSeq: number): Promise<number> {
+    const rawRes = await this.conn.manager.query(
+      'select action_pos from eos_lock where global_action_Seq = ' + globalActionSeq,
+    );
+    return rawRes.length === 0 ? 0 : rawRes[0].action_pos;
+  }
+
   async createCkbMint(records: ICkbMint[]): Promise<void> {
     const dbRecords = records.map((r) => this.ckbMintRepository.create(r));
     await this.ckbMintRepository.save(dbRecords);

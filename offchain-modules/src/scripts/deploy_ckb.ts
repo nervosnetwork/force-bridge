@@ -131,7 +131,7 @@ const deploy = async () => {
   // modify change cell
   const changeCellCap = BigInt(rawTx.outputs[1].capacity) - sudtCodeCellCapacity - recipientTypescriptCodeCellCapacity;
   rawTx.outputs[1].capacity = `0x${changeCellCap.toString(16)}`;
-  console.dir({ rawTx }, { depth: null });
+  // console.dir({ rawTx }, { depth: null });
 
   // return
   const signedTx = ckb.signTransaction(PRI_KEY)(rawTx);

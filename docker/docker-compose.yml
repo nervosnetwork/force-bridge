@@ -22,7 +22,6 @@ services:
       - ckb
   geth:
     image: tockb/geth-priv:v1.9.23
-
     volumes:
       - type: volume
         source: geth-dag
@@ -38,6 +37,9 @@ services:
     tty: true
     ports:
       - "18443:18443"
-
+  eos:
+    image: tockb/eosio-priv:2.0.11
+    ports:
+      - '8888:8888'
 volumes:
   geth-dag:
