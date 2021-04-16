@@ -2,7 +2,7 @@ import { CkbDb } from '../db';
 import { CkbMint, ICkbBurn } from '../db/model';
 import { logger } from '../utils/logger';
 import { asyncSleep, fromHexString, toHexString, uint8ArrayToString, bigintToSudtAmount } from '../utils';
-import { Asset, ChainType, EosAsset, EthAsset, TronAsset } from '../ckb/model/asset';
+import { Asset, BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '../ckb/model/asset';
 import { Address, Amount, AddressType, Script, HashType } from '@lay2/pw-core';
 import { Account } from '@force-bridge/ckb/model/accounts';
 
@@ -14,6 +14,7 @@ import Transaction = CKBComponents.Transaction;
 import { Script as LumosScript } from '@ckb-lumos/base';
 import { BigNumber } from 'ethers';
 import { RecipientCellData } from '@force-bridge/ckb/tx-helper/generated/eth_recipient_cell';
+import { getAssetTypeByAsset } from '@force-bridge/xchain/tron/utils';
 
 // CKB handler
 // 1. Listen CKB chain to get new burn events.
@@ -29,6 +30,17 @@ export class CkbHandler {
     logger.debug('save burn event:', burns);
     for (const burn of burns) {
       switch (burn.chain) {
+        case ChainType.BTC:
+          await this.db.createBtcUnlock([
+            {
+              ckbTxHash: burn.ckbTxHash,
+              asset: burn.asset,
+              amount: burn.amount,
+              chain: burn.chain,
+              recipientAddress: burn.recipientAddress,
+            },
+          ]);
+          break;
         case ChainType.ETH:
           await this.db.createEthUnlock([
             {
@@ -44,7 +56,7 @@ export class CkbHandler {
             {
               ckbTxHash: burn.ckbTxHash,
               asset: burn.asset,
-              assetType: burn.asset,
+              assetType: getAssetTypeByAsset(burn.asset),
               amount: burn.amount,
               recipientAddress: burn.recipientAddress,
             },
@@ -100,6 +112,16 @@ export class CkbHandler {
           const chain = v.getChain();
           let burn;
           switch (chain) {
+            case ChainType.BTC:
+              burn = {
+                ckbTxHash: k,
+                asset: uint8ArrayToString(new Uint8Array(v.getAsset().raw())),
+                chain,
+                amount: Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.getAmount().raw()))}`).toString(),
+                recipientAddress: uint8ArrayToString(new Uint8Array(v.getRecipientAddress().raw())),
+                blockNumber: latestHeight,
+              };
+              break;
             case ChainType.ETH:
               burn = {
                 ckbTxHash: k,
@@ -152,6 +174,9 @@ export class CkbHandler {
     let asset;
     const assetAddress = toHexString(new Uint8Array(cellData.getAsset().raw()));
     switch (cellData.getChain()) {
+      case ChainType.BTC:
+        asset = new BtcAsset(uint8ArrayToString(fromHexString(assetAddress)), ownLockHash);
+        break;
       case ChainType.ETH:
         asset = new EthAsset(`0x${assetAddress}`, ownLockHash);
         break;
@@ -245,6 +270,12 @@ export class CkbHandler {
 
   filterMintRecords(r: CkbMint, ownLockHash: string): any {
     switch (r.chain) {
+      case ChainType.BTC:
+        return {
+          asset: new BtcAsset(r.asset, ownLockHash),
+          recipient: new Address(r.recipientLockscript, AddressType.ckb),
+          amount: new Amount(r.amount),
+        };
       case ChainType.ETH:
         return {
           asset: new EthAsset(r.asset, ownLockHash),
@@ -270,7 +301,13 @@ export class CkbHandler {
 
   async filterNewTokens(records: any[]): Promise<any[]> {
     const newTokens = [];
+    const assets = [];
     for (const record of records) {
+      if (assets.indexOf(record.asset.toBridgeLockscriptArgs()) != -1) {
+        continue;
+      }
+      assets.push(record.asset.toBridgeLockscriptArgs());
+
       logger.debug('record:', record);
       const bridgeCellLockscript = {
         codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,

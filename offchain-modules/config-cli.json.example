@@ -1,48 +1,32 @@
 {
   "forceBridge": {
     "eth": {
-      "rpcUrl": "http://127.0.0.1:8545",
+      "rpcUrl": "http://47.56.233.149:3045",
       "privateKey": "0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed37a",
-      "multiSignKeys": [
-        "0x859bd720921bb5e60e3133ca11d534edebae38e7c1cd97214f310b4ce400155b",
-        "0x193c96316c6cada898f067004aa07a5d48fcecdb1aa158784f2e8868a4db7ce8",
-        "0x57c246bcb73e5d3409a903c94d46b3b118fdcfb81c5e51d3b0df72e883623fa7"
-      ],
       "multiSignThreshold": 2,
       "contractAddress": "0x8326e1d621Cd32752920ed2A44B49bB1a96c7391"
     },
     "eos": {
       "rpcUrl": "https://jungle3.cryptolions.io:443",
       "chainId": "2a02a0053e5a8cf73a56ba0fda11e4d92e0238a4a2aa74fccf46d5a910746840",
-      "bridgerAccount": "ericwang1112",
+      "bridgerAccount": "forcebridge1",
       "bridgerAccountPermission": "active",
-      "privateKeys": [
-        "5KjR55Q7UJpRnUx8zBdNaUC4P2573BsNLJaMR9o9wrJryYYXWU2",
-        "5KQG4541B1FtDC11gu3NrErWniqTaPHBpmikSztnX8m36sK5px5"
-      ],
       "latestGlobalActionSeq": -1,
       "onlyWatchIrreversibleBlock": false
     },
     "btc": {
-        "clientParams": {
-            "url": "http://127.0.0.1",
-            "user": "test",
-            "pass": "test",
-            "port": 18443,
-            "timeout": 10000
-        },
-        "privateKeys": [
-            "0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed370",
-            "0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed371",
-            "0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed372",
-            "0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed373"
-        ],
-        "lockAddress": "2N1VV17PQAQbNNicsoQhyUbiLciJwYLadfW"
+      "clientParams": {
+        "url": "http://47.56.233.149",
+        "user": "test",
+        "pass": "test",
+        "port": 3043,
+        "timeout": 10000
+      },
+      "lockAddress": "2N1VV17PQAQbNNicsoQhyUbiLciJwYLadfW"
     },
     "ckb": {
-      "ckbRpcUrl": "http://127.0.0.1:8114",
-      "ckbIndexerUrl": "http://127.0.0.1:8116",
-      "privateKey": "0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe",
+      "ckbRpcUrl": "http://47.56.233.149:3054",
+      "ckbIndexerUrl": "http://47.56.233.149:3056",
       "deps": {
         "bridgeLock": {
           "cellDep": {
@@ -89,16 +73,9 @@
       "tronGridUrl": "https://api.shasta.trongrid.io",
       "committee": {
         "address": "TX3MGfWT5aGv81vTSdZtr6hbHxhMVh1FFM",
-        "permissionId": 2,
-        "keys": [
-          "CA2B646CFF30E9CE13864F61CEF5F7C40E8720FA8310B00228F61D14EB761061",
-          "EE782FE170F680D6CAB340ECA5ED2F6E05B0B9809082CF745207E87734211C72"
-        ]
+        "permissionId": 2
       },
-      "feeLimit": 10000000
-    },
-    "rpc": {
-      "port":8080
+      "feeLimit": 1000000
     }
   }
 }

@@ -66,10 +66,15 @@ export interface BtcConfig {
   lockAddress: string;
 }
 
+export interface rpcConfig {
+  port: number;
+}
+
 export interface Config {
   ckb: CkbConfig;
   eth?: EthConfig;
   eos?: EosConfig;
   tron?: TronConfig;
   btc?: BtcConfig;
+  rpc?: rpcConfig;
 }

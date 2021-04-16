@@ -6,6 +6,8 @@ import { BtcDb } from '@force-bridge/db/btc';
 import { throws } from 'assert';
 import { BtcUnlock } from '@force-bridge/db/entity/BtcUnlock';
 
+const CkbAddressLen = 46;
+
 export class BtcHandler {
   constructor(private db: BtcDb, private btcChain: BTCChain) {}
 
@@ -27,7 +29,7 @@ export class BtcHandler {
                 chain: ChainType.BTC,
                 amount: btcLockEventData.amount,
                 asset: 'btc',
-                recipientLockscript: btcLockEventData.data,
+                recipientLockscript: btcLockEventData.data.slice(0, CkbAddressLen),
               },
             ]);
             await this.db.createBtcLock([
@@ -45,6 +47,9 @@ export class BtcHandler {
             logger.debug(`save CkbMint and BTCLock successful for BTC tx ${btcLockEventData.txHash}.`);
           },
           async (ckbTxHash: string) => {
+            if (!ckbTxHash.startsWith('0x')) {
+              ckbTxHash = '0x' + ckbTxHash;
+            }
             const records: BtcUnlock[] = await this.db.getNotSuccessUnlockRecord(ckbTxHash);
             if (records.length === 0) {
               return;

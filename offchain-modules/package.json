@@ -4,6 +4,7 @@
   "description": "",
   "scripts": {
     "start": "ts-node ./src/apps/relayer/index.ts",
+    "rpc": "ts-node ./src/apps/rpc/index.ts",
     "demo": "ts-node-dev scripts/demo.ts",
     "build": "tsc",
     "test": "ava",
@@ -22,7 +23,7 @@
     "tron-test": "ts-node ./src/scripts/integration-test/tron.ts",
     "prepare-xchain-test": "sleep 2",
     "btc-test": "ts-node ./src/scripts/integration-test/btc.ts",
-    "xchain-test": "run-s prepare-xchain-test eth-test eos-test tron-test",
+    "xchain-test": "run-s prepare-xchain-test eth-test eos-test tron-test btc-test",
     "integration-test": "run-p -r start xchain-test",
     "ci": "run-s clean build deploy integration-test",
     "test:unit": "nyc --silent ava",
@@ -70,23 +71,25 @@
     "axios": "^0.21.1",
     "bitcore-lib": "^8.25.7",
     "ckb-js-toolkit": "^0.10.2",
+    "commander": "^7.2.0",
     "dotenv": "^8.2.0",
     "eosjs": "^22.0.0-rc2",
     "eosjs-api": "^7.0.4",
-    "node-fetch": "^1.7.3",
     "ethers": "^5.0.32",
+    "json-rpc-2.0": "^0.2.16",
     "lodash": "^4.17.20",
     "log4js": "^6.3.0",
     "module-alias": "^2.2.2",
     "mysql2": "^2.2.5",
     "nconf": "^0.11.2",
+    "node-fetch": "^1.7.3",
     "reflect-metadata": "^0.1.13",
     "rpc-bitcoin": "^2.0.0",
     "sqlite3": "^5.0.2",
-    "typeorm": "^0.2.31",
-    "typeorm-naming-strategies": "^2.0.0",
     "trongrid": "^1.2.6",
-    "tronweb": "^3.2.3"
+    "tronweb": "^3.2.3",
+    "typeorm": "^0.2.31",
+    "typeorm-naming-strategies": "^2.0.0"
   },
   "husky": {
     "hooks": {
@@ -106,6 +109,9 @@
       "ts-node/register",
       "tsconfig-paths/register"
     ]
+  },
+  "bin": {
+    "forcecli": "./dist/src/apps/cli/index.js"
   },
   "nyc": {
     "extends": "@istanbuljs/nyc-config-typescript",
