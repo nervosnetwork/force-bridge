@@ -113,9 +113,9 @@ async function main() {
     assert(ethLockRecord.sender === wallet.address);
     assert(ethLockRecord.token === ETH_ADDRESS);
     assert(ethLockRecord.amount === amount.toHexString());
-    logger.debug('ethLockRecords', ethLockRecord.recipientLockscript);
+    logger.debug('ethLockRecords', ethLockRecord.recipient);
     logger.debug('ethLockRecords', `0x${toHexString(recipientLockscript)}`);
-    assert(ethLockRecord.recipientLockscript === `0x${toHexString(recipientLockscript)}`);
+    assert(ethLockRecord.recipient === `0x${toHexString(recipientLockscript)}`);
 
     const ckbMintRecords = await conn.manager.find(CkbMint, {
       where: {

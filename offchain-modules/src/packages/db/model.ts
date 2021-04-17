@@ -27,7 +27,7 @@ export interface IEthLock {
   sender: string;
   token: string;
   amount: string;
-  recipientLockscript: string;
+  recipient: string;
   sudtExtraData?: string;
   blockNumber: number;
   blockHash: string;
@@ -92,7 +92,7 @@ export function EthLock2CkbMint(record: EthLock): CkbMint {
     chain: ChainType.ETH,
     amount: record.amount,
     asset: record.token,
-    recipientLockscript: record.recipientLockscript,
+    recipientLockscript: record.recipient,
     sudtExtraData: record.sudtExtraData,
   });
 }

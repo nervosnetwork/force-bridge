@@ -302,7 +302,7 @@ export class CkbHandler {
       case ChainType.ETH:
         return {
           asset: new EthAsset(r.asset, ownLockHash),
-          recipient: new Address(uint8ArrayToString(fromHexString(r.recipientLockscript)), AddressType.ckb),
+          recipient: new Address(r.recipientLockscript, AddressType.ckb),
           amount: new Amount(BigNumber.from(r.amount).toString()),
         };
       case ChainType.TRON:
