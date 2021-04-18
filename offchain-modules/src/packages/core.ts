@@ -1,7 +1,7 @@
 import { Config } from './config';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
-import { CkbIndexer } from '@force-bridge/ckb/tx-helper/indexer';
+import { CkbIndexer } from '../packages/ckb/tx-helper/indexer';
 
 // make global config and var static,
 // which can be import from ForceBridgeCore

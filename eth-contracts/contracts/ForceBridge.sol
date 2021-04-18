@@ -6,6 +6,7 @@ import {IERC20} from "./interfaces/IERC20.sol";
 import {SafeERC20} from "./libraries/SafeERC20.sol";
 import {Address} from "./libraries/Address.sol";
 import {MultisigUtils} from "./libraries/MultisigUtils.sol";
+import {SafeMath} from "./libraries/SafeMath.sol";
 
 contract ForceBridge {
     using Address for address;
@@ -31,6 +32,9 @@ contract ForceBridge {
     bytes32 private _HASHED_NAME;
     bytes32 private _HASHED_VERSION;
     bytes32 private _TYPE_HASH;
+
+    uint256 public latestUnlockNonce_;
+    uint256 public latestChangeValidatorsNonce_;
 
     event Locked(
         address indexed token,
@@ -68,6 +72,14 @@ contract ForceBridge {
         _TYPE_HASH = typeHash;
 
         // set validators
+        require(
+            validators.length > 0,
+            "validators are none"
+        );
+        require(
+            multisigThreshold > 0,
+            "invalid multisigThreshold"
+        );
         require(
             validators.length <= VALIDATORS_SIZE_LIMIT,
             "number of validators exceeds the limit"
@@ -118,8 +130,20 @@ contract ForceBridge {
     function changeValidators(
         address[] memory validators,
         uint256 multisigThreshold,
+        uint256 nonce,
         bytes memory signatures
     ) public {
+        require(nonce == latestChangeValidatorsNonce_, "changeValidators nonce invalid");
+        latestChangeValidatorsNonce_ = SafeMath.add(nonce, 1);
+
+        require(
+            validators.length > 0,
+            "validators are none"
+        );
+        require(
+            multisigThreshold > 0,
+            "invalid multisigThreshold"
+        );
         require(
             validators.length <= VALIDATORS_SIZE_LIMIT,
             "number of validators exceeds the limit"
@@ -128,6 +152,16 @@ contract ForceBridge {
             multisigThreshold <= validators.length,
             "invalid multisigThreshold"
         );
+
+        for (uint256 i = 0; i < validators.length; i++) {
+            for (uint256 j = i + 1; j < validators.length; j ++) {
+                require(
+                    validators[i] != validators[j],
+                    "repeated validators"
+                );
+            }
+        }
+
         bytes32 msgHash =
             keccak256(
                 abi.encodePacked(
@@ -137,7 +171,8 @@ contract ForceBridge {
                         abi.encode(
                             CHANGE_VALIDATORS_TYPEHASH,
                             validators,
-                            multisigThreshold
+                            multisigThreshold,
+                            nonce
                         )
                     )
                 )
@@ -223,16 +258,20 @@ contract ForceBridge {
         require(verifiedNum >= threshold, "signatures not verified");
     }
 
-    function unlock(UnlockRecord[] calldata records, bytes calldata signatures)
+    function unlock(UnlockRecord[] calldata records, uint256 nonce, bytes calldata signatures)
         public
     {
+        // check nonce hasn't been used
+        require(latestUnlockNonce_ == nonce, "unlock nonce invalid");
+        latestUnlockNonce_ = SafeMath.add(nonce, 1);
+
         // 1. calc msgHash
         bytes32 msgHash =
             keccak256(
                 abi.encodePacked(
                     "\x19\x01", // solium-disable-line
                     _domainSeparator(),
-                    keccak256(abi.encode(UNLOCK_TYPEHASH, records))
+                    keccak256(abi.encode(UNLOCK_TYPEHASH, records, nonce))
                 )
             );
 

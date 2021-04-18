@@ -6,7 +6,7 @@ import { asyncSleep } from '@force-bridge/utils';
 import { createConnection } from 'typeorm';
 import { CkbDb } from '@force-bridge/db';
 import { Config } from '@force-bridge/config';
-import { BTCChain } from '@force-bridge/xchain/btc';
+import { BTCChain, getBtcMainnetFee } from '@force-bridge/xchain/btc';
 import { BtcDb } from '@force-bridge/db/btc';
 import { BtcAsset, ChainType } from '@force-bridge/ckb/model/asset';
 import nconf from 'nconf';
@@ -74,7 +74,14 @@ async function main() {
   const lockStartHeight = await btcChain.getBtcHeight();
   const LockEventReceipent = 'ckt1qyqyph8v9mclls35p6snlaxajeca97tc062sa5gahk';
   const lockAmount = 500000;
-  const lockTxHash = await btcChain.sendLockTxs(userAddr.toString(), lockAmount, userPrivKey, LockEventReceipent);
+  const feeRate = await getBtcMainnetFee();
+  const lockTxHash = await btcChain.sendLockTxs(
+    userAddr.toString(),
+    lockAmount,
+    userPrivKey,
+    LockEventReceipent + 'do lock',
+    feeRate.fastestFee,
+  );
   logger.debug(
     `user ${userAddr.toString()} lock 50000 satoshis; the lock tx hash is ${lockTxHash} after block ${lockStartHeight}`,
   );
@@ -208,7 +215,7 @@ async function main() {
   logger.debug(`successful lock records ${JSON.stringify(lockRecords, null, 2)}`);
   const unlockRecords: BtcUnlock[] = await btcDb.getBtcUnlockRecords('success');
   logger.debug(`successful unlock records  ${JSON.stringify(unlockRecords, null, 2)}`);
-  assert(lockRecords[0].data === LockEventReceipent);
+  assert(lockRecords[0].data.startsWith(LockEventReceipent));
   assert(unlockRecords[0].recipientAddress === userAddr.toString());
   logger.debug('end btc test lock and unlock');
 }

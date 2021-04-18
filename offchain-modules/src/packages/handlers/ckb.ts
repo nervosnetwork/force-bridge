@@ -5,6 +5,7 @@ import { asyncSleep, fromHexString, toHexString, uint8ArrayToString } from '../u
 import { Asset, BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '../ckb/model/asset';
 import { Address, Amount, AddressType, Script, HashType } from '@lay2/pw-core';
 
+import { getAssetTypeByAsset } from '@force-bridge/xchain/tron/utils';
 import { CkbTxGenerator } from '@force-bridge/ckb/tx-helper/generator';
 import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
 import { ScriptType } from '@force-bridge/ckb/tx-helper/indexer';
@@ -72,7 +73,7 @@ export class CkbHandler {
             {
               ckbTxHash: burn.ckbTxHash,
               asset: burn.asset,
-              assetType: burn.asset,
+              assetType: getAssetTypeByAsset(burn.asset),
               amount: burn.amount,
               recipientAddress: burn.recipientAddress,
             },
@@ -323,7 +324,13 @@ export class CkbHandler {
 
   async filterNewTokens(records: any[]): Promise<any[]> {
     const newTokens = [];
+    const assets = [];
     for (const record of records) {
+      if (assets.indexOf(record.asset.toBridgeLockscriptArgs()) != -1) {
+        continue;
+      }
+      assets.push(record.asset.toBridgeLockscriptArgs());
+
       logger.debug('record:', record);
       const bridgeCellLockscript = {
         codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
