@@ -1,3 +1,4 @@
+import 'module-alias/register';
 import { Indexer } from '@ckb-lumos/indexer';
 import { init } from './init_config';
 import { TransactionSkeleton, sealTransaction, parseAddress, minimalCellCapacity } from '@ckb-lumos/helpers';
@@ -6,6 +7,8 @@ import { fromAddress, multisigAddress, fromPrivateKey, multisigLockScript } from
 import { common } from '@ckb-lumos/common-scripts';
 import { key } from '@ckb-lumos/hd';
 import { generateTypeIDScript } from './typeid';
+import { RPC } from '@ckb-lumos/rpc';
+import { asyncSleep as sleep } from '@force-bridge/utils';
 
 const TransactionManager = require('@ckb-lumos/transaction-manager');
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
@@ -45,11 +48,7 @@ function getDataOutputCapacity() {
 async function deploy() {
   let txSkeleton = TransactionSkeleton({ cellProvider: indexer });
   const capacity = getDataOutputCapacity();
-  console.log('capacity:', capacity);
-  await asyncSleep(5 * 1000);
-  console.log('before transfer txSkeleton:', JSON.stringify(txSkeleton, null, 2));
   txSkeleton = await common.transfer(txSkeleton, [fromAddress], multisigAddress, capacity);
-  console.log('after transfer txSkeleton:', JSON.stringify(txSkeleton, null, 2));
   const firstOutput = txSkeleton.get('outputs').get(0);
   firstOutput.data = acpData;
   const firstInput = {
@@ -97,13 +96,35 @@ async function waitUntilCommitted(ckb, txHash, timeout) {
   }
 }
 
+async function waitUntilSync(): Promise<void> {
+  const ckbRpc = new RPC('http://127.0.0.1:8114');
+  const rpcTipNumber = parseInt((await ckbRpc.get_tip_header()).number, 16);
+  console.log('rpcTipNumber', rpcTipNumber);
+  const index = 0;
+  while (true) {
+    const tip = await indexer.tip();
+    console.log('tip', tip);
+    if (tip == undefined) {
+      await sleep(1000);
+      continue;
+    }
+    const indexerTipNumber = parseInt((await indexer.tip()).block_number, 16);
+    console.log('indexerTipNumber', indexerTipNumber);
+    if (indexerTipNumber >= rpcTipNumber) {
+      return;
+    }
+    console.log(`wait until indexer sync. index: ${index}`);
+    await sleep(1000);
+  }
+}
+
 function asyncSleep(ms = 0) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
 const main = async () => {
   console.log('\n\n\n---------start init multisig address -----------\n');
-  // await indexer.waitForSync();
+  await waitUntilSync();
   const configPath = './src/packages/ckb/tx-helper/multisig/infos.json';
   nconf.env().file({ file: configPath });
   await deploy();
