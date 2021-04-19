@@ -1,5 +1,5 @@
 import commander from 'commander';
-import { parseOptions } from './utils';
+import { parseOptions, waitUnlockTxCompleted } from './utils';
 import { BtcAsset } from '../../packages/ckb/model/asset';
 import { Account } from '../../packages/ckb/model/accounts';
 import { CkbTxGenerator } from '../../packages/ckb/tx-helper/generator';
@@ -30,6 +30,7 @@ btcCmd
   .requiredOption('-r, recipient', 'recipient address on btc')
   .requiredOption('-p, --privateKey', 'private key of unlock address on ckb')
   .requiredOption('-a, --amount', 'amount of unlock. unit is btc')
+  .option('-w, --wait [type]', 'whether wait for transaction confirmed')
   .action(doUnlock)
   .description('unlock asset on btc');
 
@@ -86,6 +87,10 @@ async function doUnlock(opts: any, command: any) {
   console.log(
     `Address:${account.address} unlock ${amount} , recipientAddress:${recipientAddress}, burnTxHash:${burnTxHash}`,
   );
+
+  if (opts.wait) {
+    await waitUnlockTxCompleted(burnTxHash);
+  }
 }
 
 async function doBalanceOf(opts: any, command: any) {

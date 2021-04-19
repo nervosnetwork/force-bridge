@@ -1,11 +1,12 @@
 import commander from 'commander';
-import { getSudtBalance, parseOptions } from './utils';
+import { getSudtBalance, parseOptions, waitUnlockTxCompleted } from './utils';
 import { TronAsset } from '../../packages/ckb/model/asset';
 import { Account } from '../../packages/ckb/model/accounts';
 import { CkbTxGenerator } from '../../packages/ckb/tx-helper/generator';
 import { IndexerCollector } from '../../packages/ckb/tx-helper/collector';
 import { Amount } from '@lay2/pw-core';
 import { ForceBridgeCore } from '../../packages/core';
+import { asyncSleep } from '@force-bridge/utils';
 
 const TronWeb = require('tronweb');
 
@@ -24,6 +25,7 @@ tronCmd
   .requiredOption('-r, recipient', 'recipient address on tron')
   .requiredOption('-p, --privateKey', 'private key of unlock address on ckb')
   .requiredOption('-a, --amount', 'quantity of unlock')
+  .option('-w, --wait [type]', 'whether wait for transaction confirmed')
   .action(doUnlock)
   .description('unlock asset on tron');
 
@@ -53,6 +55,10 @@ async function doLock(opts: any, command: any) {
   const broad_tx = await tronWeb.trx.broadcast(signed_tx);
   console.log(`Address:${from} locked:${amount} trx, recipient:${recipient} extra:${extra}`);
   console.log(broad_tx);
+
+  await asyncSleep(3000);
+  const txInfo = await tronWeb.trx.getTransaction(broad_tx.txid);
+  console.log(txInfo);
 }
 
 async function doUnlock(opts: any, command: any) {
@@ -75,6 +81,9 @@ async function doUnlock(opts: any, command: any) {
   console.log(
     `Address:${account.address} unlock ${amount} trx, recipientAddress:${recipientAddress}, burnTxHash:${burnTxHash}`,
   );
+  if (opts.wait) {
+    await waitUnlockTxCompleted(burnTxHash);
+  }
 }
 
 async function doBalanceOf(opts: any, command: any) {

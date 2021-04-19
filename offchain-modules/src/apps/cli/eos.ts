@@ -1,13 +1,14 @@
 import commander from 'commander';
 import { JsSignatureProvider } from 'eosjs/dist/eosjs-jssig';
 import { EosChain } from '../../packages/xchain/eos/eosChain';
-import { getSudtBalance, parseOptions } from './utils';
+import { getSudtBalance, parseOptions, waitUnlockTxCompleted } from './utils';
 import { EosAsset } from '../../packages/ckb/model/asset';
 import { Account } from '../../packages/ckb/model/accounts';
 import { CkbTxGenerator } from '../../packages/ckb/tx-helper/generator';
 import { IndexerCollector } from '../../packages/ckb/tx-helper/collector';
 import { Amount } from '@lay2/pw-core';
 import { ForceBridgeCore } from '../../packages/core';
+import { asyncSleep } from '@force-bridge/utils';
 
 export const eosCmd = new commander.Command('eos');
 eosCmd
@@ -17,6 +18,7 @@ eosCmd
   .requiredOption('-a, --amount', 'amount to lock')
   .requiredOption('-r, recipient', 'recipient address on ckb')
   .option('-e, extra', 'extra data of sudt')
+  .option('-w, --wait [type]', 'whether wait for transaction become irreversible')
   .action(doLock)
   .description('lock asset on eos');
 
@@ -25,6 +27,7 @@ eosCmd
   .requiredOption('-r, recipient', 'recipient account on eos')
   .requiredOption('-p, --privateKey', 'private key of unlock address on ckb')
   .requiredOption('-a, --amount', 'amount of unlock')
+  .option('-w, --wait [type]', 'whether wait for transaction confirmed')
   .action(doUnlock)
   .description('unlock asset on eos');
 
@@ -61,6 +64,22 @@ async function doLock(opts: any, command: any) {
   );
   console.log(`Account:${account} locked:${amount} eos, recipient:${recipient} extra:${extra}`);
   console.log(txRes);
+
+  if (opts.wait) {
+    if (!('processed' in txRes) || !('transaction_id' in txRes)) {
+      return;
+    }
+    console.log('Wait for transaction executed...');
+    while (true) {
+      await asyncSleep(5000);
+      const txInfo = await chain.getTransaction(txRes.transaction_id);
+      console.log(`TxStatus:${txInfo.trx.receipt.status}`);
+      if (txInfo.trx.receipt.status === 'executed') {
+        break;
+      }
+    }
+    console.log('Lock success.');
+  }
 }
 
 async function doUnlock(opts: any, command: any) {
@@ -83,6 +102,9 @@ async function doUnlock(opts: any, command: any) {
   console.log(
     `Address:${account.address} unlock ${amount} eos, recipientAddress:${recipientAddress}, burnTxHash:${burnTxHash}`,
   );
+  if (opts.wait) {
+    await waitUnlockTxCompleted(burnTxHash);
+  }
 }
 
 async function doBalanceOf(opts: any, command: any) {

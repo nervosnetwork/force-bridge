@@ -1,5 +1,5 @@
 import commander from 'commander';
-import { getSudtBalance, parseOptions } from './utils';
+import { getSudtBalance, parseOptions, waitUnlockTxCompleted } from './utils';
 import { ethers } from 'ethers';
 import { abi } from '../../packages/xchain/eth/abi/ForceBridge.json';
 import { EthAsset } from '../../packages/ckb/model/asset';
@@ -14,7 +14,8 @@ ethCmd
   .command('lock')
   .requiredOption('-p, --privateKey', 'private key of locked account')
   .requiredOption('-a, --amount', 'amount to lock')
-  .requiredOption('-r, recipient', 'recipient address on ckb')
+  .requiredOption('-r, --recipient', 'recipient address on ckb')
+  .option('-w, --wait [type]', 'whether wait for transaction confirmed')
   .option('-e, extra', 'extra data of sudt')
   .action(doLock)
   .description('lock asset on eth');
@@ -24,6 +25,7 @@ ethCmd
   .requiredOption('-r, recipient', 'recipient address on eth')
   .requiredOption('-p, --privateKey', 'private key of unlock address on ckb')
   .requiredOption('-a, --amount', 'amount of unlock')
+  .option('-w, --wait [type]', 'whether wait for transaction confirmed')
   .action(doUnlock)
   .description('unlock asset on eth');
 
@@ -53,6 +55,11 @@ async function doLock(opts: any, command: any) {
   });
   console.log(`Address:${lockRes.from} locked:${amount} eth, recipient:${recipient} extra:${extra}`);
   console.log(lockRes);
+  if (opts.wait) {
+    console.log('Wait for transaction confirmed...');
+    await lockRes.wait(3);
+    console.log('Lock success.');
+  }
 }
 
 async function doUnlock(opts: any, command: any) {
@@ -76,6 +83,9 @@ async function doUnlock(opts: any, command: any) {
   console.log(
     `Address:${account.address} unlock ${amount} eth, recipientAddress:${recipientAddress}, burnTxHash:${burnTxHash}`,
   );
+  if (opts.wait) {
+    await waitUnlockTxCompleted(burnTxHash);
+  }
 }
 
 async function doBalanceOf(opts: any, command: any) {

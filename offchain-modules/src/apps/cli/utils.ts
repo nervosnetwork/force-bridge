@@ -5,6 +5,7 @@ import { Account } from '../../packages/ckb/model/accounts';
 import { Asset } from '../../packages/ckb/model/asset';
 import { IndexerCollector } from '../../packages/ckb/tx-helper/collector';
 import { Amount, Script } from '@lay2/pw-core';
+import { asyncSleep } from '@force-bridge/utils';
 
 export async function initConfig() {
   const configPath = process.env.CONFIG_PATH || './config-cli.json';
@@ -42,4 +43,17 @@ export async function getSudtBalance(privateKey: string, asset: Asset): Promise<
     new Script(sudtType.codeHash, sudtType.args, sudtType.hashType),
     await account.getLockscript(),
   );
+}
+
+export async function waitUnlockTxCompleted(txhash: string) {
+  console.log('Wait for transaction confirmed...');
+  while (true) {
+    await asyncSleep(5000);
+    const txRes = await ForceBridgeCore.ckb.rpc.getTransaction(txhash);
+    console.log(`Tx status:${txRes.txStatus.status}`);
+    if (txRes.txStatus.status === 'committed') {
+      console.log('Unlock success.');
+      break;
+    }
+  }
 }
