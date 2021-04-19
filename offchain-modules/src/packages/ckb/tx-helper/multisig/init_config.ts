@@ -10,5 +10,6 @@ export function init() {
   ) {
     process.env.LUMOS_CONFIG_FILE = configFilePath;
   }
+  console.log(process.env.LUMOS_CONFIG_FILE);
   initializeConfig();
 }
