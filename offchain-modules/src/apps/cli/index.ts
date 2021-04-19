@@ -1,4 +1,5 @@
-#!/usr/bin/env npx ts-node
+#!/usr/bin/env node
+import 'module-alias/register';
 import commander from 'commander';
 import { eosCmd } from './eos';
 import { tronCmd } from './tron';
