@@ -150,26 +150,6 @@ export class CkbHandler {
                 blockNumber: latestHeight,
               };
               break;
-            // case ChainType.TRON:
-            //   burn = {
-            //     ckbTxHash: k,
-            //     asset: uint8ArrayToString(new Uint8Array(v.getAsset().raw())),
-            //     chain,
-            //     amount: Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.getAmount().raw()))}`).toString(),
-            //     recipientAddress: uint8ArrayToString(new Uint8Array(v.getRecipientAddress().raw())),
-            //     blockNumber: latestHeight,
-            //   };
-            //   break;
-            // case ChainType.EOS:
-            //   burn = {
-            //     ckbTxHash: k,
-            //     asset: uint8ArrayToString(new Uint8Array(v.getAsset().raw())),
-            //     chain,
-            //     amount: Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.getAmount().raw()))}`).toString(),
-            //     recipientAddress: uint8ArrayToString(new Uint8Array(v.getRecipientAddress().raw())),
-            //     blockNumber: latestHeight,
-            //   };
-            //   break;
           }
           ckbBurns.push(burn);
         });

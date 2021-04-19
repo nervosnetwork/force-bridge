@@ -20,7 +20,7 @@ async function main() {
   nconf.env().file({ file: configPath });
   const config: Config = nconf.get('forceBridge');
   // init bridge force core
-  const core = await new ForceBridgeCore().init(config);
+  await new ForceBridgeCore().init(config);
 
   // init db and start handlers
   const conn = await createConnection();

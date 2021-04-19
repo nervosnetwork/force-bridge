@@ -185,7 +185,11 @@ async function main() {
     const burnAmount = 1;
     if (!sendBurn) {
       const account = new Account(PRI_KEY);
-      const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
+      const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>{
+        codeHash: multisigLockScript.code_hash,
+        hashType: multisigLockScript.hash_type,
+        args: multisigLockScript.args,
+      });
       const generator = new CkbTxGenerator(ckb, new IndexerCollector(indexer));
       const burnTx = await generator.burn(
         await account.getLockscript(),

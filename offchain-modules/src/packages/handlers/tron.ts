@@ -2,16 +2,11 @@ import { TronDb } from '../db';
 import { logger } from '../utils/logger';
 import { asyncSleep } from '../utils';
 import { ForceBridgeCore } from '../core';
-import { ITronLock, TronUnlock, ICkbMint, TronLock } from '@force-bridge/db/model';
+import { ITronLock, TronUnlock, ICkbMint } from '@force-bridge/db/model';
 import { ChainType } from '@force-bridge/ckb/model/asset';
-import { promises } from 'fs';
-import { sign } from '@force-bridge/ckb/tx-helper/signer';
 import { getAssetTypeByAsset } from '@force-bridge/xchain/tron/utils';
 const TronWeb = require('tronweb');
 const TronGrid = require('trongrid');
-
-const TRX_ASSET_LENGTH = 3;
-const TRC10_ASSET_LENGTH = 7;
 
 type TronLockEvent = {
   tx_hash: string;

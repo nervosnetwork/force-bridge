@@ -1,16 +1,5 @@
 import axios from 'axios';
-import {
-  CollectorOptions,
-  Collector,
-  SUDTCollector,
-  Cell,
-  Address,
-  Amount,
-  AmountUnit,
-  OutPoint,
-  Script,
-  SUDT,
-} from '@lay2/pw-core';
+import { OutPoint, Script } from '@lay2/pw-core';
 import { logger } from '../../utils/logger';
 import { Script as LumosScript } from '@ckb-lumos/base';
 import { RPC } from '@ckb-lumos/rpc';

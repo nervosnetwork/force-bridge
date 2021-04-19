@@ -123,7 +123,6 @@ export class CkbTxGenerator {
       indexer,
       5,
     );
-    // txSkeleton = await common.setupInputCell(txSkeleton, bridge_cell, fromAddress);
     txSkeleton = txSkeleton.update('inputs', (inputs) => {
       return inputs.push(bridge_cell);
     });
@@ -316,7 +315,6 @@ export class CkbTxGenerator {
       hashType: multisigLockScript.hash_type,
       args: multisigLockScript.args,
     });
-    // const ownerLockHash = this.ckb.utils.scriptToHash(<CKBComponents.Script>fromLockscript);
     let recipientAddr;
     if (asset.chainType == ChainType.ETH) {
       recipientAddr = fromHexString(recipientAddress).buffer;

@@ -1,4 +1,3 @@
-// const fs = require("fs");
 import { existsSync } from 'fs';
 import { initializeConfig } from '@ckb-lumos/config-manager';
 

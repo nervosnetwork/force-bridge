@@ -4,15 +4,6 @@ import { key } from '@ckb-lumos/hd';
 import { generateAddress } from '@ckb-lumos/helpers';
 import { HexString } from '@ckb-lumos/base';
 import { init } from './init_config';
-// const configFilePath = __dirname + "/config.json";
-// if (
-//   process.env.LUMOS_CONFIG_NAME !== "LINA" &&
-//   process.env.LUMOS_CONFIG_NAME !== "AGGRON4" &&
-//   existsSync(configFilePath)
-// ) {
-//   process.env.LUMOS_CONFIG_FILE = configFilePath;
-// }
-// initializeConfig();
 
 init();
 const config = getConfig();
