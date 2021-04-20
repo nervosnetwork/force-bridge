@@ -46,6 +46,7 @@ export class CkbBurn {
     asset: string;
     chain: number;
     blockNumber: number;
+    senderLockHash: string;
   }) {
     const record = new CkbBurn();
     record.ckbTxHash = data.ckbTxHash;
@@ -54,6 +55,7 @@ export class CkbBurn {
     record.amount = data.amount;
     record.recipientAddress = data.recipientAddress;
     record.blockNumber = data.blockNumber;
+    record.senderLockHash = data.senderLockHash;
     return record;
   }
 }
