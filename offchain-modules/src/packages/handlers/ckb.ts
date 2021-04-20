@@ -129,9 +129,9 @@ export class CkbHandler {
                 ckbTxHash: k,
                 asset: uint8ArrayToString(new Uint8Array(v.cellData.getAsset().raw())),
                 chain,
-                amount: Amount.fromUInt128LE(
-                  `0x${toHexString(new Uint8Array(v.cellData.getAmount().raw()))}`,
-                ).toString(0),
+                amount: Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.cellData.getAmount().raw()))}`).toString(
+                  0,
+                ),
                 recipientAddress: uint8ArrayToString(new Uint8Array(v.cellData.getRecipientAddress().raw())),
                 blockNumber: latestHeight,
               };
@@ -142,9 +142,9 @@ export class CkbHandler {
                 ckbTxHash: k,
                 asset: `0x${toHexString(new Uint8Array(v.cellData.getAsset().raw()))}`,
                 chain,
-                amount: Amount.fromUInt128LE(
-                  `0x${toHexString(new Uint8Array(v.cellData.getAmount().raw()))}`,
-                ).toString(0),
+                amount: Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.cellData.getAmount().raw()))}`).toString(
+                  0,
+                ),
                 recipientAddress: `0x${toHexString(new Uint8Array(v.cellData.getRecipientAddress().raw()))}`,
                 blockNumber: latestHeight,
               };
@@ -155,9 +155,9 @@ export class CkbHandler {
                 ckbTxHash: k,
                 asset: uint8ArrayToString(new Uint8Array(v.cellData.getAsset().raw())),
                 chain,
-                amount: Amount.fromUInt128LE(
-                  `0x${toHexString(new Uint8Array(v.cellData.getAmount().raw()))}`,
-                ).toString(4),
+                amount: Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.cellData.getAmount().raw()))}`).toString(
+                  4,
+                ),
                 recipientAddress: uint8ArrayToString(new Uint8Array(v.cellData.getRecipientAddress().raw())),
                 blockNumber: latestHeight,
               };
