@@ -23,7 +23,7 @@ export class EthHandler {
         {
           id: log.transactionHash,
           chain: ChainType.ETH,
-          amount: parsedLog.args.lockedAmount.toHexString(),
+          amount: parsedLog.args.lockedAmount.toString(),
           asset: parsedLog.args.token,
           recipientLockscript: uint8ArrayToString(fromHexString(parsedLog.args.recipientLockscript)),
           sudtExtraData: parsedLog.args.sudtExtraData,
@@ -32,7 +32,7 @@ export class EthHandler {
       await this.db.createEthLock([
         {
           txHash: log.transactionHash,
-          amount: parsedLog.args.lockedAmount.toHexString(),
+          amount: parsedLog.args.lockedAmount.toString(),
           token: parsedLog.args.token,
           recipient: uint8ArrayToString(fromHexString(parsedLog.args.recipientLockscript)),
           sudtExtraData: parsedLog.args.sudtExtraData,

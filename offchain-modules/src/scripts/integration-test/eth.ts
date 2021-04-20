@@ -112,7 +112,7 @@ async function main() {
     assert(ethLockRecord.sudtExtraData === sudtExtraData);
     assert(ethLockRecord.sender === wallet.address);
     assert(ethLockRecord.token === ETH_ADDRESS);
-    assert(ethLockRecord.amount === amount.toHexString());
+    assert(ethLockRecord.amount === amount.toString());
     logger.debug('ethLockRecords', ethLockRecord.recipient);
     logger.debug('ethLockRecords', `0x${toHexString(recipientLockscript)}`);
     assert(ethLockRecord.recipient === `0x${toHexString(recipientLockscript)}`);
@@ -129,7 +129,7 @@ async function main() {
     assert(ethLockRecord.sudtExtraData === sudtExtraData);
     assert(ckbMintRecord.status === 'success');
     assert(ckbMintRecord.asset === ETH_ADDRESS);
-    assert(ckbMintRecord.amount === amount.toHexString());
+    assert(ckbMintRecord.amount === amount.toString());
     assert(ckbMintRecord.recipientLockscript === `0x${toHexString(recipientLockscript)}`);
 
     // check sudt balance.
@@ -154,8 +154,8 @@ async function main() {
 
     if (!sendBurn) {
       logger.debug('sudt balance:', balance);
-      logger.debug('expect balance:', new Amount(amount.toString()));
-      assert(balance.eq(new Amount(amount.toString())));
+      logger.debug('expect balance:', new Amount(amount.toString(), 0));
+      assert(balance.eq(new Amount(amount.toString(), 0)));
     }
 
     // send burn tx
@@ -169,7 +169,7 @@ async function main() {
         recipientAddress,
         new EthAsset('0x0000000000000000000000000000000000000000', ownLockHash),
         // Amount.fromUInt128LE('0x01'),
-        new Amount(burnAmount.toString()),
+        new Amount(burnAmount.toString(), 0),
       );
       const signedTx = ckb.signTransaction(PRI_KEY)(burnTx);
       burnTxHash = await ckb.rpc.sendTransaction(signedTx);
@@ -177,7 +177,7 @@ async function main() {
       await waitUntilCommitted(ckb, burnTxHash, 60);
       sendBurn = true;
     }
-    const expectBalance = new Amount(amount.toString()).sub(new Amount(burnAmount.toString()));
+    const expectBalance = new Amount(amount.toString(), 0).sub(new Amount(burnAmount.toString(), 0));
     logger.debug('sudt balance:', balance);
     logger.debug('expect balance:', expectBalance);
     assert(balance.eq(expectBalance));

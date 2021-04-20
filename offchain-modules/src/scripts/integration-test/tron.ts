@@ -170,8 +170,8 @@ async function main() {
     if (!sendBurn) {
       logger.debug('assetName', assetName);
       logger.debug('sudt balance:', balance);
-      logger.debug('expect balance:', new Amount(amount.toString()));
-      assert(balance.eq(new Amount(amount.toString())));
+      logger.debug('expect balance:', new Amount(amount.toString(), 0));
+      assert(balance.eq(new Amount(amount.toString(), 0)));
     }
   };
 
@@ -185,7 +185,7 @@ async function main() {
         await account.getLockscript(),
         recipientAddress,
         new TronAsset(assetName, ownLockHash),
-        new Amount(burnAmount.toString()),
+        new Amount(burnAmount.toString(), 0),
       );
       const signedTx = ckb.signTransaction(PRI_KEY)(burnTx);
       burnTxHash = await ckb.rpc.sendTransaction(signedTx);
@@ -201,7 +201,7 @@ async function main() {
     const balance = await getBalance(assetName);
 
     logger.debug('sudt balance:', balance);
-    const expectBalance = new Amount((amount - burnAmount).toString());
+    const expectBalance = new Amount((amount - burnAmount).toString(), 0);
     logger.debug('expect sudt balance:', expectBalance);
     assert(balance.eq(expectBalance));
 

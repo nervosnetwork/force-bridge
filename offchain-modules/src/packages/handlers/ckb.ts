@@ -95,7 +95,6 @@ export class CkbHandler {
       const burnTxs = new Map();
       for (const tx of block.transactions) {
         const recipientData = tx.outputsData[0];
-        logger.debug('recipientData:', recipientData);
         let cellData;
         try {
           cellData = new RecipientCellData(fromHexString(recipientData).buffer);
@@ -124,6 +123,7 @@ export class CkbHandler {
           let burn: ICkbBurn;
           switch (chain) {
             case ChainType.BTC:
+            case ChainType.TRON:
               burn = {
                 senderLockHash: v.senderLockScriptHash,
                 ckbTxHash: k,
@@ -131,7 +131,7 @@ export class CkbHandler {
                 chain,
                 amount: Amount.fromUInt128LE(
                   `0x${toHexString(new Uint8Array(v.cellData.getAmount().raw()))}`,
-                ).toString(),
+                ).toString(0),
                 recipientAddress: uint8ArrayToString(new Uint8Array(v.cellData.getRecipientAddress().raw())),
                 blockNumber: latestHeight,
               };
@@ -144,21 +144,8 @@ export class CkbHandler {
                 chain,
                 amount: Amount.fromUInt128LE(
                   `0x${toHexString(new Uint8Array(v.cellData.getAmount().raw()))}`,
-                ).toString(),
+                ).toString(0),
                 recipientAddress: `0x${toHexString(new Uint8Array(v.cellData.getRecipientAddress().raw()))}`,
-                blockNumber: latestHeight,
-              };
-              break;
-            case ChainType.TRON:
-              burn = {
-                senderLockHash: v.senderLockScriptHash,
-                ckbTxHash: k,
-                asset: uint8ArrayToString(new Uint8Array(v.cellData.getAsset().raw())),
-                chain,
-                amount: Amount.fromUInt128LE(
-                  `0x${toHexString(new Uint8Array(v.cellData.getAmount().raw()))}`,
-                ).toString(),
-                recipientAddress: uint8ArrayToString(new Uint8Array(v.cellData.getRecipientAddress().raw())),
                 blockNumber: latestHeight,
               };
               break;
@@ -170,7 +157,7 @@ export class CkbHandler {
                 chain,
                 amount: Amount.fromUInt128LE(
                   `0x${toHexString(new Uint8Array(v.cellData.getAmount().raw()))}`,
-                ).toString(),
+                ).toString(4),
                 recipientAddress: uint8ArrayToString(new Uint8Array(v.cellData.getRecipientAddress().raw())),
                 blockNumber: latestHeight,
               };
@@ -299,24 +286,24 @@ export class CkbHandler {
         return {
           asset: new BtcAsset(r.asset, ownLockHash),
           recipient: new Address(r.recipientLockscript, AddressType.ckb),
-          amount: new Amount(r.amount),
+          amount: new Amount(r.amount, 0),
         };
       case ChainType.ETH:
         return {
           asset: new EthAsset(r.asset, ownLockHash),
           recipient: new Address(r.recipientLockscript, AddressType.ckb),
-          amount: new Amount(BigNumber.from(r.amount).toString()),
+          amount: new Amount(r.amount, 0),
         };
       case ChainType.TRON:
         return {
           asset: new TronAsset(r.asset, ownLockHash),
-          amount: new Amount(r.amount),
+          amount: new Amount(r.amount, 0),
           recipient: new Address(r.recipientLockscript, AddressType.ckb),
         };
       case ChainType.EOS:
         return {
           asset: new EosAsset(r.asset, ownLockHash),
-          amount: new Amount(r.amount),
+          amount: new Amount(r.amount, 0),
           recipient: new Address(r.recipientLockscript, AddressType.ckb),
         };
       default:

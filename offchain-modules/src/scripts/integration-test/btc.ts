@@ -146,13 +146,13 @@ async function main() {
       );
 
       logger.debug('sudt balance:', balance);
-      logger.debug('expect balance:', new Amount(lockAmount.toString()));
-      return balance.eq(new Amount(lockAmount.toString()));
+      logger.debug('expect balance:', new Amount(lockAmount.toString(), 0));
+      return balance.eq(new Amount(lockAmount.toString(), 0));
     },
     1000 * 10,
   );
 
-  const burnAmount = new Amount('100000');
+  const burnAmount = new Amount('100000', 0);
   // const account = new Account(PRI_KEY);
   // const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
   const generator = new CkbTxGenerator(ckb, new IndexerCollector(indexer));
@@ -176,8 +176,8 @@ async function main() {
       );
 
       logger.debug('sudt balance:', balance);
-      logger.debug('expect balance:', new Amount(lockAmount.toString()).sub(burnAmount));
-      return balance.eq(new Amount(lockAmount.toString()).sub(burnAmount));
+      logger.debug('expect balance:', new Amount(lockAmount.toString(), 0).sub(burnAmount));
+      return balance.eq(new Amount(lockAmount.toString(), 0).sub(burnAmount));
     },
     1000 * 10,
   );
@@ -199,8 +199,8 @@ async function main() {
       const eosUnlockRecord = btcUnlockRecords[0];
       assert(eosUnlockRecord.recipientAddress == userAddr.toString());
       logger.debug('amount: ', eosUnlockRecord.amount);
-      logger.debug('amount: ', burnAmount.toString());
-      assert(eosUnlockRecord.amount === burnAmount.toString());
+      logger.debug('amount: ', burnAmount.toString(0));
+      assert(eosUnlockRecord.amount === burnAmount.toString(0));
       return true;
     },
     1000 * 10,
