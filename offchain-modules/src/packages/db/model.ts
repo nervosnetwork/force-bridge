@@ -153,7 +153,7 @@ export interface LockRecord {
   lock_amount: string;
   mint_amount: string;
   lock_hash: string;
-  ckb_mint_hash?: string;
+  mint_hash: string;
 }
 
 export interface UnlockRecord {

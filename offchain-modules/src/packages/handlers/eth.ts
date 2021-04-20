@@ -1,6 +1,6 @@
 import { EthDb } from '../db';
 import { logger } from '../utils/logger';
-import {asyncSleep, fromHexString, uint8ArrayToString} from '../utils';
+import { asyncSleep, fromHexString, uint8ArrayToString } from '../utils';
 import { abi } from '../xchain/eth/abi/ForceBridge.json';
 import { ForceBridgeCore } from '../core';
 import { ethers } from 'ethers';

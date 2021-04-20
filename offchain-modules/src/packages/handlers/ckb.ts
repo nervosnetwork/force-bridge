@@ -272,10 +272,12 @@ export class CkbHandler {
         if (txStatus.txStatus.status === 'committed') {
           mintRecords.map((r) => {
             r.status = 'success';
+            r.mintHash = mintTxHash;
           });
         } else {
           mintRecords.map((r) => {
             r.status = 'error';
+            r.mintHash = mintTxHash;
           });
           logger.error('mint execute failed: ', mintRecords);
         }

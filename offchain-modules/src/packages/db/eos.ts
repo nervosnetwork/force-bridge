@@ -10,6 +10,7 @@ import {
   IQuery,
   LockRecord,
   UnlockRecord,
+  CkbBurn,
 } from '@force-bridge/db/model';
 import { EosUnlockStatus } from '@force-bridge/db/entity/EosUnlock';
 
@@ -53,16 +54,42 @@ export class EosDb implements IQuery {
   }
 
   async getLockRecordsByUser(userAddr: string): Promise<LockRecord[]> {
-    return await this.conn.manager.query(
-      `select eos.sender as sender, ckb.recipient_lockscript as recipient , eos.amount as lock_amount,ckb.amount as mint_amount,eos.id as lock_hash FROM eos_lock eos join ckb_mint ckb on eos.id = ckb.id where eos.sender = ?`,
-      [userAddr],
-    );
+    return await this.conn
+      .getRepository(CkbMint)
+      .createQueryBuilder('ckb')
+      .innerJoinAndSelect('eos_lock', 'eos', 'eos.id = ckb.id')
+      .where('eos.sender = :sender', { sender: userAddr })
+      .select(
+        `
+        eos.sender as sender, 
+        ckb.recipient_lockscript as recipient , 
+        eos.amount as lock_amount,
+        ckb.amount as mint_amount,
+        eos.id as lock_hash,
+        ckb.mint_hash as mint_hash 
+      `,
+      )
+      .getRawMany();
   }
 
   async getUnlockRecordsByUser(ckbLockScriptHash: string): Promise<UnlockRecord[]> {
-    return await this.conn.manager.query(
-      `select ckb.sender_lock_hash as sender, ckb.recipient_address as recipient , ckb.amount as burn_amount, eos.amount as unlock_amount,ckb.ckb_tx_hash as burn_hash,eos.eos_tx_hash as unlock_hash FROM eos_unlock eos join ckb_burn ckb on eos.ckb_tx_hash = ckb.ckb_tx_hash where eos.status = 'success' and ckb.sender_lock_hash = ?`,
-      [ckbLockScriptHash],
-    );
+    return await this.conn
+      .getRepository(CkbBurn)
+      .createQueryBuilder('ckb')
+      .innerJoinAndSelect('eos_unlock', 'eos', 'eos.ckb_tx_hash = ckb.ckb_tx_hash')
+      .where("eos.status = 'success' and ckb.sender_lock_hash = :sender_lock_hash", {
+        sender_lock_hash: ckbLockScriptHash,
+      })
+      .select(
+        `
+        ckb.sender_lock_hash as sender, 
+        eos.recipient_address as recipient ,
+        ckb.amount as burn_amount, 
+        eos.amount as unlock_amount,
+        ckb.ckb_tx_hash as burn_hash,
+        eos.eos_tx_hash as unlock_hash
+      `,
+      )
+      .getRawMany();
   }
 }

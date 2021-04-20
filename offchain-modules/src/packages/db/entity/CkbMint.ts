@@ -29,6 +29,9 @@ export class CkbMint {
   @Column({ default: 'todo' })
   status: string;
 
+  @Column({ nullable: true })
+  mintHash: string;
+
   @CreateDateColumn()
   createdAt: string;
 

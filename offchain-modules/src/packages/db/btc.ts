@@ -2,6 +2,7 @@
 import {
   BtcLock,
   BtcUnlock,
+  CkbBurn,
   CkbMint,
   IBtcLock,
   IBtcUnLock,
@@ -71,16 +72,42 @@ export class BtcDb implements IQuery {
   }
 
   async getLockRecordsByUser(userAddr: string): Promise<LockRecord[]> {
-    return await this.connection.manager.query(
-      `select btc.sender as sender, ckb.recipient_lockscript as recipient , btc.amount as lock_amount,ckb.amount as mint_amount,btc.txid as lock_hash FROM btc_lock btc join ckb_mint ckb on btc.txid = ckb.id where btc.sender = ?`,
-      [userAddr],
-    );
+    return await this.connection
+      .getRepository(CkbMint)
+      .createQueryBuilder('ckb')
+      .innerJoinAndSelect('btc_lock', 'btc', 'btc.txid = ckb.id')
+      .where('btc.sender = :sender', { sender: userAddr })
+      .select(
+        `
+        btc.sender as sender,
+        ckb.recipient_lockscript as recipient,
+        btc.amount as lock_amount,
+        ckb.amount as mint_amount,
+        btc.txid as lock_hash,
+        ckb.mint_hash as mint_hash 
+      `,
+      )
+      .getRawMany();
   }
 
   async getUnlockRecordsByUser(ckbLockScriptHash: string): Promise<UnlockRecord[]> {
-    return await this.connection.manager.query(
-      `select ckb.sender_lock_hash as sender, ckb.recipient_address as recipient , ckb.amount as burn_amount, btc.amount as unlock_amount,ckb.ckb_tx_hash as burn_hash,btc.btc_tx_hash as unlock_hash FROM btc_unlock btc join ckb_burn ckb on btc.ckb_tx_hash = ckb.ckb_tx_hash where btc.status = 'success' and ckb.sender_lock_hash = ?`,
-      [ckbLockScriptHash],
-    );
+    return await this.connection
+      .getRepository(CkbBurn)
+      .createQueryBuilder('ckb')
+      .innerJoinAndSelect('btc_unlock', 'btc', 'btc.ckb_tx_hash = ckb.ckb_tx_hash')
+      .where("btc.status = 'success' and ckb.sender_lock_hash = :sender_lock_hash", {
+        sender_lock_hash: ckbLockScriptHash,
+      })
+      .select(
+        `
+        ckb.sender_lock_hash as sender, 
+        btc.recipient_address as recipient , 
+        ckb.amount as burn_amount, 
+        btc.amount as unlock_amount,
+        ckb.ckb_tx_hash as burn_hash,
+        btc.btc_tx_hash as unlock_hash 
+      `,
+      )
+      .getRawMany();
   }
 }
