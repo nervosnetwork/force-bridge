@@ -8,6 +8,7 @@ import { CkbTxGenerator } from '../../packages/ckb/tx-helper/generator';
 import { IndexerCollector } from '../../packages/ckb/tx-helper/collector';
 import { Amount } from '@lay2/pw-core';
 import { ForceBridgeCore } from '../../packages/core';
+import { formatEther } from 'ethers/lib/utils';
 
 export const ethCmd = new commander.Command('eth');
 ethCmd
@@ -75,7 +76,7 @@ async function doUnlock(opts: any, command: any) {
     await account.getLockscript(),
     recipientAddress,
     new EthAsset('0x0000000000000000000000000000000000000000', ownLockHash),
-    new Amount(ethers.utils.parseEther(amount).toString()),
+    new Amount(ethers.utils.parseEther(amount).toString(), 0),
   );
 
   const signedTx = ForceBridgeCore.ckb.signTransaction(privateKey)(burnTx);
@@ -106,6 +107,6 @@ async function doBalanceOf(opts: any, command: any) {
     const ownLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
     const asset = new EthAsset('0x0000000000000000000000000000000000000000', ownLockHash);
     const balance = await getSudtBalance(privateKey, asset);
-    console.log(`BalanceOf address:${account.address} on ckb is ${balance}`);
+    console.log(`BalanceOf address:${account.address} on ckb is ${formatEther(balance.toString(0))}`);
   }
 }

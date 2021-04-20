@@ -95,7 +95,7 @@ async function doUnlock(opts: any, command: any) {
     await account.getLockscript(),
     recipientAddress,
     new EosAsset('EOS', ownLockHash),
-    new Amount(amount),
+    new Amount(amount, 4),
   );
   const signedTx = ForceBridgeCore.ckb.signTransaction(privateKey)(burnTx);
   const burnTxHash = await ForceBridgeCore.ckb.rpc.sendTransaction(signedTx);
@@ -137,7 +137,7 @@ async function doBalanceOf(opts: any, command: any) {
     const ownLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
     const asset = new EosAsset('EOS', ownLockHash);
     const balance = await getSudtBalance(privateKey, asset);
-    console.log(`BalanceOf address:${account.address} on ckb is ${balance}`);
+    console.log(`BalanceOf address:${account.address} on ckb is ${balance.toString(4)}`);
   }
 }
 

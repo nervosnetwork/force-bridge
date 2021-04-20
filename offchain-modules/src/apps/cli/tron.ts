@@ -39,7 +39,7 @@ tronCmd
 async function doLock(opts: any, command: any) {
   const options = parseOptions(opts, command);
   const privateKey = options.get('privateKey');
-  const amount = options.get('amount');
+  const amount = new Amount(options.get('amount'), 6).toString(0);
   const recipient = options.get('recipient');
   const extra = options.get('extra');
   const memo = extra === undefined ? recipient : `${recipient},${extra}`;
@@ -74,7 +74,7 @@ async function doUnlock(opts: any, command: any) {
     await account.getLockscript(),
     recipientAddress,
     new TronAsset('trx', ownLockHash),
-    new Amount(amount),
+    new Amount(amount, 6),
   );
   const signedTx = ForceBridgeCore.ckb.signTransaction(privateKey)(burnTx);
   const burnTxHash = await ForceBridgeCore.ckb.rpc.sendTransaction(signedTx);
@@ -104,6 +104,6 @@ async function doBalanceOf(opts: any, command: any) {
     const ownLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
     const asset = new TronAsset('trx', ownLockHash);
     const balance = await getSudtBalance(privateKey, asset);
-    console.log(`BalanceOf address:${account.address} on ckb is ${balance}`);
+    console.log(`BalanceOf address:${account.address} on ckb is ${balance.toString(6)}`);
   }
 }
