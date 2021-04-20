@@ -10,6 +10,7 @@ import { JsSignatureProvider } from 'eosjs/dist/eosjs-jssig';
 import { ChainType } from '@force-bridge/ckb/model/asset';
 import { getEosLockId } from '@force-bridge/db/entity/EosLock';
 import { TransactResult } from 'eosjs/dist/eosjs-api-interfaces';
+import { Amount } from '@lay2/pw-core';
 
 const EosTokenAccount = 'eosio.token';
 const EosTokenTransferActionName = 'transfer';
@@ -166,7 +167,7 @@ export class EosHandler {
       globalActionSeq: lockEvent.GlobalActionSeq,
       txHash: lockEvent.TxHash,
       actionIndex: lockEvent.ActionIndex,
-      amount: lockEvent.Amount,
+      amount: new Amount(lockEvent.Amount, 4).toString(0),
       token: lockEvent.Asset,
       sender: lockEvent.From,
       memo: lockEvent.Memo,
