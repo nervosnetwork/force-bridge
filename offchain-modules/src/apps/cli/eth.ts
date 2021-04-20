@@ -16,7 +16,7 @@ ethCmd
   .requiredOption('-p, --privateKey', 'private key of locked account')
   .requiredOption('-a, --amount', 'amount to lock')
   .requiredOption('-r, --recipient', 'recipient address on ckb')
-  .option('-w, --wait [type]', 'whether wait for transaction confirmed')
+  .option('-w, --wait', 'whether wait for transaction confirmed')
   .option('-e, extra', 'extra data of sudt')
   .action(doLock)
   .description('lock asset on eth');
@@ -26,14 +26,14 @@ ethCmd
   .requiredOption('-r, recipient', 'recipient address on eth')
   .requiredOption('-p, --privateKey', 'private key of unlock address on ckb')
   .requiredOption('-a, --amount', 'amount of unlock')
-  .option('-w, --wait [type]', 'whether wait for transaction confirmed')
+  .option('-w, --wait', 'whether wait for transaction confirmed')
   .action(doUnlock)
   .description('unlock asset on eth');
 
 ethCmd
   .command('balanceOf')
   .requiredOption('-addr, --address', 'address on eth or ckb')
-  .option('-o, --origin [type]', 'whether query balance on eth')
+  .option('-o, --origin', 'whether query balance on eth')
   .action(doBalanceOf)
   .description('query balance of address on eth or ckb');
 
@@ -57,7 +57,7 @@ async function doLock(opts: any, command: any) {
   console.log(`Address:${lockRes.from} locked:${amount} eth, recipient:${recipient} extra:${extra}`);
   console.log(lockRes);
   if (opts.wait) {
-    console.log('Wait for transaction confirmed...');
+    console.log('Waiting for transaction confirmed...');
     await lockRes.wait(3);
     console.log('Lock success.');
   }

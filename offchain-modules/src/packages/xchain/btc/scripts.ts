@@ -209,6 +209,10 @@ export class BTCChain {
     return height[0].height;
   }
 
+  async getTxOut(txid: string, n: number): Promise<any> {
+    return await this.rpcClient.gettxout({ txid, n });
+  }
+
   isLockTx(txVouts: IVout[]): boolean {
     if (txVouts.length < 2) {
       return false;

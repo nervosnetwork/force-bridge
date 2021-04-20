@@ -10,6 +10,7 @@ import { ForceBridgeCore } from '../../packages/core';
 import { BTCChain, getBtcMainnetFee, IBalance } from '../../packages/xchain/btc';
 import bitcore from 'bitcore-lib';
 import { RPCClient } from 'rpc-bitcoin';
+import { asyncSleep } from '@force-bridge/utils';
 
 const Unit = bitcore.Unit;
 
@@ -22,6 +23,7 @@ btcCmd
   .requiredOption('-r, recipient', 'recipient address on ckb')
   .option('-e, extra', 'extra data of sudt')
   .option('--feeRate', 'satoshis/byte of tx data. default value will be from https://bitcoinfees.earn.com/#fees')
+  .option('-w, --wait', 'whether waiting for transaction confirmed')
   .action(doLock)
   .description('lock asset on btc');
 
@@ -30,14 +32,14 @@ btcCmd
   .requiredOption('-r, recipient', 'recipient address on btc')
   .requiredOption('-p, --privateKey', 'private key of unlock address on ckb')
   .requiredOption('-a, --amount', 'amount of unlock. unit is btc')
-  .option('-w, --wait [type]', 'whether wait for transaction confirmed')
+  .option('-w, --wait', 'whether waiting for transaction confirmed')
   .action(doUnlock)
   .description('unlock asset on btc');
 
 btcCmd
   .command('balanceOf')
   .requiredOption('-addr, --address', 'address on btc or ckb')
-  .option('-o, --origin [type]', 'whether query balance on btc')
+  .option('-o, --origin', 'whether query balance on btc')
   .action(doBalanceOf)
   .description('query balance of address on btc or ckb');
 
@@ -64,6 +66,19 @@ async function doLock(opts: any, command: any) {
     txFeeRate,
   );
   logger.debug(`user ${userAddr} lock ${amount} btc. the lock tx hash is ${lockTxHash} after block ${lockStartHeight}`);
+
+  if (opts.wait) {
+    console.log('Waiting for transaction confirmed...');
+    while (true) {
+      await asyncSleep(3000);
+      const txOut = await btcChain.getTxOut(lockTxHash, 0);
+      if (txOut.confirmations >= 3) {
+        console.log(txOut);
+        break;
+      }
+      console.log('Lock success.');
+    }
+  }
 }
 
 async function doUnlock(opts: any, command: any) {

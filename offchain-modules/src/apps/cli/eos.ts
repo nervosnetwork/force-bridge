@@ -18,7 +18,7 @@ eosCmd
   .requiredOption('-a, --amount', 'amount to lock')
   .requiredOption('-r, recipient', 'recipient address on ckb')
   .option('-e, extra', 'extra data of sudt')
-  .option('-w, --wait [type]', 'whether wait for transaction become irreversible')
+  .option('-w, --wait', 'whether waiting for transaction become irreversible')
   .action(doLock)
   .description('lock asset on eos');
 
@@ -27,7 +27,7 @@ eosCmd
   .requiredOption('-r, recipient', 'recipient account on eos')
   .requiredOption('-p, --privateKey', 'private key of unlock address on ckb')
   .requiredOption('-a, --amount', 'amount of unlock')
-  .option('-w, --wait [type]', 'whether wait for transaction confirmed')
+  .option('-w, --wait', 'whether waiting for transaction confirmed')
   .action(doUnlock)
   .description('unlock asset on eos');
 
@@ -69,7 +69,7 @@ async function doLock(opts: any, command: any) {
     if (!('processed' in txRes) || !('transaction_id' in txRes)) {
       return;
     }
-    console.log('Wait for transaction executed...');
+    console.log('Waiting for transaction executed...');
     while (true) {
       await asyncSleep(5000);
       const txInfo = await chain.getTransaction(txRes.transaction_id);

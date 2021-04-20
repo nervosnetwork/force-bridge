@@ -16,6 +16,7 @@ tronCmd
   .requiredOption('-p, --privateKey', 'private key of locked address')
   .requiredOption('-a, --amount', 'amount to lock')
   .requiredOption('-r, recipient', 'recipient address on ckb')
+  .option('-w, --wait', 'whether waiting for transaction become irreversible')
   .option('-e, extra', 'extra data of sudt')
   .action(doLock)
   .description('lock asset on tron');
@@ -25,14 +26,14 @@ tronCmd
   .requiredOption('-r, recipient', 'recipient address on tron')
   .requiredOption('-p, --privateKey', 'private key of unlock address on ckb')
   .requiredOption('-a, --amount', 'quantity of unlock')
-  .option('-w, --wait [type]', 'whether wait for transaction confirmed')
+  .option('-w, --wait', 'whether waiting for transaction confirmed')
   .action(doUnlock)
   .description('unlock asset on tron');
 
 tronCmd
   .command('balanceOf')
   .requiredOption('-addr, --address', 'address on tron or ckb')
-  .option('-o, --origin [type]', 'whether query balance on tron')
+  .option('-o, --origin', 'whether query balance on tron')
   .action(doBalanceOf)
   .description('query balance of address on tron or ckb');
 
@@ -57,9 +58,19 @@ async function doLock(opts: any, command: any) {
   console.log(`Address:${from} locked:${amount} trx, recipient:${recipient} extra:${extra}`);
   console.log(broad_tx);
 
-  await asyncSleep(3000);
-  const txInfo = await tronWeb.trx.getTransaction(broad_tx.txid);
-  console.log(txInfo);
+  if (opts.wait) {
+    console.log('Waiting for transaction confirmed...');
+    await asyncSleep(3000);
+    while (true) {
+      try {
+        const txInfo = await tronWeb.trx.getConfirmedTransaction(broad_tx.txid);
+        console.log(txInfo);
+        break;
+      } catch (e) {
+        await asyncSleep(3000);
+      }
+    }
+  }
 }
 
 async function doUnlock(opts: any, command: any) {
