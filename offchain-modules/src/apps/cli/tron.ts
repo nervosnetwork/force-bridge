@@ -31,15 +31,15 @@ tronCmd
 
 tronCmd
   .command('balanceOf')
-  .option('-p, --privateKey', 'private key of locked address on ckb')
-  .option('-addr, --address', 'address on tron')
+  .requiredOption('-addr, --address', 'address on tron or ckb')
+  .option('-o, --origin [type]', 'whether query balance on tron')
   .action(doBalanceOf)
-  .description('query balance of address on tron');
+  .description('query balance of address on tron or ckb');
 
 async function doLock(opts: any, command: any) {
   const options = parseOptions(opts, command);
   const privateKey = options.get('privateKey');
-  const amount = new Amount(options.get('amount'), 6).toString(0);
+  const amount = options.get('amount');
   const recipient = options.get('recipient');
   const extra = options.get('extra');
   const memo = extra === undefined ? recipient : `${recipient},${extra}`;
@@ -49,7 +49,8 @@ async function doLock(opts: any, command: any) {
   const from_hex = tronWeb.address.toHex(from);
   const to_hex = tronWeb.address.toHex(ForceBridgeCore.config.tron.committee.address);
 
-  const unsigned_tx = await tronWeb.transactionBuilder.sendTrx(to_hex, amount, from_hex);
+  const lockAmount = new Amount(amount, 6).toString(0);
+  const unsigned_tx = await tronWeb.transactionBuilder.sendTrx(to_hex, lockAmount, from_hex);
   const unsignedWithMemoTx = await tronWeb.transactionBuilder.addUpdateData(unsigned_tx, memo, 'utf8');
   const signed_tx = await tronWeb.trx.sign(unsignedWithMemoTx, privateKey);
   const broad_tx = await tronWeb.trx.broadcast(signed_tx);
@@ -89,21 +90,17 @@ async function doUnlock(opts: any, command: any) {
 async function doBalanceOf(opts: any, command: any) {
   const options = parseOptions(opts, command);
   const address = options.get('address');
-  const privateKey = options.get('privateKey');
-  if (!address && !privateKey) {
-    console.log('address or privateKey are required');
-    return;
-  }
-  if (address) {
+
+  if (opts.origin) {
     const tronWeb = new TronWeb({ fullHost: ForceBridgeCore.config.tron.tronGridUrl });
     const accountInfo = await tronWeb.trx.getAccount(address);
     console.log(accountInfo);
+    return;
   }
-  if (privateKey) {
-    const account = new Account(privateKey);
-    const ownLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
-    const asset = new TronAsset('trx', ownLockHash);
-    const balance = await getSudtBalance(privateKey, asset);
-    console.log(`BalanceOf address:${account.address} on ckb is ${balance.toString(6)}`);
-  }
+  const ownLockHash = ForceBridgeCore.ckb.utils.scriptToHash(
+    <CKBComponents.Script>ForceBridgeCore.ckb.utils.addressToScript(address),
+  );
+  const asset = new TronAsset('trx', ownLockHash);
+  const balance = await getSudtBalance(address, asset);
+  console.log(`BalanceOf address:${address} on ckb is ${balance.toString(6)}`);
 }

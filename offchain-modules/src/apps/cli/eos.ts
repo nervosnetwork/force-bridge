@@ -2,7 +2,7 @@ import commander from 'commander';
 import { JsSignatureProvider } from 'eosjs/dist/eosjs-jssig';
 import { EosChain } from '../../packages/xchain/eos/eosChain';
 import { getSudtBalance, parseOptions, waitUnlockTxCompleted } from './utils';
-import { EosAsset } from '../../packages/ckb/model/asset';
+import { EosAsset, TronAsset } from '../../packages/ckb/model/asset';
 import { Account } from '../../packages/ckb/model/accounts';
 import { CkbTxGenerator } from '../../packages/ckb/tx-helper/generator';
 import { IndexerCollector } from '../../packages/ckb/tx-helper/collector';
@@ -33,11 +33,11 @@ eosCmd
 
 eosCmd
   .command('balanceOf')
+  .option('-addr, --address', 'address on ckb')
   .option('-acc, --account', 'account on eos to query')
   .option('-v, --detail', 'show detail information of balance on eos')
-  .option('-p, --privateKey', 'private key of locked address on ckb')
   .action(doBalanceOf)
-  .description('query balance of account');
+  .description('query balance of account on eos or ckb');
 
 async function doLock(opts: any, command: any) {
   const options = parseOptions(opts, command);
@@ -110,9 +110,9 @@ async function doUnlock(opts: any, command: any) {
 async function doBalanceOf(opts: any, command: any) {
   const options = parseOptions(opts, command);
   const account = options.get('account');
-  const privateKey = options.get('privateKey');
-  if (!account && !privateKey) {
-    console.log('account or privateKey are required');
+  const address = options.get('address');
+  if (!account && !address) {
+    console.log('account or address are required');
     return;
   }
   if (account) {
@@ -132,12 +132,13 @@ async function doBalanceOf(opts: any, command: any) {
     };
     console.log(balance);
   }
-  if (privateKey) {
-    const account = new Account(privateKey);
-    const ownLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
+  if (address) {
+    const ownLockHash = ForceBridgeCore.ckb.utils.scriptToHash(
+      <CKBComponents.Script>ForceBridgeCore.ckb.utils.addressToScript(address),
+    );
     const asset = new EosAsset('EOS', ownLockHash);
-    const balance = await getSudtBalance(privateKey, asset);
-    console.log(`BalanceOf address:${account.address} on ckb is ${balance.toString(4)}`);
+    const balance = await getSudtBalance(address, asset);
+    console.log(`BalanceOf address:${address} on ckb is ${balance.toString(4)}`);
   }
 }
 

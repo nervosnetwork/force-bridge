@@ -32,10 +32,10 @@ ethCmd
 
 ethCmd
   .command('balanceOf')
-  .option('-p, --privateKey', 'private key of locked address on ckb')
-  .option('-addr, --address', 'address on eth')
+  .requiredOption('-addr, --address', 'address on eth or ckb')
+  .option('-o, --origin [type]', 'whether query balance on eth')
   .action(doBalanceOf)
-  .description('query balance of address on eth');
+  .description('query balance of address on eth or ckb');
 
 async function doLock(opts: any, command: any) {
   const options = parseOptions(opts, command);
@@ -92,21 +92,18 @@ async function doUnlock(opts: any, command: any) {
 async function doBalanceOf(opts: any, command: any) {
   const options = parseOptions(opts, command);
   const address = options.get('address');
-  const privateKey = options.get('privateKey');
-  if (!address && !privateKey) {
-    console.log('address or privateKey are required');
-    return;
-  }
-  if (address) {
+
+  if (opts.origin) {
     const provider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
     const balanceOf = await provider.getBalance(address);
     console.log(`BalanceOf address:${address} on ETH is ${balanceOf}`);
+    return;
   }
-  if (privateKey) {
-    const account = new Account(privateKey);
-    const ownLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
-    const asset = new EthAsset('0x0000000000000000000000000000000000000000', ownLockHash);
-    const balance = await getSudtBalance(privateKey, asset);
-    console.log(`BalanceOf address:${account.address} on ckb is ${formatEther(balance.toString(0))}`);
-  }
+
+  const ownLockHash = ForceBridgeCore.ckb.utils.scriptToHash(
+    <CKBComponents.Script>ForceBridgeCore.ckb.utils.addressToScript(address),
+  );
+  const asset = new EthAsset('0x0000000000000000000000000000000000000000', ownLockHash);
+  const balance = await getSudtBalance(address, asset);
+  console.log(`BalanceOf address:${address} on ckb is ${formatEther(balance.toString(0))}`);
 }
