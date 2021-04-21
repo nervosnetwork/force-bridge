@@ -97,7 +97,7 @@ async function main() {
 
       assert(eosLockRecords.length === 1);
       const eosLockRecord = eosLockRecords[0];
-      assert(eosLockRecord.amount === lockAmount);
+      assert(eosLockRecord.amount === new Amount(lockAmount, 4).toString(0));
       assert(eosLockRecord.token === lockAsset);
       assert(eosLockRecord.memo === memo);
       assert(eosLockRecord.sender === lockAccount);
@@ -106,7 +106,7 @@ async function main() {
       const ckbMintRecord = ckbMintRecords[0];
       assert(ckbMintRecord.chain === ChainType.EOS);
       assert(ckbMintRecord.asset === lockAsset);
-      assert(ckbMintRecord.amount === lockAmount);
+      assert(ckbMintRecord.amount === new Amount(lockAmount, 4).toString(0));
       assert(ckbMintRecord.recipientLockscript === recipientLockscript);
       return ckbMintRecord.status === 'success';
     },
@@ -141,8 +141,8 @@ async function main() {
       );
 
       logger.debug('sudt balance:', balance);
-      logger.debug('expect balance:', new Amount(lockAmount));
-      return balance.eq(new Amount(lockAmount));
+      logger.debug('expect balance:', new Amount(lockAmount, 4));
+      return balance.eq(new Amount(lockAmount, 4));
     },
     1000 * 10,
   );
@@ -156,7 +156,7 @@ async function main() {
   // };
   // await ckbDb.createEosUnlock([unlockRecord]);
   // send burn tx
-  const burnAmount = new Amount('0.0001');
+  const burnAmount = new Amount('0.0001', 4);
   const generator = new CkbTxGenerator(ckb, new IndexerCollector(indexer));
   const burnTx = await generator.burn(
     await account.getLockscript(),
@@ -178,8 +178,8 @@ async function main() {
       );
 
       logger.debug('sudt balance:', balance);
-      logger.debug('expect balance:', new Amount(lockAmount).sub(burnAmount));
-      return balance.eq(new Amount(lockAmount).sub(burnAmount));
+      logger.debug('expect balance:', new Amount(lockAmount, 4).sub(burnAmount));
+      return balance.eq(new Amount(lockAmount, 4).sub(burnAmount));
     },
     1000 * 10,
   );
@@ -204,8 +204,8 @@ async function main() {
       assert(eosUnlockRecord.recipientAddress == lockAccount);
       assert(eosUnlockRecord.asset === lockAsset);
       logger.debug('amount: ', eosUnlockRecord.amount);
-      logger.debug('amount: ', burnAmount.toString());
-      assert(eosUnlockRecord.amount === burnAmount.toString());
+      logger.debug('amount: ', burnAmount.toString(4));
+      assert(eosUnlockRecord.amount === burnAmount.toString(4));
       eosUnlockTxHash = eosUnlockRecord.eosTxHash;
       return true;
     },
