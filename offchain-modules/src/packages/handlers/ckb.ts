@@ -240,7 +240,7 @@ export class CkbHandler {
         });
         await this.db.updateCkbMint(mintRecords);
         await this.waitUntilSync();
-        const txSkeleton = await generator.mint(records[0], this.indexer);
+        const txSkeleton = await generator.mint(records, this.indexer);
         const content0 = key.signRecoverable(txSkeleton.get('signingEntries').get(0).message, fromPrivateKey);
         let content1 = serializedMultisigScript;
         for (let i = 0; i < infos.keys.length; i++) {
@@ -343,7 +343,7 @@ export class CkbHandler {
       };
     });
 
-    const txSkeleton = await generator.createBridgeCell(scripts[0], this.indexer);
+    const txSkeleton = await generator.createBridgeCell(scripts, this.indexer);
     console.log('signingEntries length:', txSkeleton.get('signingEntries').size);
     const message0 = txSkeleton.get('signingEntries').get(0).message;
     const content0 = key.signRecoverable(message0, fromPrivateKey);
