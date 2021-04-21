@@ -23,7 +23,7 @@ console.log('Capacity fromAddress:', fromAddress);
 
 const ckb = new CKB(CKB_URL);
 const dataDir = './lumos_db';
-const indexer = new Indexer('http://127.0.0.1:8114', dataDir);
+const indexer = new Indexer(CKB_URL, dataDir);
 indexer.startForever();
 const transactionManager = new TransactionManager(indexer);
 
@@ -74,8 +74,6 @@ async function deploy() {
   nconf.set('type', typeIDScript);
   nconf.save();
 
-  // const deployResult = require('./deploy_result.json');
-  // const multisigType = deployResult.type;
   console.log('multi lockscript:', JSON.stringify(multisigLockScript, null, 2));
   process.exit(0);
 }
@@ -97,7 +95,7 @@ async function waitUntilCommitted(ckb, txHash, timeout) {
 }
 
 async function waitUntilSync(): Promise<void> {
-  const ckbRpc = new RPC('http://127.0.0.1:8114');
+  const ckbRpc = new RPC(CKB_URL);
   const rpcTipNumber = parseInt((await ckbRpc.get_tip_header()).number, 16);
   console.log('rpcTipNumber', rpcTipNumber);
   const index = 0;

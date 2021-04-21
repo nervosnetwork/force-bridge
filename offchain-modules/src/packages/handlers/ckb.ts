@@ -12,7 +12,6 @@ import { ScriptType } from '@force-bridge/ckb/tx-helper/indexer';
 import { ForceBridgeCore } from '@force-bridge/core';
 import Transaction = CKBComponents.Transaction;
 import { Script as LumosScript } from '@ckb-lumos/base';
-import { BigNumber } from 'ethers';
 import { RecipientCellData } from '@force-bridge/ckb/tx-helper/generated/eth_recipient_cell';
 import { Indexer } from '@ckb-lumos/indexer';
 import {
@@ -215,7 +214,6 @@ export class CkbHandler {
   }
 
   async handleMintRecords(): Promise<never> {
-    // const account = new Account(this.PRI_KEY);
     const ownLockHash = await this.getOwnLockHash();
     const generator = new CkbTxGenerator(this.ckb, new IndexerCollector(this.ckbIndexer));
     while (true) {

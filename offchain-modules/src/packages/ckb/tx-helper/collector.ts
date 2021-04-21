@@ -1,7 +1,6 @@
 import { Script as LumosScript } from '@ckb-lumos/base';
-import { Address, Amount, Script } from '@lay2/pw-core';
+import { Amount, Script } from '@lay2/pw-core';
 import { CkbIndexer, IndexerCell, ScriptType, Terminator } from './indexer';
-// import { logger } from '@force-bridge/utils/logger';
 
 export abstract class Collector {
   abstract getCellsByLockscriptAndCapacity(lockscript: Script, capacity: Amount): Promise<IndexerCell[]>;
@@ -45,7 +44,6 @@ export class IndexerCollector extends Collector {
     const cells = await this.indexer.getCells(searchKey);
     let balance = Amount.ZERO;
     cells.forEach((cell) => {
-      // logger.debug('cell.data:', cell.data);
       const amount = Amount.fromUInt128LE(cell.data);
       balance = balance.add(amount);
     });
