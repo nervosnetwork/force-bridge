@@ -1,12 +1,14 @@
 import express from 'express';
 import bodyParser from 'body-parser';
+import 'module-alias/register';
 import { JSONRPCServer } from 'json-rpc-2.0';
 import { rpcConfig } from '@force-bridge/config';
 import nconf from 'nconf';
-import { logger } from '../../packages/utils/logger';
-import { ForceBridgeAPIV1 } from './server';
-import { ForceBridgeCore } from '../../packages/core';
-import { Config } from '../../packages/config';
+import { logger } from '@force-bridge/utils/logger';
+import { ForceBridgeAPIV1Handler } from './handler';
+import { ForceBridgeCore } from '@force-bridge/core';
+import { Config } from '@force-bridge/config';
+import { createConnection } from 'typeorm';
 
 const forceBridgePath = '/force-bridge/api/v1';
 
@@ -20,7 +22,8 @@ async function main() {
 
   const server = new JSONRPCServer();
 
-  const forceBridgeRpc = new ForceBridgeAPIV1();
+  const conn = await createConnection();
+  const forceBridgeRpc = new ForceBridgeAPIV1Handler(conn);
   // First parameter is a method name.
   // Second parameter is a method itself.
   // A method takes JSON-RPC params and returns a result.
@@ -44,8 +47,7 @@ async function main() {
   server.addMethod('echo', ({ text }) => text); //for test
   server.addMethod('generateBridgeOutNervosTransaction', forceBridgeRpc.generateBridgeOutNervosTransaction);
   server.addMethod('generateBridgeInNervosTransaction', forceBridgeRpc.generateBridgeInNervosTransaction);
-  server.addMethod('sendBridgeOutNervosTransaction', forceBridgeRpc.sendBridgeOutNervosTransaction);
-  server.addMethod('sendBridgeInNervosTransaction', forceBridgeRpc.sendBridgeInNervosTransaction);
+  server.addMethod('sendSignedTransaction', forceBridgeRpc.sendSignedTransaction);
 
   const app = express();
   app.use(bodyParser.json());

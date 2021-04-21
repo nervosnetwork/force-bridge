@@ -1,3 +1,4 @@
+import 'module-alias/register';
 import { JSONRPCClient } from 'json-rpc-2.0';
 import { ethers } from 'ethers';
 import fetch from 'node-fetch/index';
@@ -6,7 +7,8 @@ import { ForceBridgeCore } from '../../packages/core';
 import nconf from 'nconf';
 import { sign } from '@force-bridge/ckb/tx-helper/signer';
 
-const TronWeb = require('tronweb');
+import { abi } from '@force-bridge/xchain/eth/abi/ForceBridge.json';
+import { asyncSleep, stringToUint8Array, toHexString } from '@force-bridge/utils';
 
 const CKB_PRI_KEY = process.env.PRI_KEY || '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
 
@@ -30,19 +32,13 @@ const client = new JSONRPCClient((jsonRPCRequest) =>
 );
 
 async function mint(ckbLockscript) {
-  const tronWeb = new TronWeb({
-    fullHost: ForceBridgeCore.config.tron.tronGridUrl,
-  });
-  const userPrivateKey = 'AECC2FBC0BF175DDD04BD1BC3B64A13DB98738962A512544C89B50F5DDB7EBBD';
-  const from = tronWeb.address.fromPrivateKey(userPrivateKey);
-
   const mintPayload = {
-    sender: from,
+    sender: '0x0',
     recipient: ckbLockscript,
     asset: {
+      network: 'Ethereum',
       ident: {
-        network: 'Tron',
-        address: 'trx',
+        address: '0x0000000000000000000000000000000000000000',
       },
       amount: '1',
     },
@@ -50,39 +46,61 @@ async function mint(ckbLockscript) {
   const unsignedMintTx = await client.request('generateBridgeInNervosTransaction', mintPayload);
   console.log('unsignedMintTx', unsignedMintTx);
 
-  const signedTx = await tronWeb.trx.sign(JSON.parse(unsignedMintTx.rawTransaction), userPrivateKey);
+  const provider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
+  const wallet = new ethers.Wallet(ForceBridgeCore.config.eth.privateKey, provider);
+
+  const unsignedTx = unsignedMintTx.rawTransaction;
+  unsignedTx.value = ethers.BigNumber.from(unsignedTx.value.hex);
+  unsignedTx.nonce = await wallet.getTransactionCount();
+  unsignedTx.gasLimit = ethers.BigNumber.from(1000000);
+  unsignedTx.gasPrice = await provider.getGasPrice();
+
+  console.log('unsignedTx', unsignedTx);
+
+  //   const bridgeContractAddr = ForceBridgeCore.config.eth.contractAddress;
+  //   const bridge = new ethers.Contract(bridgeContractAddr, abi, provider);
+
+  //   const recipient = stringToUint8Array('ckt1qyqyph8v9mclls35p6snlaxajeca97tc062sa5gahk');
+  //   const ethAmount = ethers.utils.parseUnits('1', 0);
+  //   const testTx = await bridge.populateTransaction.lockETH(recipient, '0x', { value: ethAmount });
+
+  //   console.log('testTx', testTx);
+  const signedTx = await wallet.signTransaction(unsignedTx);
   console.log('signedTx', signedTx);
 
   const sendPayload = {
-    network: 'Tron',
-    signedTransaction: JSON.stringify(signedTx),
+    network: 'Ethereum',
+    signedTransaction: signedTx,
   };
-  const mintTxHash = await client.request('sendBridgeInNervosTransaction', sendPayload);
+  const mintTxHash = await client.request('sendSignedTransaction', sendPayload);
   console.log('mintTxHash', mintTxHash);
 }
 
 async function burn(ckbLockscript) {
   const burnPayload = {
+    network: 'Ethereum',
     sender: ckbLockscript,
-    recipient: 'TS6VejPL8cQy6pA8eDGyusmmhCrXHRdJK6',
+    recipient: {
+      address: '0x1000000000000000000000000000000000000001',
+    },
     asset: {
       amount: '1',
       ident: {
-        network: 'Tron',
-        address: 'trx',
+        address: '0x0000000000000000000000000000000000000000',
       },
     },
   };
   const unsignedBurnTx = await client.request('generateBridgeOutNervosTransaction', burnPayload);
   console.log('unsignedBurnTx ', unsignedBurnTx);
 
-  const signedTx = ForceBridgeCore.ckb.signTransaction(CKB_PRI_KEY)(JSON.parse(unsignedBurnTx.rawTransaction));
+  const signedTx = ForceBridgeCore.ckb.signTransaction(CKB_PRI_KEY)(unsignedBurnTx.rawTransaction);
   console.log('signedTx', signedTx);
 
   const sendPayload = {
+    network: 'Nervos',
     signedTransaction: JSON.stringify(signedTx),
   };
-  const burnTxHash = await client.request('sendBridgeOutNervosTransaction', sendPayload);
+  const burnTxHash = await client.request('sendSignedTransaction', sendPayload);
   console.log('burnTxHash', burnTxHash);
 }
 
@@ -103,9 +121,9 @@ async function main() {
     hashType: secp256k1Dep.hashType,
   };
 
-  await mint(ckbLockscript);
+  //await mint(ckbLockscript);
 
-  //await burn(ckbLockscript);
+  await burn(ckbLockscript);
 }
 
 main();
