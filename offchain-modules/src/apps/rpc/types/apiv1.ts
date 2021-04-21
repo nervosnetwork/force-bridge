@@ -6,12 +6,13 @@ export enum BridgeTransactionStatus {
   Failed = 'Failed',
 }
 
+type Timestamp = number;
 export type TransactionIdent = { txId: string };
 export type TransactionSummary = {
   fromAsset: AllNetworks['FungibleAssetWithAmount'];
   toAsset: AllNetworks['FungibleAssetWithAmount'];
-  fromTransaction: TransactionIdent & { timestamp?: number };
-  toTransaction: TransactionIdent & { timestamp?: number };
+  fromTransaction: TransactionIdent & { timestamp?: Timestamp };
+  toTransaction: TransactionIdent & { timestamp?: Timestamp };
 };
 export type FailedTransactionSummary = TransactionSummary & { status: BridgeTransactionStatus.Failed; message: string };
 export type UnFailedTransactionSummary = TransactionSummary & {

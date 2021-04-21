@@ -1,5 +1,10 @@
-import { SUDTType, UserLock } from './nervos';
+// network types, all types arr plain JSON object
+
+// types naming conventions:
+// XIdent: the ident of the X resource, e.g. type ERC20Ident = { address: '0x...' }
+// XInfo: the ident with network e.g. type type ERC20Info = { network: 'Ethereum', address: '0x...' }
 import { ethers } from 'ethers';
+import { SUDTType, UserLock } from './nervos';
 
 export type NervosNetworkName = 'Nervos';
 
@@ -7,15 +12,7 @@ export type NervosNetworkName = 'Nervos';
 // do NOT use such values like, 1.225, 0.22
 export type AmountWithoutDecimals = string;
 
-// asset info
-export type FungibleAssetInfo = {
-  decimals: number;
-  name: string;
-  symbol: string;
-  logoURI: string;
-};
-
-export interface NetworkBase {
+export type NetworkBase = {
   Network?: string;
   NativeAssetIdent?: unknown;
   // ident of an fungible derived from this network
@@ -25,31 +22,46 @@ export interface NetworkBase {
 
   RawTransaction?: unknown;
   SignedTransaction?: unknown;
-}
+};
 
-type XChainShadow<NetworkName> = NetworkName extends NervosNetworkName ? unknown : { shadow: SUDTType };
+type FungibleBaseInfo = { decimals: number; name: string; symbol: string; logoURI: string };
+type XChainShadow<T extends NetworkBase> = T['Network'] extends NervosNetworkName ? unknown : { shadow: SUDTType };
 
-export interface NetworkTypes<T extends NetworkBase = NetworkBase> {
-  Network: T['Network'];
-  NativeAssetIdent: T['NativeAssetIdent'];
-  FungibleAssetIdent: T['FungibleAssetIdent'];
-  AssetIdent: this['NativeAssetIdent'] | this['FungibleAssetIdent'];
+export type FullFungibleAssetTypes<T extends NetworkBase, IdKey extends keyof NetworkBase> = {
+  network: T['Network'];
+  ident: T[IdKey];
+  amount: AmountWithoutDecimals;
+  info: FungibleBaseInfo & XChainShadow<T>;
+};
 
-  UserIdent: T['UserIdent'];
+export type ComposeAsset<
+  T extends NetworkBase,
+  IdKey extends 'NativeAssetIdent' | 'FungibleAssetIdent',
+  ObjKey extends keyof FullFungibleAssetTypes<T, IdKey> = 'network' | 'ident'
+> = Pick<FullFungibleAssetTypes<T, IdKey>, 'network' | 'ident' | ObjKey>;
+
+export type NativeAsset<T extends NetworkBase> = ComposeAsset<T, 'NativeAssetIdent'>;
+export type FungibleAsset<T extends NetworkBase> = ComposeAsset<T, 'FungibleAssetIdent'>;
+
+export type NetworkTypes<T extends NetworkBase = NetworkBase> = Required<T> & {
+  AssetIdent: T['FungibleAssetIdent'] | T['NativeAssetIdent'];
 
   UserInfo: { network: T['Network']; ident: T['UserIdent'] };
-  // prettier-ignore
-  FungibleInfo: { network: T['Network']; ident: T['FungibleAssetIdent'] } & FungibleAssetInfo & XChainShadow<T['Network']>;
-  NativeInfo: { network: T['Network']; ident: T['NativeAssetIdent'] } & FungibleAssetInfo & XChainShadow<T['Network']>;
-  AssetInfo: this['FungibleInfo'] | this['NativeInfo'];
 
-  NativeAssetWithAmount: { network: T['Network']; amount: AmountWithoutDecimals; ident: T['NativeAssetIdent'] };
-  FungibleAssetWithAmount: { network: T['Network']; amount: AmountWithoutDecimals; ident: T['FungibleAssetIdent'] };
-  AssetWithAmount: this['NativeAssetWithAmount'] | this['FungibleAssetWithAmount'];
+  // { network, ident, info }
+  FungibleInfo: ComposeAsset<T, 'FungibleAssetIdent', 'info'>;
+  // { network, ident, info }
+  NativeInfo: ComposeAsset<T, 'NativeAssetIdent', 'info'>;
+  // { network, ident, info }
+  AssetInfo: ComposeAsset<T, 'FungibleAssetIdent', 'info'> | ComposeAsset<T, 'NativeAssetIdent', 'info'>;
 
-  RawTransaction: T['RawTransaction'];
-  SignedTransaction: T['SignedTransaction'];
-}
+  // { network, ident, amount }
+  NativeAssetWithAmount: ComposeAsset<T, 'NativeAssetIdent', 'amount'>;
+  // { network, ident, amount }
+  FungibleAssetWithAmount: ComposeAsset<T, 'FungibleAssetIdent', 'amount'>;
+  // { network, ident, amount }
+  AssetWithAmount: ComposeAsset<T, 'NativeAssetIdent', 'amount'> | ComposeAsset<T, 'FungibleAssetIdent', 'amount'>;
+};
 
 export type NervosNetwork = NetworkTypes<{
   Network: NervosNetworkName;
@@ -75,3 +87,9 @@ export type EthereumNetwork = NetworkTypes<{
 
 export type AllNetworks = NervosNetwork | EthereumNetwork;
 export type XChainNetwork = EthereumNetwork;
+
+export type AllAssets =
+  | FullFungibleAssetTypes<NervosNetwork, 'NativeAssetIdent'>
+  | FullFungibleAssetTypes<NervosNetwork, 'FungibleAssetIdent'>
+  | FullFungibleAssetTypes<XChainNetwork, 'NativeAssetIdent'>
+  | FullFungibleAssetTypes<XChainNetwork, 'FungibleAssetIdent'>;
