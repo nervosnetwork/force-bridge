@@ -10,8 +10,8 @@ export type TransactionIdent = { txId: string };
 export type TransactionSummary = {
   fromAsset: AllNetworks['FungibleAssetWithAmount'];
   toAsset: AllNetworks['FungibleAssetWithAmount'];
-  fromTransaction: TransactionIdent;
-  toTransaction: TransactionIdent;
+  fromTransaction: TransactionIdent & { timestamp?: number };
+  toTransaction: TransactionIdent & { timestamp?: number };
 };
 export type FailedTransactionSummary = TransactionSummary & { status: BridgeTransactionStatus.Failed; message: string };
 export type UnFailedTransactionSummary = TransactionSummary & {
@@ -46,6 +46,11 @@ export type SignedTransactionPayload<N extends AllNetworks> = {
   // TODO
   signedTransaction: N['SignedTransaction'];
   network: N['Network'];
+};
+
+export type GetBridgeTransactionSummariesPayload = {
+  userIdent: NervosNetwork['UserIdent'];
+  network: XChainNetwork['Network'];
 };
 
 export type GetBalancePayload<N extends AllNetworks> = {
@@ -88,7 +93,9 @@ export interface ForceBridgeAPIV1 {
    * get the status of a transaction
    */
   getBridgeTransactionStatus: (payload: GetBridgeTransactionStatusPayload<AllNetworks>) => Promise<GetBridgeTransactionStatusResponse<AllNetworks>>;
-  getBridgeTransactionSummaries: (payload: NervosNetwork['UserInfo']) => Promise<TransactionSummaryWithStatus[]>;
+  getBridgeTransactionSummaries: (
+    payload: GetBridgeTransactionSummariesPayload,
+  ) => Promise<TransactionSummaryWithStatus[]>;
 
   // get an asset list, or if no `name` param is passed in, return a default list of whitelisted assets
   getAssetList: (name?: string) => Promise<XChainNetwork['AssetInfo'][]>;

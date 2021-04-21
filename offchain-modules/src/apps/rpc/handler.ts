@@ -5,6 +5,7 @@ import { Amount } from '@lay2/pw-core';
 import { API, NervosNetwork, EthereumNetwork, AllNetworks } from './types';
 import { ForceBridgeCore } from '@force-bridge/core';
 import { Script } from '@lay2/pw-core';
+import { logger } from '@force-bridge/utils/logger';
 
 import { ethers } from 'ethers';
 import { abi } from '@force-bridge/xchain/eth/abi/ForceBridge.json';
@@ -19,7 +20,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
   async generateBridgeInNervosTransaction(
     payload: API.GenerateBridgeInTransactionPayload<EthereumNetwork>,
   ): Promise<API.GenerateTransactionResponse<EthereumNetwork>> {
-    console.log('generateBridgeInNervosTransaction ', payload);
+    logger.info('generateBridgeInNervosTransaction ', payload);
 
     const sender = payload.sender;
     const recipientLockscript = Script.fromRPC({
@@ -40,11 +41,11 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         const recipient = stringToUint8Array(recipientLockscript.toAddress().toCKBAddress());
 
         switch (payload.asset.ident.address) {
+          // TODO: use EthereumModel.isNativeAsset to identify token
           case '0x0000000000000000000000000000000000000000':
             tx = await bridge.populateTransaction.lockETH(recipient, sudtExtraData, {
               value: ethAmount,
             });
-            console.log('tx', tx);
             break;
           default:
             tx = bridge.populateTransaction.lockToken(payload.asset.ident.address, ethAmount, recipient, sudtExtraData);
@@ -91,6 +92,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
       //   const memo = recipientLockscript.toAddress().toCKBAddress().concat(',').concat('sudt extra data');
       //   tx = await tronWeb.transactionBuilder.addUpdateData(unsignedTx, memo, 'utf8');
       default:
+        // TODO: add other chainss
         Promise.reject(new Error('invalid chain type'));
     }
     const bridgeFee = {
@@ -108,7 +110,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
   async generateBridgeOutNervosTransaction(
     payload: API.GenerateBridgeOutNervosTransactionPayload<EthereumNetwork>,
   ): Promise<API.GenerateTransactionResponse<NervosNetwork>> {
-    console.log('generateBridgeOutNervosTransaction ', payload);
+    logger.info('generateBridgeOutNervosTransaction ', payload);
     const fromLockscript = Script.fromRPC({
       code_hash: payload.sender.codeHash,
       args: payload.sender.args,
@@ -128,6 +130,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
       //   asset = new TronAsset(assetName, ownLockHash);
       //   break;
       default:
+        //TODO: add other chains
         Promise.reject(new Error('invalid chain type'));
     }
 
