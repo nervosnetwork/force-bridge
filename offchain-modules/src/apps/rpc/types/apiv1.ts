@@ -14,8 +14,11 @@ export type TransactionSummary = {
   fromTransaction: TransactionIdent & { timestamp?: Timestamp };
   toTransaction: TransactionIdent & { timestamp?: Timestamp };
 };
-export type FailedTransactionSummary = TransactionSummary & { status: BridgeTransactionStatus.Failed; message: string };
-export type UnFailedTransactionSummary = TransactionSummary & {
+export type FailedTransactionSummary = { tx: TransactionSummary } & {
+  status: BridgeTransactionStatus.Failed;
+  message: string;
+};
+export type UnFailedTransactionSummary = { tx: TransactionSummary } & {
   status: BridgeTransactionStatus.Pending | BridgeTransactionStatus.Successful;
 };
 

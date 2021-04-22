@@ -71,12 +71,12 @@ export class BtcDb implements IQuery {
     });
   }
 
-  async getLockRecordsByUser(userAddr: string): Promise<LockRecord[]> {
+  async getLockRecordsByUser(ckbRecipientAddr: string): Promise<LockRecord[]> {
     return await this.connection
       .getRepository(CkbMint)
       .createQueryBuilder('ckb')
       .innerJoinAndSelect('btc_lock', 'btc', 'btc.txid = ckb.id')
-      .where('btc.sender = :sender', { sender: userAddr })
+      .where('ckb.recipient_lockscript = :recipient', { recipient: ckbRecipientAddr })
       .select(
         `
         btc.sender as sender,
@@ -84,7 +84,10 @@ export class BtcDb implements IQuery {
         btc.amount as lock_amount,
         ckb.amount as mint_amount,
         btc.txid as lock_hash,
-        ckb.mint_hash as mint_hash 
+        ckb.mint_hash as mint_hash,
+        btc.updated_at as lock_time, 
+        ckb.updated_at as mint_time, 
+        ckb.status as status
       `,
       )
       .getRawMany();
@@ -95,7 +98,7 @@ export class BtcDb implements IQuery {
       .getRepository(CkbBurn)
       .createQueryBuilder('ckb')
       .innerJoinAndSelect('btc_unlock', 'btc', 'btc.ckb_tx_hash = ckb.ckb_tx_hash')
-      .where("btc.status = 'success' and ckb.sender_lock_hash = :sender_lock_hash", {
+      .where('ckb.sender_lock_hash = :sender_lock_hash', {
         sender_lock_hash: ckbLockScriptHash,
       })
       .select(
@@ -105,7 +108,10 @@ export class BtcDb implements IQuery {
         ckb.amount as burn_amount, 
         btc.amount as unlock_amount,
         ckb.ckb_tx_hash as burn_hash,
-        btc.btc_tx_hash as unlock_hash 
+        btc.btc_tx_hash as unlock_hash,
+        btc.updated_at as unlock_time, 
+        ckb.updated_at as burn_time, 
+        btc.status as status
       `,
       )
       .getRawMany();

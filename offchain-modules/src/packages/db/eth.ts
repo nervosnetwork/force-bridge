@@ -52,12 +52,12 @@ export class EthDb implements IQuery {
     });
   }
 
-  async getLockRecordsByUser(userAddr: string): Promise<LockRecord[]> {
+  async getLockRecordsByUser(ckbRecipientAddr: string): Promise<LockRecord[]> {
     return await this.connection
       .getRepository(CkbMint)
       .createQueryBuilder('ckb')
       .innerJoinAndSelect('eth_lock', 'eth', 'eth.tx_hash = ckb.id')
-      .where('eth.sender = :sender', { sender: userAddr })
+      .where('ckb.recipient_lockscript = :recipient', { recipient: ckbRecipientAddr })
       .select(
         `
         eth.sender as sender, 
@@ -65,7 +65,10 @@ export class EthDb implements IQuery {
         eth.amount as lock_amount,
         ckb.amount as mint_amount,
         eth.tx_hash as lock_hash,
-        ckb.mint_hash as mint_hash 
+        ckb.mint_hash as mint_hash,
+        eth.updated_at as lock_time, 
+        ckb.updated_at as mint_time, 
+        ckb.status as status 
       `,
       )
       .getRawMany();
@@ -76,7 +79,7 @@ export class EthDb implements IQuery {
       .getRepository(CkbBurn)
       .createQueryBuilder('ckb')
       .innerJoinAndSelect('eth_unlock', 'eth', 'eth.ckb_tx_hash = ckb.ckb_tx_hash')
-      .where("eth.status = 'success' and ckb.sender_lock_hash = :sender_lock_hash", {
+      .where('ckb.sender_lock_hash = :sender_lock_hash', {
         sender_lock_hash: ckbLockScriptHash,
       })
       .select(
@@ -86,7 +89,10 @@ export class EthDb implements IQuery {
         ckb.amount as burn_amount, 
         eth.amount as unlock_amount,
         ckb.ckb_tx_hash as burn_hash,
-        eth.eth_tx_hash as unlock_hash 
+        eth.eth_tx_hash as unlock_hash,
+        eth.updated_at as unlock_time, 
+        ckb.updated_at as burn_time, 
+        eth.status as status 
       `,
       )
       .getRawMany();

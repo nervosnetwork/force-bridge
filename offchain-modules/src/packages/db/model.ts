@@ -1,6 +1,6 @@
 import { EthUnlock } from '@force-bridge/db/entity/EthUnlock';
 import { CkbBurn } from '@force-bridge/db/entity/CkbBurn';
-import { CkbMint } from '@force-bridge/db/entity/CkbMint';
+import { CkbMint, dbTxStatus } from '@force-bridge/db/entity/CkbMint';
 import { BtcUnlock } from '@force-bridge/db/entity/BtcUnlock';
 import { BtcLock } from '@force-bridge/db/entity/BtcLock';
 import { EthLock } from '@force-bridge/db/entity/EthLock';
@@ -154,6 +154,9 @@ export interface LockRecord {
   mint_amount: string;
   lock_hash: string;
   mint_hash: string;
+  lock_time: number;
+  mint_time: number;
+  status: dbTxStatus;
 }
 
 export interface UnlockRecord {
@@ -163,9 +166,12 @@ export interface UnlockRecord {
   unlock_amount: string;
   burn_hash: string;
   unlock_hash: string;
+  burn_time: number;
+  unlock_time: number;
+  status: dbTxStatus;
 }
 
 export interface IQuery {
-  getLockRecordsByUser(userAddr: string): Promise<LockRecord[]>;
-  getUnlockRecordsByUser(ckbAddr: string): Promise<UnlockRecord[]>;
+  getLockRecordsByUser(ckbRecipientAddr: string): Promise<LockRecord[]>;
+  getUnlockRecordsByUser(ckbLockScriptHash: string): Promise<UnlockRecord[]>;
 }

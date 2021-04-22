@@ -1,6 +1,7 @@
 import { Entity, PrimaryColumn, CreateDateColumn, Column, UpdateDateColumn, Index } from 'typeorm';
+import { dbTxStatus } from '@force-bridge/db/entity/CkbMint';
 
-export type TronUnlockStatus = 'todo' | 'pending' | 'error' | 'success';
+export type TronUnlockStatus = dbTxStatus;
 
 @Entity()
 export class TronUnlock {

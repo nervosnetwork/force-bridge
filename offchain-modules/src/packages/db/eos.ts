@@ -53,12 +53,12 @@ export class EosDb implements IQuery {
     });
   }
 
-  async getLockRecordsByUser(userAddr: string): Promise<LockRecord[]> {
+  async getLockRecordsByUser(ckbRecipientAddr: string): Promise<LockRecord[]> {
     return await this.conn
       .getRepository(CkbMint)
       .createQueryBuilder('ckb')
       .innerJoinAndSelect('eos_lock', 'eos', 'eos.id = ckb.id')
-      .where('eos.sender = :sender', { sender: userAddr })
+      .where('ckb.recipient_lockscript = :recipient', { recipient: ckbRecipientAddr })
       .select(
         `
         eos.sender as sender, 
@@ -66,7 +66,10 @@ export class EosDb implements IQuery {
         eos.amount as lock_amount,
         ckb.amount as mint_amount,
         eos.id as lock_hash,
-        ckb.mint_hash as mint_hash 
+        ckb.mint_hash as mint_hash,
+        eos.updated_at as lock_time, 
+        ckb.updated_at as mint_time, 
+        ckb.status as status
       `,
       )
       .getRawMany();
@@ -77,7 +80,7 @@ export class EosDb implements IQuery {
       .getRepository(CkbBurn)
       .createQueryBuilder('ckb')
       .innerJoinAndSelect('eos_unlock', 'eos', 'eos.ckb_tx_hash = ckb.ckb_tx_hash')
-      .where("eos.status = 'success' and ckb.sender_lock_hash = :sender_lock_hash", {
+      .where('ckb.sender_lock_hash = :sender_lock_hash', {
         sender_lock_hash: ckbLockScriptHash,
       })
       .select(
@@ -87,7 +90,10 @@ export class EosDb implements IQuery {
         ckb.amount as burn_amount, 
         eos.amount as unlock_amount,
         ckb.ckb_tx_hash as burn_hash,
-        eos.eos_tx_hash as unlock_hash
+        eos.eos_tx_hash as unlock_hash,
+        eos.updated_at as unlock_time, 
+        ckb.updated_at as burn_time, 
+        eos.status as status
       `,
       )
       .getRawMany();

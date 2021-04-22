@@ -1,14 +1,7 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  PrimaryColumn,
-  Index,
-  CreateDateColumn,
-  UpdateDateColumn,
-} from 'typeorm';
+import { Entity, Column, PrimaryColumn, Index, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { dbTxStatus } from '@force-bridge/db/entity/CkbMint';
 
-export type EosUnlockStatus = 'todo' | 'pending' | 'error' | 'success';
+export type EosUnlockStatus = dbTxStatus;
 
 @Entity()
 export class EosUnlock {
