@@ -136,7 +136,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
 
     const amount = payload.asset.amount;
 
-    const ckbTxGenerator = new CkbTxGenerator(ForceBridgeCore.ckb, new IndexerCollector(ForceBridgeCore.indexer));
+    const ckbTxGenerator = new CkbTxGenerator(ForceBridgeCore.ckb, new IndexerCollector(ForceBridgeCore.ckbIndexer));
     const burnTx = await ckbTxGenerator.burn(fromLockscript, payload.recipient.address, asset, new Amount(amount));
     return {
       network: 'Nervos',

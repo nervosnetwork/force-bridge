@@ -5,7 +5,6 @@ import fetch from 'node-fetch/index';
 import { Config } from '../../packages/config';
 import { ForceBridgeCore } from '../../packages/core';
 import nconf from 'nconf';
-import { sign } from '@force-bridge/ckb/tx-helper/signer';
 
 import { abi } from '@force-bridge/xchain/eth/abi/ForceBridge.json';
 import { asyncSleep, stringToUint8Array, toHexString } from '@force-bridge/utils';
