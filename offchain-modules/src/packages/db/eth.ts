@@ -68,7 +68,8 @@ export class EthDb implements IQuery {
         ckb.mint_hash as mint_hash,
         eth.updated_at as lock_time, 
         ckb.updated_at as mint_time, 
-        ckb.status as status 
+        ckb.status as status,
+        ckb.asset as asset 
       `,
       )
       .getRawMany();
@@ -92,7 +93,8 @@ export class EthDb implements IQuery {
         eth.eth_tx_hash as unlock_hash,
         eth.updated_at as unlock_time, 
         ckb.updated_at as burn_time, 
-        eth.status as status 
+        eth.status as status,
+        ckb.asset as asset 
       `,
       )
       .getRawMany();

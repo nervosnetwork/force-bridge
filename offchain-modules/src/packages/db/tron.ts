@@ -69,7 +69,8 @@ export class TronDb implements IQuery {
         ckb.mint_hash as mint_hash,
         tron.updated_at as lock_time, 
         ckb.updated_at as mint_time,
-        ckb.status as status 
+        ckb.status as status,
+        ckb.asset as asset 
       `,
       )
       .getRawMany();
@@ -93,7 +94,8 @@ export class TronDb implements IQuery {
         tron.tron_tx_hash as unlock_hash,
         tron.updated_at as unlock_time, 
         ckb.updated_at as burn_time, 
-        tron.status as status
+        tron.status as status,
+        ckb.asset as asset
       `,
       )
       .getRawMany();

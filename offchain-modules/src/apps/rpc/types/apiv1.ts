@@ -14,11 +14,11 @@ export type TransactionSummary = {
   fromTransaction: TransactionIdent & { timestamp?: Timestamp };
   toTransaction: TransactionIdent & { timestamp?: Timestamp };
 };
-export type FailedTransactionSummary = { tx: TransactionSummary } & {
+export type FailedTransactionSummary = { txSummary: TransactionSummary } & {
   status: BridgeTransactionStatus.Failed;
   message: string;
 };
-export type UnFailedTransactionSummary = { tx: TransactionSummary } & {
+export type UnFailedTransactionSummary = { txSummary: TransactionSummary } & {
   status: BridgeTransactionStatus.Pending | BridgeTransactionStatus.Successful;
 };
 
@@ -55,6 +55,7 @@ export type SignedTransactionPayload<N extends AllNetworks> = {
 export type GetBridgeTransactionSummariesPayload = {
   userIdent: NervosNetwork['UserIdent'];
   network: XChainNetwork['Network'];
+  asset: XChainNetwork['AssetWithAmount'];
 };
 
 export type GetBalancePayload<N extends AllNetworks> = {
@@ -67,7 +68,7 @@ export type GetBalanceResponse<N extends AllNetworks> = {
   network: N['Network'];
   userIdent: N['UserIdent'];
   asset: N['AssetWithAmount'];
-}[];
+};
 
 export type GetBridgeTransactionStatusPayload<N extends AllNetworks> = {
   network: N['Network'];
