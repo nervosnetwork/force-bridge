@@ -16,8 +16,8 @@ eosCmd
   .requiredOption('-acc, --account', 'account to lock')
   .requiredOption('-p, --privateKey', 'private key of locked account on eos')
   .requiredOption('-a, --amount', 'amount to lock')
-  .requiredOption('-r, recipient', 'recipient address on ckb')
-  .option('-e, extra', 'extra data of sudt')
+  .requiredOption('-r, --recipient', 'recipient address on ckb')
+  .option('-e, --extra', 'extra data of sudt')
   .option('-w, --wait', 'whether waiting for transaction become irreversible')
   .action(doLock)
   .description('lock asset on eos');
@@ -39,7 +39,10 @@ eosCmd
   .action(doBalanceOf)
   .description('query balance of account on eos or ckb');
 
-async function doLock(opts: any, command: any) {
+async function doLock(
+  opts: { account: boolean; privateKey: boolean; amount: boolean; recipient: boolean; extra?: boolean; wait?: boolean },
+  command: commander.Command,
+) {
   const options = parseOptions(opts, command);
   const account = options.get('account');
   const privateKey = options.get('privateKey');
@@ -82,7 +85,10 @@ async function doLock(opts: any, command: any) {
   }
 }
 
-async function doUnlock(opts: any, command: any) {
+async function doUnlock(
+  opts: { recipient: boolean; privateKey: boolean; amount: boolean; wait?: boolean },
+  command: commander.Command,
+) {
   const options = parseOptions(opts, command);
   const recipientAddress = options.get('recipient');
   const amount = options.get('amount');
@@ -107,7 +113,10 @@ async function doUnlock(opts: any, command: any) {
   }
 }
 
-async function doBalanceOf(opts: any, command: any) {
+async function doBalanceOf(
+  opts: { address?: boolean; account?: boolean; detail?: boolean },
+  command: commander.Command,
+) {
   const options = parseOptions(opts, command);
   const account = options.get('account');
   const address = options.get('address');

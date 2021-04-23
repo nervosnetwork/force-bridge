@@ -17,13 +17,13 @@ ethCmd
   .requiredOption('-a, --amount', 'amount to lock')
   .requiredOption('-r, --recipient', 'recipient address on ckb')
   .option('-w, --wait', 'whether wait for transaction confirmed')
-  .option('-e, extra', 'extra data of sudt')
+  .option('-e, --extra', 'extra data of sudt')
   .action(doLock)
   .description('lock asset on eth');
 
 ethCmd
   .command('unlock')
-  .requiredOption('-r, recipient', 'recipient address on eth')
+  .requiredOption('-r, --recipient', 'recipient address on eth')
   .requiredOption('-p, --privateKey', 'private key of unlock address on ckb')
   .requiredOption('-a, --amount', 'amount of unlock')
   .option('-w, --wait', 'whether wait for transaction confirmed')
@@ -37,7 +37,10 @@ ethCmd
   .action(doBalanceOf)
   .description('query balance of address on eth or ckb');
 
-async function doLock(opts: any, command: any) {
+async function doLock(
+  opts: { privateKey: boolean; amount: boolean; recipient: boolean; wait?: boolean; extra?: boolean },
+  command: commander.Command,
+) {
   const options = parseOptions(opts, command);
   const privateKey = options.get('privateKey');
   const amount = options.get('amount');
@@ -63,7 +66,10 @@ async function doLock(opts: any, command: any) {
   }
 }
 
-async function doUnlock(opts: any, command: any) {
+async function doUnlock(
+  opts: { recipient: boolean; privateKey: boolean; amount: boolean; wait?: boolean },
+  command: commander.Command,
+) {
   const options = parseOptions(opts, command);
   const recipientAddress = options.get('recipient');
   const privateKey = options.get('privateKey');
@@ -89,7 +95,7 @@ async function doUnlock(opts: any, command: any) {
   }
 }
 
-async function doBalanceOf(opts: any, command: any) {
+async function doBalanceOf(opts: { address: boolean; origin?: boolean }, command: commander.Command) {
   const options = parseOptions(opts, command);
   const address = options.get('address');
 

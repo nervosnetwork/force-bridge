@@ -15,15 +15,15 @@ tronCmd
   .command('lock')
   .requiredOption('-p, --privateKey', 'private key of locked address')
   .requiredOption('-a, --amount', 'amount to lock')
-  .requiredOption('-r, recipient', 'recipient address on ckb')
+  .requiredOption('-r, --recipient', 'recipient address on ckb')
   .option('-w, --wait', 'whether waiting for transaction become irreversible')
-  .option('-e, extra', 'extra data of sudt')
+  .option('-e, --extra', 'extra data of sudt')
   .action(doLock)
   .description('lock asset on tron');
 
 tronCmd
   .command('unlock')
-  .requiredOption('-r, recipient', 'recipient address on tron')
+  .requiredOption('-r, --recipient', 'recipient address on tron')
   .requiredOption('-p, --privateKey', 'private key of unlock address on ckb')
   .requiredOption('-a, --amount', 'quantity of unlock')
   .option('-w, --wait', 'whether waiting for transaction confirmed')
@@ -37,7 +37,10 @@ tronCmd
   .action(doBalanceOf)
   .description('query balance of address on tron or ckb');
 
-async function doLock(opts: any, command: any) {
+async function doLock(
+  opts: { privateKey: boolean; amount: boolean; recipient: boolean; wait?: boolean; extra?: boolean },
+  command: commander.Command,
+) {
   const options = parseOptions(opts, command);
   const privateKey = options.get('privateKey');
   const amount = options.get('amount');
@@ -73,7 +76,10 @@ async function doLock(opts: any, command: any) {
   }
 }
 
-async function doUnlock(opts: any, command: any) {
+async function doUnlock(
+  opts: { recipient: boolean; privateKey: boolean; amount: boolean; wait?: boolean },
+  command: commander.Command,
+) {
   const options = parseOptions(opts, command);
   const recipientAddress = options.get('recipient');
   const amount = options.get('amount');
@@ -98,7 +104,7 @@ async function doUnlock(opts: any, command: any) {
   }
 }
 
-async function doBalanceOf(opts: any, command: any) {
+async function doBalanceOf(opts: { address: boolean; origin?: boolean }, command: commander.Command) {
   const options = parseOptions(opts, command);
   const address = options.get('address');
 

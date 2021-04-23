@@ -20,16 +20,16 @@ btcCmd
   .requiredOption('-p, --privateKey', 'private key of locked account')
   .requiredOption('-u, --userAddr', 'address on btc')
   .requiredOption('-a, --amount', 'amount to lock. unit is btc')
-  .requiredOption('-r, recipient', 'recipient address on ckb')
-  .option('-e, extra', 'extra data of sudt')
-  .option('--feeRate', 'satoshis/byte of tx data. default value will be from https://bitcoinfees.earn.com/#fees')
+  .requiredOption('-r, --recipient', 'recipient address on ckb')
+  .option('-e, --extra', 'extra data of sudt')
+  .option('-f, --feeRate', 'satoshis/byte of tx data. default value will be from https://bitcoinfees.earn.com/#fees')
   .option('-w, --wait', 'whether waiting for transaction confirmed')
   .action(doLock)
   .description('lock asset on btc');
 
 btcCmd
   .command('unlock')
-  .requiredOption('-r, recipient', 'recipient address on btc')
+  .requiredOption('-r, --recipient', 'recipient address on btc')
   .requiredOption('-p, --privateKey', 'private key of unlock address on ckb')
   .requiredOption('-a, --amount', 'amount of unlock. unit is btc')
   .option('-w, --wait', 'whether waiting for transaction confirmed')
@@ -43,7 +43,18 @@ btcCmd
   .action(doBalanceOf)
   .description('query balance of address on btc or ckb');
 
-async function doLock(opts: any, command: any) {
+async function doLock(
+  opts: {
+    privateKey: boolean;
+    userAddr: boolean;
+    amount: boolean;
+    recipient: boolean;
+    extra?: boolean;
+    feeRate?: boolean;
+    wait?: boolean;
+  },
+  command: commander.Command,
+) {
   const options = parseOptions(opts, command);
   const privateKey = options.get('privateKey');
   const amount = options.get('amount');
@@ -81,7 +92,10 @@ async function doLock(opts: any, command: any) {
   }
 }
 
-async function doUnlock(opts: any, command: any) {
+async function doUnlock(
+  opts: { recipient: boolean; privateKey: boolean; amount: boolean; wait?: boolean },
+  command: commander.Command,
+) {
   const options = parseOptions(opts, command);
   const recipientAddress = options.get('recipient');
   const privateKey = options.get('privateKey');
@@ -108,7 +122,7 @@ async function doUnlock(opts: any, command: any) {
   }
 }
 
-async function doBalanceOf(opts: any, command: any) {
+async function doBalanceOf(opts: { address: boolean; origin?: boolean }, command: commander.Command) {
   const options = parseOptions(opts, command);
   const address = options.get('address');
 
