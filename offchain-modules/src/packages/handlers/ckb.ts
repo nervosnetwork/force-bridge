@@ -395,14 +395,19 @@ export class CkbHandler {
     let waitTime = 0;
     while (true) {
       const txStatus = await this.ckb.rpc.getTransaction(txHash);
-      logger.debug(`tx ${txHash} status: ${txStatus.txStatus.status}, index: ${waitTime}`);
-      if (txStatus.txStatus.status === 'committed') {
-        return txStatus;
-      }
-      await asyncSleep(1000);
-      waitTime += 1;
-      if (waitTime >= timeout) {
-        return txStatus;
+      if (txStatus != undefined) {
+        logger.debug(`tx ${txHash} status: ${txStatus.txStatus.status}, index: ${waitTime}`);
+        if (txStatus.txStatus.status === 'committed') {
+          return txStatus;
+        }
+        await asyncSleep(1000);
+        waitTime += 1;
+        if (waitTime >= timeout) {
+          return txStatus;
+        }
+      } else {
+        logger.error('failed to call ckb rpc getTransaction');
+        await asyncSleep(1000);
       }
     }
   }
