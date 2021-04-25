@@ -5,6 +5,7 @@
   "scripts": {
     "start": "ts-node ./src/apps/relayer/index.ts",
     "rpc": "ts-node ./src/apps/rpc/index.ts",
+    "rpc-test": "ts-node ./src/scripts/integration-test/rpc.ts",
     "demo": "ts-node-dev scripts/demo.ts",
     "build": "tsc",
     "test": "ava",
