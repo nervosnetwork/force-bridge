@@ -199,8 +199,8 @@ async function main() {
       assert(eosUnlockRecord.recipientAddress == lockAccount);
       assert(eosUnlockRecord.asset === lockAsset);
       logger.debug('amount: ', eosUnlockRecord.amount);
-      logger.debug('amount: ', burnAmount.toString(4));
-      assert(eosUnlockRecord.amount === burnAmount.toString(4));
+      logger.debug('amount: ', burnAmount.toString(0));
+      assert(eosUnlockRecord.amount === burnAmount.toString(0));
       eosUnlockTxHash = eosUnlockRecord.eosTxHash;
       return true;
     },

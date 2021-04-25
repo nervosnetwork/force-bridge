@@ -49,7 +49,8 @@ export class EosHandler {
       this.config.bridgerAccount,
       record.recipientAddress,
       this.config.bridgerAccountPermission,
-      `${record.amount} ${record.asset}`,
+      //TODO using decimal according token precision
+      `${new Amount(record.amount, 0).toString(4)} ${record.asset}`,
       '',
       EosTokenAccount,
       {
@@ -218,7 +219,7 @@ export class EosHandler {
         logger.error('Eos empty bridger account private keys');
         return;
       }
-      let signatures = new Array();
+      let signatures = [];
       for (const pubKey of this.config.publicKeys) {
         const signedTx = await this.signatureProvider.sign({
           chainId: this.config.chainId,
