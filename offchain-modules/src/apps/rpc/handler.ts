@@ -209,6 +209,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     const ckbLockScript = ForceBridgeCore.ckb.utils.addressToScript(ckbAddress);
     const ckbLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>ckbLockScript);
     const assetName = payload.assetIdent;
+    // Todo: confirm the db connect problem
     const connection = await createConnection();
     let dbHandler: IQuery;
     let asset: Asset;
@@ -269,6 +270,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     for (const value of payload) {
       let balance: string;
       switch (value.network) {
+        // Todo: add other network
         case 'Ethereum':
           // Todo: query erc20 token balance
           const tokenAddress = value.assetIdent;
