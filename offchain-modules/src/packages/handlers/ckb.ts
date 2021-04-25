@@ -137,7 +137,7 @@ export class CkbHandler {
                 ckbTxHash: k,
                 asset: uint8ArrayToString(new Uint8Array(v.getAsset().raw())),
                 chain,
-                amount: Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.getAmount().raw()))}`).toString(4),
+                amount: Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.getAmount().raw()))}`).toString(0),
                 recipientAddress: uint8ArrayToString(new Uint8Array(v.getRecipientAddress().raw())),
                 blockNumber: latestHeight,
               };
