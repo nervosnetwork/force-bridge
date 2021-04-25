@@ -88,7 +88,8 @@ export class BtcDb implements IQuery {
         btc.updated_at as lock_time, 
         ckb.updated_at as mint_time, 
         ckb.status as status,
-        ckb.asset as asset
+        ckb.asset as asset,
+        ckb.message as message
       `,
       )
       .getRawMany();
@@ -113,7 +114,8 @@ export class BtcDb implements IQuery {
         btc.updated_at as unlock_time, 
         ckb.updated_at as burn_time, 
         btc.status as status,
-        ckb.asset as asset
+        ckb.asset as asset,
+        btc.message as message
       `,
       )
       .getRawMany();

@@ -33,6 +33,9 @@ export class CkbMint {
   @Column({ nullable: true })
   mintHash: string;
 
+  @Column({ type: 'text', nullable: true })
+  message: string;
+
   @CreateDateColumn()
   createdAt: string;
 

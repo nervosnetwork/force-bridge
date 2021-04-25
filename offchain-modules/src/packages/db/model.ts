@@ -158,6 +158,7 @@ export interface LockRecord {
   mint_time: number;
   status: dbTxStatus;
   asset: string;
+  message: string;
 }
 
 export interface UnlockRecord {
@@ -171,6 +172,7 @@ export interface UnlockRecord {
   unlock_time: number;
   status: dbTxStatus;
   asset: string;
+  message: string;
 }
 
 export interface IQuery {

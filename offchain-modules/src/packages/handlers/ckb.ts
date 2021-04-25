@@ -265,6 +265,7 @@ export class CkbHandler {
           mintRecords.map((r) => {
             r.status = 'error';
             r.mintHash = mintTxHash;
+            r.message = `mint execute failed.the tx status is ${txStatus.txStatus.status}`;
           });
           logger.error('mint execute failed: ', mintRecords);
         }
@@ -273,6 +274,7 @@ export class CkbHandler {
         logger.debug('mint execute failed:', e.toString());
         mintRecords.map((r) => {
           r.status = 'error';
+          r.message = e.toString();
         });
         await this.db.updateCkbMint(mintRecords);
       }

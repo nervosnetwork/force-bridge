@@ -24,7 +24,7 @@ export class EosUnlock {
   @Column({ default: 'todo' })
   status: EosUnlockStatus;
 
-  @Column({ default: '' })
+  @Column({ type: 'text', nullable: true })
   message: string;
 
   @CreateDateColumn()

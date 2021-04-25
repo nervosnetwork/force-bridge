@@ -33,7 +33,7 @@ export class TronUnlock {
   @Column({ default: 'todo' })
   status: string;
 
-  @Column({ default: '' })
+  @Column({ type: 'text', nullable: true })
   message: string;
 
   @CreateDateColumn()

@@ -24,7 +24,7 @@ export class EthUnlock {
   @Column({ default: 'todo' })
   status: EthUnlockStatus;
 
-  @Column({ default: '' })
+  @Column({ type: 'text', nullable: true })
   message: string;
 
   @CreateDateColumn()

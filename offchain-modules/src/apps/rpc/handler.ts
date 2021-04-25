@@ -18,13 +18,18 @@ import {
   TransactionSummaryWithStatus,
 } from './types/apiv1';
 import { IQuery, LockRecord, UnlockRecord } from '@force-bridge/db/model';
-import { EthDb } from '@force-bridge/db';
+import { EthDb, TronDb } from '@force-bridge/db';
+import { Connection, createConnection } from 'typeorm';
+import { EosDb } from '@force-bridge/db/eos';
+import { BtcDb } from '@force-bridge/db/btc';
+import { RPCClient } from 'rpc-bitcoin';
+import { IBalance } from '@force-bridge/xchain/btc';
 
 export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
-  conn;
-  constructor(conn) {
-    this.conn = conn;
-  }
+  // connection;
+  // constructor(conn) {
+  //   this.connection = conn;
+  // }
   /*
   async generateBridgeInNervosTransaction(
     payload: API.GenerateBridgeInTransactionPayload<EthereumNetwork>,
@@ -204,19 +209,29 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     const ckbLockScript = ForceBridgeCore.ckb.utils.addressToScript(ckbAddress);
     const ckbLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>ckbLockScript);
     const assetName = payload.assetIdent;
-
+    const connection = await createConnection();
     let dbHandler: IQuery;
     let asset: Asset;
     logger.debug(`XChainNetwork :  ${XChainNetwork}, userAddress:  ${ckbAddress}`);
-
     switch (XChainNetwork) {
+      case 'Bitcoin':
+        dbHandler = new BtcDb(connection);
+        asset = new BtcAsset(assetName, ckbLockHash);
+        break;
       case 'Ethereum':
-        dbHandler = new EthDb(this.conn);
+        dbHandler = new EthDb(connection);
         asset = new EthAsset(assetName, ckbLockHash);
         break;
+      case 'EOS':
+        dbHandler = new EosDb(connection);
+        asset = new EosAsset(assetName, ckbLockHash);
+        break;
+      case 'Tron':
+        dbHandler = new TronDb(connection);
+        asset = new TronAsset(assetName, ckbLockHash);
+        break;
       default:
-        //TODO: add other chains
-        Promise.reject(new Error('invalid chain type'));
+        throw new Error('invalid chain type');
     }
 
     // only query the txs which status is success or pending
@@ -236,20 +251,21 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     };
     let result: TransactionSummaryWithStatus[] = [];
     lockRecords.forEach((lockRecord) => {
-      const txSummaryWithStatus = transferDbRecordToResponse(sudtType, lockRecord);
+      const txSummaryWithStatus = transferDbRecordToResponse(XChainNetwork, sudtType, lockRecord);
       result.push(txSummaryWithStatus);
     });
     unlockRecords.forEach((unlockRecord) => {
-      const txSummaryWithStatus = transferDbRecordToResponse(sudtType, unlockRecord);
+      const txSummaryWithStatus = transferDbRecordToResponse(XChainNetwork, sudtType, unlockRecord);
       result.push(txSummaryWithStatus);
     });
+    await connection.close();
     return result;
   }
   async getAssetList(payload): Promise<any> {
     Promise.reject(new Error('not yet'));
   }
   async getBalance(payload: GetBalancePayload): Promise<GetBalanceResponse> {
-    let result: GetBalanceResponse;
+    let result: GetBalanceResponse = [];
     for (const value of payload) {
       let balance: string;
       switch (value.network) {
@@ -260,7 +276,16 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
           const provider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
           const eth_amount = await provider.getBalance(userAddress);
           console.log(`BalanceOf address:${userAddress} on ETH is ${eth_amount}`);
-          balance = eth_amount.toString();
+          balance = ethers.utils.formatEther(eth_amount);
+          break;
+        case 'Bitcoin':
+          const rpcClient = new RPCClient(ForceBridgeCore.config.btc.clientParams);
+          const liveUtxos: IBalance = await rpcClient.scantxoutset({
+            action: 'start',
+            scanobjects: [`addr(${value.userIdent})`],
+          });
+          console.log(`BalanceOf address:${value.userIdent} on BTC is ${liveUtxos.total_amount} btc`);
+          balance = liveUtxos.total_amount;
           break;
         case 'Nervos':
           const userScript = ForceBridgeCore.ckb.utils.addressToScript(value.userIdent);
@@ -280,7 +305,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
           const collector = new IndexerCollector(ForceBridgeCore.indexer);
           const sudt_amount = await collector.getSUDTBalance(
             new Script(sudtType.codeHash, sudtType.args, sudtType.hashType),
-            userScript,
+            new Script(userScript.codeHash, userScript.args, userScript.hashType),
           );
           balance = sudt_amount.toString();
           break;
@@ -296,6 +321,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
 }
 
 function transferDbRecordToResponse(
+  XChainNetwork: string,
   sudtType: UserLock,
   record: LockRecord | UnlockRecord,
 ): TransactionSummaryWithStatus {
@@ -304,7 +330,7 @@ function transferDbRecordToResponse(
     bridgeTxRecord = {
       txSummary: {
         fromAsset: {
-          network: 'Ethereum',
+          network: XChainNetwork,
           ident: record.asset,
           amount: record.lock_amount,
         },
@@ -326,7 +352,7 @@ function transferDbRecordToResponse(
           amount: record.burn_amount,
         },
         toAsset: {
-          network: 'Ethereum',
+          network: XChainNetwork,
           ident: record.asset,
           amount: record.unlock_amount,
         },
@@ -349,7 +375,7 @@ function transferDbRecordToResponse(
     case 'error':
       txSummaryWithStatus = {
         txSummary: bridgeTxRecord.txSummary,
-        message: '',
+        message: record.message,
         status: BridgeTransactionStatus.Failed,
       };
       break;

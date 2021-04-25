@@ -22,8 +22,8 @@ async function main() {
 
   const server = new JSONRPCServer();
 
-  const conn = await createConnection();
-  const forceBridgeRpc = new ForceBridgeAPIV1Handler(conn);
+  // const conn = await createConnection();
+  const forceBridgeRpc = new ForceBridgeAPIV1Handler();
   // First parameter is a method name.
   // Second parameter is a method itself.
   // A method takes JSON-RPC params and returns a result.
