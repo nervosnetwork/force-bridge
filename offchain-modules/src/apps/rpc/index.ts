@@ -45,9 +45,13 @@ async function main() {
   * */
   // @ts-ignore
   server.addMethod('echo', ({ text }) => text); //for test
+  /*
   server.addMethod('generateBridgeOutNervosTransaction', forceBridgeRpc.generateBridgeOutNervosTransaction);
   server.addMethod('generateBridgeInNervosTransaction', forceBridgeRpc.generateBridgeInNervosTransaction);
   server.addMethod('sendSignedTransaction', forceBridgeRpc.sendSignedTransaction);
+  */
+  server.addMethod('getBridgeTransactionSummaries', forceBridgeRpc.getBridgeTransactionSummaries);
+  server.addMethod('getBalance', forceBridgeRpc.getBalance);
 
   const app = express();
   app.use(bodyParser.json());
@@ -71,6 +75,7 @@ async function main() {
   });
 
   app.listen(rpcConfig.port);
+  logger.debug(`rpc server handler started on ${rpcConfig.port}  🚀`);
 }
 
 main();
