@@ -32,10 +32,12 @@ export class EosHandler {
   private db: EosDb;
   private config: EosConfig;
   private chain: EosChain;
+  private readonly signatureProvider: JsSignatureProvider;
   constructor(db: EosDb, config: EosConfig) {
     this.db = db;
     this.config = config;
-    this.chain = new EosChain(this.config.rpcUrl, new JsSignatureProvider(this.config.privateKeys));
+    this.signatureProvider = new JsSignatureProvider(this.config.privateKeys);
+    this.chain = new EosChain(this.config.rpcUrl, this.signatureProvider);
   }
 
   async getUnlockRecords(status: EosUnlockStatus): Promise<EosUnlock[]> {
@@ -47,13 +49,15 @@ export class EosHandler {
       this.config.bridgerAccount,
       record.recipientAddress,
       this.config.bridgerAccountPermission,
-      `${record.amount} ${record.asset}`,
+      //TODO using decimal according token precision
+      `${new Amount(record.amount, 0).toString(4)} ${record.asset}`,
       '',
       EosTokenAccount,
       {
         broadcast: false,
         blocksBehind: 3,
         expireSeconds: 30,
+        sign: false,
       },
     )) as PushTransactionArgs;
   }
@@ -210,13 +214,29 @@ export class EosHandler {
   async processUnLockEvents(records: EosUnlock[]) {
     for (const record of records) {
       record.status = 'pending';
-      const pushTxArgs = await this.buildUnlockTx(record);
-      const txHash = getTxIdFromSerializedTx(pushTxArgs.serializedTransaction);
+      const unlockTx = await this.buildUnlockTx(record);
+      if (this.config.privateKeys.length === 0) {
+        logger.error('Eos empty bridger account private keys');
+        return;
+      }
+      let signatures = [];
+      for (const pubKey of this.config.publicKeys) {
+        const signedTx = await this.signatureProvider.sign({
+          chainId: this.config.chainId,
+          requiredKeys: [pubKey],
+          serializedTransaction: unlockTx.serializedTransaction,
+          serializedContextFreeData: unlockTx.serializedContextFreeData,
+          abis: null,
+        });
+        signatures.push(signedTx.signatures[0]);
+      }
+      unlockTx.signatures = signatures;
+      const txHash = getTxIdFromSerializedTx(unlockTx.serializedTransaction);
       record.eosTxHash = txHash;
       await this.db.saveEosUnlock([record]); //save txHash first
       let txRes: TransactResult;
       try {
-        txRes = await this.chain.pushSignedTransaction(pushTxArgs);
+        txRes = await this.chain.pushSignedTransaction(unlockTx);
         logger.info(
           `EosHandler pushSignedTransaction ckbTxHash:${record.ckbTxHash} receiver:${record.recipientAddress} eosTxhash:${record.eosTxHash} amount:${record.amount} asset:${record.asset}`,
         );

@@ -16,6 +16,10 @@
       "chainId": "2a02a0053e5a8cf73a56ba0fda11e4d92e0238a4a2aa74fccf46d5a910746840",
       "bridgerAccount": "ericwang1112",
       "bridgerAccountPermission": "active",
+      "publicKeys": [
+        "EOS4z7R4woUWaU2srBqqJFcj7TLnig4X8LHnq7wvJkkNcM1dKnF4X",
+        "EOS6DdTKJaPCkuePnRh55qE875hQUdt5yH47v9838cLAnYVUZtVBF"
+      ],
       "privateKeys": [
         "5KjR55Q7UJpRnUx8zBdNaUC4P2573BsNLJaMR9o9wrJryYYXWU2",
         "5KQG4541B1FtDC11gu3NrErWniqTaPHBpmikSztnX8m36sK5px5"
