@@ -6,10 +6,12 @@ import {
   GetAccountResult,
   GetActionsResult,
   GetBlockResult,
+  GetCurrencyStatsResult,
   GetInfoResult,
   GetTransactionResult,
   PushTransactionArgs,
 } from 'eosjs/dist/eosjs-rpc-interfaces';
+import { EosAssetAmount, getPrecisionFromAmount } from '@force-bridge/xchain/eos/utils';
 
 export class EosChain {
   private readonly rpc: JsonRpc;
@@ -41,6 +43,16 @@ export class EosChain {
 
   transact(transaction: Transaction, transactCfg?: TransactConfig): Promise<TransactResult | PushTransactionArgs> {
     return this.api.transact(transaction, transactCfg);
+  }
+
+  getCurrencyStats(symbol: string, code: string): Promise<GetCurrencyStatsResult> {
+    return this.rpc.get_currency_stats(code, symbol);
+  }
+
+  async getCurrencyPrecision(symbol: string, code: string = 'eosio.token'): Promise<number> {
+    const stats = await this.getCurrencyStats(symbol, code);
+    const assetAmount = EosAssetAmount.assetAmountFromQuantity(stats[symbol].supply);
+    return assetAmount.Precision;
   }
 
   async transfer(
