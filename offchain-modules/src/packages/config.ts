@@ -39,6 +39,7 @@ export interface EosConfig {
   chainId: string;
   bridgerAccount: string;
   bridgerAccountPermission: string;
+  publicKeys: string[];
   privateKeys: string[];
   latestGlobalActionSeq: number;
   onlyWatchIrreversibleBlock: boolean;
