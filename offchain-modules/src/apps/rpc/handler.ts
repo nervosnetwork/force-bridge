@@ -1,8 +1,8 @@
 import { CkbTxGenerator } from '@force-bridge/ckb/tx-helper/generator';
 import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
-import { Asset, EthAsset } from '@force-bridge/ckb/model/asset';
-import { AddressPrefix, Amount, Script } from '@lay2/pw-core';
-import { AllNetworks, API, EthereumNetwork, NervosNetwork, UserLock } from './types';
+import { Asset, BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '@force-bridge/ckb/model/asset';
+import { Amount, Script } from '@lay2/pw-core';
+import { API, NervosNetwork, UserLock, AllNetworks } from './types';
 import { ForceBridgeCore } from '@force-bridge/core';
 import { logger } from '@force-bridge/utils/logger';
 
@@ -25,6 +25,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
   constructor(conn) {
     this.conn = conn;
   }
+  /*
   async generateBridgeInNervosTransaction(
     payload: API.GenerateBridgeInTransactionPayload<EthereumNetwork>,
   ): Promise<API.GenerateTransactionResponse<EthereumNetwork>> {
@@ -193,19 +194,16 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         Promise.reject(new Error('not yet'));
     }
   }
+  */
+
   async getBridgeTransactionSummaries(
     payload: GetBridgeTransactionSummariesPayload,
   ): Promise<TransactionSummaryWithStatus[]> {
     const XChainNetwork = payload.network;
-    const fromLockscript = Script.fromRPC({
-      code_hash: payload.userIdent.codeHash,
-      args: payload.userIdent.args,
-      hash_type: payload.userIdent.hashType,
-    });
-
-    const ckbLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>fromLockscript);
-    const ckbAddress = fromLockscript.toAddress(AddressPrefix.ckt);
-    const assetName = payload.asset.ident.address;
+    const ckbAddress = payload.userIdent;
+    const ckbLockScript = ForceBridgeCore.ckb.utils.addressToScript(ckbAddress);
+    const ckbLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>ckbLockScript);
+    const assetName = payload.assetIdent;
 
     let dbHandler: IQuery;
     let asset: Asset;
@@ -214,7 +212,6 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     switch (XChainNetwork) {
       case 'Ethereum':
         dbHandler = new EthDb(this.conn);
-        // Todo : confirm payload.network params which should contain eth token address ?
         asset = new EthAsset(assetName, ckbLockHash);
         break;
       default:
@@ -223,7 +220,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     }
 
     // only query the txs which status is success or pending
-    const lockRecords = await dbHandler.getLockRecordsByUser(ckbAddress.toCKBAddress());
+    const lockRecords = await dbHandler.getLockRecordsByUser(ckbAddress);
     const unlockRecords = await dbHandler.getUnlockRecordsByUser(ckbLockHash);
 
     const bridgeCellLockscript = {
@@ -251,40 +248,36 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
   async getAssetList(payload): Promise<any> {
     Promise.reject(new Error('not yet'));
   }
-  async getBalance(
-    payload: (GetBalancePayload<NervosNetwork> | GetBalancePayload<EthereumNetwork>)[],
-  ): Promise<(GetBalanceResponse<NervosNetwork> | GetBalanceResponse<EthereumNetwork>)[]> {
-    let result: (GetBalanceResponse<NervosNetwork> | GetBalanceResponse<EthereumNetwork>)[];
+  async getBalance(payload: GetBalancePayload): Promise<GetBalanceResponse> {
+    let result: GetBalanceResponse;
     for (const value of payload) {
       let balance: string;
       switch (value.network) {
         case 'Ethereum':
           // Todo: query erc20 token balance
-          const tokenAddress = value.assetIdent.address;
-          const userAddress = value.userIdent.address;
+          const tokenAddress = value.assetIdent;
+          const userAddress = value.userIdent;
           const provider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
           const eth_amount = await provider.getBalance(userAddress);
           console.log(`BalanceOf address:${userAddress} on ETH is ${eth_amount}`);
           balance = eth_amount.toString();
           break;
         case 'Nervos':
-          const assetScript = Script.fromRPC({
-            code_hash: value.assetIdent.codeHash,
-            args: value.assetIdent.args,
-            hash_type: value.assetIdent.hashType,
-          });
-          const userScript = Script.fromRPC({
-            code_hash: value.userIdent.codeHash,
-            args: value.userIdent.args,
-            hash_type: value.userIdent.hashType,
-          });
-          const collector = new IndexerCollector(ForceBridgeCore.indexer);
-          const sudtArgs = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>assetScript);
+          const userScript = ForceBridgeCore.ckb.utils.addressToScript(value.userIdent);
+          const ownLockHash = ForceBridgeCore.ckb.utils.scriptToHash(userScript);
+          const asset = getTokenAsset(ownLockHash, 'Ethereum', value.assetIdent);
+          const bridgeCellLockscript = {
+            codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
+            hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
+            args: asset.toBridgeLockscriptArgs(),
+          };
+          const sudtArgs = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
           const sudtType = {
             codeHash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
             hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
             args: sudtArgs,
           };
+          const collector = new IndexerCollector(ForceBridgeCore.indexer);
           const sudt_amount = await collector.getSUDTBalance(
             new Script(sudtType.codeHash, sudtType.args, sudtType.hashType),
             userScript,
@@ -292,16 +285,11 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
           balance = sudt_amount.toString();
           break;
       }
-      const data: GetBalanceResponse<any> = {
+      result.push({
         network: value.network,
-        userIdent: value.userIdent,
-        asset: {
-          amount: balance,
-          ident: value.assetIdent,
-          network: value.network,
-        },
-      };
-      result.push(data);
+        ident: value.assetIdent,
+        amount: balance,
+      });
     }
     return result;
   }
@@ -314,33 +302,37 @@ function transferDbRecordToResponse(
   let bridgeTxRecord: TransactionSummary;
   if ('lock_hash' in record) {
     bridgeTxRecord = {
-      fromAsset: {
-        network: 'Ethereum',
-        ident: { address: record.asset },
-        amount: record.lock_amount,
+      txSummary: {
+        fromAsset: {
+          network: 'Ethereum',
+          ident: record.asset,
+          amount: record.lock_amount,
+        },
+        toAsset: {
+          network: 'Nervos',
+          ident: record.asset,
+          amount: record.mint_amount,
+        },
+        fromTransaction: { txId: record.lock_hash, timestamp: record.lock_time },
+        toTransaction: { txId: record.mint_hash, timestamp: record.mint_time },
       },
-      toAsset: {
-        network: 'Nervos',
-        ident: sudtType,
-        amount: record.mint_amount,
-      },
-      fromTransaction: { txId: record.lock_hash, timestamp: record.lock_time },
-      toTransaction: { txId: record.mint_hash, timestamp: record.mint_time },
     };
   } else if ('burn_hash' in record) {
     bridgeTxRecord = {
-      fromAsset: {
-        network: 'Nervos',
-        ident: sudtType,
-        amount: record.burn_amount,
+      txSummary: {
+        fromAsset: {
+          network: 'Nervos',
+          ident: record.asset,
+          amount: record.burn_amount,
+        },
+        toAsset: {
+          network: 'Ethereum',
+          ident: record.asset,
+          amount: record.unlock_amount,
+        },
+        fromTransaction: { txId: record.burn_hash, timestamp: record.burn_time },
+        toTransaction: { txId: record.unlock_hash, timestamp: record.unlock_time },
       },
-      toAsset: {
-        network: 'Ethereum',
-        ident: { address: record.asset },
-        amount: record.unlock_amount,
-      },
-      fromTransaction: { txId: record.burn_hash, timestamp: record.burn_time },
-      toTransaction: { txId: record.unlock_hash, timestamp: record.unlock_time },
     };
   } else {
     throw new Error(`the params record ${JSON.stringify(record, null, 2)} is unexpect`);
@@ -349,16 +341,42 @@ function transferDbRecordToResponse(
   switch (record.status) {
     case 'todo':
     case 'pending':
-      txSummaryWithStatus = { txSummary: bridgeTxRecord, status: BridgeTransactionStatus.Pending };
+      txSummaryWithStatus = { txSummary: bridgeTxRecord.txSummary, status: BridgeTransactionStatus.Pending };
       break;
     case 'success':
-      txSummaryWithStatus = { txSummary: bridgeTxRecord, status: BridgeTransactionStatus.Successful };
+      txSummaryWithStatus = { txSummary: bridgeTxRecord.txSummary, status: BridgeTransactionStatus.Successful };
       break;
     case 'error':
-      txSummaryWithStatus = { txSummary: bridgeTxRecord, message: '', status: BridgeTransactionStatus.Failed };
+      txSummaryWithStatus = {
+        txSummary: bridgeTxRecord.txSummary,
+        message: '',
+        status: BridgeTransactionStatus.Failed,
+      };
       break;
     default:
       throw new Error(`${record.status} which mean the tx status is unexpect`);
   }
   return txSummaryWithStatus;
+}
+
+function getTokenAsset(ownLockHash: string, network: string, tokenAddress?: string): Asset {
+  let asset: Asset;
+  switch (network) {
+    case 'Bitcoin':
+      asset = new BtcAsset('btc', ownLockHash);
+      break;
+    case 'EOS':
+      asset = new EosAsset('EOS', ownLockHash);
+      break;
+    case 'Ethereum':
+      asset = new EthAsset(tokenAddress, ownLockHash);
+      break;
+    case 'Tron':
+      asset = new TronAsset(tokenAddress, ownLockHash);
+      break;
+    default:
+      logger.warn(`chain type is ${network} which not support yet.`);
+      return;
+  }
+  return asset;
 }
