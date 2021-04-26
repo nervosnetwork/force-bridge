@@ -16,6 +16,10 @@ export class EosAssetAmount {
     const res = quantity.match(/^(\d+\.\d+)\s*(\w+)?$/i);
     return new EosAssetAmount(res[1], res[2], getPrecisionFromAmount(res[1]));
   }
+
+  toString(): string {
+    return `${this.Amount} ${this.Asset}`;
+  }
 }
 
 export function getTxIdFromSerializedTx(serializedTx: Uint8Array): string {

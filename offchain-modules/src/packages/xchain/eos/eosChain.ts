@@ -49,6 +49,10 @@ export class EosChain {
     return this.rpc.get_currency_stats(code, symbol);
   }
 
+  getCurrencyBalance(account: string, symbol: string, code: string = 'eosio.token'): Promise<string[]> {
+    return this.rpc.get_currency_balance(code, account, symbol);
+  }
+
   async getCurrencyPrecision(symbol: string, code: string = 'eosio.token'): Promise<number> {
     const stats = await this.getCurrencyStats(symbol, code);
     const assetAmount = EosAssetAmount.assetAmountFromQuantity(stats[symbol].supply);
