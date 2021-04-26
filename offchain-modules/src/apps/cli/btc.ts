@@ -1,6 +1,6 @@
 import commander from 'commander';
-import { parseOptions } from './utils';
-import { BtcAsset } from '../../packages/ckb/model/asset';
+import { getSudtBalance, parseOptions, waitUnlockTxCompleted } from './utils';
+import { BtcAsset, TronAsset } from '../../packages/ckb/model/asset';
 import { Account } from '../../packages/ckb/model/accounts';
 import { CkbTxGenerator } from '../../packages/ckb/tx-helper/generator';
 import { IndexerCollector } from '../../packages/ckb/tx-helper/collector';
@@ -10,6 +10,7 @@ import { ForceBridgeCore } from '../../packages/core';
 import { BTCChain, getBtcMainnetFee, IBalance } from '../../packages/xchain/btc';
 import bitcore from 'bitcore-lib';
 import { RPCClient } from 'rpc-bitcoin';
+import { asyncSleep } from '@force-bridge/utils';
 
 const Unit = bitcore.Unit;
 
@@ -19,28 +20,41 @@ btcCmd
   .requiredOption('-p, --privateKey', 'private key of locked account')
   .requiredOption('-u, --userAddr', 'address on btc')
   .requiredOption('-a, --amount', 'amount to lock. unit is btc')
-  .requiredOption('-r, recipient', 'recipient address on ckb')
-  .option('-e, extra', 'extra data of sudt')
-  .option('--feeRate', 'satoshis/byte of tx data. default value will be from https://bitcoinfees.earn.com/#fees')
+  .requiredOption('-r, --recipient', 'recipient address on ckb')
+  .option('-e, --extra', 'extra data of sudt')
+  .option('-f, --feeRate', 'satoshis/byte of tx data. default value will be from https://bitcoinfees.earn.com/#fees')
+  .option('-w, --wait', 'whether waiting for transaction confirmed')
   .action(doLock)
   .description('lock asset on btc');
 
 btcCmd
   .command('unlock')
-  .requiredOption('-r, recipient', 'recipient address on btc')
+  .requiredOption('-r, --recipient', 'recipient address on btc')
   .requiredOption('-p, --privateKey', 'private key of unlock address on ckb')
   .requiredOption('-a, --amount', 'amount of unlock. unit is btc')
+  .option('-w, --wait', 'whether waiting for transaction confirmed')
   .action(doUnlock)
   .description('unlock asset on btc');
 
 btcCmd
   .command('balanceOf')
-  .option('-p, --privateKey', 'private key of locked address on ckb. unit is btc')
-  .option('-addr, --address', 'address on btc. unit is btc')
+  .requiredOption('-addr, --address', 'address on btc or ckb')
+  .option('-o, --origin', 'whether query balance on btc')
   .action(doBalanceOf)
-  .description('query balance of address on btc');
+  .description('query balance of address on btc or ckb');
 
-async function doLock(opts: any, command: any) {
+async function doLock(
+  opts: {
+    privateKey: boolean;
+    userAddr: boolean;
+    amount: boolean;
+    recipient: boolean;
+    extra?: boolean;
+    feeRate?: boolean;
+    wait?: boolean;
+  },
+  command: commander.Command,
+) {
   const options = parseOptions(opts, command);
   const privateKey = options.get('privateKey');
   const amount = options.get('amount');
@@ -63,9 +77,25 @@ async function doLock(opts: any, command: any) {
     txFeeRate,
   );
   logger.debug(`user ${userAddr} lock ${amount} btc. the lock tx hash is ${lockTxHash} after block ${lockStartHeight}`);
+
+  if (opts.wait) {
+    console.log('Waiting for transaction confirmed...');
+    while (true) {
+      await asyncSleep(3000);
+      const txOut = await btcChain.getTxOut(lockTxHash, 0);
+      if (txOut.confirmations >= 3) {
+        console.log(txOut);
+        break;
+      }
+      console.log('Lock success.');
+    }
+  }
 }
 
-async function doUnlock(opts: any, command: any) {
+async function doUnlock(
+  opts: { recipient: boolean; privateKey: boolean; amount: boolean; wait?: boolean },
+  command: commander.Command,
+) {
   const options = parseOptions(opts, command);
   const recipientAddress = options.get('recipient');
   const privateKey = options.get('privateKey');
@@ -73,7 +103,7 @@ async function doUnlock(opts: any, command: any) {
 
   const account = new Account(privateKey);
   const generator = new CkbTxGenerator(ForceBridgeCore.ckb, new IndexerCollector(ForceBridgeCore.indexer));
-  const burnAmount = new Amount(Unit.fromBTC(amount).toSatoshis());
+  const burnAmount = new Amount(Unit.fromBTC(amount).toSatoshis(), 0);
   const ownLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
   const burnTx = await generator.burn(
     await account.getLockscript(),
@@ -86,44 +116,30 @@ async function doUnlock(opts: any, command: any) {
   console.log(
     `Address:${account.address} unlock ${amount} , recipientAddress:${recipientAddress}, burnTxHash:${burnTxHash}`,
   );
+
+  if (opts.wait) {
+    await waitUnlockTxCompleted(burnTxHash);
+  }
 }
 
-async function doBalanceOf(opts: any, command: any) {
+async function doBalanceOf(opts: { address: boolean; origin?: boolean }, command: commander.Command) {
   const options = parseOptions(opts, command);
   const address = options.get('address');
-  const privateKey = options.get('privateKey');
-  if (!address && !privateKey) {
-    console.log('address or privateKey are required');
-    return;
-  }
-  if (address) {
+
+  if (opts.origin) {
     const rpcClient = new RPCClient(ForceBridgeCore.config.btc.clientParams);
     const liveUtxos: IBalance = await rpcClient.scantxoutset({
       action: 'start',
       scanobjects: [`addr(${address})`],
     });
     console.log(`BalanceOf address:${address} on BTC is ${liveUtxos.total_amount} btc`);
+    return;
   }
-  if (privateKey) {
-    const collector = new IndexerCollector(ForceBridgeCore.indexer);
-    const account = new Account(privateKey);
-    const ownLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
-    const asset = new BtcAsset('btc', ownLockHash);
-    const bridgeCellLockscript = {
-      codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
-      hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
-      args: asset.toBridgeLockscriptArgs(),
-    };
-    const sudtArgs = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
-    const sudtType = {
-      codeHash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
-      hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
-      args: sudtArgs,
-    };
-    const balance = await collector.getSUDTBalance(
-      new Script(sudtType.codeHash, sudtType.args, sudtType.hashType),
-      await account.getLockscript(),
-    );
-    console.log(`BalanceOf address:${account.address} on ckb is ${Unit.fromSatoshis(balance).toBTC()} xbtc`);
-  }
+
+  const ownLockHash = ForceBridgeCore.ckb.utils.scriptToHash(
+    <CKBComponents.Script>ForceBridgeCore.ckb.utils.addressToScript(address),
+  );
+  const asset = new BtcAsset('btc', ownLockHash);
+  const balance = await getSudtBalance(address, asset);
+  console.log(`BalanceOf address:${address} on ckb is ${Unit.fromSatoshis(balance.toString(0)).toBTC()} btc`);
 }

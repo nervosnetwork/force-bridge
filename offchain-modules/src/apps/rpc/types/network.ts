@@ -47,7 +47,7 @@ export type NervosNetwork = NetworkTypes<{
   // TODO
   RawTransaction: CKBComponents.RawTransactionToSign;
   // TODO
-  SignedTransaction: string;
+  SignedTransaction: CKBComponents.Transaction;
 }>;
 
 export type EthereumNetwork = NetworkTypes<{

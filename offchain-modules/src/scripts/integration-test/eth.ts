@@ -3,7 +3,7 @@ import { ethers } from 'ethers';
 import nconf from 'nconf';
 import { Config, EthConfig } from '@force-bridge/config';
 import { logger } from '@force-bridge/utils/logger';
-import { asyncSleep, stringToUint8Array, toHexString } from '@force-bridge/utils';
+import { asyncSleep, fromHexString, stringToUint8Array, toHexString, uint8ArrayToString } from '@force-bridge/utils';
 import { createConnection } from 'typeorm';
 import { CkbDb, EthDb } from '@force-bridge/db';
 import { ETH_ADDRESS } from '@force-bridge/xchain/eth';
@@ -113,9 +113,9 @@ async function main() {
     assert(ethLockRecord.sender === wallet.address);
     assert(ethLockRecord.token === ETH_ADDRESS);
     assert(ethLockRecord.amount === amount.toString());
-    logger.debug('ethLockRecords', ethLockRecord.recipientLockscript);
+    logger.debug('ethLockRecords', ethLockRecord.recipient);
     logger.debug('ethLockRecords', `0x${toHexString(recipientLockscript)}`);
-    assert(ethLockRecord.recipientLockscript === `0x${toHexString(recipientLockscript)}`);
+    assert(ethLockRecord.recipient === `${uint8ArrayToString(recipientLockscript)}`);
 
     const ckbMintRecords = await conn.manager.find(CkbMint, {
       where: {
@@ -130,7 +130,7 @@ async function main() {
     assert(ckbMintRecord.status === 'success');
     assert(ckbMintRecord.asset === ETH_ADDRESS);
     assert(ckbMintRecord.amount === amount.toString());
-    assert(ckbMintRecord.recipientLockscript === `0x${toHexString(recipientLockscript)}`);
+    assert(ckbMintRecord.recipientLockscript === `${uint8ArrayToString(recipientLockscript)}`);
 
     // check sudt balance.
     const account = new Account(PRI_KEY);

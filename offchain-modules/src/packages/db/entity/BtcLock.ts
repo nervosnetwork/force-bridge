@@ -1,4 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, PrimaryColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  PrimaryColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+  Index,
+} from 'typeorm';
 
 @Entity()
 export class BtcLock {
@@ -7,6 +15,10 @@ export class BtcLock {
 
   @Column()
   txHash: string;
+
+  @Index()
+  @Column()
+  sender: string;
 
   @Column()
   amount: string;

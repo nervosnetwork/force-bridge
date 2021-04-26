@@ -135,8 +135,8 @@ async function main() {
         await account.getLockscript(),
       );
 
-      logger.debug('sudt balance:', balance);
-      logger.debug('expect balance:', new Amount(lockAmount, 4));
+      logger.debug('sudt balance:', balance.toString(4));
+      logger.debug('expect balance:', new Amount(lockAmount, 4).toString(4));
       return balance.eq(new Amount(lockAmount, 4));
     },
     1000 * 10,

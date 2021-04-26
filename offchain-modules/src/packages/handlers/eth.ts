@@ -1,6 +1,6 @@
 import { EthDb } from '../db';
 import { logger } from '../utils/logger';
-import { asyncSleep } from '../utils';
+import { asyncSleep, fromHexString, uint8ArrayToString } from '../utils';
 import { abi } from '../xchain/eth/abi/ForceBridge.json';
 import { ForceBridgeCore } from '../core';
 import { ethers } from 'ethers';
@@ -25,7 +25,7 @@ export class EthHandler {
           chain: ChainType.ETH,
           amount: parsedLog.args.lockedAmount.toString(),
           asset: parsedLog.args.token,
-          recipientLockscript: parsedLog.args.recipientLockscript,
+          recipientLockscript: uint8ArrayToString(fromHexString(parsedLog.args.recipientLockscript)),
           sudtExtraData: parsedLog.args.sudtExtraData,
         },
       ]);
@@ -34,7 +34,7 @@ export class EthHandler {
           txHash: log.transactionHash,
           amount: parsedLog.args.lockedAmount.toString(),
           token: parsedLog.args.token,
-          recipientLockscript: parsedLog.args.recipientLockscript,
+          recipient: uint8ArrayToString(fromHexString(parsedLog.args.recipientLockscript)),
           sudtExtraData: parsedLog.args.sudtExtraData,
           blockNumber: log.blockNumber,
           blockHash: log.blockHash,
