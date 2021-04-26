@@ -305,7 +305,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
             new Script(sudtType.codeHash, sudtType.args, sudtType.hashType),
             new Script(userScript.codeHash, userScript.args, userScript.hashType),
           );
-          balance = sudt_amount.toString();
+          balance = sudt_amount.toString(0);
           break;
         case 'EOS':
           // Todo: add EOS Balance query
