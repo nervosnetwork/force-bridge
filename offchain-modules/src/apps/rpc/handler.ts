@@ -1,33 +1,28 @@
 import { CkbTxGenerator } from '@force-bridge/ckb/tx-helper/generator';
 import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
-import { EthAsset } from '@force-bridge/ckb/model/asset';
+import { EthAsset, TronAsset } from '@force-bridge/ckb/model/asset';
 import { Amount } from '@lay2/pw-core';
-import { API, NervosNetwork, EthereumNetwork, AllNetworks } from './types';
+import { API, NetworkBase, NetworkTypes, EthereumNetwork } from './types';
 import { ForceBridgeCore } from '@force-bridge/core';
-import { Script } from '@lay2/pw-core';
 import { logger } from '@force-bridge/utils/logger';
 
 import { ethers } from 'ethers';
 import { abi } from '@force-bridge/xchain/eth/abi/ForceBridge.json';
 import { stringToUint8Array } from '@force-bridge/utils';
-import { JsonRpc } from 'eosjs';
 
 export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
   conn;
   constructor(conn) {
     this.conn = conn;
   }
-  async generateBridgeInNervosTransaction(
-    payload: API.GenerateBridgeInTransactionPayload<EthereumNetwork>,
-  ): Promise<API.GenerateTransactionResponse<EthereumNetwork>> {
+
+  async generateBridgeInNervosTransaction<T extends NetworkTypes>(
+    payload: API.GenerateBridgeInTransactionPayload,
+  ): Promise<API.GenerateTransactionResponse<T>> {
     logger.info('generateBridgeInNervosTransaction ', payload);
 
     const sender = payload.sender;
-    const recipientLockscript = Script.fromRPC({
-      code_hash: payload.recipient.codeHash,
-      args: payload.recipient.args,
-      hash_type: payload.recipient.hashType,
-    });
+    const recipientLockscript = ForceBridgeCore.ckb.utils.addressToScript(payload.recipient);
 
     const network = payload.asset.network;
     let tx;
@@ -40,7 +35,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         const ethAmount = ethers.utils.parseUnits(payload.asset.amount, 0);
         const recipient = stringToUint8Array(recipientLockscript.toAddress().toCKBAddress());
 
-        switch (payload.asset.ident.address) {
+        switch (payload.asset.ident) {
           // TODO: use EthereumModel.isNativeAsset to identify token
           case '0x0000000000000000000000000000000000000000':
             tx = await bridge.populateTransaction.lockETH(recipient, sudtExtraData, {
@@ -48,7 +43,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
             });
             break;
           default:
-            tx = bridge.populateTransaction.lockToken(payload.asset.ident.address, ethAmount, recipient, sudtExtraData);
+            tx = bridge.populateTransaction.lockToken(payload.asset.ident, ethAmount, recipient, sudtExtraData);
             break;
         }
         break;
@@ -97,7 +92,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     }
     const bridgeFee = {
       network: network,
-      ident: { address: payload.asset.ident.address },
+      ident: payload.asset.ident,
       amount: '1',
     };
     return {
@@ -107,58 +102,57 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     };
   }
 
-  async generateBridgeOutNervosTransaction(
-    payload: API.GenerateBridgeOutNervosTransactionPayload<EthereumNetwork>,
-  ): Promise<API.GenerateTransactionResponse<NervosNetwork>> {
+  async generateBridgeOutNervosTransaction<T extends NetworkTypes>(
+    payload: API.GenerateBridgeOutNervosTransactionPayload,
+  ): Promise<API.GenerateTransactionResponse<T>> {
     logger.info('generateBridgeOutNervosTransaction ', payload);
-    const fromLockscript = Script.fromRPC({
-      code_hash: payload.sender.codeHash,
-      args: payload.sender.args,
-      hash_type: payload.sender.hashType,
-    });
+    const fromLockscript = ForceBridgeCore.ckb.utils.addressToScript(payload.sender);
     const ownLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>fromLockscript);
 
     const network = payload.network;
-    const assetName = payload.asset.ident.address;
+    const assetName = payload.asset;
 
     let asset;
     switch (network) {
       case 'Ethereum':
         asset = new EthAsset(assetName, ownLockHash);
         break;
-      // case 'Tron':
-      //   asset = new TronAsset(assetName, ownLockHash);
-      //   break;
+      case 'Tron':
+        asset = new TronAsset(assetName, ownLockHash);
+        break;
       default:
         //TODO: add other chains
         Promise.reject(new Error('invalid chain type'));
     }
 
-    const amount = payload.asset.amount;
+    const amount = payload.amount;
 
     const ckbTxGenerator = new CkbTxGenerator(ForceBridgeCore.ckb, new IndexerCollector(ForceBridgeCore.indexer));
-    const burnTx = await ckbTxGenerator.burn(fromLockscript, payload.recipient.address, asset, new Amount(amount));
+    const burnTx = await ckbTxGenerator.burn(fromLockscript, payload.recipient, asset, new Amount(amount));
     return {
       network: 'Nervos',
       rawTransaction: burnTx,
-      bridgeFee: { network: 'Nervos', ident: undefined, amount: '0' },
+      bridgeFee: { network: 'Nervos', ident: 'ckb', amount: '0' },
     };
   }
 
-  async sendSignedTransaction(payload: API.SignedTransactionPayload<AllNetworks>): Promise<API.TransactionIdent> {
-    const network = payload.network;
-    let txId;
-    switch (network) {
-      case 'Nervos':
-        txId = await ForceBridgeCore.ckb.rpc.sendTransaction(JSON.parse(payload.signedTransaction));
-        break;
-      case 'Ethereum':
-        const provider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
-        txId = (await provider.sendTransaction(payload.signedTransaction)).hash;
-        break;
-      default:
-        Promise.reject(new Error('not yet'));
-    }
+  async sendSignedTransaction<T extends NetworkBase>(
+    payload: API.SignedTransactionPayload<T>,
+  ): Promise<API.TransactionIdent> {
+    // const network = payload.network;
+    // let txId;
+    // switch (network) {
+    //   case 'Nervos':
+    //     txId = await ForceBridgeCore.ckb.rpc.sendTransaction(JSON.parse(payload.signedTransaction));
+    //     break;
+    //   case 'Ethereum':
+    //     const provider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
+    //     txId = (await provider.sendTransaction(ethPayload.signedTransaction)).hash;
+    //     break;
+    //   default:
+    //     Promise.reject(new Error('not yet'));
+    // }
+    const txId = '00';
     return { txId: txId };
   }
 

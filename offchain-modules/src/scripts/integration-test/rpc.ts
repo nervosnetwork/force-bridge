@@ -5,10 +5,7 @@ import fetch from 'node-fetch/index';
 import { Config } from '../../packages/config';
 import { ForceBridgeCore } from '../../packages/core';
 import nconf from 'nconf';
-import { sign } from '@force-bridge/ckb/tx-helper/signer';
-
-import { abi } from '@force-bridge/xchain/eth/abi/ForceBridge.json';
-import { asyncSleep, stringToUint8Array, toHexString } from '@force-bridge/utils';
+import { Account } from '@force-bridge/ckb/model/accounts';
 
 const CKB_PRI_KEY = process.env.PRI_KEY || '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
 
@@ -110,6 +107,8 @@ async function main() {
   const config: Config = nconf.get('forceBridge');
   // init bridge force core
   await new ForceBridgeCore().init(config);
+
+  const account = new Account(PRI_KEY);
 
   const publicKey = ForceBridgeCore.ckb.utils.privateKeyToPublicKey(CKB_PRI_KEY);
   const { secp256k1Dep } = await ForceBridgeCore.ckb.loadDeps();
