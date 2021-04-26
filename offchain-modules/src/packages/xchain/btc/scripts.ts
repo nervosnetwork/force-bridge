@@ -57,7 +57,8 @@ export class BTCChain {
       let waitVerifyTxs = block.tx.slice(1);
       for (let txIndex = 0; txIndex < waitVerifyTxs.length; txIndex++) {
         const txVouts = waitVerifyTxs[txIndex].vout;
-        const ckbBurnTxHashes: string[] = await this.getUnlockTxData(waitVerifyTxs[txIndex].vin, txVouts);
+        const txVins = waitVerifyTxs[txIndex].vin;
+        const ckbBurnTxHashes: string[] = await this.getUnlockTxData(txVins, txVouts);
         if (ckbBurnTxHashes.length != 0) {
           logger.debug(
             `verify for unlock event. block ${blockHeight} tx ${waitVerifyTxs[txIndex].hash}. find ckb burn hashes:  ${ckbBurnTxHashes}`,
@@ -76,6 +77,7 @@ export class BTCChain {
             txIndex: txIndex,
             amount: Unit.fromBTC(txVouts[0].value).toSatoshis(),
             data: Buffer.from(txVouts[1].scriptPubKey.hex.substring(4), 'hex').toString(),
+            sender: await this.getInputAddress(txVins),
           };
           logger.debug(`verify for lock event. btc lock data: ${JSON.stringify(data, null, 2)}`);
           await handleLockAsyncFunc(data);
@@ -106,11 +108,9 @@ export class BTCChain {
     const utxos = getVins(liveUtxos, BigInt(amount));
     if (utxos.length === 0) {
       throw new Error(
-        `the unspend utxo is not enough for lock. need : ${amount}. actual uxtos :  ${JSON.stringify(
-          liveUtxos,
-          null,
-          2,
-        )}`,
+        `the unspent utxo is not enough for lock. need : ${amount}. actual :${Unit.fromBTC(
+          liveUtxos.total_amount,
+        ).toSatoshis()}`,
       );
     }
     const transactionWithoutFee = new bitcore.Transaction()
@@ -166,11 +166,9 @@ export class BTCChain {
     const utxos = getVins(liveUtxos, VinNeedAmount);
     if (utxos.length === 0) {
       throw new Error(
-        `the unspend utxo is no for unlock. need : ${VinNeedAmount}. actual uxtos : ${JSON.stringify(
-          liveUtxos,
-          null,
-          2,
-        )}`,
+        `the unspent utxo is not enough for unlock. need : ${VinNeedAmount}. actual amount : ${Unit.fromBTC(
+          liveUtxos.total_amount,
+        ).toSatoshis()}`,
       );
     }
 
@@ -264,6 +262,12 @@ export class BTCChain {
       }
     }
     return false;
+  }
+
+  async getInputAddress(txVins: IVin[]): Promise<string> {
+    let inputRawTx: ITx = await this.rpcClient.getrawtransaction({ txid: txVins[0].txid, verbose: true });
+    let txSenders = inputRawTx.vout[txVins[0].vout].scriptPubKey.addresses;
+    return txSenders[0];
   }
 }
 

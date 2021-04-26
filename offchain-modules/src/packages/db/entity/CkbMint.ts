@@ -1,6 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, PrimaryColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, Column, PrimaryColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
-export type CkbMintStatus = 'todo' | 'pending' | 'success' | 'error';
+export type dbTxStatus = 'todo' | 'pending' | 'success' | 'error';
+export type CkbMintStatus = dbTxStatus;
 
 @Entity()
 export class CkbMint {
@@ -27,7 +28,13 @@ export class CkbMint {
   sudtExtraData: string;
 
   @Column({ default: 'todo' })
-  status: string;
+  status: CkbMintStatus;
+
+  @Column({ nullable: true })
+  mintHash: string;
+
+  @Column({ type: 'text', nullable: true })
+  message: string;
 
   @CreateDateColumn()
   createdAt: string;
