@@ -9,6 +9,10 @@ import { ForceBridgeAPIV1Handler } from './handler';
 import { ForceBridgeCore } from '@force-bridge/core';
 import { Config } from '@force-bridge/config';
 import { createConnection } from 'typeorm';
+import {
+  GetBalancePayload,
+  GetBridgeTransactionSummariesPayload,
+} from './types/apiv1';
 
 const forceBridgePath = '/force-bridge/api/v1';
 
@@ -22,8 +26,8 @@ async function main() {
 
   const server = new JSONRPCServer();
 
-  // const conn = await createConnection();
-  const forceBridgeRpc = new ForceBridgeAPIV1Handler();
+  const conn = await createConnection();
+  const forceBridgeRpc = new ForceBridgeAPIV1Handler(conn);
   // First parameter is a method name.
   // Second parameter is a method itself.
   // A method takes JSON-RPC params and returns a result.
@@ -50,8 +54,12 @@ async function main() {
   server.addMethod('generateBridgeInNervosTransaction', forceBridgeRpc.generateBridgeInNervosTransaction);
   server.addMethod('sendSignedTransaction', forceBridgeRpc.sendSignedTransaction);
   */
-  server.addMethod('getBridgeTransactionSummaries', forceBridgeRpc.getBridgeTransactionSummaries);
-  server.addMethod('getBalance', forceBridgeRpc.getBalance);
+  server.addMethod('getBridgeTransactionSummaries', async (payload: GetBridgeTransactionSummariesPayload) => {
+    return await forceBridgeRpc.getBridgeTransactionSummaries(payload);
+  });
+  server.addMethod('getBalance', async (payload: GetBalancePayload) => {
+    return await forceBridgeRpc.getBalance(payload);
+  });
 
   const app = express();
   app.use(bodyParser.json());
