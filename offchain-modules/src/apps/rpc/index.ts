@@ -9,10 +9,7 @@ import { ForceBridgeAPIV1Handler } from './handler';
 import { ForceBridgeCore } from '@force-bridge/core';
 import { Config } from '@force-bridge/config';
 import { createConnection } from 'typeorm';
-import {
-  GetBalancePayload,
-  GetBridgeTransactionSummariesPayload,
-} from './types/apiv1';
+import { GetBalancePayload, GetBridgeTransactionSummariesPayload } from './types/apiv1';
 
 const forceBridgePath = '/force-bridge/api/v1';
 
