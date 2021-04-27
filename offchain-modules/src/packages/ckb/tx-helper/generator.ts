@@ -346,7 +346,7 @@ export class CkbTxGenerator {
         depType: ForceBridgeCore.config.ckb.deps.recipientType.cellDep.depType,
       },
     ];
-    if (ForceBridgeCore.config.ckb.deps.pwLocks.cellDep.outPoint != undefined) {
+    if (ForceBridgeCore.config.ckb.deps.pwLocks != undefined) {
       cellDeps.push({
         outPoint: ForceBridgeCore.config.ckb.deps.pwLocks.cellDep.outPoint,
         depType: ForceBridgeCore.config.ckb.deps.pwLocks.cellDep.depType,
