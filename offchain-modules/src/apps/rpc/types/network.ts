@@ -3,8 +3,10 @@
 // types naming conventions:
 // XIdent: the ident of the X resource, e.g. type ERC20Ident = { address: '0x...' }
 // XInfo: the ident with network e.g. type type ERC20Info = { network: 'Ethereum', address: '0x...' }
-export const NERVOS_NETWORK = 'Nervos' as const;
-export type NetworkKeyNervos = typeof NERVOS_NETWORK;
+
+import { ethers } from 'ethers';
+import { NetworkKeyNervos } from '../constants';
+
 // number without decimals, e.g. 0x123aaa(Hex), 12547(Decimal)
 // do NOT use such values like, 1.225, 0.22
 export type AmountWithoutDecimals = string;
@@ -43,9 +45,9 @@ export type NervosNetwork = NetworkTypes<{
   DerivedAssetIdent: string;
   UserIdent: string;
   // TODO
-  RawTransaction: unknown;
+  RawTransaction: CKBComponents.RawTransactionToSign;
   // TODO
-  SignedTransaction: unknown;
+  SignedTransaction: CKBComponents.Transaction;
 }>;
 
 export type EthereumNetwork = NetworkTypes<{
@@ -56,10 +58,10 @@ export type EthereumNetwork = NetworkTypes<{
   // address
   UserIdent: string;
   // TODO
-  RawTransaction: unknown;
+  RawTransaction: ethers.PopulatedTransaction;
   // TODO
-  SignedTransaction: unknown;
+  SignedTransaction: string;
 }>;
 
-export type AllNetworks = NervosNetwork | EthereumNetwork;
+// export type AllNetworks = NervosNetwork | EthereumNetwork;
 export type XChainNetwork = EthereumNetwork;
