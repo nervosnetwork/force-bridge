@@ -1,5 +1,5 @@
 import commander from 'commander';
-import { getSudtBalance, parseOptions } from './utils';
+import { getSudtBalance, parseOptions, waitUnlockTxCompleted } from './utils';
 import { ethers } from 'ethers';
 import { abi } from '../../packages/xchain/eth/abi/ForceBridge.json';
 import { EthAsset } from '../../packages/ckb/model/asset';
@@ -8,33 +8,39 @@ import { CkbTxGenerator } from '../../packages/ckb/tx-helper/generator';
 import { IndexerCollector } from '../../packages/ckb/tx-helper/collector';
 import { Amount } from '@lay2/pw-core';
 import { ForceBridgeCore } from '../../packages/core';
+import { formatEther } from 'ethers/lib/utils';
 
 export const ethCmd = new commander.Command('eth');
 ethCmd
   .command('lock')
   .requiredOption('-p, --privateKey', 'private key of locked account')
   .requiredOption('-a, --amount', 'amount to lock')
-  .requiredOption('-r, recipient', 'recipient address on ckb')
-  .option('-e, extra', 'extra data of sudt')
+  .requiredOption('-r, --recipient', 'recipient address on ckb')
+  .option('-w, --wait', 'whether wait for transaction confirmed')
+  .option('-e, --extra', 'extra data of sudt')
   .action(doLock)
   .description('lock asset on eth');
 
 ethCmd
   .command('unlock')
-  .requiredOption('-r, recipient', 'recipient address on eth')
+  .requiredOption('-r, --recipient', 'recipient address on eth')
   .requiredOption('-p, --privateKey', 'private key of unlock address on ckb')
   .requiredOption('-a, --amount', 'amount of unlock')
+  .option('-w, --wait', 'whether wait for transaction confirmed')
   .action(doUnlock)
   .description('unlock asset on eth');
 
 ethCmd
   .command('balanceOf')
-  .option('-p, --privateKey', 'private key of locked address on ckb')
-  .option('-addr, --address', 'address on eth')
+  .requiredOption('-addr, --address', 'address on eth or ckb')
+  .option('-o, --origin', 'whether query balance on eth')
   .action(doBalanceOf)
-  .description('query balance of address on eth');
+  .description('query balance of address on eth or ckb');
 
-async function doLock(opts: any, command: any) {
+async function doLock(
+  opts: { privateKey: boolean; amount: boolean; recipient: boolean; wait?: boolean; extra?: boolean },
+  command: commander.Command,
+) {
   const options = parseOptions(opts, command);
   const privateKey = options.get('privateKey');
   const amount = options.get('amount');
@@ -53,9 +59,17 @@ async function doLock(opts: any, command: any) {
   });
   console.log(`Address:${lockRes.from} locked:${amount} eth, recipient:${recipient} extra:${extra}`);
   console.log(lockRes);
+  if (opts.wait) {
+    console.log('Waiting for transaction confirmed...');
+    await lockRes.wait(3);
+    console.log('Lock success.');
+  }
 }
 
-async function doUnlock(opts: any, command: any) {
+async function doUnlock(
+  opts: { recipient: boolean; privateKey: boolean; amount: boolean; wait?: boolean },
+  command: commander.Command,
+) {
   const options = parseOptions(opts, command);
   const recipientAddress = options.get('recipient');
   const privateKey = options.get('privateKey');
@@ -68,7 +82,7 @@ async function doUnlock(opts: any, command: any) {
     await account.getLockscript(),
     recipientAddress,
     new EthAsset('0x0000000000000000000000000000000000000000', ownLockHash),
-    new Amount(ethers.utils.parseEther(amount).toString()),
+    new Amount(ethers.utils.parseEther(amount).toString(), 0),
   );
 
   const signedTx = ForceBridgeCore.ckb.signTransaction(privateKey)(burnTx);
@@ -76,26 +90,26 @@ async function doUnlock(opts: any, command: any) {
   console.log(
     `Address:${account.address} unlock ${amount} eth, recipientAddress:${recipientAddress}, burnTxHash:${burnTxHash}`,
   );
+  if (opts.wait) {
+    await waitUnlockTxCompleted(burnTxHash);
+  }
 }
 
-async function doBalanceOf(opts: any, command: any) {
+async function doBalanceOf(opts: { address: boolean; origin?: boolean }, command: commander.Command) {
   const options = parseOptions(opts, command);
   const address = options.get('address');
-  const privateKey = options.get('privateKey');
-  if (!address && !privateKey) {
-    console.log('address or privateKey are required');
-    return;
-  }
-  if (address) {
+
+  if (opts.origin) {
     const provider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
     const balanceOf = await provider.getBalance(address);
     console.log(`BalanceOf address:${address} on ETH is ${balanceOf}`);
+    return;
   }
-  if (privateKey) {
-    const account = new Account(privateKey);
-    const ownLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
-    const asset = new EthAsset('0x0000000000000000000000000000000000000000', ownLockHash);
-    const balance = await getSudtBalance(privateKey, asset);
-    console.log(`BalanceOf address:${account.address} on ckb is ${balance}`);
-  }
+
+  const ownLockHash = ForceBridgeCore.ckb.utils.scriptToHash(
+    <CKBComponents.Script>ForceBridgeCore.ckb.utils.addressToScript(address),
+  );
+  const asset = new EthAsset('0x0000000000000000000000000000000000000000', ownLockHash);
+  const balance = await getSudtBalance(address, asset);
+  console.log(`BalanceOf address:${address} on ckb is ${formatEther(balance.toString(0))}`);
 }

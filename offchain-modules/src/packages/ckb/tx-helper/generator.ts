@@ -346,7 +346,12 @@ export class CkbTxGenerator {
         depType: ForceBridgeCore.config.ckb.deps.recipientType.cellDep.depType,
       },
     ];
-
+    if (ForceBridgeCore.config.ckb.deps.pwLocks.cellDep.outPoint != undefined) {
+      cellDeps.push({
+        outPoint: ForceBridgeCore.config.ckb.deps.pwLocks.cellDep.outPoint,
+        depType: ForceBridgeCore.config.ckb.deps.pwLocks.cellDep.depType,
+      });
+    }
     const rawTx = {
       version: '0x0',
       cellDeps,

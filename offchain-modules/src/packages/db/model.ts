@@ -1,6 +1,6 @@
 import { EthUnlock } from '@force-bridge/db/entity/EthUnlock';
 import { CkbBurn } from '@force-bridge/db/entity/CkbBurn';
-import { CkbMint } from '@force-bridge/db/entity/CkbMint';
+import { CkbMint, dbTxStatus } from '@force-bridge/db/entity/CkbMint';
 import { BtcUnlock } from '@force-bridge/db/entity/BtcUnlock';
 import { BtcLock } from '@force-bridge/db/entity/BtcLock';
 import { EthLock } from '@force-bridge/db/entity/EthLock';
@@ -27,13 +27,14 @@ export interface IEthLock {
   sender: string;
   token: string;
   amount: string;
-  recipientLockscript: string;
+  recipient: string;
   sudtExtraData?: string;
   blockNumber: number;
   blockHash: string;
 }
 
 export interface ICkbBurn {
+  senderLockHash: string;
   ckbTxHash: string;
   chain: number;
   asset: string;
@@ -91,7 +92,7 @@ export function EthLock2CkbMint(record: EthLock): CkbMint {
     chain: ChainType.ETH,
     amount: record.amount,
     asset: record.token,
-    recipientLockscript: record.recipientLockscript,
+    recipientLockscript: record.recipient,
     sudtExtraData: record.sudtExtraData,
   });
 }
@@ -130,6 +131,7 @@ export function EosLock2CkbMint(record: IEosLock): CkbMint {
 export interface IBtcLock {
   txid: string;
   txHash: string;
+  sender: string;
   amount: string;
   rawTx: string;
   data: string;
@@ -143,4 +145,37 @@ export interface IBtcUnLock {
   asset: string;
   amount: string;
   recipientAddress: string;
+}
+
+export interface LockRecord {
+  sender: string;
+  recipient: string;
+  lock_amount: string;
+  mint_amount: string;
+  lock_hash: string;
+  mint_hash: string;
+  lock_time: number;
+  mint_time: number;
+  status: dbTxStatus;
+  asset: string;
+  message: string;
+}
+
+export interface UnlockRecord {
+  sender: string;
+  recipient: string;
+  burn_amount: string;
+  unlock_amount: string;
+  burn_hash: string;
+  unlock_hash: string;
+  burn_time: number;
+  unlock_time: number;
+  status: dbTxStatus;
+  asset: string;
+  message: string;
+}
+
+export interface IQuery {
+  getLockRecordsByUser(ckbRecipientAddr: string): Promise<LockRecord[]>;
+  getUnlockRecordsByUser(ckbLockScriptHash: string): Promise<UnlockRecord[]>;
 }

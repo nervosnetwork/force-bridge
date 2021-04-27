@@ -23,6 +23,7 @@ export interface CkbConfig {
     bridgeLock: ConfigItem;
     recipientType: ConfigItem;
     sudtType: ConfigItem;
+    pwLocks: ConfigItem;
   };
 }
 

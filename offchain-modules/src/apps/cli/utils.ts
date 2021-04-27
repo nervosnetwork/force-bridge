@@ -1,10 +1,10 @@
 import nconf from 'nconf';
 import { ForceBridgeCore } from '../../packages/core';
 import { Config } from '../../packages/config';
-import { Account } from '../../packages/ckb/model/accounts';
 import { Asset } from '../../packages/ckb/model/asset';
 import { IndexerCollector } from '../../packages/ckb/tx-helper/collector';
 import { Amount, Script } from '@lay2/pw-core';
+import { asyncSleep } from '@force-bridge/utils';
 
 export async function initConfig() {
   const configPath = process.env.CONFIG_PATH || './config-cli.json';
@@ -23,8 +23,7 @@ export function parseOptions(args: any, command: any): Map<string, string> {
   return optionMap;
 }
 
-export async function getSudtBalance(privateKey: string, asset: Asset): Promise<Amount> {
-  const account = new Account(privateKey);
+export async function getSudtBalance(address: string, asset: Asset): Promise<Amount> {
   const bridgeCellLockscript = {
     codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
     hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
@@ -37,9 +36,23 @@ export async function getSudtBalance(privateKey: string, asset: Asset): Promise<
     args: sudtArgs,
   };
 
+  const userScript = ForceBridgeCore.ckb.utils.addressToScript(address);
   const collector = new IndexerCollector(ForceBridgeCore.ckbIndexer);
   return await collector.getSUDTBalance(
     new Script(sudtType.codeHash, sudtType.args, sudtType.hashType),
-    await account.getLockscript(),
+    new Script(userScript.codeHash, userScript.args, userScript.hashType),
   );
+}
+
+export async function waitUnlockTxCompleted(txhash: string) {
+  console.log('Waiting for transaction confirmed...');
+  while (true) {
+    await asyncSleep(5000);
+    const txRes = await ForceBridgeCore.ckb.rpc.getTransaction(txhash);
+    console.log(`Tx status:${txRes.txStatus.status}`);
+    if (txRes.txStatus.status === 'committed') {
+      console.log('Unlock success.');
+      break;
+    }
+  }
 }
