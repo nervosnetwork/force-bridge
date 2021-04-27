@@ -37,6 +37,7 @@ export class BtcHandler {
                 txid: btcLockEventData.txId,
                 txIndex: btcLockEventData.txIndex,
                 txHash: btcLockEventData.txHash,
+                sender: btcLockEventData.sender,
                 rawTx: btcLockEventData.rawTx,
                 amount: btcLockEventData.amount,
                 data: btcLockEventData.data,

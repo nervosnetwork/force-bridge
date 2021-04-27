@@ -1,6 +1,7 @@
 import { Entity, Column, PrimaryColumn, Index, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { dbTxStatus } from '@force-bridge/db/entity/CkbMint';
 
-export type BtcUnlockStatus = 'todo' | 'pending' | 'error' | 'success';
+export type BtcUnlockStatus = dbTxStatus;
 
 @Entity()
 export class BtcUnlock {

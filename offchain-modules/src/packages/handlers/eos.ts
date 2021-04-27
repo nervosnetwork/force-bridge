@@ -49,7 +49,8 @@ export class EosHandler {
       this.config.bridgerAccount,
       record.recipientAddress,
       this.config.bridgerAccountPermission,
-      `${record.amount} ${record.asset}`,
+      //TODO using decimal according token precision
+      `${new Amount(record.amount, 0).toString(4)} ${record.asset}`,
       '',
       EosTokenAccount,
       {
@@ -62,104 +63,107 @@ export class EosHandler {
   }
 
   async watchLockEvents() {
-    try {
-      //check chain id
-      const curBlockInfo = await this.chain.getCurrentBlockInfo();
-      if (curBlockInfo.chain_id != this.config.chainId) {
-        logger.error(`EosHandler chainId:${curBlockInfo.chain_id} doesn't match with:${this.config.chainId}`);
-        return;
+    //check chain id
+    const curBlockInfo = await this.chain.getCurrentBlockInfo();
+    if (curBlockInfo.chain_id != this.config.chainId) {
+      logger.error(`EosHandler chainId:${curBlockInfo.chain_id} doesn't match with:${this.config.chainId}`);
+      return;
+    }
+
+    let latestActionSeq = await this.db.getLastedGlobalActionSeq();
+    if (latestActionSeq < this.config.latestGlobalActionSeq && this.config.latestGlobalActionSeq !== 0) {
+      latestActionSeq = this.config.latestGlobalActionSeq;
+    }
+
+    let pos = 0;
+    const offset = 20;
+    while (true) {
+      if (pos < 0) {
+        pos = 0;
+        await asyncSleep(3000);
       }
 
-      let latestActionSeq = await this.db.getLastedGlobalActionSeq();
-      if (latestActionSeq < this.config.latestGlobalActionSeq && this.config.latestGlobalActionSeq !== 0) {
-        latestActionSeq = this.config.latestGlobalActionSeq;
+      let actions;
+      try {
+        actions = await this.chain.getActions(this.config.bridgerAccount, pos, offset);
+      } catch (e) {
+        logger.error(`EosHandler getActions pos:${pos} offset:${offset} error:${e}`);
+        await asyncSleep(3000);
+        continue;
       }
 
-      let pos = 0;
-      const offset = 20;
-      while (true) {
-        if (pos < 0) {
-          pos = 0;
-          await asyncSleep(3000);
-        }
+      const actLen = actions.actions.length;
+      if (actLen === 0) {
+        pos -= offset;
+        continue;
+      }
 
-        const actions = await this.chain.getActions(this.config.bridgerAccount, pos, offset);
-        const actLen = actions.actions.length;
-        if (actLen === 0) {
-          pos -= offset;
+      const firstAction = actions.actions[0];
+      if (latestActionSeq < 0) {
+        //init
+        latestActionSeq = firstAction.global_action_seq;
+      }
+      const lastAction = actions.actions[actLen - 1];
+      if (lastAction.global_action_seq > latestActionSeq) {
+        pos += offset;
+        continue;
+      }
+      if (firstAction.global_action_seq < latestActionSeq) {
+        pos -= offset;
+        continue;
+      }
+
+      let hasReversibleAction = false;
+      for (let i = actLen - 1; i >= 0; i--) {
+        const action = actions.actions[i];
+        if (action.global_action_seq <= latestActionSeq) {
           continue;
         }
-
-        const firstAction = actions.actions[0];
-        if (latestActionSeq < 0) {
-          //init
-          latestActionSeq = firstAction.global_action_seq;
+        if (this.config.onlyWatchIrreversibleBlock && action.block_num > actions.last_irreversible_block) {
+          hasReversibleAction = true;
+          break;
         }
-        const lastAction = actions.actions[actLen - 1];
-        if (lastAction.global_action_seq > latestActionSeq) {
-          pos += offset;
+        latestActionSeq = action.global_action_seq;
+
+        const actionTrace = action.action_trace;
+        const act = actionTrace.act;
+        if (act.account !== EosTokenAccount || act.name !== EosTokenTransferActionName) {
           continue;
         }
-        if (firstAction.global_action_seq < latestActionSeq) {
-          pos -= offset;
+        const data = act.data;
+        if (data.to !== this.config.bridgerAccount) {
           continue;
         }
-
-        let hasReversibleAction = false;
-        for (let i = actLen - 1; i >= 0; i--) {
-          const action = actions.actions[i];
-          if (action.global_action_seq <= latestActionSeq) {
-            continue;
-          }
-          if (this.config.onlyWatchIrreversibleBlock && action.block_num > actions.last_irreversible_block) {
-            hasReversibleAction = true;
-            break;
-          }
-          latestActionSeq = action.global_action_seq;
-
-          const actionTrace = action.action_trace;
-          const act = actionTrace.act;
-          if (act.account !== EosTokenAccount || act.name !== EosTokenTransferActionName) {
-            continue;
-          }
-          const data = act.data;
-          if (data.to !== this.config.bridgerAccount) {
-            continue;
-          }
-          const amountAsset = EosAssetAmount.assetAmountFromQuantity(data.quantity);
-          const lockEvent = {
-            TxHash: actionTrace.trx_id,
-            ActionIndex: actionTrace.action_ordinal,
-            BlockNumber: actionTrace.block_num,
-            AccountActionSeq: action.account_action_seq,
-            GlobalActionSeq: action.global_action_seq,
-            Asset: amountAsset.Asset,
-            From: data.from,
-            To: data.to,
-            Amount: amountAsset.Amount,
-            Memo: data.memo,
-          };
-          logger.info(
-            `EosHandler watched transfer blockNumber:${actionTrace.block_num} globalActionSeq:${action.global_action_seq} txHash:${actionTrace.trx_id} from:${data.from} to:${data.to} amount:${lockEvent.Amount} asset:${lockEvent.Asset} memo:${data.memo}`,
+        const amountAsset = EosAssetAmount.assetAmountFromQuantity(data.quantity);
+        const lockEvent = {
+          TxHash: actionTrace.trx_id,
+          ActionIndex: actionTrace.action_ordinal,
+          BlockNumber: actionTrace.block_num,
+          AccountActionSeq: action.account_action_seq,
+          GlobalActionSeq: action.global_action_seq,
+          Asset: amountAsset.Asset,
+          From: data.from,
+          To: data.to,
+          Amount: amountAsset.Amount,
+          Memo: data.memo,
+        };
+        logger.info(
+          `EosHandler watched transfer blockNumber:${actionTrace.block_num} globalActionSeq:${action.global_action_seq} txHash:${actionTrace.trx_id} from:${data.from} to:${data.to} amount:${lockEvent.Amount} asset:${lockEvent.Asset} memo:${data.memo}`,
+        );
+        try {
+          await this.processLockEvent(lockEvent);
+        } catch (err) {
+          logger.error(
+            `EosHandler process eosLock event failed. blockNumber:${actionTrace.block_num} globalActionSeq:${action.global_action_seq} tx:${lockEvent.TxHash} from:${lockEvent.From} amount:${lockEvent.Amount} asset:${lockEvent.Asset} memo:${lockEvent.Memo} error:${err}.`,
           );
-          try {
-            await this.processLockEvent(lockEvent);
-          } catch (err) {
-            logger.error(
-              `EosHandler process eosLock event failed. blockNumber:${actionTrace.block_num} globalActionSeq:${action.global_action_seq} tx:${lockEvent.TxHash} from:${lockEvent.From} amount:${lockEvent.Amount} asset:${lockEvent.Asset} memo:${lockEvent.Memo} error:${err}.`,
-            );
-          }
-        }
-        if (hasReversibleAction) {
-          //wait actions become irreversible
-          await asyncSleep(3000);
-        } else {
-          pos -= offset;
         }
       }
-    } catch (e) {
-      logger.error('EosHandler watchLockEvents error:', e);
-      setTimeout(this.watchLockEvents, 3000);
+      if (hasReversibleAction) {
+        //wait actions become irreversible
+        await asyncSleep(3000);
+      } else {
+        pos -= offset;
+      }
     }
   }
 
@@ -195,18 +199,18 @@ export class EosHandler {
   }
 
   async watchUnlockEvents() {
-    try {
-      while (true) {
+    while (true) {
+      try {
         const todoRecords = await this.getUnlockRecords('todo');
         if (todoRecords.length === 0) {
           await asyncSleep(15000);
           continue;
         }
         await this.processUnLockEvents(todoRecords);
+      } catch (e) {
+        logger.error('EosHandler watchUnlockEvents error:', e);
+        await asyncSleep(3000);
       }
-    } catch (e) {
-      logger.error('EosHandler watchUnlockEvents error:', e);
-      setTimeout(this.watchUnlockEvents, 3000);
     }
   }
 
@@ -218,7 +222,7 @@ export class EosHandler {
         logger.error('Eos empty bridger account private keys');
         return;
       }
-      let signatures = new Array();
+      let signatures = [];
       for (const pubKey of this.config.publicKeys) {
         const signedTx = await this.signatureProvider.sign({
           chainId: this.config.chainId,
@@ -267,8 +271,9 @@ export class EosHandler {
     if (!this.config.onlyWatchIrreversibleBlock) {
       return;
     }
-    try {
-      while (true) {
+
+    while (true) {
+      try {
         const pendingRecords = await this.getUnlockRecords('pending');
         if (pendingRecords.length === 0) {
           await asyncSleep(15000);
@@ -303,10 +308,10 @@ export class EosHandler {
         if (newRecords.length !== 0) {
           await this.db.saveEosUnlock(newRecords);
         }
+      } catch (e) {
+        logger.error(`EosHandler checkUnlockTxStatus error:${e}`);
+        await asyncSleep(3000);
       }
-    } catch (e) {
-      logger.error(`EosHandler checkUnlockTxStatus error:${e}`);
-      setTimeout(this.checkUnlockTxStatus, 3000);
     }
   }
 

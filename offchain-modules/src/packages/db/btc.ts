@@ -1,9 +1,20 @@
 // invoke in BTC handler
-import { CkbMint, BtcLock, BtcUnlock, ICkbMint, IBtcLock, IBtcUnLock } from '@force-bridge/db/model';
+import {
+  BtcLock,
+  BtcUnlock,
+  CkbBurn,
+  CkbMint,
+  IBtcLock,
+  IBtcUnLock,
+  ICkbMint,
+  IQuery,
+  LockRecord,
+  UnlockRecord,
+} from '@force-bridge/db/model';
 import { Connection, Not, Repository } from 'typeorm';
 import { BtcUnlockStatus } from '@force-bridge/db/entity/BtcUnlock';
 
-export class BtcDb {
+export class BtcDb implements IQuery {
   private ckbMintRepository: Repository<CkbMint>;
   private btcLockRepository: Repository<BtcLock>;
   private btcUnlockRepository: Repository<BtcUnlock>;
@@ -37,7 +48,7 @@ export class BtcDb {
     await this.btcLockRepository.save(dbRecords);
   }
 
-  async getNotSuccessUnlockRecord(ckbTxHash): Promise<BtcUnlock[]> {
+  async getNotSuccessUnlockRecord(ckbTxHash: string): Promise<BtcUnlock[]> {
     const successStatus: BtcUnlockStatus = 'success';
     return await this.btcUnlockRepository.find({
       status: Not(successStatus),
@@ -45,7 +56,7 @@ export class BtcDb {
     });
   }
 
-  async getLockRecord(btcLockHash): Promise<BtcLock[]> {
+  async getLockRecordByHash(btcLockHash: string): Promise<BtcLock[]> {
     return await this.btcLockRepository.find({
       txHash: btcLockHash,
     });
@@ -58,5 +69,55 @@ export class BtcDb {
       },
       take,
     });
+  }
+
+  async getLockRecordsByUser(ckbRecipientAddr: string): Promise<LockRecord[]> {
+    return await this.connection
+      .getRepository(CkbMint)
+      .createQueryBuilder('ckb')
+      .innerJoinAndSelect('btc_lock', 'btc', 'btc.txid = ckb.id')
+      .where('ckb.recipient_lockscript = :recipient', { recipient: ckbRecipientAddr })
+      .select(
+        `
+        btc.sender as sender,
+        ckb.recipient_lockscript as recipient,
+        btc.amount as lock_amount,
+        ckb.amount as mint_amount,
+        btc.txid as lock_hash,
+        ckb.mint_hash as mint_hash,
+        btc.updated_at as lock_time, 
+        ckb.updated_at as mint_time, 
+        ckb.status as status,
+        ckb.asset as asset,
+        ckb.message as message
+      `,
+      )
+      .getRawMany();
+  }
+
+  async getUnlockRecordsByUser(ckbLockScriptHash: string): Promise<UnlockRecord[]> {
+    return await this.connection
+      .getRepository(CkbBurn)
+      .createQueryBuilder('ckb')
+      .innerJoinAndSelect('btc_unlock', 'btc', 'btc.ckb_tx_hash = ckb.ckb_tx_hash')
+      .where('ckb.sender_lock_hash = :sender_lock_hash', {
+        sender_lock_hash: ckbLockScriptHash,
+      })
+      .select(
+        `
+        ckb.sender_lock_hash as sender, 
+        btc.recipient_address as recipient , 
+        ckb.amount as burn_amount, 
+        btc.amount as unlock_amount,
+        ckb.ckb_tx_hash as burn_hash,
+        btc.btc_tx_hash as unlock_hash,
+        btc.updated_at as unlock_time, 
+        ckb.updated_at as burn_time, 
+        btc.status as status,
+        ckb.asset as asset,
+        btc.message as message
+      `,
+      )
+      .getRawMany();
   }
 }

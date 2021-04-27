@@ -1,6 +1,7 @@
 export type BtcLockData = {
   txId: string;
   txHash: string;
+  sender: string;
   txIndex: number;
   amount: string;
   data: string;

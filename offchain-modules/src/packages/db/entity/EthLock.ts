@@ -26,7 +26,7 @@ export class EthLock {
 
   @Index()
   @Column()
-  recipientLockscript: string;
+  recipient: string;
 
   @Column()
   sudtExtraData: string;

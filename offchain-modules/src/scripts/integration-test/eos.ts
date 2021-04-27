@@ -135,8 +135,8 @@ async function main() {
         await account.getLockscript(),
       );
 
-      logger.debug('sudt balance:', balance);
-      logger.debug('expect balance:', new Amount(lockAmount, 4));
+      logger.debug('sudt balance:', balance.toString(4));
+      logger.debug('expect balance:', new Amount(lockAmount, 4).toString(4));
       return balance.eq(new Amount(lockAmount, 4));
     },
     1000 * 10,
@@ -199,8 +199,8 @@ async function main() {
       assert(eosUnlockRecord.recipientAddress == lockAccount);
       assert(eosUnlockRecord.asset === lockAsset);
       logger.debug('amount: ', eosUnlockRecord.amount);
-      logger.debug('amount: ', burnAmount.toString(4));
-      assert(eosUnlockRecord.amount === burnAmount.toString(4));
+      logger.debug('amount: ', burnAmount.toString(0));
+      assert(eosUnlockRecord.amount === burnAmount.toString(0));
       eosUnlockTxHash = eosUnlockRecord.eosTxHash;
       return true;
     },
