@@ -130,7 +130,7 @@ async function doBalanceOf(opts: { address: boolean; asset?: boolean; origin?: b
   if (opts.origin) {
     const provider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
     const balanceOf = await provider.getBalance(address);
-    console.log(`BalanceOf address:${address} on ETH is ${balanceOf}`);
+    console.log(`BalanceOf address:${address} on ETH is ${formatEther(balanceOf)}`);
     return;
   }
 
