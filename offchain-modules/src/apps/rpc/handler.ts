@@ -1,8 +1,8 @@
 import { CkbTxGenerator } from '@force-bridge/ckb/tx-helper/generator';
 import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
-import { Asset, BtcAsset, EosAsset, EthAsset, TronAsset } from '@force-bridge/ckb/model/asset';
+import { Asset, BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '@force-bridge/ckb/model/asset';
 import { Amount, Script } from '@lay2/pw-core';
-import { API, NetworkTypes, NetworkBase } from './types';
+import { API, NetworkBase, NetworkTypes } from './types';
 import { ForceBridgeCore } from '@force-bridge/core';
 import { logger } from '@force-bridge/utils/logger';
 import bitcore from 'bitcore-lib';
@@ -236,17 +236,6 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     const lockRecords = await dbHandler.getLockRecordsByUser(ckbAddress);
     const unlockRecords = await dbHandler.getUnlockRecordsByUser(ckbLockHash);
 
-    const bridgeCellLockscript = {
-      codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
-      hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
-      args: asset.toBridgeLockscriptArgs(),
-    };
-    const sudtArgs = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
-    const sudtType = {
-      codeHash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
-      hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
-      args: sudtArgs,
-    };
     const result: TransactionSummaryWithStatus[] = [];
     lockRecords.forEach((lockRecord) => {
       const txSummaryWithStatus = transferDbRecordToResponse(XChainNetwork, lockRecord);
@@ -268,13 +257,25 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
       let balance: string;
       switch (value.network) {
         case 'Ethereum':
-          // Todo: query erc20 token balance
+          const provider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
           const tokenAddress = value.assetIdent;
           const userAddress = value.userIdent;
-          const provider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
-          const eth_amount = await provider.getBalance(userAddress);
-          console.log(`BalanceOf address:${userAddress} on ETH is ${eth_amount}`);
-          balance = eth_amount.toString();
+          if (tokenAddress === ethers.constants.AddressZero) {
+            const eth_amount = await provider.getBalance(userAddress);
+            balance = eth_amount.toString();
+          } else {
+            const erc20ABI = [
+              'function name() view returns (string)',
+              'function symbol() view returns (string)',
+              'function balanceOf(address) view returns (uint)',
+              'function transfer(address to, uint amount)',
+              'event Transfer(address indexed from, address indexed to, uint amount)',
+            ];
+            const erc20Contract = new ethers.Contract(tokenAddress, erc20ABI, provider);
+            const erc20Amount = await erc20Contract.balanceOf(userAddress);
+            balance = erc20Amount.toString();
+          }
+          console.log(`balance of address: ${userAddress} on ETH is ${balance}`);
           break;
         case 'Bitcoin':
           const rpcClient = new RPCClient(ForceBridgeCore.config.btc.clientParams);
@@ -287,11 +288,13 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
           break;
         case 'Nervos':
           const userScript = ForceBridgeCore.ckb.utils.addressToScript(value.userIdent);
+          const ckbLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>userScript);
+          const asset = getTokenAsset(ckbLockHash, value.assetIdent);
           logger.debug(`sudt args is ${value.assetIdent}`);
           const bridgeCellLockscript = {
             codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
             hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
-            args: value.assetIdent,
+            args: asset.toBridgeLockscriptArgs(),
           };
           const sudtArgs = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
           const sudtType = {
@@ -388,4 +391,27 @@ function transferDbRecordToResponse(
       throw new Error(`${record.status} which mean the tx status is unexpect`);
   }
   return txSummaryWithStatus;
+}
+
+function getTokenAsset(ownLockHash: string, XChainToken: string): Asset {
+  let asset: Asset;
+  const network = XChainToken.charAt(0);
+  switch (network) {
+    case ChainType.BTC.toString():
+      asset = new BtcAsset('btc', ownLockHash);
+      break;
+    case ChainType.EOS.toString():
+      asset = new EosAsset(XChainToken.substring(1), ownLockHash);
+      break;
+    case ChainType.ETH.toString():
+      asset = new EthAsset(XChainToken.substring(1), ownLockHash);
+      break;
+    case ChainType.TRON.toString():
+      asset = new TronAsset(XChainToken.substring(1), ownLockHash);
+      break;
+    default:
+      logger.warn(`chain type is ${network} which not support yet.`);
+      return;
+  }
+  return asset;
 }
