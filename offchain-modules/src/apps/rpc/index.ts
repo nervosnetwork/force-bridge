@@ -46,11 +46,9 @@ async function main() {
   * */
   // @ts-ignore
   server.addMethod('echo', ({ text }) => text); //for test
-  /*
   server.addMethod('generateBridgeOutNervosTransaction', forceBridgeRpc.generateBridgeOutNervosTransaction);
   server.addMethod('generateBridgeInNervosTransaction', forceBridgeRpc.generateBridgeInNervosTransaction);
   server.addMethod('sendSignedTransaction', forceBridgeRpc.sendSignedTransaction);
-  */
   server.addMethod('getBridgeTransactionSummaries', async (payload: GetBridgeTransactionSummariesPayload) => {
     return await forceBridgeRpc.getBridgeTransactionSummaries(payload);
   });

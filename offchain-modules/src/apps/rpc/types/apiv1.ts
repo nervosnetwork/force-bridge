@@ -37,6 +37,7 @@ export type GenerateBridgeOutNervosTransactionPayload = {
   // XChain network name
   network: string;
   asset: NervosNetwork['DerivedAssetIdent'];
+  amount: string;
   // XChain User ident
   recipient: string;
   sender: NervosNetwork['UserIdent'];
@@ -84,18 +85,21 @@ export type GetBridgeTransactionStatusResponse = {
 export interface ForceBridgeAPIV1 {
   /*
   // prettier-ignore
-  generateBridgeInNervosTransaction: (payload: GenerateBridgeInTransactionPayload<EthereumNetwork>) => Promise<GenerateTransactionResponse<EthereumNetwork>>
+  generateBridgeInNervosTransaction: <T extends NetworkTypes>(payload: GenerateBridgeInTransactionPayload) => Promise<GenerateTransactionResponse<T>>
   // prettier-ignore
-  generateBridgeOutNervosTransaction: (payload: GenerateBridgeOutNervosTransactionPayload<EthereumNetwork>) => Promise<GenerateTransactionResponse<NervosNetwork>>
+  generateBridgeOutNervosTransaction: <T extends NetworkTypes>(payload: GenerateBridgeOutNervosTransactionPayload) => Promise<GenerateTransactionResponse<T>>
 
+  /* send transaction */
+  sendSignedTransaction: <T extends NetworkBase>(payload: SignedTransactionPayload<T>) => Promise<TransactionIdent>;
 
-  sendSignedTransaction: (payload: SignedTransactionPayload<EthereumNetwork>) => Promise<TransactionIdent>;
-
-  getBridgeTransactionStatus: (payload: GetBridgeTransactionStatusPayload<AllNetworks>) => Promise<GetBridgeTransactionStatusResponse<AllNetworks>>;
-  */
-  getBridgeTransactionSummaries: (
-    payload: GetBridgeTransactionSummariesPayload,
-  ) => Promise<TransactionSummaryWithStatus[]>;
+  /* get transaction summary */
+  // prettier-ignore
+  /**
+   * get the status of a transaction
+   */
+  getBridgeTransactionStatus: (payload: GetBridgeTransactionStatusPayload) => Promise<GetBridgeTransactionStatusResponse>;
+  // prettier-ignore
+  getBridgeTransactionSummaries: (payload: GetBridgeTransactionSummariesPayload) => Promise<TransactionSummaryWithStatus[]>;
 
   // get an asset list, or if no `name` param is passed in, return a default list of whitelisted assets
   getAssetList: (name?: string) => Promise<RequiredAsset<'info'>[]>;
