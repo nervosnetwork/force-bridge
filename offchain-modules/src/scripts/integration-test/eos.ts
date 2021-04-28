@@ -20,7 +20,8 @@ import { Amount, Script } from '@lay2/pw-core';
 import { CkbIndexer } from '@force-bridge/ckb/tx-helper/indexer';
 import { ForceBridgeCore } from '@force-bridge/core';
 import { waitUntilCommitted, waitFnCompleted } from './util';
-import { multisigLockScript } from '@force-bridge/ckb/tx-helper/multisig/multisig_helper';
+import { getMultisigLock } from '@force-bridge/ckb/tx-helper/multisig/multisig_helper';
+// import { multisigLockScript } from '@force-bridge/ckb/tx-helper/multisig/multisig_helper';
 
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
@@ -38,7 +39,7 @@ async function main() {
   await new ForceBridgeCore().init(conf);
 
   const rpcUrl = config.rpcUrl;
-  const PRI_KEY = ForceBridgeCore.config.ckb.privateKey;
+  const PRI_KEY = ForceBridgeCore.config.ckb.fromPrivateKey;
   const lockAccount = 'spongebob111';
   const lockAccountPri = ['5KQ1LgoXrSLiUMS8HZp6rSuyyJP5i6jTi1KWbZNerQQLFeTrxac'];
   const chain = new EosChain(rpcUrl, new JsSignatureProvider(lockAccountPri));
@@ -115,6 +116,7 @@ async function main() {
 
   // check sudt balance.
   const account = new Account(PRI_KEY);
+  const multisigLockScript = getMultisigLock();
   const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>{
     codeHash: multisigLockScript.code_hash,
     hashType: multisigLockScript.hash_type,

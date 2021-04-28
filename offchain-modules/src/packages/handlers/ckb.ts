@@ -13,19 +13,15 @@ import { ForceBridgeCore } from '@force-bridge/core';
 import { Script as LumosScript } from '@ckb-lumos/base';
 import { RecipientCellData } from '@force-bridge/ckb/tx-helper/generated/eth_recipient_cell';
 import { Indexer } from '@ckb-lumos/indexer';
-import {
-  fromPrivateKey,
-  multisigLockScript,
-  serializedMultisigScript,
-} from '@force-bridge/ckb/tx-helper/multisig/multisig_helper';
 import { sealTransaction } from '@ckb-lumos/helpers';
 import { key } from '@ckb-lumos/hd';
 import TransactionManager from '@ckb-lumos/transaction-manager';
 import { RPC } from '@ckb-lumos/rpc';
-const infos = require('../ckb/tx-helper/multisig/infos.json');
 
 import Transaction = CKBComponents.Transaction;
 import TransactionWithStatus = CKBComponents.TransactionWithStatus;
+import { serializeMultisigScript } from '@ckb-lumos/common-scripts/lib/secp256k1_blake160_multisig';
+import { getMultisigLock } from '@force-bridge/ckb/tx-helper/multisig/multisig_helper';
 
 const lumosIndexerData = './indexer-data';
 // CKB handler
@@ -258,10 +254,15 @@ export class CkbHandler {
         await this.db.updateCkbMint(mintRecords);
         await this.waitUntilSync();
         const txSkeleton = await generator.mint(records, this.indexer);
-        const content0 = key.signRecoverable(txSkeleton.get('signingEntries').get(0).message, fromPrivateKey);
-        let content1 = serializedMultisigScript;
-        for (let i = 0; i < infos.keys.length; i++) {
-          content1 += key.signRecoverable(txSkeleton.get('signingEntries').get(1).message, infos.keys[i]).slice(2);
+        const content0 = key.signRecoverable(
+          txSkeleton.get('signingEntries').get(0).message,
+          ForceBridgeCore.config.ckb.fromPrivateKey,
+        );
+        let content1 = serializeMultisigScript(ForceBridgeCore.config.ckb.multisigScript);
+        for (let i = 0; i < ForceBridgeCore.config.ckb.keys.length; i++) {
+          content1 += key
+            .signRecoverable(txSkeleton.get('signingEntries').get(1).message, ForceBridgeCore.config.ckb.keys[i])
+            .slice(2);
         }
         const tx = sealTransaction(txSkeleton, [content0, content1]);
         console.log('tx:', JSON.stringify(tx, null, 2));
@@ -367,11 +368,11 @@ export class CkbHandler {
     const txSkeleton = await generator.createBridgeCell(scripts, this.indexer);
     console.log('signingEntries length:', txSkeleton.get('signingEntries').size);
     const message0 = txSkeleton.get('signingEntries').get(0).message;
-    const content0 = key.signRecoverable(message0, fromPrivateKey);
+    const content0 = key.signRecoverable(message0, ForceBridgeCore.config.ckb.fromPrivateKey);
     const message1 = txSkeleton.get('signingEntries').get(1).message;
-    let content1 = serializedMultisigScript;
-    for (let i = 0; i < infos.keys.length; i++) {
-      content1 += key.signRecoverable(message1, infos.keys[i]).slice(2);
+    let content1 = serializeMultisigScript(ForceBridgeCore.config.ckb.multisigScript);
+    for (let i = 0; i < ForceBridgeCore.config.ckb.keys.length; i++) {
+      content1 += key.signRecoverable(message1, ForceBridgeCore.config.ckb.keys[i]).slice(2);
     }
     const tx = sealTransaction(txSkeleton, [content0, content1]);
     console.log('tx:', JSON.stringify(tx, null, 2));
@@ -396,6 +397,7 @@ export class CkbHandler {
   }
 
   async getOwnLockHash(): Promise<string> {
+    const multisigLockScript = getMultisigLock();
     const ownLockHash = this.ckb.utils.scriptToHash(<CKBComponents.Script>{
       codeHash: multisigLockScript.code_hash,
       hashType: multisigLockScript.hash_type,

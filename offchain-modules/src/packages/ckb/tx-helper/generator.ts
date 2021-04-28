@@ -1,5 +1,5 @@
 import { Address, Amount, HashType, Script } from '@lay2/pw-core';
-import { Cell, Script as LumosScript } from '@ckb-lumos/base';
+import { Cell, HexString, Script as LumosScript } from '@ckb-lumos/base';
 import { Asset, ChainType } from '../model/asset';
 import { logger } from '@force-bridge/utils/logger';
 import { ScriptType } from '@force-bridge/ckb/tx-helper/indexer';
@@ -8,16 +8,48 @@ import { fromHexString, stringToUint8Array, toHexString, bigintToSudtAmount, asy
 import { ForceBridgeCore } from '@force-bridge/core';
 import { SerializeRecipientCellData } from '@force-bridge/ckb/tx-helper/generated/eth_recipient_cell';
 import { CellCollector, Indexer } from '@ckb-lumos/indexer';
-import { TransactionSkeleton, TransactionSkeletonType } from '@ckb-lumos/helpers';
+import { generateAddress, TransactionSkeleton, TransactionSkeletonType } from '@ckb-lumos/helpers';
 import { common } from '@ckb-lumos/common-scripts';
-import { fromAddress, multisigLockScript, multisigScript } from '@force-bridge/ckb/tx-helper/multisig/multisig_helper';
-const infos = require('./multisig/infos.json');
+import { multisigArgs, serializeMultisigScript } from '@ckb-lumos/common-scripts/lib/from_info';
+import { key } from '@ckb-lumos/hd';
+import { getConfig } from '@ckb-lumos/config-manager';
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
+
+const config = getConfig();
+const multisigTemplate = config.SCRIPTS.SECP256K1_BLAKE160_MULTISIG;
+const secpTemplate = getConfig().SCRIPTS.SECP256K1_BLAKE160;
 
 export interface MintAssetRecord {
   asset: Asset;
   amount: Amount;
   recipient: Address;
+}
+
+function getMultisigLock() {
+  const multisigScript = ForceBridgeCore.config.ckb.multisigScript;
+  const serializedMultisigScript = serializeMultisigScript(multisigScript);
+  const args = multisigArgs(serializedMultisigScript);
+  const multisigLockScript = {
+    code_hash: multisigTemplate.CODE_HASH,
+    hash_type: multisigTemplate.HASH_TYPE,
+    args,
+  };
+  return multisigLockScript;
+}
+function getMultisigAddr(): string {
+  const multisigLockScript = getMultisigLock();
+  return generateAddress(multisigLockScript);
+}
+
+function getFromAddr(): string {
+  const fromPrivateKey = ForceBridgeCore.config.ckb.fromPrivateKey;
+  const fromBlake160 = key.publicKeyToBlake160(key.privateToPublic(fromPrivateKey as HexString));
+  const fromLockScript = {
+    code_hash: secpTemplate.CODE_HASH,
+    hash_type: secpTemplate.HASH_TYPE,
+    args: fromBlake160,
+  };
+  return generateAddress(fromLockScript);
 }
 
 export class CkbTxGenerator {
@@ -41,7 +73,7 @@ export class CkbTxGenerator {
 
   async fetchMultisigCell(indexer: Indexer, maxTimes: number): Promise<Cell> {
     const cellCollector = new CellCollector(indexer, {
-      type: infos.type,
+      type: ForceBridgeCore.config.ckb.multisigType,
     });
     let index = 0;
     while (true) {
@@ -58,7 +90,7 @@ export class CkbTxGenerator {
     }
   }
 
-  async fetchBridgeCell(bridgeLock: any, indexer: Indexer, maxTimes: number): Promise<Cell> {
+  async fetchBridgeCell(bridgeLock: LumosScript, indexer: Indexer, maxTimes: number): Promise<Cell> {
     const cellCollector = new CellCollector(indexer, {
       lock: bridgeLock,
     });
@@ -78,9 +110,10 @@ export class CkbTxGenerator {
   }
 
   async createBridgeCell(scripts: any[], indexer: Indexer): Promise<TransactionSkeletonType> {
+    const fromAddress = getFromAddr();
     let txSkeleton = TransactionSkeleton({ cellProvider: indexer });
     const multisig_cell = await this.fetchMultisigCell(indexer, 60);
-    txSkeleton = await common.setupInputCell(txSkeleton, multisig_cell, multisigScript);
+    txSkeleton = await common.setupInputCell(txSkeleton, multisig_cell, ForceBridgeCore.config.ckb.multisigScript);
     const bridgeCellCapacity = 200n * 10n ** 8n;
     const bridgeOutputs = scripts.map((script) => {
       return <Cell>{
@@ -110,9 +143,10 @@ export class CkbTxGenerator {
   }
 
   async mint(records: MintAssetRecord[], indexer: Indexer): Promise<TransactionSkeletonType> {
+    const fromAddress = getFromAddr();
     let txSkeleton = TransactionSkeleton({ cellProvider: indexer });
     const multisigCell = await this.fetchMultisigCell(indexer, 60);
-    txSkeleton = await common.setupInputCell(txSkeleton, multisigCell, multisigScript);
+    txSkeleton = await common.setupInputCell(txSkeleton, multisigCell, ForceBridgeCore.config.ckb.multisigScript);
     txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
       return cellDeps.push(this.sudtDep);
     });
@@ -133,6 +167,7 @@ export class CkbTxGenerator {
     txSkeleton: TransactionSkeletonType,
     records: MintAssetRecord[],
   ): Promise<TransactionSkeletonType> {
+    const fromAddress = getFromAddr();
     const sudtCellCapacity = 300n * 10n ** 8n;
     for (const record of records) {
       const recipientLockscript = record.recipient.toLockScript();
@@ -238,6 +273,7 @@ export class CkbTxGenerator {
     amount: Amount,
     bridgeFee?: Amount,
   ): Promise<CKBComponents.RawTransactionToSign> {
+    const multisigLockScript = getMultisigLock();
     const bridgeCellLockscript = {
       codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
       hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,

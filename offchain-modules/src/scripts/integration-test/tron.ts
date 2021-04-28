@@ -15,7 +15,8 @@ import { Amount, Script } from '@lay2/pw-core';
 import { CkbIndexer } from '@force-bridge/ckb/tx-helper/indexer';
 import { ForceBridgeCore } from '@force-bridge/core';
 import { waitUntilCommitted } from './util';
-import { multisigLockScript } from '@force-bridge/ckb/tx-helper/multisig/multisig_helper';
+import { getMultisigLock } from '@force-bridge/ckb/tx-helper/multisig/multisig_helper';
+// import { multisigLockScript } from '@force-bridge/ckb/tx-helper/multisig/multisig_helper';
 const TronWeb = require('tronweb');
 
 const PRI_KEY = '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
@@ -115,6 +116,7 @@ async function main() {
   const getBalance = async (assetName) => {
     const account = new Account(PRI_KEY);
     // const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
+    const multisigLockScript = getMultisigLock();
     const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>{
       codeHash: multisigLockScript.code_hash,
       hashType: multisigLockScript.hash_type,
@@ -185,6 +187,7 @@ async function main() {
     const burnAmount = 1;
     if (!sendBurn) {
       const account = new Account(PRI_KEY);
+      const multisigLockScript = getMultisigLock();
       const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>{
         codeHash: multisigLockScript.code_hash,
         hashType: multisigLockScript.hash_type,

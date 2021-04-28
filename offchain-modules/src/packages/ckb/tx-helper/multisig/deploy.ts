@@ -3,12 +3,14 @@ import { Indexer } from '@ckb-lumos/indexer';
 import { init } from './init_config';
 import { TransactionSkeleton, sealTransaction, parseAddress, minimalCellCapacity } from '@ckb-lumos/helpers';
 import { HashType } from '@ckb-lumos/base';
-import { fromAddress, multisigAddress, fromPrivateKey, multisigLockScript } from './multisig_helper';
 import { common } from '@ckb-lumos/common-scripts';
 import { key } from '@ckb-lumos/hd';
 import { generateTypeIDScript } from './typeid';
 import { RPC } from '@ckb-lumos/rpc';
 import { asyncSleep as sleep } from '@force-bridge/utils';
+import { ForceBridgeCore } from '@force-bridge/core';
+import { Config } from '@force-bridge/config';
+import { getFromAddr, getMultisigAddr, getMultisigLock } from '@force-bridge/ckb/tx-helper/multisig/multisig_helper';
 
 const TransactionManager = require('@ckb-lumos/transaction-manager');
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
@@ -18,9 +20,6 @@ const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
 init();
 
 const acpData = '0x';
-
-console.log('Capacity fromAddress:', fromAddress);
-
 const ckb = new CKB(CKB_URL);
 const dataDir = './lumos_db';
 const indexer = new Indexer(CKB_URL, dataDir);
@@ -30,7 +29,7 @@ const transactionManager = new TransactionManager(indexer);
 function getDataOutputCapacity() {
   const output = {
     cell_output: {
-      lock: parseAddress(multisigAddress),
+      lock: parseAddress(getMultisigAddr()),
       type: {
         code_hash: '0x' + '0'.repeat(64),
         hash_type: 'type' as HashType,
@@ -46,6 +45,11 @@ function getDataOutputCapacity() {
 }
 
 async function deploy() {
+  const fromPrivateKey = ForceBridgeCore.config.ckb.fromPrivateKey;
+  const fromAddress = getFromAddr();
+  const multisigLockScript = getMultisigLock();
+  const multisigAddress = getMultisigAddr();
+
   let txSkeleton = TransactionSkeleton({ cellProvider: indexer });
   const capacity = getDataOutputCapacity();
   txSkeleton = await common.transfer(txSkeleton, [fromAddress], multisigAddress, capacity);
@@ -71,7 +75,7 @@ async function deploy() {
   const txHash = await transactionManager.send_transaction(tx);
   await waitUntilCommitted(ckb, txHash, 60);
 
-  nconf.set('type', typeIDScript);
+  nconf.set('forceBridge:ckb:multisigType', typeIDScript);
   nconf.save();
 
   console.log('multi lockscript:', JSON.stringify(multisigLockScript, null, 2));
@@ -123,8 +127,11 @@ function asyncSleep(ms = 0) {
 const main = async () => {
   console.log('\n\n\n---------start init multisig address -----------\n');
   await waitUntilSync();
-  const configPath = './src/packages/ckb/tx-helper/multisig/infos.json';
+  const configPath = './config.json';
   nconf.env().file({ file: configPath });
+  const config: Config = nconf.get('forceBridge');
+  console.log('config: ', config);
+  await new ForceBridgeCore().init(config);
   await deploy();
   console.log('\n\n\n---------end init multisig address -----------\n');
   process.exit(0);

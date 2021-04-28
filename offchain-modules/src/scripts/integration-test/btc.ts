@@ -21,7 +21,8 @@ import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
 import { CkbIndexer } from '@force-bridge/ckb/tx-helper/indexer';
 import { Account } from '@force-bridge/ckb/model/accounts';
 import { waitUntilCommitted, waitFnCompleted } from './util';
-import { multisigLockScript } from '@force-bridge/ckb/tx-helper/multisig/multisig_helper';
+import { getMultisigLock } from '@force-bridge/ckb/tx-helper/multisig/multisig_helper';
+// import { multisigLockScript } from '@force-bridge/ckb/tx-helper/multisig/multisig_helper';
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
 
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
@@ -42,7 +43,7 @@ async function main() {
   logger.debug(`config: ${config}`);
   // init bridge force core
   await new ForceBridgeCore().init(config);
-  const PRI_KEY = ForceBridgeCore.config.ckb.privateKey;
+  const PRI_KEY = ForceBridgeCore.config.ckb.fromPrivateKey;
   const client = new RPCClient(config.btc.clientParams);
   const btcChain = new BTCChain();
 
@@ -125,6 +126,7 @@ async function main() {
 
   // check sudt balance.
   const account = new Account(PRI_KEY);
+  const multisigLockScript = getMultisigLock();
   const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>{
     codeHash: multisigLockScript.code_hash,
     hashType: multisigLockScript.hash_type,

@@ -15,10 +15,25 @@ export interface ConfigItem {
   };
 }
 
+export interface ScriptItem {
+  code_hash: string;
+  hash_type: HashType;
+  args: string;
+}
+
+export interface MultisigItem {
+  R: number;
+  M: number;
+  publicKeyHashes: string[];
+}
+
 export interface CkbConfig {
   ckbRpcUrl: string;
   ckbIndexerUrl: string;
-  privateKey: string;
+  fromPrivateKey: string;
+  keys: string[];
+  multisigScript: MultisigItem;
+  multisigType: ScriptItem;
   deps: {
     bridgeLock: ConfigItem;
     recipientType: ConfigItem;

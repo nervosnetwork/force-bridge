@@ -1,0 +1,116 @@
+Attaching to docker_mysql_1, docker_geth_1, docker_btc_1, docker_ckb_1, docker_ckb-indexer_1
+[36mmysql_1        |[0m 2021-04-28 08:59:00+00:00 [Note] [Entrypoint]: Entrypoint script for MySQL Server 5.7.33-1debian10 started.
+[33mgeth_1         |[0m INFO [04-28|08:59:00.503] Maximum peer count                       ETH=50 LES=0 total=50
+[33mgeth_1         |[0m INFO [04-28|08:59:00.507] Smartcard socket not found, disabling    err="stat /run/pcscd/pcscd.comm: no such file or directory"
+[33mgeth_1         |[0m ERROR[04-28|08:59:00.508] Failed to enumerate USB devices          hub=ledger vendor=11415 failcount=1 err="failed to initialize libusb: libusb: unknown error [code -99]"
+[33mgeth_1         |[0m ERROR[04-28|08:59:00.509] Failed to enumerate USB devices          hub=trezor vendor=21324 failcount=1 err="failed to initialize libusb: libusb: unknown error [code -99]"
+[36mmysql_1        |[0m 2021-04-28 08:59:00+00:00 [Note] [Entrypoint]: Switching to dedicated user 'mysql'
+[32mbtc_1          |[0m Bitcoin Core starting
+[33mgeth_1         |[0m ERROR[04-28|08:59:00.509] Failed to enumerate USB devices          hub=trezor vendor=4617  failcount=1 err="failed to initialize libusb: libusb: unknown error [code -99]"
+[36mmysql_1        |[0m 2021-04-28 08:59:00+00:00 [Note] [Entrypoint]: Entrypoint script for MySQL Server 5.7.33-1debian10 started.
+[33mgeth_1         |[0m ERROR[04-28|08:59:00.509] Failed to enumerate USB devices          hub=ledger vendor=11415 failcount=2 err="failed to initialize libusb: libusb: unknown error [code -99]"
+[33mgeth_1         |[0m ERROR[04-28|08:59:00.510] Failed to enumerate USB devices          hub=trezor vendor=21324 failcount=2 err="failed to initialize libusb: libusb: unknown error [code -99]"
+[33mgeth_1         |[0m ERROR[04-28|08:59:00.510] Failed to enumerate USB devices          hub=trezor vendor=4617  failcount=2 err="failed to initialize libusb: libusb: unknown error [code -99]"
+[35mckb_1          |[0m Initialized CKB directory in /var/lib/ckb
+[35mckb_1          |[0m cp /var/dev.toml specs/dev.toml
+[35mckb_1          |[0m create ckb.toml
+[35mckb_1          |[0m create ckb-miner.toml
+[33mgeth_1         |[0m INFO [04-28|08:59:00.512] Set global gas cap                       cap=25000000
+[33mgeth_1         |[0m INFO [04-28|08:59:00.512] Allocated cache and file handles         database=/data/geth/chaindata cache=16.00MiB handles=16
+[36mmysql_1        |[0m 2021-04-28 08:59:00+00:00 [Note] [Entrypoint]: Initializing database files
+[35mckb_1          |[0m create default.db-options
+[36mmysql_1        |[0m 2021-04-28T08:59:00.678917Z 0 [Warning] TIMESTAMP with implicit DEFAULT value is deprecated. Please use --explicit_defaults_for_timestamp server option (see documentation for more details).
+[36mmysql_1        |[0m 2021-04-28T08:59:01.579776Z 0 [Warning] InnoDB: New log files created, LSN=45790
+[33mgeth_1         |[0m INFO [04-28|08:59:00.532] Writing custom genesis block 
+[35mckb_1          |[0m [1;30m2021-04-28 08:59:02.062 +00:00[0m [1;34mmain[0m INFO sentry  sentry is disabled
+[33mgeth_1         |[0m INFO [04-28|08:59:00.534] Persisted trie from memory database      nodes=9 size=1.27KiB time="152.9µs" gcnodes=0 gcsize=0.00B gctime=0s livenodes=1 livesize=0.00B
+[36mmysql_1        |[0m 2021-04-28T08:59:01.753640Z 0 [Warning] InnoDB: Creating foreign key constraint system tables.
+[35mckb_1          |[0m [1;30m2021-04-28 08:59:02.300 +00:00[0m [1;34mmain[0m INFO ckb_db::db  Initialize a new database
+[35mckb_1          |[0m [1;30m2021-04-28 08:59:02.617 +00:00[0m [1;34mmain[0m INFO ckb_db_migration  Init database version 20200707214700
+[36mmysql_1        |[0m 2021-04-28T08:59:01.848917Z 0 [Warning] No existing UUID has been found, so we assume that this is the first time that this server has been started. Generating a new UUID: fa0b7ffb-a7ff-11eb-81e6-0242ac130003.
+[35mckb_1          |[0m [1;30m2021-04-28 08:59:02.631 +00:00[0m [1;34mmain[0m INFO main  Touch chain spec hash: Byte32(0x8e58b013229fd9ed110336ca567d98484b660e4d1442a891d7abddf61268a9b1)
+[35mckb_1          |[0m [1;30m2021-04-28 08:59:02.645 +00:00[0m [1;34mmain[0m INFO ckb_memory_tracker::process  track current process: disable
+[35mckb_1          |[0m [1;30m2021-04-28 08:59:02.647 +00:00[0m [1;34mmain[0m INFO main  ckb version: 0.39.2 (2d56a24 2021-01-30)
+[33mgeth_1         |[0m INFO [04-28|08:59:00.536] Successfully wrote genesis state         database=chaindata            hash="d6a51e…670c10"
+[35mckb_1          |[0m [1;30m2021-04-28 08:59:02.647 +00:00[0m [1;34mmain[0m INFO main  chain genesis hash: 0xb14c7f9179a36956776f3be65be0524537b4f62985d351598c6234abfb32f10b
+[33mgeth_1         |[0m INFO [04-28|08:59:00.536] Allocated cache and file handles         database=/data/geth/lightchaindata cache=16.00MiB handles=16
+[36mmysql_1        |[0m 2021-04-28T08:59:01.857481Z 0 [Warning] Gtid table is not ready to be used. Table 'mysql.gtid_executed' cannot be opened.
+[35mckb_1          |[0m [1;30m2021-04-28 08:59:02.685 +00:00[0m [1;34mckb-global-runtime[0m INFO ckb_network::network  p2p service event: ListenStarted { address: "/ip4/0.0.0.0/tcp/8115" }
+[35mckb_1          |[0m [1;30m2021-04-28 08:59:02.688 +00:00[0m [1;34mckb-global-runtime[0m INFO ckb_network::network  Listen on address: /ip4/0.0.0.0/tcp/8115/p2p/QmS9XAVkmqgG1P2xfqPk998juzrkSZ5Ri7iFu6NdpgL5xC
+[36mmysql_1        |[0m 2021-04-28T08:59:03.003428Z 0 [Warning] CA certificate ca.pem is self signed.
+[35mckb_1          |[0m [1;30m2021-04-28 08:59:02.718 +00:00[0m [1;34mmain[0m INFO ckb_rpc::server  Listen HTTP RPCServer on address 0.0.0.0:8114
+[33mgeth_1         |[0m INFO [04-28|08:59:00.547] Writing custom genesis block 
+[33mgeth_1         |[0m INFO [04-28|08:59:00.548] Persisted trie from memory database      nodes=9 size=1.27KiB time="182.5µs" gcnodes=0 gcsize=0.00B gctime=0s livenodes=1 livesize=0.00B
+[33mgeth_1         |[0m INFO [04-28|08:59:00.549] Successfully wrote genesis state         database=lightchaindata            hash="d6a51e…670c10"
+[33mgeth_1         |[0m WARN [04-28|08:59:00.605] Sanitizing cache to Go's GC limits       provided=1024 updated=666
+[33mgeth_1         |[0m INFO [04-28|08:59:00.607] Maximum peer count                       ETH=50 LES=0 total=50
+[33mgeth_1         |[0m WARN [04-28|08:59:00.607] The flag --rpc is deprecated and will be removed in the future, please use --http 
+[33mgeth_1         |[0m WARN [04-28|08:59:00.607] The flag --rpcaddr is deprecated and will be removed in the future, please use --http.addr 
+[33mgeth_1         |[0m WARN [04-28|08:59:00.607] The flag --rpcport is deprecated and will be removed in the future, please use --http.port 
+[33mgeth_1         |[0m WARN [04-28|08:59:00.607] The flag --rpcapi is deprecated and will be removed in the future, please use --http.api 
+[33mgeth_1         |[0m INFO [04-28|08:59:00.607] Smartcard socket not found, disabling    err="stat /run/pcscd/pcscd.comm: no such file or directory"
+[33mgeth_1         |[0m WARN [04-28|08:59:00.608] The flag --etherbase is deprecated and will be removed in the future, please use --miner.etherbase 
+[33mgeth_1         |[0m WARN [04-28|08:59:00.608] The flag --gasprice is deprecated and will be removed in the future, please use --miner.gasprice 
+[33mgeth_1         |[0m INFO [04-28|08:59:00.608] Set global gas cap                       cap=25000000
+[33mgeth_1         |[0m WARN [04-28|08:59:00.608] Sanitizing invalid miner gas price       provided=0    updated=0
+[33mgeth_1         |[0m INFO [04-28|08:59:00.609] Allocated trie memory caches             clean=165.00MiB dirty=166.00MiB
+[33mgeth_1         |[0m INFO [04-28|08:59:00.609] Allocated cache and file handles         database=/data/geth/chaindata cache=333.00MiB handles=524288
+[33mgeth_1         |[0m INFO [04-28|08:59:00.647] Opened ancient database                  database=/data/geth/chaindata/ancient
+[33mgeth_1         |[0m INFO [04-28|08:59:00.648] Initialised chain configuration          config="{ChainID: 1234 Homestead: 0 DAO: <nil> DAOSupport: false EIP150: 0 EIP155: 0 EIP158: 0 Byzantium: 0 Constantinople: 0 Petersburg: 0 Istanbul: 0, Muir Glacier: <nil>, YOLO v1: <nil>, Engine: unknown}"
+[33mgeth_1         |[0m INFO [04-28|08:59:00.649] Disk storage enabled for ethash caches   dir=/data/geth/ethash count=3
+[33mgeth_1         |[0m INFO [04-28|08:59:00.649] Disk storage enabled for ethash DAGs     dir=/root/.ethash     count=2
+[33mgeth_1         |[0m INFO [04-28|08:59:00.649] Initialising Ethereum protocol           versions="[65 64 63]" network=1234 dbversion=<nil>
+[33mgeth_1         |[0m WARN [04-28|08:59:00.649] Upgrade blockchain database version      from=<nil> to=8
+[33mgeth_1         |[0m INFO [04-28|08:59:00.649] Loaded most recent local header          number=0 hash="d6a51e…670c10" td=100000 age=52y3w4d
+[33mgeth_1         |[0m INFO [04-28|08:59:00.649] Loaded most recent local full block      number=0 hash="d6a51e…670c10" td=100000 age=52y3w4d
+[33mgeth_1         |[0m INFO [04-28|08:59:00.649] Loaded most recent local fast block      number=0 hash="d6a51e…670c10" td=100000 age=52y3w4d
+[33mgeth_1         |[0m INFO [04-28|08:59:00.651] Regenerated local transaction journal    transactions=0 accounts=0
+[33mgeth_1         |[0m INFO [04-28|08:59:00.656] Allocated fast sync bloom                size=331.00MiB
+[33mgeth_1         |[0m INFO [04-28|08:59:00.657] Initialized fast sync bloom              items=9 errorrate=0.000 elapsed="282.6µs"
+[33mgeth_1         |[0m INFO [04-28|08:59:00.659] Starting peer-to-peer node               instance=Geth/v1.9.23-stable-8c2f2715/linux-amd64/go1.15.3
+[33mgeth_1         |[0m INFO [04-28|08:59:00.677] New local node record                    seq=1 id=02be9b17d34cd5e9 ip=127.0.0.1 udp=0 tcp=4321
+[33mgeth_1         |[0m INFO [04-28|08:59:00.677] Started P2P networking                   self="enode://bc4a62018036d3ed93fb02683a73162c4933aeeb666856ad7aa522511638871257e4f2a0556e99ecec87f30dd15da349b86b0dacc58b62425ad1a265757f74c8@127.0.0.1:4321?discport=0"
+[33mgeth_1         |[0m INFO [04-28|08:59:00.680] IPC endpoint opened                      url=/data/geth.ipc
+[33mgeth_1         |[0m INFO [04-28|08:59:00.682] HTTP server started                      endpoint=[::]:8545 cors= vhosts=localhost
+[33mgeth_1         |[0m INFO [04-28|08:59:00.682] Transaction pool price threshold updated price=0
+[33mgeth_1         |[0m INFO [04-28|08:59:00.682] Updated mining threads                   threads=1
+[33mgeth_1         |[0m INFO [04-28|08:59:00.682] Transaction pool price threshold updated price=0
+[33mgeth_1         |[0m INFO [04-28|08:59:00.683] Commit new mining work                   number=1 sealhash="3c4429…fe49cf" uncles=0 txs=0 gas=0 fees=0 elapsed="741.1µs"
+[36mmysql_1        |[0m 2021-04-28T08:59:03.136401Z 1 [Warning] root@localhost is created with an empty password ! Please consider switching off the --initialize-insecure option.
+[35mckb_1          |[0m [1;30m2021-04-28 08:59:05.034 +00:00[0m [1;34mmain[0m INFO sentry  sentry is disabled
+[35mckb_1          |[0m [1;30m2021-04-28 08:59:05.042 +00:00[0m [1;34mmain[0m INFO ckb_memory_tracker::process  track current process: disable
+[36mmysql_1        |[0m 2021-04-28 08:59:05+00:00 [Note] [Entrypoint]: Database files initialized
+[36mmysql_1        |[0m 2021-04-28 08:59:05+00:00 [Note] [Entrypoint]: Starting temporary server
+[36mmysql_1        |[0m 2021-04-28 08:59:05+00:00 [Note] [Entrypoint]: Waiting for server startup
+[36mmysql_1        |[0m 2021-04-28T08:59:06.269553Z 0 [Warning] TIMESTAMP with implicit DEFAULT value is deprecated. Please use --explicit_defaults_for_timestamp server option (see documentation for more details).
+[36mmysql_1        |[0m 2021-04-28T08:59:06.270988Z 0 [Note] mysqld (mysqld 5.7.33) starting as process 79 ...
+[36mmysql_1        |[0m 2021-04-28T08:59:06.275330Z 0 [Note] InnoDB: PUNCH HOLE support available
+[36mmysql_1        |[0m 2021-04-28T08:59:06.275379Z 0 [Note] InnoDB: Mutexes and rw_locks use GCC atomic builtins
+[36mmysql_1        |[0m 2021-04-28T08:59:06.275385Z 0 [Note] InnoDB: Uses event mutexes
+[36mmysql_1        |[0m 2021-04-28T08:59:06.275391Z 0 [Note] InnoDB: GCC builtin __atomic_thread_fence() is used for memory barrier
+[36mmysql_1        |[0m 2021-04-28T08:59:06.275426Z 0 [Note] InnoDB: Compressed tables use zlib 1.2.11
+[36mmysql_1        |[0m 2021-04-28T08:59:06.275433Z 0 [Note] InnoDB: Using Linux native AIO
+[36mmysql_1        |[0m 2021-04-28T08:59:06.285543Z 0 [Note] InnoDB: Number of pools: 1
+[36mmysql_1        |[0m 2021-04-28T08:59:06.285766Z 0 [Note] InnoDB: Using CPU crc32 instructions
+[36mmysql_1        |[0m 2021-04-28T08:59:06.288179Z 0 [Note] InnoDB: Initializing buffer pool, total size = 128M, instances = 1, chunk size = 128M
+[36mmysql_1        |[0m 2021-04-28T08:59:06.310453Z 0 [Note] InnoDB: Completed initialization of buffer pool
+[36mmysql_1        |[0m 2021-04-28T08:59:06.317712Z 0 [Note] InnoDB: If the mysqld execution user is authorized, page cleaner thread priority can be changed. See the man page of setpriority().
+[36mmysql_1        |[0m 2021-04-28T08:59:06.334223Z 0 [Note] InnoDB: Highest supported file format is Barracuda.
+[36mmysql_1        |[0m 2021-04-28T08:59:06.412568Z 0 [Note] InnoDB: Creating shared tablespace for temporary tables
+[36mmysql_1        |[0m 2021-04-28T08:59:06.412671Z 0 [Note] InnoDB: Setting file './ibtmp1' size to 12 MB. Physically writing the file full; Please wait ...
+[36mmysql_1        |[0m 2021-04-28T08:59:06.556755Z 0 [Note] InnoDB: File './ibtmp1' size is now 12 MB.
+[36mmysql_1        |[0m 2021-04-28T08:59:06.557787Z 0 [Note] InnoDB: 96 redo rollback segment(s) found. 96 redo rollback segment(s) are active.
+[36mmysql_1        |[0m 2021-04-28T08:59:06.557833Z 0 [Note] InnoDB: 32 non-redo rollback segment(s) are active.
+[36mmysql_1        |[0m 2021-04-28T08:59:06.558923Z 0 [Note] InnoDB: Waiting for purge to start
+[36mmysql_1        |[0m 2021-04-28T08:59:06.609237Z 0 [Note] InnoDB: 5.7.33 started; log sequence number 2746840
+[36mmysql_1        |[0m 2021-04-28T08:59:06.609762Z 0 [Note] InnoDB: Loading buffer pool(s) from /var/lib/mysql/ib_buffer_pool
+[36mmysql_1        |[0m 2021-04-28T08:59:06.612428Z 0 [Note] Plugin 'FEDERATED' is disabled.
+[36mmysql_1        |[0m 2021-04-28T08:59:06.701901Z 0 [Note] InnoDB: Buffer pool(s) load completed at 210428  8:59:06
+[36mmysql_1        |[0m 2021-04-28T08:59:06.798195Z 0 [Note] Found ca.pem, server-cert.pem and server-key.pem in data directory. Trying to enable SSL support using them.
+[36mmysql_1        |[0m 2021-04-28T08:59:06.798252Z 0 [Note] Skipping generation of SSL certificates as certificate files are present in data directory.
+[36mmysql_1        |[0m 2021-04-28T08:59:06.804660Z 0 [Warning] CA certificate ca.pem is self signed.
+[36mmysql_1        |[0m 2021-04-28T08:59:06.804748Z 0 [Note] Skipping generation of RSA key pair as key files are present in data directory.
+[36mmysql_1        |[0m 2021-04-28T08:59:06.870512Z 0 [Warning] Insecure configuration for --pid-file: Location '/var/run/mysqld' in the path is accessible to all OS users. Consider choosing a different directory.
+[36mmysql_1        |[0m 2021-04-28T08:59:07.332398Z 0 [Note] Event Scheduler: Loaded 0 events
+[36mmysql_1        |[0m 2021-04-28T08:59:07.333066Z 0 [Note] mysqld: ready for connections.
+[36mmysql_1        |[0m Version: '5.7.33'  socket: '/var/run/mysqld/mysqld.sock'  port: 0  MySQL Community Server (GPL)

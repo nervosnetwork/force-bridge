@@ -46,7 +46,22 @@
     "ckb": {
       "ckbRpcUrl": "http://127.0.0.1:8114",
       "ckbIndexerUrl": "http://127.0.0.1:8116",
-      "privateKey": "0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe",
+      "multisigScript": {
+          "R": 0,
+          "M": 2,
+          "publicKeyHashes": [
+            "0x40dcec2ef1ffc2340ea13ff4dd9671d2f9787e95",
+            "0xc8328aabcd9b9e8e64fbc566c4385c3bdeb219d7",
+            "0x470dcdc5e44064909650113a274b3b36aecb6dc7",
+            "0xd9a188cc1985a7d4a31f141f4ebb61f241aec182",
+            "0xebf9befcd8396e88cab8fcb920ab149231658f4b"
+          ]
+      },
+      "keys": [
+       "0xd00c06bfd800d27397002dca6fb0993d5ba6399b4238b2f29ee9deb97593d2bc",
+       "0x63d86723e08f0f813a36ce6aa123bb2289d90680ae1e99d4de8cdb334553f24d"
+      ],
+      "fromPrivateKey": "0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe",
       "deps": {
         "bridgeLock": {
           "cellDep": {
