@@ -1,5 +1,5 @@
 import { Address, Amount, HashType, Script } from '@lay2/pw-core';
-import { Cell, HexString, Script as LumosScript } from '@ckb-lumos/base';
+import { Cell, Script as LumosScript } from '@ckb-lumos/base';
 import { Asset, ChainType } from '../model/asset';
 import { logger } from '@force-bridge/utils/logger';
 import { ScriptType } from '@force-bridge/ckb/tx-helper/indexer';
@@ -8,48 +8,15 @@ import { fromHexString, stringToUint8Array, toHexString, bigintToSudtAmount, asy
 import { ForceBridgeCore } from '@force-bridge/core';
 import { SerializeRecipientCellData } from '@force-bridge/ckb/tx-helper/generated/eth_recipient_cell';
 import { CellCollector, Indexer } from '@ckb-lumos/indexer';
-import { generateAddress, TransactionSkeleton, TransactionSkeletonType } from '@ckb-lumos/helpers';
+import { TransactionSkeleton, TransactionSkeletonType } from '@ckb-lumos/helpers';
 import { common } from '@ckb-lumos/common-scripts';
-import { multisigArgs, serializeMultisigScript } from '@ckb-lumos/common-scripts/lib/from_info';
-import { key } from '@ckb-lumos/hd';
-import { getConfig } from '@ckb-lumos/config-manager';
+import { getFromAddr, getMultisigLock } from '@force-bridge/ckb/tx-helper/multisig/multisig_helper';
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
-
-const config = getConfig();
-const multisigTemplate = config.SCRIPTS.SECP256K1_BLAKE160_MULTISIG;
-const secpTemplate = getConfig().SCRIPTS.SECP256K1_BLAKE160;
 
 export interface MintAssetRecord {
   asset: Asset;
   amount: Amount;
   recipient: Address;
-}
-
-function getMultisigLock() {
-  const multisigScript = ForceBridgeCore.config.ckb.multisigScript;
-  const serializedMultisigScript = serializeMultisigScript(multisigScript);
-  const args = multisigArgs(serializedMultisigScript);
-  const multisigLockScript = {
-    code_hash: multisigTemplate.CODE_HASH,
-    hash_type: multisigTemplate.HASH_TYPE,
-    args,
-  };
-  return multisigLockScript;
-}
-function getMultisigAddr(): string {
-  const multisigLockScript = getMultisigLock();
-  return generateAddress(multisigLockScript);
-}
-
-function getFromAddr(): string {
-  const fromPrivateKey = ForceBridgeCore.config.ckb.fromPrivateKey;
-  const fromBlake160 = key.publicKeyToBlake160(key.privateToPublic(fromPrivateKey as HexString));
-  const fromLockScript = {
-    code_hash: secpTemplate.CODE_HASH,
-    hash_type: secpTemplate.HASH_TYPE,
-    args: fromBlake160,
-  };
-  return generateAddress(fromLockScript);
 }
 
 export class CkbTxGenerator {
