@@ -39,7 +39,7 @@ export class CkbTxGenerator {
     const needSupplyCap = bridgeCellCapacity * BigInt(bridgeLockscripts.length) + fee;
     const supplyCapCells = await this.collector.getCellsByLockscriptAndCapacity(
       fromLockscript,
-      Amount.fromUInt128LE(bigintToSudtAmount(needSupplyCap)),
+      new Amount(`0x${needSupplyCap.toString(16)}`),
     );
     const inputs = supplyCapCells.map((cell) => {
       return { previousOutput: cell.outPoint, since: '0x0' };
@@ -123,7 +123,7 @@ export class CkbTxGenerator {
     const needSupplyCap = sudtCellCapacity * BigInt(records.length) + fee;
     const supplyCapCells = await this.collector.getCellsByLockscriptAndCapacity(
       userLockscript,
-      Amount.fromUInt128LE(bigintToSudtAmount(needSupplyCap)),
+      new Amount(`0x${needSupplyCap.toString(16)}`),
     );
     const inputCells = supplyCapCells.concat(bridgeCells);
     const inputs = inputCells.map((cell) => {
@@ -258,7 +258,7 @@ export class CkbTxGenerator {
     const outputCap = outputs.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
     const needSupplyCapCells = await this.collector.getCellsByLockscriptAndCapacity(
       fromLockscript,
-      Amount.fromUInt128LE(bigintToSudtAmount(outputCap - sudtCellCapacity * BigInt(sudtCells.length) + fee)),
+      new Amount(`0x${(outputCap - sudtCellCapacity * BigInt(sudtCells.length) + fee).toString(16)}`),
     );
     inputCells = inputCells.concat(needSupplyCapCells);
     this.handleChangeCell(inputCells, outputs, outputsData, fromLockscript, fee);
