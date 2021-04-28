@@ -23,6 +23,7 @@ import { EosDb } from '@force-bridge/db/eos';
 import { BtcDb } from '@force-bridge/db/btc';
 import { RPCClient } from 'rpc-bitcoin';
 import { IBalance } from '@force-bridge/xchain/btc';
+import { Account } from '@force-bridge/ckb/model/accounts';
 
 const TronWeb = require('tronweb');
 
@@ -122,7 +123,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
   ): Promise<API.GenerateTransactionResponse<T>> {
     logger.info('generateBridgeOutNervosTransaction ', payload);
     const fromLockscript = ForceBridgeCore.ckb.utils.addressToScript(payload.sender);
-    const ownLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>fromLockscript);
+    const ownLockHash = await getOwnLockHash();
 
     const network = payload.network;
     const assetName = payload.asset;
@@ -288,8 +289,8 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
           break;
         case 'Nervos':
           const userScript = ForceBridgeCore.ckb.utils.addressToScript(value.userIdent);
-          const ckbLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>userScript);
-          const asset = getTokenAsset(ckbLockHash, value.assetIdent);
+          const ownLockHash = await getOwnLockHash();
+          const asset = getTokenAsset(ownLockHash, value.assetIdent);
           logger.debug(`sudt args is ${value.assetIdent}`);
           const bridgeCellLockscript = {
             codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
@@ -414,4 +415,9 @@ function getTokenAsset(ownLockHash: string, XChainToken: string): Asset {
       return;
   }
   return asset;
+}
+
+async function getOwnLockHash() {
+  const account = new Account(ForceBridgeCore.config.ckb.privateKey);
+  return ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
 }
