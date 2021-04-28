@@ -5,10 +5,10 @@ import fetch from 'node-fetch/index';
 import { Config } from '../../packages/config';
 import { ForceBridgeCore } from '../../packages/core';
 import nconf from 'nconf';
-import { sign } from '@force-bridge/ckb/tx-helper/signer';
-
-import { abi } from '@force-bridge/xchain/eth/abi/ForceBridge.json';
-import { asyncSleep, stringToUint8Array, toHexString } from '@force-bridge/utils';
+import { asyncSleep } from '@force-bridge/utils';
+import { EthAsset } from '@force-bridge/ckb/model/asset';
+import { Script } from '@lay2/pw-core';
+import assert from 'assert';
 
 const CKB_PRI_KEY = process.env.PRI_KEY || '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
 
@@ -31,19 +31,17 @@ const client = new JSONRPCClient((jsonRPCRequest) =>
   }),
 );
 
-async function mint(ckbLockscript) {
-  const mintPayload = {
+async function lock(ckbLockscript) {
+  const lockPayload = {
     sender: '0x0',
     recipient: ckbLockscript,
     asset: {
       network: 'Ethereum',
-      ident: {
-        address: '0x0000000000000000000000000000000000000000',
-      },
+      ident: '0x0000000000000000000000000000000000000000',
       amount: '1',
     },
   };
-  const unsignedMintTx = await client.request('generateBridgeInNervosTransaction', mintPayload);
+  const unsignedMintTx = await client.request('generateBridgeInNervosTransaction', lockPayload);
   console.log('unsignedMintTx', unsignedMintTx);
 
   const provider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
@@ -68,27 +66,31 @@ async function mint(ckbLockscript) {
   const signedTx = await wallet.signTransaction(unsignedTx);
   console.log('signedTx', signedTx);
 
-  const sendPayload = {
+  const lockTxHash = (await provider.sendTransaction(signedTx)).hash;
+  // const mintTxHash = await client.request('sendSignedTransaction', sendPayload);
+  console.log('lockTxHash', lockTxHash);
+  return lockTxHash;
+}
+
+async function getTransaction(ckbAddress) {
+  const getTxPayload = {
     network: 'Ethereum',
-    signedTransaction: signedTx,
+    userIdent: ckbAddress,
+    assetIdent: '0x0000000000000000000000000000000000000000',
   };
-  const mintTxHash = await client.request('sendSignedTransaction', sendPayload);
-  console.log('mintTxHash', mintTxHash);
+
+  const txs = await client.request('getBridgeTransactionSummaries', getTxPayload);
+  console.log('txs', JSON.stringify(txs));
+  return txs;
 }
 
 async function burn(ckbLockscript) {
   const burnPayload = {
     network: 'Ethereum',
     sender: ckbLockscript,
-    recipient: {
-      address: '0x1000000000000000000000000000000000000001',
-    },
-    asset: {
-      amount: '1',
-      ident: {
-        address: '0x0000000000000000000000000000000000000000',
-      },
-    },
+    recipient: '0x1000000000000000000000000000000000000001',
+    asset: '0x0000000000000000000000000000000000000000',
+    amount: '1',
   };
   const unsignedBurnTx = await client.request('generateBridgeOutNervosTransaction', burnPayload);
   console.log('unsignedBurnTx ', unsignedBurnTx);
@@ -96,12 +98,61 @@ async function burn(ckbLockscript) {
   const signedTx = ForceBridgeCore.ckb.signTransaction(CKB_PRI_KEY)(unsignedBurnTx.rawTransaction);
   console.log('signedTx', signedTx);
 
-  const sendPayload = {
-    network: 'Nervos',
-    signedTransaction: JSON.stringify(signedTx),
-  };
-  const burnTxHash = await client.request('sendSignedTransaction', sendPayload);
+  const burnTxHash = await ForceBridgeCore.ckb.rpc.sendTransaction(signedTx);
+  //const burnTxHash = await client.request('sendSignedTransaction', sendPayload);
   console.log('burnTxHash', burnTxHash);
+  return burnTxHash;
+}
+
+async function check(ckbAddress, txId) {
+  let find = false;
+  for (let i = 0; i < 100; i++) {
+    await asyncSleep(3000);
+    const txs = await getTransaction(ckbAddress);
+    for (const tx of txs) {
+      if (tx.status == 'Successful' && tx.txSummary.fromTransaction.txId == txId) {
+        console.log(tx);
+        find = true;
+        break;
+      }
+    }
+    if (find) {
+      break;
+    }
+  }
+  if (!find) {
+    throw new Error(`rpc test failed, can not find record ${txId}`);
+  }
+}
+
+async function getBalance(ckbAddress) {
+  const publicKey = ForceBridgeCore.ckb.utils.privateKeyToPublicKey(CKB_PRI_KEY);
+
+  const { secp256k1Dep } = await ForceBridgeCore.ckb.loadDeps();
+  const args = `0x${ForceBridgeCore.ckb.utils.blake160(publicKey, 'hex')}`;
+  const lockscript = Script.fromRPC({
+    code_hash: secp256k1Dep.codeHash,
+    args,
+    hash_type: secp256k1Dep.hashType,
+  });
+
+  const ownLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>lockscript);
+  const asset = new EthAsset('0x0000000000000000000000000000000000000000', ownLockHash);
+  //   const bridgeCellLockscript = {
+  //     codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
+  //     hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
+  //     args: asset.toBridgeLockscriptArgs(),
+  //   };
+  //   const sudtArgs = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
+
+  const balancePayload = {
+    network: 'Nervos',
+    userIdent: ckbAddress,
+    assetIdent: asset.toBridgeLockscriptArgs(),
+  };
+  const balance = await client.request('getBalance', [balancePayload]);
+  console.log('balance', balance);
+  return balance;
 }
 
 async function main() {
@@ -111,19 +162,21 @@ async function main() {
   // init bridge force core
   await new ForceBridgeCore().init(config);
 
-  const publicKey = ForceBridgeCore.ckb.utils.privateKeyToPublicKey(CKB_PRI_KEY);
-  const { secp256k1Dep } = await ForceBridgeCore.ckb.loadDeps();
-  const args = `0x${ForceBridgeCore.ckb.utils.blake160(publicKey, 'hex')}`;
+  const ckbAddress = 'ckt1qyqyph8v9mclls35p6snlaxajeca97tc062sa5gahk';
 
-  const ckbLockscript = {
-    codeHash: secp256k1Dep.codeHash,
-    args: args,
-    hashType: secp256k1Dep.hashType,
-  };
+  const beforeMintBalance = await getBalance(ckbAddress);
 
-  //await mint(ckbLockscript);
+  const lockTxHash = await lock(ckbAddress);
+  await check(ckbAddress, lockTxHash);
 
-  await burn(ckbLockscript);
+  const afterMintBalance = await getBalance(ckbAddress);
+  assert(+beforeMintBalance[0].amount + 1 == +afterMintBalance[0].amount);
+
+  const burnTxHash = await burn(ckbAddress);
+  await check(ckbAddress, burnTxHash);
+
+  const afterBurnBalance = await getBalance(ckbAddress);
+  assert(+afterBurnBalance[0].amount + 1 == +afterMintBalance[0].amount);
 }
 
 main();
