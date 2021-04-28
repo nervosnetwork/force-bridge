@@ -255,7 +255,7 @@ export class CkbHandler {
         const signedTx = this.ckb.signTransaction(this.PRI_KEY)(rawTx);
         const mintTxHash = await this.ckb.rpc.sendTransaction(signedTx);
         console.log(`Mint Transaction has been sent with tx hash ${mintTxHash}`);
-        const txStatus = await this.waitUntilCommitted(mintTxHash, 60);
+        const txStatus = await this.waitUntilCommitted(mintTxHash, 200);
         if (txStatus.txStatus.status === 'committed') {
           mintRecords.map((r) => {
             r.status = 'success';

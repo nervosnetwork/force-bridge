@@ -190,7 +190,7 @@ export class CkbTxGenerator {
       script: new Script(
         ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
         args,
-        HashType.data,
+        ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
       ).serializeJson() as LumosScript,
       script_type: ScriptType.type,
       filter: {

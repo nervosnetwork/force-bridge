@@ -23,7 +23,7 @@ export class CkbDb {
 
   async getCkbLatestHeight(): Promise<number> {
     const rawRes = await this.connection.manager.query('select max(block_number) as max_block_number from ckb_burn');
-    return rawRes[0].max_block_number || 1;
+    return rawRes[0].max_block_number || 1596674;
   }
 
   async getCkbMintRecordsToMint(take = 1): Promise<CkbMint[]> {

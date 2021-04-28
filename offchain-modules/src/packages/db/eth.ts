@@ -26,7 +26,7 @@ export class EthDb implements IQuery {
 
   async getLatestHeight(): Promise<number> {
     const rawRes = await this.connection.manager.query('select max(block_number) as max_block_number from eth_lock');
-    return rawRes[0].max_block_number || 1;
+    return rawRes[0].max_block_number || 8485617;
   }
 
   async createCkbMint(records: ICkbMint[]): Promise<void> {
