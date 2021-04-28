@@ -21,7 +21,7 @@ export class IndexerCollector extends Collector {
       if (cell.data.length / 2 - 1 > 0 || cell.type !== undefined) {
         return { stop: false, push: false };
       } else {
-        accCapacity = accCapacity.add(new Amount(cell.capacity));
+        accCapacity = accCapacity.add(new Amount(cell.capacity, 0));
         return { stop: false, push: true };
       }
     };
