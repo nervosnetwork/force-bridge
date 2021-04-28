@@ -255,12 +255,12 @@ export class CkbTxGenerator {
         script: fromLockscript.serializeJson() as LumosScript,
       },
     };
-    const sudtCells = await this.collector.indexer.getCells(searchKey);
+    const sudtCells = await this.collector.collectSudtByAmount(searchKey, amount);
     if (sudtCells.length == 0) {
       throw new Error('failed to generate burn tx. the live sudt cell is not found!');
     }
     logger.debug('burn sudtCells: ', sudtCells);
-    let inputCells = [sudtCells[0]];
+    let inputCells = sudtCells;
     const ownerLockHash = this.ckb.utils.scriptToHash(<CKBComponents.Script>{
       codeHash: multisigLockScript.code_hash,
       hashType: multisigLockScript.hash_type,
@@ -301,7 +301,7 @@ export class CkbTxGenerator {
     outputs.push(recipientOutput);
     outputsData.push(recipientCellData);
 
-    const total = Amount.fromUInt128LE(sudtCells[0].data);
+    const total = sudtCells.map((cell) => Amount.fromUInt128LE(cell.data)).reduce((a, b) => a.add(b));
     let changeAmount = Amount.ZERO;
     const sudtCellCapacity = 300n * 10n ** 8n;
     if (total.gt(amount)) {
@@ -320,7 +320,7 @@ export class CkbTxGenerator {
     const outputCap = outputs.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
     const needSupplyCapCells = await this.collector.getCellsByLockscriptAndCapacity(
       fromLockscript,
-      Amount.fromUInt128LE(bigintToSudtAmount(outputCap - sudtCellCapacity + fee)),
+      Amount.fromUInt128LE(bigintToSudtAmount(outputCap - sudtCellCapacity * BigInt(sudtCells.length) + fee)),
     );
     inputCells = inputCells.concat(needSupplyCapCells);
     this.handleChangeCell(inputCells, outputs, outputsData, fromLockscript, fee);

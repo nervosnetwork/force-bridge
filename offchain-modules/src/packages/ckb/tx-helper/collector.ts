@@ -1,6 +1,6 @@
 import { Script as LumosScript } from '@ckb-lumos/base';
 import { Amount, Script } from '@lay2/pw-core';
-import { CkbIndexer, IndexerCell, ScriptType, Terminator } from './indexer';
+import { CkbIndexer, IndexerCell, ScriptType, SearchKey, Terminator } from './indexer';
 
 export abstract class Collector {
   abstract getCellsByLockscriptAndCapacity(lockscript: Script, capacity: Amount): Promise<IndexerCell[]>;
@@ -28,6 +28,22 @@ export class IndexerCollector extends Collector {
     const searchKey = {
       script: lockscript.serializeJson() as LumosScript,
       script_type: ScriptType.lock,
+    };
+    const cells = await this.indexer.getCells(searchKey, terminator);
+    return cells;
+  }
+
+  async collectSudtByAmount(searchKey: SearchKey, amount: Amount): Promise<IndexerCell[]> {
+    let balance = Amount.ZERO;
+    const terminator: Terminator = (index, c) => {
+      const cell = c;
+      if (balance.gte(amount)) {
+        return { stop: true, push: false };
+      } else {
+        const cellAmount = Amount.fromUInt128LE(cell.data);
+        balance = balance.add(cellAmount);
+        return { stop: false, push: true };
+      }
     };
     const cells = await this.indexer.getCells(searchKey, terminator);
     return cells;

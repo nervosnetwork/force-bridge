@@ -9,13 +9,14 @@ import { IndexerCollector } from '../../packages/ckb/tx-helper/collector';
 import { Amount } from '@lay2/pw-core';
 import { ForceBridgeCore } from '../../packages/core';
 import { asyncSleep } from '@force-bridge/utils';
+import { EosAssetAmount } from '@force-bridge/xchain/eos/utils';
 
 export const eosCmd = new commander.Command('eos');
 eosCmd
   .command('lock')
   .requiredOption('-acc, --account', 'account to lock')
   .requiredOption('-p, --privateKey', 'private key of locked account on eos')
-  .requiredOption('-a, --amount', 'amount to lock')
+  .requiredOption('-a, --amount', 'amount to lock, eg: 0.0001 EOS')
   .requiredOption('-r, --recipient', 'recipient address on ckb')
   .option('-e, --extra', 'extra data of sudt')
   .option('-w, --wait', 'whether waiting for transaction become irreversible')
@@ -26,7 +27,7 @@ eosCmd
   .command('unlock')
   .requiredOption('-r, recipient', 'recipient account on eos')
   .requiredOption('-p, --privateKey', 'private key of unlock address on ckb')
-  .requiredOption('-a, --amount', 'amount of unlock')
+  .requiredOption('-a, --amount', 'amount of unlock, eg: 0.0001 EOS')
   .option('-w, --wait', 'whether waiting for transaction confirmed')
   .action(doUnlock)
   .description('unlock asset on eos');
@@ -35,6 +36,7 @@ eosCmd
   .command('balanceOf')
   .option('-addr, --address', 'address on ckb')
   .option('-acc, --account', 'account on eos to query')
+  .option('-s, --asset', 'asset symbol', 'EOS')
   .option('-v, --detail', 'show detail information of balance on eos')
   .action(doBalanceOf)
   .description('query balance of account on eos or ckb');
@@ -50,13 +52,17 @@ async function doLock(
   const recipient = options.get('recipient');
   const extra = options.get('extra');
   const memo = extra === undefined ? recipient : `${recipient},${extra}`;
+  const assetAmount = EosAssetAmount.assetAmountFromQuantity(amount);
+  if (!assetAmount.Asset) {
+    assetAmount.Asset = 'EOS';
+  }
 
   const chain = createEosChain(ForceBridgeCore.config.eos.rpcUrl, privateKey);
   const txRes = await chain.transfer(
     account,
     ForceBridgeCore.config.eos.bridgerAccount,
     'active',
-    amount + ' EOS',
+    assetAmount.toString(),
     memo,
     'eosio.token',
     {
@@ -65,7 +71,7 @@ async function doLock(
       expireSeconds: 30,
     },
   );
-  console.log(`Account:${account} locked:${amount} eos, recipient:${recipient} extra:${extra}`);
+  console.log(`Account:${account} locked:${assetAmount.toString()}, recipient:${recipient} extra:${extra}`);
   console.log(txRes);
 
   if (opts.wait) {
@@ -93,6 +99,10 @@ async function doUnlock(
   const recipientAddress = options.get('recipient');
   const amount = options.get('amount');
   const privateKey = options.get('privateKey');
+  const assetAmount = EosAssetAmount.assetAmountFromQuantity(amount);
+  if (!assetAmount.Asset) {
+    assetAmount.Asset = 'EOS';
+  }
 
   const account = new Account(privateKey);
   const generator = new CkbTxGenerator(ForceBridgeCore.ckb, new IndexerCollector(ForceBridgeCore.ckbIndexer));
@@ -100,13 +110,15 @@ async function doUnlock(
   const burnTx = await generator.burn(
     await account.getLockscript(),
     recipientAddress,
-    new EosAsset('EOS', ownLockHash),
-    new Amount(amount, 4),
+    new EosAsset(assetAmount.Asset, ownLockHash),
+    new Amount(assetAmount.Amount, assetAmount.Precision),
   );
   const signedTx = ForceBridgeCore.ckb.signTransaction(privateKey)(burnTx);
   const burnTxHash = await ForceBridgeCore.ckb.rpc.sendTransaction(signedTx);
   console.log(
-    `Address:${account.address} unlock ${amount} eos, recipientAddress:${recipientAddress}, burnTxHash:${burnTxHash}`,
+    `Address:${
+      account.address
+    } unlock ${assetAmount.toString()}, recipientAddress:${recipientAddress}, burnTxHash:${burnTxHash}`,
   );
   if (opts.wait) {
     await waitUnlockTxCompleted(burnTxHash);
@@ -124,30 +136,22 @@ async function doBalanceOf(
     console.log('account or address are required');
     return;
   }
+  const token = !options.get('asset') ? 'EOS' : options.get('asset');
+
+  const chain = createEosChain(ForceBridgeCore.config.eos.rpcUrl, null);
   if (account) {
-    const chain = createEosChain(ForceBridgeCore.config.eos.rpcUrl, null);
-    const accountInfo = await chain.getAccountInfo(account);
-    if (opts.detail) {
-      console.log(accountInfo);
-      return;
-    }
-    const balance = {
-      account_name: accountInfo.account_name,
-      head_block_num: accountInfo.head_block_num,
-      core_liquid_balance: accountInfo.core_liquid_balance,
-      ram_quota: accountInfo.ram_quota,
-      net_weight: accountInfo.net_weight,
-      cpu_weight: accountInfo.cpu_weight,
-    };
+    const balance = await chain.getCurrencyBalance(account, token);
     console.log(balance);
   }
   if (address) {
     const ownLockHash = ForceBridgeCore.ckb.utils.scriptToHash(
       <CKBComponents.Script>ForceBridgeCore.ckb.utils.addressToScript(address),
     );
-    const asset = new EosAsset('EOS', ownLockHash);
+    const asset = new EosAsset(token, ownLockHash);
     const balance = await getSudtBalance(address, asset);
-    console.log(`BalanceOf address:${address} on ckb is ${balance.toString(4)}`);
+    console.log(
+      `BalanceOf address:${address} on ckb is ${balance.toString(await chain.getCurrencyPrecision(token))} ${token}`,
+    );
   }
 }
 
