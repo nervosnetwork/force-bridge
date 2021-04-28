@@ -22,6 +22,7 @@ export class EosLockEvent {
   AccountActionSeq: number;
   GlobalActionSeq: number;
   Asset: string;
+  Precision: number;
   From: string;
   To: string;
   Amount: string;
@@ -33,11 +34,27 @@ export class EosHandler {
   private config: EosConfig;
   private chain: EosChain;
   private readonly signatureProvider: JsSignatureProvider;
+  private assetPrecisionCache: Map<string, number>;
   constructor(db: EosDb, config: EosConfig) {
     this.db = db;
     this.config = config;
     this.signatureProvider = new JsSignatureProvider(this.config.privateKeys);
     this.chain = new EosChain(this.config.rpcUrl, this.signatureProvider);
+    this.assetPrecisionCache = new Map<string, number>();
+  }
+
+  setPrecision(symbol: string, precision: number) {
+    this.assetPrecisionCache.set(symbol, precision);
+  }
+
+  async getPrecision(symbol: string): Promise<number> {
+    let precision = this.assetPrecisionCache.get(symbol);
+    if (precision) {
+      return precision;
+    }
+    precision = await this.chain.getCurrencyPrecision(symbol);
+    this.setPrecision(symbol, precision);
+    return precision;
   }
 
   async getUnlockRecords(status: EosUnlockStatus): Promise<EosUnlock[]> {
@@ -49,8 +66,7 @@ export class EosHandler {
       this.config.bridgerAccount,
       record.recipientAddress,
       this.config.bridgerAccountPermission,
-      //TODO using decimal according token precision
-      `${new Amount(record.amount, 0).toString(4)} ${record.asset}`,
+      `${new Amount(record.amount, 0).toString(await this.getPrecision(record.asset))} ${record.asset}`,
       '',
       EosTokenAccount,
       {
@@ -135,6 +151,7 @@ export class EosHandler {
           continue;
         }
         const amountAsset = EosAssetAmount.assetAmountFromQuantity(data.quantity);
+        this.setPrecision(amountAsset.Asset, amountAsset.Precision);
         const lockEvent = {
           TxHash: actionTrace.trx_id,
           ActionIndex: actionTrace.action_ordinal,
@@ -142,6 +159,7 @@ export class EosHandler {
           AccountActionSeq: action.account_action_seq,
           GlobalActionSeq: action.global_action_seq,
           Asset: amountAsset.Asset,
+          Precision: amountAsset.Precision,
           From: data.from,
           To: data.to,
           Amount: amountAsset.Amount,
@@ -174,7 +192,7 @@ export class EosHandler {
       globalActionSeq: lockEvent.GlobalActionSeq,
       txHash: lockEvent.TxHash,
       actionIndex: lockEvent.ActionIndex,
-      amount: new Amount(lockEvent.Amount, 4).toString(0),
+      amount: new Amount(lockEvent.Amount, lockEvent.Precision).toString(0),
       token: lockEvent.Asset,
       sender: lockEvent.From,
       memo: lockEvent.Memo,
