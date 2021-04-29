@@ -40,7 +40,7 @@ export class CkbTxGenerator {
     const needSupplyCap = bridgeCellCapacity * BigInt(bridgeLockscripts.length) + fee;
     const supplyCapCells = await this.collector.getCellsByLockscriptAndCapacity(
       fromLockscript,
-      Amount.fromUInt128LE(bigintToSudtAmount(needSupplyCap)),
+      new Amount(`0x${needSupplyCap.toString(16)}`, 0),
     );
     const inputs = supplyCapCells.map((cell) => {
       return { previousOutput: cell.outPoint, since: '0x0' };
@@ -124,7 +124,7 @@ export class CkbTxGenerator {
     const needSupplyCap = sudtCellCapacity * BigInt(records.length) + fee;
     const supplyCapCells = await this.collector.getCellsByLockscriptAndCapacity(
       userLockscript,
-      Amount.fromUInt128LE(bigintToSudtAmount(needSupplyCap)),
+      new Amount(`0x${needSupplyCap.toString(16)}`, 0),
     );
     const inputCells = supplyCapCells.concat(bridgeCells);
     const inputs = inputCells.map((cell) => {
@@ -198,12 +198,12 @@ export class CkbTxGenerator {
         script: fromLockscript.serializeJson() as LumosScript,
       },
     };
-    const sudtCells = await this.collector.indexer.getCells(searchKey);
+    const sudtCells = await this.collector.collectSudtByAmount(searchKey, amount);
     if (sudtCells.length == 0) {
       throw new Error('failed to generate burn tx. the live sudt cell is not found!');
     }
     logger.debug('burn sudtCells: ', sudtCells);
-    let inputCells = [sudtCells[0]];
+    let inputCells = sudtCells;
     const account = new Account(ForceBridgeCore.config.ckb.privateKey);
     const ownerLockHash = this.ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
     //const ownerLockHash = this.ckb.utils.scriptToHash(<CKBComponents.Script>fromLockscript);
@@ -242,7 +242,7 @@ export class CkbTxGenerator {
     outputs.push(recipientOutput);
     outputsData.push(recipientCellData);
 
-    const total = Amount.fromUInt128LE(sudtCells[0].data);
+    const total = sudtCells.map((cell) => Amount.fromUInt128LE(cell.data)).reduce((a, b) => a.add(b));
     let changeAmount = Amount.ZERO;
     const sudtCellCapacity = 300n * 10n ** 8n;
     if (total.gt(amount)) {
@@ -263,7 +263,7 @@ export class CkbTxGenerator {
 
     const needSupplyCapCells = await this.collector.getCellsByLockscriptAndCapacity(
       fromLockscript,
-      Amount.fromUInt128LE(bigintToSudtAmount(outputCap - sudtCellCapacity + fee)),
+      new Amount(`0x${(outputCap - sudtCellCapacity * BigInt(sudtCells.length) + fee).toString(16)}`, 0),
     );
     inputCells = inputCells.concat(needSupplyCapCells);
     this.handleChangeCell(inputCells, outputs, outputsData, fromLockscript, fee);
