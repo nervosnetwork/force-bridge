@@ -71,6 +71,9 @@ export interface rpcConfig {
   port: number;
   corsOptions?: {
     origin: string;
+    methods?: string;
+    preflightContinue?: boolean;
+    optionsSuccessStatus?: number;
   };
 }
 
