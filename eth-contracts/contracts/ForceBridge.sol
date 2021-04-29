@@ -24,7 +24,7 @@ contract ForceBridge {
     bytes32 public constant UNLOCK_TYPEHASH =
         0xf1c18f82536658c0cb1a208d4a52b9915dc9e75640ed0daf3a6be45d02ca5c9f;
     // CHANGE_VALIDATORS_TYPEHASH = keccak256("changeValidators(address[] validators, uint256 multisigThreshold)");
-    bytes32 public constant CHANGE_VALIDATORS_TYPEHASH = 
+    bytes32 public constant CHANGE_VALIDATORS_TYPEHASH =
         0xd2cedd075bf1780178b261ac9c9000261e7fd88d66f6309124bddf24f5d953f8;
 
     bytes32 private _CACHED_DOMAIN_SEPARATOR;
@@ -299,6 +299,7 @@ contract ForceBridge {
         bytes memory recipientLockscript,
         bytes memory sudtExtraData
     ) public payable {
+        require (msg.value > 0, "amount should be greater than 0");
         emit Locked(
             address(0),
             msg.sender,
@@ -315,6 +316,7 @@ contract ForceBridge {
         bytes memory recipientLockscript,
         bytes memory sudtExtraData
     ) public {
+        require (amount > 0, "amount should be greater than 0");
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         emit Locked(
             token,
