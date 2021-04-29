@@ -198,7 +198,7 @@ const waitUntilCommitted = async (txHash) => {
 };
 const setStartTime = async () => {
   const ckb_tip = await ckb.rpc.getTipBlockNumber();
-  nconf.set('forceBridge:ckb:startBlockHeight', ckb_tip);
+  nconf.set('forceBridge:ckb:startBlockHeight', parseInt(ckb_tip, 10));
   nconf.save();
 };
 
