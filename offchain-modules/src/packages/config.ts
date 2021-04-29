@@ -72,6 +72,9 @@ export interface BtcConfig {
 
 export interface rpcConfig {
   port: number;
+  corsOptions?: {
+    origin: string;
+  };
 }
 
 export interface Config {
