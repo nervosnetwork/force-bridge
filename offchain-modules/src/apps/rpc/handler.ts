@@ -123,7 +123,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
   ): Promise<API.GenerateTransactionResponse<T>> {
     logger.info('generateBridgeOutNervosTransaction ', payload);
     const fromLockscript = ForceBridgeCore.ckb.utils.addressToScript(payload.sender);
-    const ownLockHash = await getOwnLockHash();
+    const ownLockHash = ForceBridgeCore.config.ckb.ownerLockHash;
 
     const network = payload.network;
     const assetName = payload.asset;
@@ -480,8 +480,8 @@ function transferDbRecordToResponse(
   return txSummaryWithStatus;
 }
 
-async function getTokenShadowIdent(chainType: ChainType, XChainToken: string): Promise<string> {
-  const ownLockHash = await getOwnLockHash();
+function getTokenShadowIdent(chainType: ChainType, XChainToken: string): Promise<string> {
+  const ownLockHash = ForceBridgeCore.config.ckb.ownerLockHash;
   let asset: Asset;
   switch (chainType) {
     case ChainType.BTC:
@@ -507,9 +507,4 @@ async function getTokenShadowIdent(chainType: ChainType, XChainToken: string): P
   };
   const sudtArgs = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
   return sudtArgs;
-}
-
-async function getOwnLockHash() {
-  const account = new Account(ForceBridgeCore.config.ckb.privateKey);
-  return ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
 }
