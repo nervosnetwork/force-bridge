@@ -55,7 +55,9 @@ async function main() {
   server.addMethod('getBalance', async (payload: GetBalancePayload) => {
     return await forceBridgeRpc.getBalance(payload);
   });
-
+  server.addMethod('getAssetList', async (payload) => {
+    return await forceBridgeRpc.getAssetList(payload);
+  });
   const app = express();
   app.use(bodyParser.json());
 

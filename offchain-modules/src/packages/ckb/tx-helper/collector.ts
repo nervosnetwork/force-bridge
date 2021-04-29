@@ -2,6 +2,7 @@ import { Script as LumosScript } from '@ckb-lumos/base';
 import { Address, Amount, Script } from '@lay2/pw-core';
 import { CkbIndexer, IndexerCell, ScriptType, Terminator } from './indexer';
 import { logger } from '../../utils/logger';
+import { fromHexString, stringToUint8Array, toHexString, bigintToSudtAmount } from '../../utils';
 
 export abstract class Collector {
   abstract getCellsByLockscriptAndCapacity(lockscript: Script, capacity: Amount): Promise<IndexerCell[]>;
@@ -22,7 +23,7 @@ export class IndexerCollector extends Collector {
       if (cell.data.length / 2 - 1 > 0 || cell.type !== undefined) {
         return { stop: false, push: false };
       } else {
-        accCapacity = accCapacity.add(Amount.fromUInt128LE(cell.capacity));
+        accCapacity = accCapacity.add(Amount.fromUInt128LE(bigintToSudtAmount(BigInt(cell.capacity))));
         return { stop: false, push: true };
       }
     };

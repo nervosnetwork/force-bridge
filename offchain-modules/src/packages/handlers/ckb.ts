@@ -140,12 +140,12 @@ export class CkbHandler {
               burn = {
                 senderLockHash: v.senderLockScriptHash,
                 ckbTxHash: k,
-                asset: `0x${toHexString(new Uint8Array(v.cellData.getAsset().raw()))}`,
+                asset: uint8ArrayToString(new Uint8Array(v.cellData.getAsset().raw())),
                 chain,
                 amount: Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.cellData.getAmount().raw()))}`).toString(
                   0,
                 ),
-                recipientAddress: `0x${toHexString(new Uint8Array(v.cellData.getRecipientAddress().raw()))}`,
+                recipientAddress: uint8ArrayToString(new Uint8Array(v.cellData.getRecipientAddress().raw())),
                 blockNumber: latestHeight,
               };
               break;

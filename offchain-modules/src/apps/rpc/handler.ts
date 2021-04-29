@@ -210,24 +210,19 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     const ckbLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>ckbLockScript);
     const assetName = payload.assetIdent;
     let dbHandler: IQuery;
-    let asset: Asset;
     logger.debug(`XChainNetwork :  ${XChainNetwork}, userAddress:  ${ckbAddress}`);
     switch (XChainNetwork) {
       case 'Bitcoin':
         dbHandler = new BtcDb(this.connection);
-        asset = new BtcAsset(assetName, ckbLockHash);
         break;
       case 'Ethereum':
         dbHandler = new EthDb(this.connection);
-        asset = new EthAsset(assetName, ckbLockHash);
         break;
       case 'EOS':
         dbHandler = new EosDb(this.connection);
-        asset = new EosAsset(assetName, ckbLockHash);
         break;
       case 'Tron':
         dbHandler = new TronDb(this.connection);
-        asset = new TronAsset(assetName, ckbLockHash);
         break;
       default:
         throw new Error('invalid chain type');
@@ -250,7 +245,107 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     return result;
   }
   async getAssetList(payload): Promise<any> {
-    Promise.reject(new Error('not yet'));
+    const eth_address = '0x0000000000000000000000000000000000000000';
+    const dai_address = '0x7Af456bf0065aADAB2E6BEc6DaD3731899550b84';
+    const usdt_address = '0x74a3dbd5831f45CD0F3002Bb87a59B7C15b1B5E6';
+    const usdc_address = '0x265566D4365d80152515E800ca39424300374A83';
+
+    const eth_ident = await getTokenShadowIdent(ChainType.ETH, eth_address);
+    const dai_ident = await getTokenShadowIdent(ChainType.ETH, dai_address);
+    const usdt_ident = await getTokenShadowIdent(ChainType.ETH, usdt_address);
+    const usdc_ident = await getTokenShadowIdent(ChainType.ETH, usdc_address);
+
+    const info = [
+      {
+        network: 'Ethereum',
+        ident: eth_address,
+        info: {
+          decimals: 18,
+          name: 'ETH',
+          symbol: 'Eth',
+          logoURI: 'https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=002',
+          shadow: { network: 'Nervos', ident: eth_ident },
+        },
+      },
+      {
+        network: 'Nervos',
+        ident: eth_ident,
+        info: {
+          decimals: 18,
+          name: 'ckETH',
+          symbol: 'ckEth',
+          logoURI: 'https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=002',
+          shadow: { network: 'Ethereum', ident: eth_address },
+        },
+      },
+      {
+        network: 'Ethereum',
+        ident: dai_address,
+        info: {
+          decimals: 18,
+          name: 'DAI',
+          symbol: 'Dai',
+          logoURI: 'https://cryptologos.cc/logos/single-collateral-dai-sai-logo.svg?v=002',
+          shadow: { network: 'Nervos', ident: dai_ident },
+        },
+      },
+      {
+        network: 'Nervos',
+        ident: dai_ident,
+        info: {
+          decimals: 18,
+          name: 'ckDAI',
+          symbol: 'ckDai',
+          logoURI: 'https://cryptologos.cc/logos/single-collateral-dai-sai-logo.svg?v=002',
+          shadow: { network: 'Ethereum', ident: dai_address },
+        },
+      },
+      {
+        network: 'Ethereum',
+        ident: usdt_address,
+        info: {
+          decimals: 18,
+          name: 'USDT',
+          symbol: 'Usdt',
+          logoURI: 'https://cryptologos.cc/logos/tether-usdt-logo.svg?v=002',
+          shadow: { network: 'Nervos', ident: usdt_ident },
+        },
+      },
+      {
+        network: 'Nervos',
+        ident: usdt_ident,
+        info: {
+          decimals: 18,
+          name: 'ckUSDT',
+          symbol: 'ckUsdt',
+          logoURI: 'https://cryptologos.cc/logos/tether-usdt-logo.svg?v=002',
+          shadow: { network: 'Ethereum', ident: usdt_address },
+        },
+      },
+      {
+        network: 'Ethereum',
+        ident: usdc_address,
+        info: {
+          decimals: 18,
+          name: 'USDC',
+          symbol: 'Usdc',
+          logoURI: 'https://cryptologos.cc/logos/usd-coin-usdc-logo.svg?v=002',
+          shadow: { network: 'Nervos', ident: usdc_ident },
+        },
+      },
+      {
+        network: 'Nervos',
+        ident: usdc_ident,
+        info: {
+          decimals: 18,
+          name: 'ckUSDC',
+          symbol: 'ckUsdc',
+          logoURI: 'https://cryptologos.cc/logos/usd-coin-usdc-logo.svg?v=002',
+          shadow: { network: 'Ethereum', ident: usdc_address },
+        },
+      },
+    ];
+    return info;
   }
   async getBalance(payload: GetBalancePayload): Promise<GetBalanceResponse> {
     const result: GetBalanceResponse = [];
@@ -289,19 +384,10 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
           break;
         case 'Nervos':
           const userScript = ForceBridgeCore.ckb.utils.addressToScript(value.userIdent);
-          const ownLockHash = await getOwnLockHash();
-          const asset = getTokenAsset(ownLockHash, value.assetIdent);
-          logger.debug(`sudt args is ${value.assetIdent}`);
-          const bridgeCellLockscript = {
-            codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
-            hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
-            args: asset.toBridgeLockscriptArgs(),
-          };
-          const sudtArgs = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
           const sudtType = {
             codeHash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
             hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
-            args: sudtArgs,
+            args: value.assetIdent,
           };
           const collector = new IndexerCollector(ForceBridgeCore.indexer);
           const sudt_amount = await collector.getSUDTBalance(
@@ -394,27 +480,33 @@ function transferDbRecordToResponse(
   return txSummaryWithStatus;
 }
 
-function getTokenAsset(ownLockHash: string, XChainToken: string): Asset {
+async function getTokenShadowIdent(chainType: ChainType, XChainToken: string): Promise<string> {
+  const ownLockHash = await getOwnLockHash();
   let asset: Asset;
-  const network = XChainToken.charAt(0);
-  switch (network) {
-    case ChainType.BTC.toString():
+  switch (chainType) {
+    case ChainType.BTC:
       asset = new BtcAsset('btc', ownLockHash);
       break;
-    case ChainType.EOS.toString():
-      asset = new EosAsset(XChainToken.substring(1), ownLockHash);
+    case ChainType.EOS:
+      asset = new EosAsset(XChainToken, ownLockHash);
       break;
-    case ChainType.ETH.toString():
-      asset = new EthAsset(XChainToken.substring(1), ownLockHash);
+    case ChainType.ETH:
+      asset = new EthAsset(XChainToken, ownLockHash);
       break;
-    case ChainType.TRON.toString():
-      asset = new TronAsset(XChainToken.substring(1), ownLockHash);
+    case ChainType.TRON:
+      asset = new TronAsset(XChainToken, ownLockHash);
       break;
     default:
-      logger.warn(`chain type is ${network} which not support yet.`);
+      logger.warn(`chain type is ${chainType} which not support yet.`);
       return;
   }
-  return asset;
+  const bridgeCellLockscript = {
+    codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
+    hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
+    args: asset.toBridgeLockscriptArgs(),
+  };
+  const sudtArgs = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
+  return sudtArgs;
 }
 
 async function getOwnLockHash() {
