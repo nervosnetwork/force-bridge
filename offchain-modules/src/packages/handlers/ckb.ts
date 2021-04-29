@@ -124,31 +124,7 @@ export class CkbHandler {
           switch (chain) {
             case ChainType.BTC:
             case ChainType.TRON:
-              burn = {
-                senderLockHash: v.senderLockScriptHash,
-                ckbTxHash: k,
-                asset: uint8ArrayToString(new Uint8Array(v.cellData.getAsset().raw())),
-                chain,
-                amount: Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.cellData.getAmount().raw()))}`).toString(
-                  0,
-                ),
-                recipientAddress: uint8ArrayToString(new Uint8Array(v.cellData.getRecipientAddress().raw())),
-                blockNumber: latestHeight,
-              };
-              break;
             case ChainType.ETH:
-              burn = {
-                senderLockHash: v.senderLockScriptHash,
-                ckbTxHash: k,
-                asset: uint8ArrayToString(new Uint8Array(v.cellData.getAsset().raw())),
-                chain,
-                amount: Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.cellData.getAmount().raw()))}`).toString(
-                  0,
-                ),
-                recipientAddress: uint8ArrayToString(new Uint8Array(v.cellData.getRecipientAddress().raw())),
-                blockNumber: latestHeight,
-              };
-              break;
             case ChainType.EOS:
               burn = {
                 senderLockHash: v.senderLockScriptHash,

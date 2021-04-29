@@ -48,6 +48,7 @@
       "ckbRpcUrl": "http://127.0.0.1:8114",
       "ckbIndexerUrl": "http://127.0.0.1:8116",
       "privateKey": "0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe",
+      "ownerLockHash": "",
       "deps": {
         "bridgeLock": {
           "cellDep": {

@@ -204,15 +204,9 @@ export class CkbTxGenerator {
     }
     logger.debug('burn sudtCells: ', sudtCells);
     let inputCells = sudtCells;
-    const account = new Account(ForceBridgeCore.config.ckb.privateKey);
-    const ownerLockHash = this.ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
-    //const ownerLockHash = this.ckb.utils.scriptToHash(<CKBComponents.Script>fromLockscript);
-    let recipientAddr;
-    if (asset.chainType == ChainType.ETH) {
-      recipientAddr = fromHexString(toHexString(stringToUint8Array(recipientAddress))).buffer;
-    } else {
-      recipientAddr = fromHexString(toHexString(stringToUint8Array(recipientAddress))).buffer;
-    }
+    const ownerLockHash = ForceBridgeCore.config.ckb.ownerLockHash;
+
+    const recipientAddr = fromHexString(toHexString(stringToUint8Array(recipientAddress))).buffer;
     const params = {
       recipient_address: recipientAddr,
       chain: asset.chainType,
@@ -259,7 +253,6 @@ export class CkbTxGenerator {
     }
     const fee = 100000n;
     const outputCap = outputs.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
-    logger.debug('outputCap ', outputCap);
 
     const needSupplyCapCells = await this.collector.getCellsByLockscriptAndCapacity(
       fromLockscript,
@@ -304,7 +297,6 @@ export class CkbTxGenerator {
   }
 
   handleChangeCell(inputCells, outputs, outputsData, userLockscript, fee): void {
-    logger.debug('inputCells: ', inputCells);
     const inputCap = inputCells.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
     const outputCap = outputs.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
     const changeCellCapacity = inputCap - outputCap - fee;

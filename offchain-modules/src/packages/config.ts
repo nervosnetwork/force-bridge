@@ -19,6 +19,7 @@ export interface CkbConfig {
   ckbRpcUrl: string;
   ckbIndexerUrl: string;
   privateKey: string;
+  ownerLockHash: string;
   deps: {
     bridgeLock: ConfigItem;
     recipientType: ConfigItem;
