@@ -20,6 +20,10 @@ async function main() {
   const ForceBridge = await ethers.getContractFactory('ForceBridge');
   const bridge = await ForceBridge.deploy(validators, multiSignThreshold);
   await bridge.deployed();
+  const eth_node = nconf.get('forceBridge:eth:rpcUrl');
+  const provider = ethers.getDefaultProvider(eth_node);
+  const blockNumber = await provider.getBlockNumber();
+  nconf.set('forceBridge:eth:startBlockHeight', blockNumber);
   nconf.set('forceBridge:eth:contractAddress', bridge.address);
   nconf.save();
 

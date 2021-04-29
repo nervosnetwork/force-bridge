@@ -24,6 +24,7 @@ export interface CkbConfig {
     recipientType: ConfigItem;
     sudtType: ConfigItem;
   };
+  startBlockHeight: number;
 }
 
 export interface EthConfig {
@@ -32,6 +33,7 @@ export interface EthConfig {
   privateKey: string;
   multiSignKeys: string[];
   multiSignThreshold: number;
+  startBlockHeight: number;
 }
 
 export interface EosConfig {

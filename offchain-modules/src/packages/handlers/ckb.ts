@@ -188,7 +188,7 @@ export class CkbHandler {
         asset = new BtcAsset(uint8ArrayToString(fromHexString(assetAddress)), ownLockHash);
         break;
       case ChainType.ETH:
-        asset = new EthAsset(`0x${assetAddress}`, ownLockHash);
+        asset = new EthAsset(uint8ArrayToString(fromHexString(assetAddress)), ownLockHash);
         break;
       case ChainType.TRON:
         asset = new TronAsset(uint8ArrayToString(fromHexString(assetAddress)), ownLockHash);

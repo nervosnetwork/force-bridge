@@ -59,7 +59,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
             });
             break;
           default:
-            tx = bridge.populateTransaction.lockToken(payload.asset.ident, ethAmount, recipient, sudtExtraData);
+            tx = await bridge.populateTransaction.lockToken(payload.asset.ident, ethAmount, recipient, sudtExtraData);
             break;
         }
         break;
