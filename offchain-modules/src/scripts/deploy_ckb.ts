@@ -202,10 +202,25 @@ const setStartTime = async () => {
   nconf.save();
 };
 
+async function setOwnerLockHash() {
+  const { secp256k1Dep } = await ckb.loadDeps();
+
+  const lockscript = Script.fromRPC({
+    code_hash: secp256k1Dep.codeHash,
+    args: ARGS,
+    hash_type: secp256k1Dep.hashType,
+  });
+  const ownerLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>lockscript);
+  console.log('ownerLockHash', ownerLockHash);
+  nconf.set('forceBridge:ckb:ownerLockHash', ownerLockHash);
+  nconf.save();
+}
+
 const main = async () => {
   console.log('\n\n\n---------start deploy -----------\n');
   await deploy();
   await setStartTime();
+  await setOwnerLockHash();
   console.log('\n\n\n---------end deploy -----------\n');
   process.exit(0);
 };
