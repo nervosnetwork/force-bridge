@@ -23,7 +23,6 @@ import { EosDb } from '@force-bridge/db/eos';
 import { BtcDb } from '@force-bridge/db/btc';
 import { RPCClient } from 'rpc-bitcoin';
 import { IBalance } from '@force-bridge/xchain/btc';
-import { Account } from '@force-bridge/ckb/model/accounts';
 
 const TronWeb = require('tronweb');
 
@@ -250,10 +249,10 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     const usdt_address = '0x74a3dbd5831f45CD0F3002Bb87a59B7C15b1B5E6';
     const usdc_address = '0x265566D4365d80152515E800ca39424300374A83';
 
-    const eth_ident = await getTokenShadowIdent(ChainType.ETH, eth_address);
-    const dai_ident = await getTokenShadowIdent(ChainType.ETH, dai_address);
-    const usdt_ident = await getTokenShadowIdent(ChainType.ETH, usdt_address);
-    const usdc_ident = await getTokenShadowIdent(ChainType.ETH, usdc_address);
+    const eth_ident = getTokenShadowIdent(ChainType.ETH, eth_address);
+    const dai_ident = getTokenShadowIdent(ChainType.ETH, dai_address);
+    const usdt_ident = getTokenShadowIdent(ChainType.ETH, usdt_address);
+    const usdc_ident = getTokenShadowIdent(ChainType.ETH, usdc_address);
 
     const info = [
       {
@@ -262,7 +261,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         info: {
           decimals: 18,
           name: 'ETH',
-          symbol: 'Eth',
+          symbol: 'ETH',
           logoURI: 'https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=002',
           shadow: { network: 'Nervos', ident: eth_ident },
         },
@@ -272,8 +271,8 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         ident: eth_ident,
         info: {
           decimals: 18,
-          name: 'ckETH',
-          symbol: 'ckEth',
+          name: 'CKETH',
+          symbol: 'CKETH',
           logoURI: 'https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=002',
           shadow: { network: 'Ethereum', ident: eth_address },
         },
@@ -284,7 +283,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         info: {
           decimals: 18,
           name: 'DAI',
-          symbol: 'Dai',
+          symbol: 'DAI',
           logoURI: 'https://cryptologos.cc/logos/single-collateral-dai-sai-logo.svg?v=002',
           shadow: { network: 'Nervos', ident: dai_ident },
         },
@@ -294,8 +293,8 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         ident: dai_ident,
         info: {
           decimals: 18,
-          name: 'ckDAI',
-          symbol: 'ckDai',
+          name: 'CKDAI',
+          symbol: 'CKDAI',
           logoURI: 'https://cryptologos.cc/logos/single-collateral-dai-sai-logo.svg?v=002',
           shadow: { network: 'Ethereum', ident: dai_address },
         },
@@ -304,9 +303,9 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         network: 'Ethereum',
         ident: usdt_address,
         info: {
-          decimals: 18,
+          decimals: 6,
           name: 'USDT',
-          symbol: 'Usdt',
+          symbol: 'USDT',
           logoURI: 'https://cryptologos.cc/logos/tether-usdt-logo.svg?v=002',
           shadow: { network: 'Nervos', ident: usdt_ident },
         },
@@ -315,9 +314,9 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         network: 'Nervos',
         ident: usdt_ident,
         info: {
-          decimals: 18,
-          name: 'ckUSDT',
-          symbol: 'ckUsdt',
+          decimals: 6,
+          name: 'CKUSDT',
+          symbol: 'CKUSDT',
           logoURI: 'https://cryptologos.cc/logos/tether-usdt-logo.svg?v=002',
           shadow: { network: 'Ethereum', ident: usdt_address },
         },
@@ -326,9 +325,9 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         network: 'Ethereum',
         ident: usdc_address,
         info: {
-          decimals: 18,
+          decimals: 6,
           name: 'USDC',
-          symbol: 'Usdc',
+          symbol: 'USDC',
           logoURI: 'https://cryptologos.cc/logos/usd-coin-usdc-logo.svg?v=002',
           shadow: { network: 'Nervos', ident: usdc_ident },
         },
@@ -337,9 +336,9 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         network: 'Nervos',
         ident: usdc_ident,
         info: {
-          decimals: 18,
-          name: 'ckUSDC',
-          symbol: 'ckUsdc',
+          decimals: 6,
+          name: 'CKUSDC',
+          symbol: 'CKUSDC',
           logoURI: 'https://cryptologos.cc/logos/usd-coin-usdc-logo.svg?v=002',
           shadow: { network: 'Ethereum', ident: usdc_address },
         },
@@ -480,7 +479,7 @@ function transferDbRecordToResponse(
   return txSummaryWithStatus;
 }
 
-function getTokenShadowIdent(chainType: ChainType, XChainToken: string): Promise<string> {
+function getTokenShadowIdent(chainType: ChainType, XChainToken: string): string {
   const ownLockHash = ForceBridgeCore.config.ckb.ownerLockHash;
   let asset: Asset;
   switch (chainType) {
@@ -505,6 +504,5 @@ function getTokenShadowIdent(chainType: ChainType, XChainToken: string): Promise
     hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
     args: asset.toBridgeLockscriptArgs(),
   };
-  const sudtArgs = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
-  return sudtArgs;
+  return ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
 }
