@@ -254,11 +254,15 @@ export class CkbTxGenerator {
     const fee = 100000n;
     const outputCap = outputs.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
 
-    const needSupplyCapCells = await this.collector.getCellsByLockscriptAndCapacity(
-      fromLockscript,
-      new Amount(`0x${(outputCap - sudtCellCapacity * BigInt(sudtCells.length) + fee).toString(16)}`, 0),
-    );
-    inputCells = inputCells.concat(needSupplyCapCells);
+    const needSupplyCap = outputCap - sudtCellCapacity * BigInt(sudtCells.length) + fee;
+    if (needSupplyCap > 0) {
+      const needSupplyCapCells = await this.collector.getCellsByLockscriptAndCapacity(
+        fromLockscript,
+        new Amount(`0x${needSupplyCap.toString(16)}`, 0),
+      );
+      inputCells = inputCells.concat(needSupplyCapCells);
+    }
+
     this.handleChangeCell(inputCells, outputs, outputsData, fromLockscript, fee);
 
     const inputs = inputCells.map((cell) => {

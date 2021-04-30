@@ -56,7 +56,7 @@ export class TronAsset extends Asset {
   }
 
   getAddress(): string {
-    return toHexString(stringToUint8Array(this.address));
+    return this.address;
   }
 }
 
@@ -76,7 +76,7 @@ export class EosAsset extends Asset {
   }
 
   getAddress(): string {
-    return toHexString(stringToUint8Array(this.address));
+    return this.address;
   }
 }
 
@@ -96,6 +96,6 @@ export class BtcAsset extends Asset {
   }
 
   getAddress(): string {
-    return toHexString(stringToUint8Array(this.address));
+    return this.address;
   }
 }
