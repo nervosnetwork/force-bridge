@@ -13,6 +13,7 @@ import {
   ICkbBurn,
   IBtcUnLock,
 } from '@force-bridge/db/model';
+import { ForceBridgeCore } from '@force-bridge/core';
 
 export class CkbDb {
   constructor(private connection: Connection) {}
@@ -23,7 +24,7 @@ export class CkbDb {
 
   async getCkbLatestHeight(): Promise<number> {
     const rawRes = await this.connection.manager.query('select max(block_number) as max_block_number from ckb_burn');
-    return rawRes[0].max_block_number || 1;
+    return rawRes[0].max_block_number || ForceBridgeCore.config.ckb.startBlockHeight;
   }
 
   async getCkbMintRecordsToMint(take = 1): Promise<CkbMint[]> {

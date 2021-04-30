@@ -1,24 +1,65 @@
 // todo: remove lumos indexer dep, use collector in packages/ckb/tx-helper/collector
 import { blake2b, asyncSleep as sleep } from '../packages/utils';
-
+import { OutPoint, Script } from '@lay2/pw-core';
+import RawTransactionParams from '@nervosnetwork/ckb-sdk-core';
+const axios = require('axios');
 const fs = require('fs').promises;
 const nconf = require('nconf');
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
 const utils = require('@nervosnetwork/ckb-sdk-utils');
-const { Indexer, CellCollector } = require('@ckb-lumos/indexer');
-
-const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
-const ckb = new CKB(CKB_URL);
 const configPath = './config.json';
-
-const LUMOS_DB = './lumos_db';
-const indexer = new Indexer(CKB_URL, LUMOS_DB);
-indexer.startForever();
-
-const PRI_KEY = process.env.PRI_KEY || '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
+nconf.env().file({ file: configPath });
+const CKB_URL = nconf.get('forceBridge:ckb:ckbRpcUrl');
+const CKB_IndexerURL = nconf.get('forceBridge:ckb:ckbIndexerUrl');
+const PRI_KEY = nconf.get('forceBridge:ckb:privateKey');
+const ckb = new CKB(CKB_URL);
 const PUB_KEY = ckb.utils.privateKeyToPublicKey(PRI_KEY);
 const ARGS = `0x${ckb.utils.blake160(PUB_KEY, 'hex')}`;
 const ADDRESS = ckb.utils.pubkeyToAddress(PUB_KEY);
+
+async function getCells(script_args: string, indexerUrl: string): Promise<RawTransactionParams.Cell[]> {
+  let cells = [];
+  let postData = {
+    id: 2,
+    jsonrpc: '2.0',
+    method: 'get_cells',
+    params: [
+      {
+        script: {
+          code_hash: '0x9bd7e06f3ecf4be0f2fcd2188b23f1b9fcc88e5d4b65a8637b17723bbda3cce8',
+          hash_type: 'type',
+          args: script_args,
+        },
+        script_type: 'lock',
+      },
+      'asc',
+      '0x64',
+    ],
+  };
+  let response;
+  while (response === '' || response === undefined || response == null) {
+    try {
+      const res = await axios.post(`${indexerUrl}`, postData);
+      response = res.data.result;
+    } catch (error) {
+      console.error('failed to get indexer data', error);
+    }
+    await sleep(5 * 1000);
+  }
+  const rawCells = response.objects;
+  console.log('inderer post response', rawCells);
+  for (let rawCell of rawCells) {
+    const cell: RawTransactionParams.Cell = {
+      capacity: rawCell.output.capacity,
+      lock: Script.fromRPC(rawCell.output.lock),
+      type: Script.fromRPC(rawCell.output.type),
+      outPoint: OutPoint.fromRPC(rawCell.out_point),
+      data: rawCell.output_data,
+    };
+    cells.push(cell);
+  }
+  return cells.filter((c) => c.data === '0x' && !c.type);
+}
 
 const deploy = async () => {
   const lockscriptBin = await fs.readFile('../ckb-contracts/build/release/bridge-lockscript');
@@ -33,10 +74,19 @@ const deploy = async () => {
   const contractBinLength = BigInt(lockscriptBin.length);
   console.log({ contractBinLength });
   const { secp256k1Dep } = await ckb.loadDeps();
-  const lock = { ...secp256k1Dep, args: ARGS };
-  // nconf.set('userLockscript', lock);
-  const cells = await ckb.loadCells({ indexer, CellCollector, lock });
-  const emptyCells = cells.filter((cell) => cell.data === '0x');
+  const unspentCells = await getCells(ARGS, CKB_IndexerURL);
+  console.log('unspentCells', unspentCells);
+
+  let emptyCells = [];
+  for (let i = 0; i < unspentCells.length; i++) {
+    let res = await ckb.rpc.getLiveCell(unspentCells[i].outPoint, false);
+    console.log('cell capacity: ', res.cell.output.capacity, ' cell status: ', res.status);
+    if (res.status === 'live') {
+      emptyCells.push(unspentCells[i]);
+    }
+  }
+  console.log('emptyCells', JSON.stringify(emptyCells, null, 2));
+
   console.dir({ emptyCells }, { depth: null });
   const rawTx = ckb.generateRawTransaction({
     fromAddress: ADDRESS,
@@ -146,12 +196,31 @@ const waitUntilCommitted = async (txHash) => {
     waitTime += 1;
   }
 };
+const setStartTime = async () => {
+  const ckb_tip = await ckb.rpc.getTipBlockNumber();
+  nconf.set('forceBridge:ckb:startBlockHeight', parseInt(ckb_tip, 10));
+  nconf.save();
+};
+
+async function setOwnerLockHash() {
+  const { secp256k1Dep } = await ckb.loadDeps();
+
+  const lockscript = Script.fromRPC({
+    code_hash: secp256k1Dep.codeHash,
+    args: ARGS,
+    hash_type: secp256k1Dep.hashType,
+  });
+  const ownerLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>lockscript);
+  console.log('ownerLockHash', ownerLockHash);
+  nconf.set('forceBridge:ckb:ownerLockHash', ownerLockHash);
+  nconf.save();
+}
 
 const main = async () => {
   console.log('\n\n\n---------start deploy -----------\n');
-  await indexer.waitForSync();
-  nconf.env().file({ file: configPath });
   await deploy();
+  await setStartTime();
+  await setOwnerLockHash();
   console.log('\n\n\n---------end deploy -----------\n');
   process.exit(0);
 };

@@ -30,7 +30,7 @@ export class EthAsset extends Asset {
     const params = {
       owner_lock_hash: fromHexString(this.ownLockHash).buffer,
       chain: this.chainType,
-      asset: fromHexString(this.address).buffer,
+      asset: fromHexString(toHexString(stringToUint8Array(this.address))).buffer,
     };
     return `0x${toHexString(new Uint8Array(SerializeForceBridgeLockscriptArgs(params)))}`;
   }
@@ -56,7 +56,7 @@ export class TronAsset extends Asset {
   }
 
   getAddress(): string {
-    return toHexString(stringToUint8Array(this.address));
+    return this.address;
   }
 }
 
@@ -76,7 +76,7 @@ export class EosAsset extends Asset {
   }
 
   getAddress(): string {
-    return toHexString(stringToUint8Array(this.address));
+    return this.address;
   }
 }
 
@@ -96,6 +96,6 @@ export class BtcAsset extends Asset {
   }
 
   getAddress(): string {
-    return toHexString(stringToUint8Array(this.address));
+    return this.address;
   }
 }

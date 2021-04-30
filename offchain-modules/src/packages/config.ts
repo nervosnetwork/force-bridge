@@ -19,11 +19,13 @@ export interface CkbConfig {
   ckbRpcUrl: string;
   ckbIndexerUrl: string;
   privateKey: string;
+  ownerLockHash: string;
   deps: {
     bridgeLock: ConfigItem;
     recipientType: ConfigItem;
     sudtType: ConfigItem;
   };
+  startBlockHeight: number;
 }
 
 export interface EthConfig {
@@ -33,6 +35,7 @@ export interface EthConfig {
   multiSignKeys: string[];
   multiSignThreshold: number;
   confirmNumber: number;
+  startBlockHeight: number;
 }
 
 export interface EosConfig {
