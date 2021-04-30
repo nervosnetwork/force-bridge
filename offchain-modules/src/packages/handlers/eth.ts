@@ -20,11 +20,15 @@ export class EthHandler {
     await this.ethChain.watchLockEvents(latestHeight, async (log, parsedLog) => {
       try {
         logger.debug('log:', { log, parsedLog });
+        const amount = parsedLog.args.lockedAmount.toString();
+        if (amount === '0') {
+          return;
+        }
         await this.db.createCkbMint([
           {
             id: log.transactionHash,
             chain: ChainType.ETH,
-            amount: parsedLog.args.lockedAmount.toString(),
+            amount: amount,
             asset: parsedLog.args.token,
             recipientLockscript: uint8ArrayToString(fromHexString(parsedLog.args.recipientLockscript)),
             sudtExtraData: parsedLog.args.sudtExtraData,
@@ -33,7 +37,7 @@ export class EthHandler {
         await this.db.createEthLock([
           {
             txHash: log.transactionHash,
-            amount: parsedLog.args.lockedAmount.toString(),
+            amount: amount,
             token: parsedLog.args.token,
             recipient: uint8ArrayToString(fromHexString(parsedLog.args.recipientLockscript)),
             sudtExtraData: parsedLog.args.sudtExtraData,
