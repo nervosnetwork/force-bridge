@@ -32,6 +32,7 @@ export interface EthConfig {
   privateKey: string;
   multiSignKeys: string[];
   multiSignThreshold: number;
+  confirmNumber: number;
 }
 
 export interface EosConfig {

@@ -9,7 +9,8 @@
         "0x57c246bcb73e5d3409a903c94d46b3b118fdcfb81c5e51d3b0df72e883623fa7"
       ],
       "multiSignThreshold": 2,
-      "contractAddress": "0x8326e1d621Cd32752920ed2A44B49bB1a96c7391"
+      "contractAddress": "0x8326e1d621Cd32752920ed2A44B49bB1a96c7391",
+      "confirmNumber": 5
     },
     "eos": {
       "rpcUrl": "https://jungle3.cryptolions.io:443",
