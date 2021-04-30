@@ -34,6 +34,7 @@ export interface EthConfig {
   privateKey: string;
   multiSignKeys: string[];
   multiSignThreshold: number;
+  confirmNumber: number;
   startBlockHeight: number;
 }
 
@@ -74,6 +75,9 @@ export interface rpcConfig {
   port: number;
   corsOptions?: {
     origin: string;
+    methods?: string;
+    preflightContinue?: boolean;
+    optionsSuccessStatus?: number;
   };
 }
 

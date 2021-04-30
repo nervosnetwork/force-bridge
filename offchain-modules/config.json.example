@@ -10,6 +10,7 @@
       ],
       "multiSignThreshold": 2,
       "contractAddress": "0x8326e1d621Cd32752920ed2A44B49bB1a96c7391",
+      "confirmNumber": 5,
       "startBlockHeight": 1
     },
     "eos": {
@@ -107,7 +108,10 @@
     "rpc": {
       "port":8080,
       "corsOptions": {
-        "origin": "*"
+        "origin": "*",
+        "methods": "GET,HEAD,PUT,PATCH,POST,DELETE",
+        "preflightContinue": false,
+        "optionsSuccessStatus": 200
       }
     }
   }

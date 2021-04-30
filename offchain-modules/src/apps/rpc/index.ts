@@ -69,6 +69,7 @@ async function main() {
     // Alternatively, you can use server.receiveJSON, which takes JSON string as is (in this case req.body).
     server.receive(jsonRPCRequest).then((jsonRPCResponse) => {
       if (jsonRPCResponse) {
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.json(jsonRPCResponse);
         logger.info('response', jsonRPCResponse);
       } else {
