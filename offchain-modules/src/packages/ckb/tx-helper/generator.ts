@@ -72,6 +72,9 @@ export class CkbTxGenerator {
     const sudtCellCapacity = 300n * 10n ** 8n;
     const assets = new Array(0);
     for (const record of records) {
+      if (record.amount.eq(Amount.ZERO)) {
+        continue;
+      }
       const recipientLockscript = record.recipient.toLockScript();
       const bridgeCellLockscript = {
         codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
@@ -180,6 +183,9 @@ export class CkbTxGenerator {
     amount: Amount,
     bridgeFee?: Amount,
   ): Promise<CKBComponents.RawTransactionToSign> {
+    if (amount.eq(Amount.ZERO)) {
+      throw new Error('amount should larger then zero!');
+    }
     const bridgeCellLockscript = {
       codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
       hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
