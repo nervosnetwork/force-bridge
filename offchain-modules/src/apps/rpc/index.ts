@@ -1,4 +1,5 @@
 import express from 'express';
+import cors from 'cors';
 import bodyParser from 'body-parser';
 import 'module-alias/register';
 import { JSONRPCServer } from 'json-rpc-2.0';
@@ -55,17 +56,20 @@ async function main() {
   server.addMethod('getBalance', async (payload: GetBalancePayload) => {
     return await forceBridgeRpc.getBalance(payload);
   });
-
+  server.addMethod('getAssetList', async (payload) => {
+    return await forceBridgeRpc.getAssetList(payload);
+  });
   const app = express();
   app.use(bodyParser.json());
 
-  app.post(forceBridgePath, (req, res) => {
+  app.post(forceBridgePath, cors(config.rpc.corsOptions), (req, res) => {
     logger.info('request', req.method, req.body);
     const jsonRPCRequest = req.body;
     // server.receive takes a JSON-RPC request and returns a promise of a JSON-RPC response.
     // Alternatively, you can use server.receiveJSON, which takes JSON string as is (in this case req.body).
     server.receive(jsonRPCRequest).then((jsonRPCResponse) => {
       if (jsonRPCResponse) {
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.json(jsonRPCResponse);
         logger.info('response', jsonRPCResponse);
       } else {

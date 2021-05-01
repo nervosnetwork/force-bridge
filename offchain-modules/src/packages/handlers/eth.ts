@@ -17,31 +17,40 @@ export class EthHandler {
   async watchLockEvents() {
     const latestHeight = await this.db.getLatestHeight();
     logger.debug('latestHeight: ', latestHeight);
-    this.ethChain.watchLockEvents(latestHeight, async (log, parsedLog) => {
-      logger.debug('log:', { log, parsedLog });
-      await this.db.createCkbMint([
-        {
-          id: log.transactionHash,
-          chain: ChainType.ETH,
-          amount: parsedLog.args.lockedAmount.toString(),
-          asset: parsedLog.args.token,
-          recipientLockscript: uint8ArrayToString(fromHexString(parsedLog.args.recipientLockscript)),
-          sudtExtraData: parsedLog.args.sudtExtraData,
-        },
-      ]);
-      await this.db.createEthLock([
-        {
-          txHash: log.transactionHash,
-          amount: parsedLog.args.lockedAmount.toString(),
-          token: parsedLog.args.token,
-          recipient: uint8ArrayToString(fromHexString(parsedLog.args.recipientLockscript)),
-          sudtExtraData: parsedLog.args.sudtExtraData,
-          blockNumber: log.blockNumber,
-          blockHash: log.blockHash,
-          sender: parsedLog.args.sender,
-        },
-      ]);
-      logger.debug(`save CkbMint and EthLock successful for eth tx ${log.transactionHash}.`);
+    await this.ethChain.watchLockEvents(latestHeight, async (log, parsedLog) => {
+      try {
+        logger.debug('log:', { log, parsedLog });
+        const amount = parsedLog.args.lockedAmount.toString();
+        if (amount === '0') {
+          return;
+        }
+        await this.db.createCkbMint([
+          {
+            id: log.transactionHash,
+            chain: ChainType.ETH,
+            amount: amount,
+            asset: parsedLog.args.token,
+            recipientLockscript: uint8ArrayToString(fromHexString(parsedLog.args.recipientLockscript)),
+            sudtExtraData: parsedLog.args.sudtExtraData,
+          },
+        ]);
+        await this.db.createEthLock([
+          {
+            txHash: log.transactionHash,
+            amount: amount,
+            token: parsedLog.args.token,
+            recipient: uint8ArrayToString(fromHexString(parsedLog.args.recipientLockscript)),
+            sudtExtraData: parsedLog.args.sudtExtraData,
+            blockNumber: log.blockNumber,
+            blockHash: log.blockHash,
+            sender: parsedLog.args.sender,
+          },
+        ]);
+        logger.debug(`save CkbMint and EthLock successful for eth tx ${log.transactionHash}.`);
+      } catch (e) {
+        logger.error(`EthHandler watchLockEvents error: ${e}`);
+        await asyncSleep(3000);
+      }
     });
   }
 

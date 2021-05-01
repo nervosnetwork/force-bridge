@@ -12,6 +12,7 @@ import {
 } from '@force-bridge/db/model';
 import { Connection, Repository } from 'typeorm';
 import { EthUnlockStatus } from '@force-bridge/db/entity/EthUnlock';
+import { ForceBridgeCore } from '@force-bridge/core';
 
 export class EthDb implements IQuery {
   private ckbMintRepository: Repository<CkbMint>;
@@ -26,7 +27,7 @@ export class EthDb implements IQuery {
 
   async getLatestHeight(): Promise<number> {
     const rawRes = await this.connection.manager.query('select max(block_number) as max_block_number from eth_lock');
-    return rawRes[0].max_block_number || 1;
+    return rawRes[0].max_block_number || ForceBridgeCore.config.eth.startBlockHeight;
   }
 
   async createCkbMint(records: ICkbMint[]): Promise<void> {

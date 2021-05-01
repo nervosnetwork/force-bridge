@@ -9,7 +9,9 @@
         "0x57c246bcb73e5d3409a903c94d46b3b118fdcfb81c5e51d3b0df72e883623fa7"
       ],
       "multiSignThreshold": 2,
-      "contractAddress": "0x8326e1d621Cd32752920ed2A44B49bB1a96c7391"
+      "contractAddress": "0x8326e1d621Cd32752920ed2A44B49bB1a96c7391",
+      "confirmNumber": 5,
+      "startBlockHeight": 1
     },
     "eos": {
       "rpcUrl": "https://jungle3.cryptolions.io:443",
@@ -62,6 +64,7 @@
        "0x63d86723e08f0f813a36ce6aa123bb2289d90680ae1e99d4de8cdb334553f24d"
       ],
       "fromPrivateKey": "0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe",
+      "ownerLockHash": "0x49beb8c4c29d06e05452b5d9ea8e86ffd4ea2b614498ba1a0c47890a0ad4f550",
       "deps": {
         "bridgeLock": {
           "cellDep": {
@@ -102,7 +105,8 @@
             "hashType": "data"
           }
         }
-      }
+      },
+      "startBlockHeight": 1
     },
     "tron": {
       "tronGridUrl": "https://api.shasta.trongrid.io",
@@ -117,7 +121,13 @@
       "feeLimit": 10000000
     },
     "rpc": {
-      "port":8080
+      "port":8080,
+      "corsOptions": {
+        "origin": "*",
+        "methods": "GET,HEAD,PUT,PATCH,POST,DELETE",
+        "preflightContinue": false,
+        "optionsSuccessStatus": 200
+      }
     }
   }
 }

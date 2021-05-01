@@ -137,6 +137,9 @@ export class CkbTxGenerator {
     const fromAddress = getFromAddr();
     const sudtCellCapacity = 300n * 10n ** 8n;
     for (const record of records) {
+      if (record.amount.eq(Amount.ZERO)) {
+        continue;
+      }
       const recipientLockscript = record.recipient.toLockScript();
       const bridgeCellLockscript = {
         codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
@@ -241,6 +244,9 @@ export class CkbTxGenerator {
     bridgeFee?: Amount,
   ): Promise<CKBComponents.RawTransactionToSign> {
     const multisigLockScript = getMultisigLock();
+    if (amount.eq(Amount.ZERO)) {
+      throw new Error('amount should larger then zero!');
+    }
     const bridgeCellLockscript = {
       codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
       hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
@@ -251,7 +257,7 @@ export class CkbTxGenerator {
       script: new Script(
         ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
         args,
-        HashType.data,
+        ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
       ).serializeJson() as LumosScript,
       script_type: ScriptType.type,
       filter: {
@@ -269,16 +275,12 @@ export class CkbTxGenerator {
       hashType: multisigLockScript.hash_type,
       args: multisigLockScript.args,
     });
-    let recipientAddr;
-    if (asset.chainType == ChainType.ETH) {
-      recipientAddr = fromHexString(recipientAddress).buffer;
-    } else {
-      recipientAddr = fromHexString(toHexString(stringToUint8Array(recipientAddress))).buffer;
-    }
+
+    const recipientAddr = fromHexString(toHexString(stringToUint8Array(recipientAddress))).buffer;
     const params = {
       recipient_address: recipientAddr,
       chain: asset.chainType,
-      asset: fromHexString(asset.getAddress()).buffer,
+      asset: fromHexString(toHexString(stringToUint8Array(asset.getAddress()))).buffer,
       amount: fromHexString(amount.toUInt128LE()).buffer,
       bridge_lock_code_hash: fromHexString(ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash).buffer,
       owner_lock_hash: fromHexString(ownerLockHash).buffer,
@@ -321,11 +323,16 @@ export class CkbTxGenerator {
     }
     const fee = 100000n;
     const outputCap = outputs.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
-    const needSupplyCapCells = await this.collector.getCellsByLockscriptAndCapacity(
-      fromLockscript,
-      Amount.fromUInt128LE(bigintToSudtAmount(outputCap - sudtCellCapacity * BigInt(sudtCells.length) + fee)),
-    );
-    inputCells = inputCells.concat(needSupplyCapCells);
+
+    const needSupplyCap = outputCap - sudtCellCapacity * BigInt(sudtCells.length) + fee;
+    if (needSupplyCap > 0) {
+      const needSupplyCapCells = await this.collector.getCellsByLockscriptAndCapacity(
+        fromLockscript,
+        new Amount(`0x${needSupplyCap.toString(16)}`, 0),
+      );
+      inputCells = inputCells.concat(needSupplyCapCells);
+    }
+
     this.handleChangeCell(inputCells, outputs, outputsData, fromLockscript, fee);
 
     const inputs = inputCells.map((cell) => {
@@ -372,6 +379,7 @@ export class CkbTxGenerator {
     const inputCap = inputCells.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
     const outputCap = outputs.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
     const changeCellCapacity = inputCap - outputCap - fee;
+    logger.debug('inputCap: ', inputCap, ' outputCap: ', outputCap, ' fee:', fee);
     //FIXME: if changeCellCapacity < 64 * 10n ** 8n
     if (changeCellCapacity > 64n * 10n ** 8n) {
       const changeLockScript = {

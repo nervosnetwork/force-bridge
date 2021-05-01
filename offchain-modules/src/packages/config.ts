@@ -34,12 +34,14 @@ export interface CkbConfig {
   keys: string[];
   multisigScript: MultisigItem;
   multisigType: ScriptItem;
+  ownerLockHash: string;
   deps: {
     bridgeLock: ConfigItem;
     recipientType: ConfigItem;
     sudtType: ConfigItem;
     pwLocks: ConfigItem;
   };
+  startBlockHeight: number;
 }
 
 export interface EthConfig {
@@ -48,6 +50,8 @@ export interface EthConfig {
   privateKey: string;
   multiSignKeys: string[];
   multiSignThreshold: number;
+  confirmNumber: number;
+  startBlockHeight: number;
 }
 
 export interface EosConfig {
@@ -85,6 +89,12 @@ export interface BtcConfig {
 
 export interface rpcConfig {
   port: number;
+  corsOptions?: {
+    origin: string;
+    methods?: string;
+    preflightContinue?: boolean;
+    optionsSuccessStatus?: number;
+  };
 }
 
 export interface Config {
