@@ -2,17 +2,22 @@ import 'module-alias/register';
 import { JSONRPCClient } from 'json-rpc-2.0';
 import { ethers } from 'ethers';
 import fetch from 'node-fetch/index';
-import { Config } from '../../packages/config';
-import { ForceBridgeCore } from '../../packages/core';
+import { Config } from '@force-bridge/config';
+import { ForceBridgeCore } from '@force-bridge/core';
 import nconf from 'nconf';
 import { asyncSleep } from '@force-bridge/utils';
+import { TransactionSkeleton, TransactionSkeletonType } from '@ckb-lumos/helpers';
+import { Indexer } from '@ckb-lumos/indexer';
 
 const CKB_PRI_KEY = process.env.PRI_KEY || '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
-
+const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
+const dataDir = './lumos_db';
+const indexer = new Indexer(CKB_URL, dataDir);
+indexer.startForever();
 // JSONRPCClient needs to know how to send a JSON-RPC request.
 // Tell it by passing a function to its constructor. The function must take a JSON-RPC request and send it.
 const client = new JSONRPCClient((jsonRPCRequest) =>
-  fetch('http://localhost:8080/force-bridge/api/v1', {
+  fetch('http://localhost:8080/force-bridge/sign-server/api/v1', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -27,6 +32,16 @@ const client = new JSONRPCClient((jsonRPCRequest) =>
     }
   }),
 );
+
+async function sign() {
+  const txSkeleton = TransactionSkeleton({ cellProvider: indexer });
+  const payload = {
+    chainType: 99,
+    rawTx: txSkeleton,
+  };
+  const signMessage = await client.request('sign', payload);
+  console.log('sign', signMessage);
+}
 
 async function mint(ckbLockscript) {
   const mintPayload = {
@@ -129,7 +144,7 @@ async function main() {
   // init bridge force core
   await new ForceBridgeCore().init(config);
 
-  const ckbAddress = 'ckt1qyqyph8v9mclls35p6snlaxajeca97tc062sa5gahk';
+  // const ckbAddress = 'ckt1qyqyph8v9mclls35p6snlaxajeca97tc062sa5gahk';
 
   //   const publicKey = ForceBridgeCore.ckb.utils.privateKeyToPublicKey(CKB_PRI_KEY);
   //   const { secp256k1Dep } = await ForceBridgeCore.ckb.loadDeps();
@@ -138,12 +153,13 @@ async function main() {
 
   //   const fromLockscript = ForceBridgeCore.ckb.utils.addressToScript(ckbAddress);
   //   console.log(fromLockscript);
+  await sign();
 
-  const mintTxHash = await mint(ckbAddress);
-  await check(ckbAddress, mintTxHash);
-
-  const burnTxHash = await burn(ckbAddress);
-  await check(ckbAddress, burnTxHash);
+  // const mintTxHash = await mint(ckbAddress);
+  // await check(ckbAddress, mintTxHash);
+  //
+  // const burnTxHash = await burn(ckbAddress);
+  // await check(ckbAddress, burnTxHash);
 }
 
 main();

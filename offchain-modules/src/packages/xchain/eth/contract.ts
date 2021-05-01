@@ -5,8 +5,8 @@ import { abi } from './abi/ForceBridge.json';
 import { EthUnlock } from '@force-bridge/db/entity/EthUnlock';
 import { logger } from '@force-bridge/utils/logger';
 import { ChainType } from '@force-bridge/ckb/model/asset';
-const { ecsign, toRpcSig } = require('ethereumjs-util');
-const { keccak256, defaultAbiCoder, solidityPack } = ethers.utils;
+import { JSONRPCClient } from 'json-rpc-2.0';
+import fetch from 'node-fetch/index';
 
 export class EthChain {
   protected readonly provider: ethers.providers.JsonRpcProvider;
@@ -62,7 +62,28 @@ export class EthChain {
     return this.bridge.unlock(params, nonce, signatures);
   }
 
-  private signUnlockRecords(domainSeparator: string, typeHash: string, records, nonce) {
+  private async collectEthSignature(host: string, payload): Promise<string> {
+    const client = new JSONRPCClient((jsonRPCRequest) =>
+      fetch(host, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify(jsonRPCRequest),
+      }).then((response) => {
+        if (response.status === 200) {
+          return response.json().then((jsonRPCResponse) => client.receive(jsonRPCResponse));
+        } else if (jsonRPCRequest.id !== undefined) {
+          return Promise.reject(new Error(response.statusText));
+        }
+      }),
+    );
+    const signMessage = await client.request('signEthTx', payload);
+    console.log('collectEthSignature', signMessage);
+    return signMessage;
+  }
+
+  private async signUnlockRecords(domainSeparator: string, typeHash: string, records, nonce) {
     const msg = ethers.utils.keccak256(
       ethers.utils.solidityPack(
         ['bytes1', 'bytes1', 'bytes32', 'bytes32'],
@@ -92,13 +113,20 @@ export class EthChain {
         ],
       ),
     );
-
+    const payload = {
+      msg: msg,
+    };
     let signatures = '0x';
-    for (let i = 0; i < this.multiSignKeys.length; i++) {
-      const wallet = new ethers.Wallet(this.multiSignKeys[i], this.provider);
-      const { v, r, s } = ecsign(Buffer.from(msg.slice(2), 'hex'), Buffer.from(wallet.privateKey.slice(2), 'hex'));
-      const sigHex = toRpcSig(v, r, s);
-      signatures += sigHex.slice(2);
+    let number = 0;
+    for (const host of ForceBridgeCore.config.eth.multiSignHosts) {
+      if (number == ForceBridgeCore.config.eth.multiSignThreshold) {
+        break;
+      }
+      const signature = await this.collectEthSignature(host, payload);
+      if (signature != undefined) {
+        signatures += signature;
+        number++;
+      }
     }
     return signatures;
   }

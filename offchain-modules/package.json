@@ -25,7 +25,7 @@
     "prepare-xchain-test": "sleep 5",
     "btc-test": "ts-node ./src/scripts/integration-test/btc.ts",
     "xchain-test": "run-s prepare-xchain-test eth-test eos-test tron-test btc-test",
-    "integration-test": "run-p -r start xchain-test",
+    "integration-test": "run-p -r start sign-server1 sign-server2 xchain-test",
     "ci": "run-s clean build deploy init-multisig prepare-xchain-test integration-test",
     "test:unit": "nyc --silent ava",
     "cov": "run-s build test:unit",
@@ -33,7 +33,9 @@
     "cov:send": "nyc report --reporter=lcov && codecov",
     "cov:check": "nyc report && nyc check-coverage --lines 100 --functions 100 --branches 100",
     "deploy": "ts-node-dev ./src/scripts/deploy_ckb.ts",
-    "init-multisig": "ts-node ./src/packages/ckb/tx-helper/multisig/deploy.ts"
+    "init-multisig": "ts-node ./src/packages/ckb/tx-helper/multisig/deploy.ts",
+    "sign-server1": "ts-node ./src/apps/server/index.ts --port 8090 --index 0",
+    "sign-server2": "ts-node ./src/apps/server/index.ts --port 8091 --index 1"
   },
   "author": "",
   "license": "MIT",

@@ -76,7 +76,7 @@ export class CkbTxGenerator {
     }
   }
 
-  async createBridgeCell(scripts: any[], indexer: Indexer): Promise<TransactionSkeletonType> {
+  async createBridgeCell(scripts: Script[], indexer: Indexer): Promise<TransactionSkeletonType> {
     const fromAddress = getFromAddr();
     let txSkeleton = TransactionSkeleton({ cellProvider: indexer });
     const multisig_cell = await this.fetchMultisigCell(indexer, 60);

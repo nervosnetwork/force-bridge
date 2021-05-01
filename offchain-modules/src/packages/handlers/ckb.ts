@@ -22,6 +22,8 @@ import Transaction = CKBComponents.Transaction;
 import TransactionWithStatus = CKBComponents.TransactionWithStatus;
 import { serializeMultisigScript } from '@ckb-lumos/common-scripts/lib/secp256k1_blake160_multisig';
 import { getMultisigLock } from '@force-bridge/ckb/tx-helper/multisig/multisig_helper';
+import { JSONRPCClient } from 'json-rpc-2.0';
+import fetch from 'node-fetch/index';
 
 const lumosIndexerData = './indexer-data';
 // CKB handler
@@ -259,11 +261,22 @@ export class CkbHandler {
           ForceBridgeCore.config.ckb.fromPrivateKey,
         );
         let content1 = serializeMultisigScript(ForceBridgeCore.config.ckb.multisigScript);
-        for (let i = 0; i < ForceBridgeCore.config.ckb.keys.length; i++) {
-          content1 += key
-            .signRecoverable(txSkeleton.get('signingEntries').get(1).message, ForceBridgeCore.config.ckb.keys[i])
-            .slice(2);
+        let number = 0;
+        for (const host of ForceBridgeCore.config.ckb.hosts) {
+          if (number == ForceBridgeCore.config.ckb.multisigScript.M) {
+            break;
+          }
+          const signature = await collectCkbSignature(host, txSkeleton);
+          if (signature != undefined) {
+            content1 += signature;
+            number++;
+          }
         }
+        // for (let i = 0; i < ForceBridgeCore.config.ckb.keys.length; i++) {
+        //   content1 += key
+        //     .signRecoverable(txSkeleton.get('signingEntries').get(1).message, ForceBridgeCore.config.ckb.keys[i])
+        //     .slice(2);
+        // }
         const tx = sealTransaction(txSkeleton, [content0, content1]);
         console.log('tx:', JSON.stringify(tx, null, 2));
         const mintTxHash = await this.transactionManager.send_transaction(tx);
@@ -358,22 +371,38 @@ export class CkbHandler {
 
   async createBridgeCell(newTokens: any[], generator: CkbTxGenerator) {
     const scripts = newTokens.map((r) => {
-      return {
-        codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
-        hashType: HashType.data,
-        args: r.asset.toBridgeLockscriptArgs(),
-      };
+      return new Script(
+        ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
+        r.asset.toBridgeLockscriptArgs(),
+        ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
+      );
+      // return {
+      //   codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
+      //   hashType: HashType.data,
+      //   args: r.asset.toBridgeLockscriptArgs(),
+      // };
     });
 
     const txSkeleton = await generator.createBridgeCell(scripts, this.indexer);
     console.log('signingEntries length:', txSkeleton.get('signingEntries').size);
     const message0 = txSkeleton.get('signingEntries').get(0).message;
     const content0 = key.signRecoverable(message0, ForceBridgeCore.config.ckb.fromPrivateKey);
-    const message1 = txSkeleton.get('signingEntries').get(1).message;
+    // const message1 = txSkeleton.get('signingEntries').get(1).message;
     let content1 = serializeMultisigScript(ForceBridgeCore.config.ckb.multisigScript);
-    for (let i = 0; i < ForceBridgeCore.config.ckb.keys.length; i++) {
-      content1 += key.signRecoverable(message1, ForceBridgeCore.config.ckb.keys[i]).slice(2);
+    let number = 0;
+    for (const host of ForceBridgeCore.config.ckb.hosts) {
+      if (number == ForceBridgeCore.config.ckb.multisigScript.M) {
+        break;
+      }
+      const signature = await collectCkbSignature(host, txSkeleton);
+      if (signature != undefined) {
+        content1 += signature;
+        number++;
+      }
     }
+    // for (let i = 0; i < ForceBridgeCore.config.ckb.keys.length; i++) {
+    //   content1 += key.signRecoverable(message1, ForceBridgeCore.config.ckb.keys[i]).slice(2);
+    // }
     const tx = sealTransaction(txSkeleton, [content0, content1]);
     console.log('tx:', JSON.stringify(tx, null, 2));
     const txHash = await this.transactionManager.send_transaction(tx);
@@ -442,6 +471,27 @@ export class CkbHandler {
     this.handleMintRecords();
     logger.info('ckb handler started 🚀');
   }
+}
+
+async function collectCkbSignature(host: string, txSkeleton): Promise<string> {
+  const client = new JSONRPCClient((jsonRPCRequest) =>
+    fetch(host, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(jsonRPCRequest),
+    }).then((response) => {
+      if (response.status === 200) {
+        return response.json().then((jsonRPCResponse) => client.receive(jsonRPCResponse));
+      } else if (jsonRPCRequest.id !== undefined) {
+        return Promise.reject(new Error(response.statusText));
+      }
+    }),
+  );
+  const signMessage = await client.request('signCkbTx', txSkeleton);
+  console.log('sign', signMessage);
+  return signMessage;
 }
 
 type BurnDbData = {

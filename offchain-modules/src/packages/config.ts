@@ -32,6 +32,7 @@ export interface CkbConfig {
   ckbIndexerUrl: string;
   fromPrivateKey: string;
   keys: string[];
+  hosts: string[];
   multisigScript: MultisigItem;
   multisigType: ScriptItem;
   deps: {
@@ -47,6 +48,7 @@ export interface EthConfig {
   contractAddress: string;
   privateKey: string;
   multiSignKeys: string[];
+  multiSignHosts: string[];
   multiSignThreshold: number;
 }
 
