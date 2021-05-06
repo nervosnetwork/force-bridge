@@ -13,7 +13,6 @@ import {
 } from '@force-bridge/db/model';
 import { Connection, Not, Repository } from 'typeorm';
 import { BtcUnlockStatus } from '@force-bridge/db/entity/BtcUnlock';
-import { ForceBridgeCore } from '@force-bridge/core';
 
 export class BtcDb implements IQuery {
   private ckbMintRepository: Repository<CkbMint>;
@@ -28,7 +27,7 @@ export class BtcDb implements IQuery {
 
   async getLatestHeight(): Promise<number> {
     const rawRes = await this.connection.manager.query('select max(block_height) as max_block_number from btc_lock');
-    return rawRes[0].max_block_number || ForceBridgeCore.config.btc.startBlockHeight;
+    return rawRes[0].max_block_number || 1;
   }
 
   async createCkbMint(records: ICkbMint[]): Promise<void> {

@@ -7,7 +7,6 @@ module.exports = {
   username: 'root',
   password: 'root',
   database: 'forcebridge',
-  timezone: 'Z',
   synchronize: true,
   logging: true,
   entities: ['{.,dist}/src/packages/db/entity/*.{ts,js}'],
