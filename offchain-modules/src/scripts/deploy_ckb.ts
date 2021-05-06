@@ -2,6 +2,7 @@
 import { blake2b, asyncSleep as sleep } from '../packages/utils';
 import { OutPoint, Script } from '@lay2/pw-core';
 import RawTransactionParams from '@nervosnetwork/ckb-sdk-core';
+import { RPCClient } from 'rpc-bitcoin';
 const axios = require('axios');
 const fs = require('fs').promises;
 const nconf = require('nconf');
@@ -198,6 +199,7 @@ const waitUntilCommitted = async (txHash) => {
 };
 const setStartTime = async () => {
   const ckb_tip = await ckb.rpc.getTipBlockNumber();
+  console.debug(`ckb start height is ${parseInt(ckb_tip, 10)}`);
   nconf.set('forceBridge:ckb:startBlockHeight', parseInt(ckb_tip, 10));
   nconf.save();
 };
@@ -215,12 +217,21 @@ async function setOwnerLockHash() {
   nconf.set('forceBridge:ckb:ownerLockHash', ownerLockHash);
   nconf.save();
 }
+const setXChainStartTime = async () => {
+  const btcRPCParams = nconf.get('forceBridge:btc:clientParams');
+  const btcRPCClient = new RPCClient(btcRPCParams);
+  const height = await btcRPCClient.getchaintips();
+  console.log(`btc start block is ${height[0].height}`);
+  nconf.set('forceBridge:btc:startBlockHeight', height[0].height);
+  nconf.save();
+};
 
 const main = async () => {
   console.log('\n\n\n---------start deploy -----------\n');
   await deploy();
   await setStartTime();
   await setOwnerLockHash();
+  await setXChainStartTime();
   console.log('\n\n\n---------end deploy -----------\n');
   process.exit(0);
 };

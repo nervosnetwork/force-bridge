@@ -69,6 +69,8 @@ export interface BtcConfig {
   };
   privateKeys: string[];
   lockAddress: string;
+  startBlockHeight: number;
+  confirmNumber: number;
 }
 
 export interface rpcConfig {

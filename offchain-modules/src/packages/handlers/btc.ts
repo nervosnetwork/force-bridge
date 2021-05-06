@@ -5,6 +5,7 @@ import { BTCChain, BtcLockData } from '@force-bridge/xchain/btc';
 import { BtcDb } from '@force-bridge/db/btc';
 import { throws } from 'assert';
 import { BtcUnlock } from '@force-bridge/db/entity/BtcUnlock';
+import { ForceBridgeCore } from '@force-bridge/core';
 
 const CkbAddressLen = 46;
 
@@ -14,14 +15,18 @@ export class BtcHandler {
   // listen BTC chain and handle the new lock events
   async watchLockEvents() {
     logger.debug('start btc watchLockEvents');
+    let latestHeight = await this.db.getLatestHeight();
     while (true) {
       try {
-        const latestHeight = await this.db.getLatestHeight();
-        const nowTips = await this.btcChain.getBtcHeight();
-        logger.debug(`'btc db lock record latest height: ${latestHeight} chain now height: ${nowTips}`);
+        await asyncSleep(1000 * 60);
+        const targetHeight = (await this.btcChain.getBtcHeight()) - ForceBridgeCore.config.btc.confirmNumber;
+        if (targetHeight <= latestHeight) {
+          continue;
+        }
+        logger.debug(`'btc db lock record latest height: ${latestHeight}. target height: ${targetHeight}`);
         await this.btcChain.watchBtcTxEvents(
           latestHeight,
-          nowTips,
+          targetHeight,
           async (btcLockEventData: BtcLockData) => {
             await this.db.createCkbMint([
               {
@@ -65,7 +70,7 @@ export class BtcHandler {
             await this.db.saveBtcUnlock(records);
           },
         );
-        await asyncSleep(1000 * 10);
+        latestHeight = targetHeight;
       } catch (e) {
         logger.error('there is an error occurred during in btc chain watch event', e);
       }
