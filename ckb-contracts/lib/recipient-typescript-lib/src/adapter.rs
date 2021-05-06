@@ -25,15 +25,15 @@ pub struct ChainAdapter<T: DataLoader> {
 }
 
 impl<T> Adapter for ChainAdapter<T>
-    where
-        T: DataLoader,
+where
+    T: DataLoader,
 {
     fn load_output_data(&self) -> Option<RecipientDataView> {
         let data_list = QueryIter::new(
             |index, source| self.chain.load_cell_data(index, source),
             Source::GroupOutput,
         )
-            .collect::<Vec<Vec<u8>>>();
+        .collect::<Vec<Vec<u8>>>();
         match data_list.len() {
             0 => None,
             1 => Some(
