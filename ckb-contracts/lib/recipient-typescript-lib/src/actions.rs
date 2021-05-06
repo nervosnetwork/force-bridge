@@ -17,7 +17,13 @@ use std::prelude::v1::*;
 pub const CKB_HASH_PERSONALIZATION: &[u8] = b"ckb-default-hash";
 
 pub fn verify_burn_token<T: Adapter>(data_loader: T, data: RecipientDataView) {
-    let force_bridge_lock_hash = calc_eth_bridge_lock_hash(
+    if data.amount == 0 {
+        panic!(
+            "burn amount should be greater than 0, burned {:?}",
+            data.amount
+        )
+    }
+    let force_bridge_lock_hash = calc_xchain_bridge_lock_hash(
         &data.owner_lock_hash,
         data.chain,
         data.asset,
@@ -48,7 +54,7 @@ pub fn verify_burn_token<T: Adapter>(data_loader: T, data: RecipientDataView) {
     }
 }
 
-fn calc_eth_bridge_lock_hash(
+fn calc_xchain_bridge_lock_hash(
     owner_lock_hash: &[u8; 32],
     chain: u8,
     asset: String,
