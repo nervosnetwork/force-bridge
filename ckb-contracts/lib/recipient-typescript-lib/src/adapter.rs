@@ -25,26 +25,26 @@ pub struct ChainAdapter<T: DataLoader> {
 }
 
 impl<T> Adapter for ChainAdapter<T>
-where
-    T: DataLoader,
+    where
+        T: DataLoader,
 {
     fn load_output_data(&self) -> Option<RecipientDataView> {
         let data_list = QueryIter::new(
             |index, source| self.chain.load_cell_data(index, source),
             Source::GroupOutput,
         )
-        .collect::<Vec<Vec<u8>>>();
+            .collect::<Vec<Vec<u8>>>();
         match data_list.len() {
             0 => None,
             1 => Some(
                 RecipientDataView::new(data_list[0].as_slice())
                     .expect("RecipientDataView coding error"),
             ),
-            _ => panic!("outputs have more than 1 xchain recipient cell"),
+            _ => panic!("outputs have more than 1 eth recipient cell"),
         }
     }
 
-    fn get_sudt_amount_from_source(&self, source: Source, force_bridge_lock_hash: &[u8]) -> u128 {
+    fn get_sudt_amount_from_source(&self, source: Source, eth_bridge_lock_hash: &[u8]) -> u128 {
         let mut index = 0;
         let mut sudt_sum = 0;
         loop {
@@ -53,7 +53,7 @@ where
                 Err(SysError::IndexOutOfBound) => break,
                 Err(err) => panic!("iter input return an error: {:?}", err),
                 Ok(cell_type) => {
-                    if !(is_sudt_typescript(cell_type, force_bridge_lock_hash)) {
+                    if !(is_sudt_typescript(cell_type, eth_bridge_lock_hash)) {
                         index += 1;
                         continue;
                     }

@@ -15,10 +15,10 @@ export class BtcHandler {
   // listen BTC chain and handle the new lock events
   async watchLockEvents() {
     logger.debug('start btc watchLockEvents');
+    let latestHeight = await this.db.getLatestHeight();
     while (true) {
       try {
-        await asyncSleep(1000 * 10);
-        const latestHeight = await this.db.getLatestHeight();
+        await asyncSleep(1000 * 60);
         const targetHeight = (await this.btcChain.getBtcHeight()) - ForceBridgeCore.config.btc.confirmNumber;
         if (targetHeight <= latestHeight) {
           continue;
@@ -70,6 +70,7 @@ export class BtcHandler {
             await this.db.saveBtcUnlock(records);
           },
         );
+        latestHeight = targetHeight;
       } catch (e) {
         logger.error('there is an error occurred during in btc chain watch event', e);
       }
