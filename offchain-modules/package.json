@@ -93,7 +93,7 @@
     "sqlite3": "^5.0.2",
     "trongrid": "^1.2.6",
     "tronweb": "^3.2.3",
-    "typeorm": "^0.2.31",
+    "typeorm": "^0.2.32",
     "typeorm-naming-strategies": "^2.0.0"
   },
   "ava": {

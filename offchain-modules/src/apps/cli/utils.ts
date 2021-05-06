@@ -5,12 +5,14 @@ import { Asset } from '../../packages/ckb/model/asset';
 import { IndexerCollector } from '../../packages/ckb/tx-helper/collector';
 import { Amount, Script } from '@lay2/pw-core';
 import { asyncSleep } from '@force-bridge/utils';
+import { initLog } from '@force-bridge/utils/logger';
 
 export async function initConfig() {
   const configPath = process.env.CONFIG_PATH || './config-cli.json';
   nconf.env().file({ file: configPath });
   const config: Config = nconf.get('forceBridge');
   await new ForceBridgeCore().init(config);
+  initLog(ForceBridgeCore.config.common);
 }
 
 export function parseOptions(args: any, command: any): Map<string, string> {

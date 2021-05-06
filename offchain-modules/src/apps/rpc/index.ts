@@ -5,7 +5,7 @@ import 'module-alias/register';
 import { JSONRPCServer } from 'json-rpc-2.0';
 import { rpcConfig } from '@force-bridge/config';
 import nconf from 'nconf';
-import { logger } from '@force-bridge/utils/logger';
+import { logger, initLog } from '@force-bridge/utils/logger';
 import { ForceBridgeAPIV1Handler } from './handler';
 import { ForceBridgeCore } from '@force-bridge/core';
 import { Config } from '@force-bridge/config';
@@ -21,6 +21,7 @@ async function main() {
   const config: Config = nconf.get('forceBridge');
   const rpcConfig: rpcConfig = nconf.get('forceBridge:rpc');
   await new ForceBridgeCore().init(config);
+  initLog(ForceBridgeCore.config.common);
 
   const server = new JSONRPCServer();
 
