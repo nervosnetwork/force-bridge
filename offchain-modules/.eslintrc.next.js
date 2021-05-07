@@ -11,7 +11,7 @@ module.exports = {
   parserOptions: {
     project: ['./tsconfig.next.json'],
   },
-  plugins: ['@typescript-eslint', 'import', 'prettier'],
+  plugins: ['@typescript-eslint', 'import', 'prettier', 'tsc'],
   rules: {
     '@typescript-eslint/member-ordering': 'error',
     '@typescript-eslint/no-explicit-any': 'error',
@@ -20,5 +20,11 @@ module.exports = {
     'prettier/prettier': 'error',
     'import/order': ['warn', { alphabetize: { order: 'asc' } }],
     'no-console': ['warn'],
+    'tsc/config': [
+      'error',
+      {
+        configFile: 'tsconfig.next.json',
+      },
+    ],
   },
 };
