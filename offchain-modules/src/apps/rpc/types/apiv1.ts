@@ -56,11 +56,13 @@ export type SignedTransactionPayload<N extends NetworkBase> = {
   signedTransaction: N['SignedTransaction'];
 };
 
-export type GetBalancePayload = Array<{
+export type BalancePayload = {
   network: string;
   userIdent: string;
   assetIdent: string;
-}>;
+};
+
+export type GetBalancePayload = Array<BalancePayload>;
 
 export type GetBalanceResponse = Array<RequiredAsset<'amount'>>;
 
