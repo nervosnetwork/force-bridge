@@ -16,6 +16,7 @@ import {
   GetBridgeTransactionSummariesPayload,
   TransactionSummary,
   TransactionSummaryWithStatus,
+  XChainNetWork,
 } from './types/apiv1';
 import { IQuery, LockRecord, UnlockRecord } from '@force-bridge/db/model';
 import { EthDb, TronDb } from '@force-bridge/db';
@@ -249,10 +250,10 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     const usdt_address = '0x74a3dbd5831f45CD0F3002Bb87a59B7C15b1B5E6';
     const usdc_address = '0x265566D4365d80152515E800ca39424300374A83';
 
-    const eth_ident = getTokenShadowIdent(ChainType.ETH, eth_address);
-    const dai_ident = getTokenShadowIdent(ChainType.ETH, dai_address);
-    const usdt_ident = getTokenShadowIdent(ChainType.ETH, usdt_address);
-    const usdc_ident = getTokenShadowIdent(ChainType.ETH, usdc_address);
+    const eth_ident = getTokenShadowIdent('Ethereum', eth_address);
+    const dai_ident = getTokenShadowIdent('Ethereum', dai_address);
+    const usdt_ident = getTokenShadowIdent('Ethereum', usdt_address);
+    const usdc_ident = getTokenShadowIdent('Ethereum', usdc_address);
 
     const info = [
       {
@@ -416,7 +417,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
 }
 
 function transferDbRecordToResponse(
-  XChainNetwork: string,
+  XChainNetwork: XChainNetWork,
   record: LockRecord | UnlockRecord,
 ): TransactionSummaryWithStatus {
   let bridgeTxRecord: TransactionSummary;
@@ -425,7 +426,7 @@ function transferDbRecordToResponse(
       txSummary: {
         fromAsset: {
           network: XChainNetwork,
-          ident: record.asset,
+          ident: getTokenShadowIdent(XChainNetwork, record.asset),
           amount: record.lock_amount,
         },
         toAsset: {
@@ -442,7 +443,7 @@ function transferDbRecordToResponse(
       txSummary: {
         fromAsset: {
           network: 'Nervos',
-          ident: record.asset,
+          ident: getTokenShadowIdent(XChainNetwork, record.asset),
           amount: record.burn_amount,
         },
         toAsset: {
@@ -479,24 +480,24 @@ function transferDbRecordToResponse(
   return txSummaryWithStatus;
 }
 
-function getTokenShadowIdent(chainType: ChainType, XChainToken: string): string {
+function getTokenShadowIdent(XChainNetwork: XChainNetWork, XChainToken: string): string {
   const ownLockHash = ForceBridgeCore.config.ckb.ownerLockHash;
   let asset: Asset;
-  switch (chainType) {
-    case ChainType.BTC:
+  switch (XChainNetwork) {
+    case 'Bitcoin':
       asset = new BtcAsset('btc', ownLockHash);
       break;
-    case ChainType.EOS:
+    case 'EOS':
       asset = new EosAsset(XChainToken, ownLockHash);
       break;
-    case ChainType.ETH:
+    case 'Ethereum':
       asset = new EthAsset(XChainToken, ownLockHash);
       break;
-    case ChainType.TRON:
+    case 'Tron':
       asset = new TronAsset(XChainToken, ownLockHash);
       break;
     default:
-      logger.warn(`chain type is ${chainType} which not support yet.`);
+      logger.warn(`chain type is ${XChainNetwork} which not support yet.`);
       return;
   }
   const bridgeCellLockscript = {
