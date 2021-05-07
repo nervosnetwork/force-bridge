@@ -444,12 +444,12 @@ function transferDbRecordToResponse(
       txSummary: {
         fromAsset: {
           network: XChainNetwork,
-          ident: getTokenShadowIdent(XChainNetwork, record.asset),
+          ident: record.asset,
           amount: record.lock_amount,
         },
         toAsset: {
           network: 'Nervos',
-          ident: record.asset,
+          ident: getTokenShadowIdent(XChainNetwork, record.asset),
           amount: record.mint_amount,
         },
         fromTransaction: { txId: record.lock_hash, timestamp: record.lock_time },
