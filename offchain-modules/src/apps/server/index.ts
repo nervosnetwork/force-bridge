@@ -2,7 +2,7 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import 'module-alias/register';
 import { JSONRPCServer } from 'json-rpc-2.0';
-import { Config, rpcConfig } from '@force-bridge/config';
+import { Config } from '@force-bridge/config';
 import nconf from 'nconf';
 import { logger } from '@force-bridge/utils/logger';
 import { ForceBridgeCore } from '@force-bridge/core';

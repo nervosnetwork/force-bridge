@@ -1,14 +1,17 @@
 import { BigNumber, ethers } from 'ethers';
-import { EthDb } from '@force-bridge/db';
 import { ForceBridgeCore } from '@force-bridge/core';
 import { abi } from './abi/ForceBridge.json';
 import { EthUnlock } from '@force-bridge/db/entity/EthUnlock';
 import { logger } from '@force-bridge/utils/logger';
-import { ChainType } from '@force-bridge/ckb/model/asset';
 import { JSONRPCClient } from 'json-rpc-2.0';
 import fetch from 'node-fetch/index';
+import { EthConfig } from '@force-bridge/config';
+import { asyncSleep } from '@force-bridge/utils';
+
+const BlockBatchSize = 100;
 
 export class EthChain {
+  protected readonly config: EthConfig;
   protected readonly provider: ethers.providers.JsonRpcProvider;
   protected readonly bridgeContractAddr: string;
   protected readonly iface: ethers.utils.Interface;
@@ -19,6 +22,7 @@ export class EthChain {
   constructor() {
     const config = ForceBridgeCore.config.eth;
     const url = config.rpcUrl;
+    this.config = config;
     this.provider = new ethers.providers.JsonRpcProvider(url);
     this.bridgeContractAddr = config.contractAddress;
     this.iface = new ethers.utils.Interface(abi);
@@ -28,18 +32,47 @@ export class EthChain {
     this.multiSignKeys = config.multiSignKeys;
   }
 
-  watchLockEvents(startHeight = 1, handleLogFunc) {
-    const filter = {
-      address: this.bridgeContractAddr,
-      fromBlock: 'earliest',
-      topics: [ethers.utils.id('Locked(address,address,uint256,bytes,bytes)')],
-    };
-    this.provider.resetEventsBlock(startHeight);
-    this.provider.on(filter, async (log) => {
-      logger.debug('log', log);
-      const parsedLog = this.iface.parseLog(log);
-      await handleLogFunc(log, parsedLog);
-    });
+  async watchLockEvents(startHeight = 1, handleLogFunc) {
+    const confirmNumber = this.config.confirmNumber > 0 ? this.config.confirmNumber : 0;
+    let currentBlockNumber = await this.provider.getBlockNumber();
+    let maxConfirmedBlock = currentBlockNumber - confirmNumber;
+    let fromBlock = startHeight;
+    while (true) {
+      try {
+        if (fromBlock >= maxConfirmedBlock) {
+          while (true) {
+            currentBlockNumber = await this.provider.getBlockNumber();
+            maxConfirmedBlock = currentBlockNumber - confirmNumber;
+            if (fromBlock < maxConfirmedBlock) {
+              break;
+            }
+            await asyncSleep(5000);
+          }
+        }
+        let toBlock = fromBlock + BlockBatchSize;
+        if (toBlock > maxConfirmedBlock) {
+          toBlock = maxConfirmedBlock;
+        }
+        const logs = await this.provider.getLogs({
+          fromBlock: fromBlock,
+          address: this.bridgeContractAddr,
+          topics: [ethers.utils.id('Locked(address,address,uint256,bytes,bytes)')],
+          toBlock: toBlock,
+        });
+        logger.info(
+          `Eth watchLockEvents from:${fromBlock} to:${toBlock} currentBlockNumber:${currentBlockNumber} confirmNumber:${confirmNumber} logs:${logs.length}`,
+        );
+        for (const log of logs) {
+          logger.debug('log', log);
+          const parsedLog = this.iface.parseLog(log);
+          await handleLogFunc(log, parsedLog);
+        }
+        fromBlock = toBlock + 1;
+      } catch (err) {
+        logger.error('Eth watchLockEvents error:', err);
+        await asyncSleep(3000);
+      }
+    }
   }
 
   async sendUnlockTxs(records: EthUnlock[]): Promise<any> {
