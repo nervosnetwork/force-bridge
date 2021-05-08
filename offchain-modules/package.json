@@ -10,6 +10,7 @@
     "build": "tsc",
     "test": "ava",
     "lint": "run-p check:prettier check:eslint build",
+    "lint-staged": "eslint --fix -c .eslintrc.next.js $(git diff --name-only --relative | grep -E \"(.ts$)\")",
     "fix": "run-p fix:prettier fix:eslint",
     "fix:eslint": "eslint src/**/*.ts --fix",
     "fix:prettier": "prettier --write .",
@@ -49,7 +50,9 @@
     "eslint-formatter-pretty": "^4.0.0",
     "eslint-plugin-import": "^2.22.1",
     "eslint-plugin-prettier": "^3.3.1",
-    "husky": "^4.3.6",
+    "eslint-plugin-tsc": "^2.0.0",
+    "husky": "^6.0.0",
+    "lint-staged": "^10.5.4",
     "nodemon": "^2.0.7",
     "npm-run-all": "^4.1.5",
     "nyc": "^15.1.0",
@@ -93,11 +96,6 @@
     "typeorm": "^0.2.31",
     "typeorm-naming-strategies": "^2.0.0"
   },
-  "husky": {
-    "hooks": {
-      "pre-commit": "yarn lint"
-    }
-  },
   "ava": {
     "files": [
       "src/**/test/**/*.ts",
@@ -123,5 +121,16 @@
   },
   "_moduleAliases": {
     "@force-bridge": "dist/src/packages"
+  },
+  "lint-staged": {
+    "src/**/*.ts": [
+      "npm run lint-staged",
+      "git add"
+    ]
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
   }
 }
