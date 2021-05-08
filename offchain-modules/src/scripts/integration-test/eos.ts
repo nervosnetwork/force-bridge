@@ -38,8 +38,8 @@ async function main() {
 
   const rpcUrl = config.rpcUrl;
   const PRI_KEY = ForceBridgeCore.config.ckb.privateKey;
-  const lockAccount = 'spongebob111';
-  const lockAccountPri = ['5KQ1LgoXrSLiUMS8HZp6rSuyyJP5i6jTi1KWbZNerQQLFeTrxac'];
+  const lockAccount = 'alice';
+  const lockAccountPri = ['5KQG4541B1FtDC11gu3NrErWniqTaPHBpmikSztnX8m36sK5px5'];
   const chain = new EosChain(rpcUrl, new JsSignatureProvider(lockAccountPri));
   const conn = await createConnection();
   //lock eos
@@ -70,7 +70,7 @@ async function main() {
   } else {
     throw new Error('send lock eos transaction failed. txRes:' + lockTxRes);
   }
-  const transferActionId = getEosLockId(lockTxHash, 1);
+  const transferActionId = getEosLockId(lockTxHash, 3); //index is 3 in eos local node
 
   //check EosLock and EosMint saved.
   const waitTimeout = 1000 * 60 * 5; //5 minutes

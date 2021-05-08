@@ -14,17 +14,18 @@
       "startBlockHeight": 1
     },
     "eos": {
-      "rpcUrl": "https://jungle3.cryptolions.io:443",
-      "chainId": "2a02a0053e5a8cf73a56ba0fda11e4d92e0238a4a2aa74fccf46d5a910746840",
-      "bridgerAccount": "ericwang1112",
+      "rpcUrl": "http://127.0.0.1:8888",
+      "chainId": "6ec2642bbcdc429f0994e98f5b8e8d677c04f0e17c4a48a6821523bf7412e60f",
+      "bridgerAccount": "forcebridge1",
       "bridgerAccountPermission": "active",
       "publicKeys": [
         "EOS4z7R4woUWaU2srBqqJFcj7TLnig4X8LHnq7wvJkkNcM1dKnF4X",
         "EOS6DdTKJaPCkuePnRh55qE875hQUdt5yH47v9838cLAnYVUZtVBF"
       ],
       "privateKeys": [
+        "5KQG4541B1FtDC11gu3NrErWniqTaPHBpmikSztnX8m36sK5px5",
         "5KjR55Q7UJpRnUx8zBdNaUC4P2573BsNLJaMR9o9wrJryYYXWU2",
-        "5KQG4541B1FtDC11gu3NrErWniqTaPHBpmikSztnX8m36sK5px5"
+        "5JWwbQDZ5UHHX5bayx7ZXJ25xvqvuPLWF1MFyEGpspkxqRvetUk"
       ],
       "latestGlobalActionSeq": -1,
       "onlyWatchIrreversibleBlock": false
