@@ -8,7 +8,7 @@ Force Bridge 是连接 CKB 和其他区块链的跨链桥。目前支持 Bitcoin
 
 ## 准备钱包
 
-推荐使用 [Metamask](https://metamask.io/) 钱包，借助 Pw-Lock 可以使用 Metamask 在 CKB 上接收和发送资产。
+推荐使用 [Metamask](https://metamask.io/) 钱包，借助 [Pw-Lock](https://github.com/lay2dev/pw-lock) 可以使用 Metamask 在 CKB 上接收和发送资产。
 
 ## 水龙头领取资产
 
@@ -36,7 +36,7 @@ Force Bridge 是连接 CKB 和其他区块链的跨链桥。目前支持 Bitcoin
 
 ![img_1.png](../assets/ui-input-1.png)
 
-- 接收地址默认为 Ethereum 地址对应在 CKB 上的 PW-Lock 地址
+- 接收地址默认为 Ethereum 地址对应在 CKB 上的 Pw-Lock 地址
 
 #### 发送跨链交易
 
