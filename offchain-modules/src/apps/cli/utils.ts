@@ -7,12 +7,17 @@ import { Amount, Script } from '@lay2/pw-core';
 import { asyncSleep } from '@force-bridge/utils';
 import { initLog } from '@force-bridge/utils/logger';
 
+const defaultLogFile = './log/force-bridge-cli.log';
+
 export async function initConfig() {
   const configPath = process.env.CONFIG_PATH || './config-cli.json';
   nconf.env().file({ file: configPath });
   const config: Config = nconf.get('forceBridge');
   await new ForceBridgeCore().init(config);
-  initLog(ForceBridgeCore.config.common);
+  if (!config.common.log.logFile) {
+    config.common.log.logFile = defaultLogFile;
+  }
+  initLog(ForceBridgeCore.config.common.log);
 }
 
 export function parseOptions(args: any, command: any): Map<string, string> {

@@ -13,6 +13,7 @@ import { createConnection } from 'typeorm';
 import { GetBalancePayload, GetBridgeTransactionSummariesPayload } from './types/apiv1';
 
 const forceBridgePath = '/force-bridge/api/v1';
+const defaultLogFile = './log/force-bridge-rpc.log';
 
 async function main() {
   const configPath = process.env.CONFIG_PATH || './config.json';
@@ -21,7 +22,10 @@ async function main() {
   const config: Config = nconf.get('forceBridge');
   const rpcConfig: rpcConfig = nconf.get('forceBridge:rpc');
   await new ForceBridgeCore().init(config);
-  initLog(ForceBridgeCore.config.common);
+  if (!config.common.log.logFile) {
+    config.common.log.logFile = defaultLogFile;
+  }
+  initLog(ForceBridgeCore.config.common.log);
 
   const server = new JSONRPCServer();
 

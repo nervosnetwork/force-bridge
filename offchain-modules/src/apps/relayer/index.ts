@@ -16,12 +16,18 @@ import { BTCChain } from '@force-bridge/xchain/btc';
 import { BtcHandler } from '@force-bridge/handlers/btc';
 import { initLog } from '@force-bridge/utils/logger';
 
+const defaultLogFile = './log/force-bridge-relay.log';
+
 async function main() {
   const configPath = process.env.CONFIG_PATH || './config.json';
   nconf.env().file({ file: configPath });
   const config: Config = nconf.get('forceBridge');
+  if (!config.common.log.logFile) {
+    config.common.log.logFile = defaultLogFile;
+  }
+
   // init log
-  initLog(config.common);
+  initLog(config.common.log);
   // init bridge force core
   await new ForceBridgeCore().init(config);
 
