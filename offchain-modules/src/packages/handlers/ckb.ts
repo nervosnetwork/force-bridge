@@ -5,13 +5,11 @@ import { asyncSleep, fromHexString, toHexString, uint8ArrayToString } from '../u
 import { Asset, BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '../ckb/model/asset';
 import { Address, AddressType, Amount, HashType, Script } from '@lay2/pw-core';
 import { Account } from '@force-bridge/ckb/model/accounts';
-
 import { CkbTxGenerator } from '@force-bridge/ckb/tx-helper/generator';
 import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
 import { ScriptType } from '@force-bridge/ckb/tx-helper/indexer';
 import { ForceBridgeCore } from '@force-bridge/core';
 import { Script as LumosScript } from '@ckb-lumos/base';
-import { BigNumber } from 'ethers';
 import { RecipientCellData } from '@force-bridge/ckb/tx-helper/generated/eth_recipient_cell';
 import { getAssetTypeByAsset } from '@force-bridge/xchain/tron/utils';
 import Transaction = CKBComponents.Transaction;
@@ -28,7 +26,7 @@ export class CkbHandler {
 
   // save unlock event first and then
   async saveBurnEvent(burns: ICkbBurn[]): Promise<void> {
-    logger.debug('save burn event:', burns);
+    logger.debug('CkbHandler saveBurnEvent:', burns);
     for (const burn of burns) {
       switch (burn.chain) {
         case ChainType.BTC:
@@ -85,10 +83,10 @@ export class CkbHandler {
     // invoke saveBurnEvent when get new one
     let latestHeight = await this.db.getCkbLatestHeight();
     while (true) {
-      logger.debug('watch burn event height: ', latestHeight);
+      logger.debug('CkbHandler watchBurnEvents height: ', latestHeight);
       const block = await this.ckb.rpc.getBlockByNumber(BigInt(latestHeight));
       if (block == null) {
-        logger.debug('waitting for new ckb block');
+        logger.debug('watchBurnEvents watchBurnEvents waiting for new ckb block');
         await asyncSleep(5000);
         continue;
       }
@@ -120,7 +118,6 @@ export class CkbHandler {
           );
         }
       }
-      logger.debug('get new burn events and save to db', burnTxs);
 
       const burnTxHashes = [];
       if (burnTxs.size > 0) {
@@ -162,10 +159,13 @@ export class CkbHandler {
       return false;
     }
     const ownLockHash = await this.getOwnLockHash();
-    logger.debug('amount: ', toHexString(new Uint8Array(cellData.getAmount().raw())));
-    logger.debug('recipient address: ', toHexString(new Uint8Array(cellData.getRecipientAddress().raw())));
-    logger.debug('asset: ', toHexString(new Uint8Array(cellData.getAsset().raw())));
-    logger.debug('chain: ', cellData.getChain());
+    logger.debug('CkbHandler isBurnTx amount: ', toHexString(new Uint8Array(cellData.getAmount().raw())));
+    logger.debug(
+      'CkbHandler isBurnTx recipient address: ',
+      toHexString(new Uint8Array(cellData.getRecipientAddress().raw())),
+    );
+    logger.debug('CkbHandler isBurnTx asset: ', toHexString(new Uint8Array(cellData.getAsset().raw())));
+    logger.debug('CkbHandler isBurnTx chain: ', cellData.getChain());
     let asset;
     const assetAddress = toHexString(new Uint8Array(cellData.getAsset().raw()));
     switch (cellData.getChain()) {
@@ -197,8 +197,8 @@ export class CkbHandler {
       hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
       args: this.getBridgeLockHash(asset),
     };
-    logger.debug('expectType:', expectType);
-    logger.debug('sudtType:', sudtType);
+    logger.debug('CkbHandler isBurnTx expectType:', expectType);
+    logger.debug('CkbHandler isBurnTx sudtType:', sudtType);
     if (sudtType == null || expectType.codeHash != sudtType.codeHash || expectType.args != sudtType.args) {
       return false;
     }
@@ -320,13 +320,13 @@ export class CkbHandler {
       }
       assets.push(record.asset.toBridgeLockscriptArgs());
 
-      logger.debug('record:', record);
+      logger.debug('CkbHandler filterNewTokens record:', record);
       const bridgeCellLockscript = {
         codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
         hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
         args: record.asset.toBridgeLockscriptArgs(),
       };
-      logger.debug('record: bridgeCellLockscript ', bridgeCellLockscript);
+      logger.debug('CkbHandler filterNewTokens bridgeCellLockscript ', bridgeCellLockscript);
       const searchKey = {
         script: new Script(
           bridgeCellLockscript.codeHash,
@@ -379,9 +379,11 @@ export class CkbHandler {
     let waitTime = 0;
     while (true) {
       const txStatus = await this.ckb.rpc.getTransaction(txHash);
-      logger.debug(`WaitUntilCommitted tx ${txHash} status: ${txStatus.txStatus.status}, index: ${waitTime}`);
+      logger.debug(
+        `CkbHandler waitUntilCommitted tx ${txHash} status: ${txStatus.txStatus.status}, index: ${waitTime}`,
+      );
       if (txStatus.txStatus.status === 'committed') {
-        logger.info(`WaitUntilCommitted txHash:${txHash} committed.`);
+        logger.info(`CkbHandler waitUntilCommitted txHash:${txHash} committed.`);
         return txStatus;
       }
       await asyncSleep(1000);

@@ -12,7 +12,7 @@ export class EthHandler {
   // listen ETH chain and handle the new lock events
   async watchLockEvents() {
     const latestHeight = await this.db.getLatestHeight();
-    logger.debug('latestHeight: ', latestHeight);
+    logger.debug('EthHandler watchLockEvents latestHeight: ', latestHeight);
     await this.ethChain.watchLockEvents(latestHeight, async (log, parsedLog) => {
       try {
         logger.info(
@@ -22,7 +22,7 @@ export class EthHandler {
             parsedLog.args.recipientLockscript
           } sudtExtraData:${parsedLog.args.sudtExtraData} sender:${parsedLog.args.sender}`,
         );
-        logger.debug('eth lockEvtLog:', { log, parsedLog });
+        logger.debug('EthHandler watchLockEvents eth lockEvtLog:', { log, parsedLog });
         const amount = parsedLog.args.lockedAmount.toString();
         if (amount === '0') {
           return;
@@ -68,9 +68,9 @@ export class EthHandler {
     // todo: get and handle pending and error records
     while (true) {
       await asyncSleep(15000);
-      logger.debug('get new unlock events and send tx');
+      logger.debug('EthHandler watchLockEvents get new unlock events and send tx');
       const records = await this.getUnlockRecords('todo');
-      logger.debug('unlock records', records);
+      logger.debug('EthHandler watchLockEvents unlock records', records);
       if (records.length === 0) {
         continue;
       }
@@ -107,7 +107,7 @@ export class EthHandler {
           records.map((r) => {
             r.status = 'error';
           });
-          logger.error('unlock execute failed', receipt);
+          logger.error('EthHandler watchLockEvents unlock execute failed:', receipt);
         }
         await this.db.saveEthUnlock(records);
         logger.info('EthHandler watchLockEvents process unlock Record completed');
