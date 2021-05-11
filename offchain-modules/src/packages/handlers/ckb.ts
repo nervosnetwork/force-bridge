@@ -94,19 +94,19 @@ export class CkbHandler {
       }
       const burnTxs = new Map();
       for (const tx of block.transactions) {
-        const recipientData = tx.outputsData[0];
-        let cellData;
-        try {
-          cellData = new RecipientCellData(fromHexString(recipientData).buffer);
-        } catch (e) {
-          continue;
-        }
         if (await this.isMintTx(tx)) {
           const pendingMintTxs = await this.db.getMintRecordsToUpdate(tx.hash);
           pendingMintTxs.map((r) => {
             r.status = 'success';
           });
           await this.db.updateCkbMint(pendingMintTxs);
+        }
+        const recipientData = tx.outputsData[0];
+        let cellData;
+        try {
+          cellData = new RecipientCellData(fromHexString(recipientData).buffer);
+        } catch (e) {
+          continue;
         }
         if (await this.isBurnTx(tx, cellData)) {
           const burnPreviousTx: TransactionWithStatus = await this.ckb.rpc.getTransaction(
@@ -156,7 +156,13 @@ export class CkbHandler {
   }
 
   async isMintTx(tx: Transaction): Promise<boolean> {
-    if (tx.outputs.length < 1) {
+    if (tx.outputs.length < 1 || !tx.outputs[0].type) {
+      return false;
+    }
+    const firstOutputTypeCodeHash = tx.outputs[0].type.codeHash;
+    const expectSudtTypeCodeHash = ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash;
+    // verify tx output sudt cell
+    if (firstOutputTypeCodeHash != expectSudtTypeCodeHash) {
       return false;
     }
     const committeeLockHash = await this.getOwnLockHash();
@@ -169,11 +175,10 @@ export class CkbHandler {
     const firstInputLock = txPrevious.transaction.outputs[Number(tx.inputs[0].previousOutput.index)].lock;
     const firstInputLockHash = this.ckb.utils.scriptToHash(<CKBComponents.Script>firstInputLock);
 
-    // verify tx output sudt cell
-    const firstOutputTypeCodeHash = tx.outputs[0].type.codeHash;
-    const expectSudtTypeCodeHash = ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash;
-
-    return firstInputLockHash === committeeLockHash && firstOutputTypeCodeHash === expectSudtTypeCodeHash;
+    logger.debug(
+      `tx ${tx.hash} sender lock hash is ${firstInputLockHash}. first output type code hash is ${firstOutputTypeCodeHash}.`,
+    );
+    return firstInputLockHash === committeeLockHash;
   }
 
   async isBurnTx(tx: Transaction, cellData: RecipientCellData): Promise<boolean> {
