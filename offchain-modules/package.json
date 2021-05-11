@@ -10,7 +10,7 @@
     "build": "tsc",
     "test": "ava",
     "lint": "run-p check:prettier check:eslint build",
-    "lint-staged": "eslint --fix -c .eslintrc.next.js $(git diff --name-only --relative | grep -E \"(.ts$)\")",
+    "lint-staged": "eslint --fix -c .eslintrc.next.js $(git diff --cached --staged --name-only --relative | grep -E \"(.ts$)\")",
     "fix": "run-p fix:prettier fix:eslint",
     "fix:eslint": "eslint src/**/*.ts --fix",
     "fix:prettier": "prettier --write .",
@@ -33,7 +33,8 @@
     "cov:html": "nyc report --reporter=html",
     "cov:send": "nyc report --reporter=lcov && codecov",
     "cov:check": "nyc report && nyc check-coverage --lines 100 --functions 100 --branches 100",
-    "deploy": "ts-node-dev ./src/scripts/deploy_ckb.ts"
+    "deploy": "ts-node-dev ./src/scripts/deploy_ckb.ts",
+    "prepare": "cd .. && husky install offchain-modules/.husky"
   },
   "author": "",
   "license": "MIT",
