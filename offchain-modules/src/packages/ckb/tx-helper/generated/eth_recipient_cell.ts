@@ -258,9 +258,12 @@ export function SerializeRecipientCellData(value) {
   buffers.push(SerializeBytes(value.recipient_address));
   const chainView = new DataView(new ArrayBuffer(1));
   chainView.setUint8(0, value.chain);
+  const hashTypeView = new DataView(new ArrayBuffer(1));
+  hashTypeView.setUint8(0, value.bridge_lock_hash_type);
   buffers.push(chainView.buffer);
   buffers.push(SerializeBytes(value.asset));
   buffers.push(SerializeByte32(value.bridge_lock_code_hash));
+  buffers.push(hashTypeView.buffer);
   buffers.push(SerializeByte32(value.owner_lock_hash));
   buffers.push(SerializeUint128(value.amount));
   buffers.push(SerializeUint128(value.fee));
