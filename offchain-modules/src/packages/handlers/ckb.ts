@@ -281,6 +281,9 @@ export class CkbHandler {
         const rawTx = await generator.mint(await account.getLockscript(), records);
         const signedTx = this.ckb.signTransaction(this.PRI_KEY)(rawTx);
         const mintTxHash = await this.ckb.rpc.sendTransaction(signedTx);
+        logger.info(
+          `CkbHandler handleMintRecords Mint Transaction has been sent, ckbTxHash ${mintTxHash}, mintIds:${mintIds}`,
+        );
         const txStatus = await this.waitUntilCommitted(mintTxHash, 200);
         if (txStatus.txStatus.status === 'committed') {
           mintRecords.map((r) => {
@@ -295,9 +298,6 @@ export class CkbHandler {
             `CkbHandler handleMintRecords mint execute failed txStatus:${txStatus.txStatus.status}, mintIds:${mintIds}`,
           );
         }
-        logger.info(
-          `CkbHandler handleMintRecords Mint Transaction has been sent, ckbTxHash ${mintTxHash}, mintIds:${mintIds}`,
-        );
         await this.db.updateCkbMint(mintRecords);
         logger.info('CkbHandler handleMintRecords mint execute completed, mintIds:', mintIds);
       } catch (e) {
