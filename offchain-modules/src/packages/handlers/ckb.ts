@@ -181,7 +181,7 @@ export class CkbHandler {
     const firstInputLock = txPrevious.transaction.outputs[Number(tx.inputs[0].previousOutput.index)].lock;
     const firstInputLockHash = this.ckb.utils.scriptToHash(<CKBComponents.Script>firstInputLock);
 
-    logger.debug(
+    logger.info(
       `CkbHandler isMintTx tx ${tx.hash} sender lock hash is ${firstInputLockHash}. first output type code hash is ${firstOutputTypeCodeHash}.`,
     );
     return firstInputLockHash === committeeLockHash;
@@ -281,9 +281,20 @@ export class CkbHandler {
         const rawTx = await generator.mint(await account.getLockscript(), records);
         const signedTx = this.ckb.signTransaction(this.PRI_KEY)(rawTx);
         const mintTxHash = await this.ckb.rpc.sendTransaction(signedTx);
-        mintRecords.map((r) => {
-          r.mintHash = mintTxHash;
-        });
+        const txStatus = await this.waitUntilCommitted(mintTxHash, 200);
+        if (txStatus.txStatus.status === 'committed') {
+          mintRecords.map((r) => {
+            r.status = 'success';
+            r.mintHash = mintTxHash;
+          });
+        } else {
+          mintRecords.map((r) => {
+            r.mintHash = mintTxHash;
+          });
+          logger.error(
+            `CkbHandler handleMintRecords mint execute failed txStatus:${txStatus.txStatus.status}, mintIds:${mintIds}`,
+          );
+        }
         logger.info(
           `CkbHandler handleMintRecords Mint Transaction has been sent, ckbTxHash ${mintTxHash}, mintIds:${mintIds}`,
         );
