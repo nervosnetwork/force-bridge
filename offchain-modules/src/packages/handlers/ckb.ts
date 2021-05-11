@@ -114,7 +114,7 @@ export class CkbHandler {
           logger.info(
             `CkbHandler watchBurnEvents receive burnedTx, ckbTxHash:${
               tx.hash
-            } senderLockHash:${senderLockHash} cellData:${cellData.toString()}`,
+            } senderLockHash:${senderLockHash} cellData:${JSON.stringify(cellData, null, 2)}`,
           );
         }
       }
@@ -236,6 +236,7 @@ export class CkbHandler {
         logger.info(
           `CkbHandler handleMintRecords bridge cell is not exist. do create bridge cell. ownLockHash:${ownLockHash.toString()}`,
         );
+        logger.info(`CkbHandler handleMintRecords createBridgeCell newToken:${JSON.stringify(newTokens, null, 2)}`);
         await this.createBridgeCell(newTokens, generator);
       }
 
@@ -377,13 +378,17 @@ export class CkbHandler {
 
   async waitUntilCommitted(txHash: string, timeout: number) {
     let waitTime = 0;
+    let statusMap = new Map<string, boolean>();
+
     while (true) {
       const txStatus = await this.ckb.rpc.getTransaction(txHash);
-      logger.debug(
-        `CkbHandler waitUntilCommitted tx ${txHash} status: ${txStatus.txStatus.status}, index: ${waitTime}`,
-      );
+      if (!statusMap.get(txStatus.txStatus.status)) {
+        logger.info(
+          `CkbHandler waitUntilCommitted tx ${txHash} status: ${txStatus.txStatus.status}, index: ${waitTime}`,
+        );
+        statusMap.set(txStatus.txStatus.status, true);
+      }
       if (txStatus.txStatus.status === 'committed') {
-        logger.info(`CkbHandler waitUntilCommitted txHash:${txHash} committed.`);
         return txStatus;
       }
       await asyncSleep(1000);

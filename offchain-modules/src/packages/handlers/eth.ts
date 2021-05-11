@@ -53,7 +53,7 @@ export class EthHandler {
           `EthHandler watchLockEvents save CkbMint and EthLock successful for eth tx ${log.transactionHash}.`,
         );
       } catch (e) {
-        logger.error(`EthHandler watchLockEvents error: ${e}`);
+        logger.error(`EthHandler watchLockEvents error: ${e.toString()}`);
         await asyncSleep(3000);
       }
     });
@@ -70,18 +70,18 @@ export class EthHandler {
       await asyncSleep(15000);
       logger.debug('EthHandler watchLockEvents get new unlock events and send tx');
       const records = await this.getUnlockRecords('todo');
-      logger.debug('EthHandler watchLockEvents unlock records', records);
       if (records.length === 0) {
         continue;
       }
+      logger.info('EthHandler watchLockEvents unlock records', records);
 
       const unlockTxHashes = records
         .map((unlockRecord) => {
-          return unlockRecord.ethTxHash;
+          return unlockRecord.ckbTxHash;
         })
         .join(', ');
       logger.info(
-        `EthHandler watchLockEvents start process unlock Record, txHashes:${unlockTxHashes} num:${records.length}`,
+        `EthHandler watchLockEvents start process unlock Record, ckbTxHashes:${unlockTxHashes} num:${records.length}`,
       );
 
       try {
@@ -98,7 +98,7 @@ export class EthHandler {
         await this.db.saveEthUnlock(records);
         logger.debug('sendUnlockTxs res', txRes);
         const receipt = await txRes.wait();
-        logger.info(`EthHandler watchLockEvents sendUnlockTxs receipt:${receipt}`);
+        logger.info(`EthHandler watchLockEvents sendUnlockTxs receipt:${JSON.stringify(receipt.logs, null, 2)}`);
         if (receipt.status === 1) {
           records.map((r) => {
             r.status = 'success';
@@ -117,7 +117,7 @@ export class EthHandler {
           r.message = e.message;
         });
         await this.db.saveEthUnlock(records);
-        logger.error(`EthHandler watchLockEvents error:${e}`);
+        logger.error(`EthHandler watchLockEvents error:${e.toString()}`);
       }
     }
   }

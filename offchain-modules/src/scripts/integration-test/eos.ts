@@ -2,11 +2,9 @@ import { createConnection } from 'typeorm';
 import 'module-alias/register';
 import nconf from 'nconf';
 import { Config, EosConfig } from '@force-bridge/config';
-import { logger } from '@force-bridge/utils/logger';
+import { initLog, logger } from '@force-bridge/utils/logger';
 import { JsSignatureProvider } from 'eosjs/dist/eosjs-jssig';
-import { CkbDb } from '@force-bridge/db';
 import { EosLock, getEosLockId } from '@force-bridge/db/entity/EosLock';
-import { asyncSleep } from '@force-bridge/utils';
 import assert from 'assert';
 import { CkbMint } from '@force-bridge/db/entity/CkbMint';
 import { ChainType, EosAsset } from '@force-bridge/ckb/model/asset';
@@ -16,7 +14,6 @@ import { Account } from '@force-bridge/ckb/model/accounts';
 import { CkbTxGenerator } from '@force-bridge/ckb/tx-helper/generator';
 import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
 import { Amount, Script } from '@lay2/pw-core';
-
 import { CkbIndexer } from '@force-bridge/ckb/tx-helper/indexer';
 import { ForceBridgeCore } from '@force-bridge/core';
 import { waitUntilCommitted, waitFnCompleted } from './util';
@@ -31,8 +28,11 @@ async function main() {
   const configPath = process.env.CONFIG_PATH || './config.json';
   nconf.env().file({ file: configPath });
   const config: EosConfig = nconf.get('forceBridge:eos');
-  logger.debug('EosConfig:', config);
   const conf: Config = nconf.get('forceBridge');
+  conf.common.log.logFile = './log/eos-ci.log';
+  initLog(conf.common.log);
+  logger.debug('EosConfig:', config);
+
   // init bridge force core
   await new ForceBridgeCore().init(conf);
 
@@ -66,7 +66,7 @@ async function main() {
   let lockTxHash: string;
   if ('transaction_id' in lockTxRes) {
     lockTxHash = lockTxRes.transaction_id;
-    logger.debug('EosLockTx:', lockTxRes);
+    logger.debug(`EosLockTx:${lockTxRes}`);
   } else {
     throw new Error('send lock eos transaction failed. txRes:' + lockTxRes);
   }
@@ -91,8 +91,8 @@ async function main() {
         return false;
       }
 
-      logger.debug('EosLockRecords', eosLockRecords);
-      logger.debug('CkbMintRecords', ckbMintRecords);
+      logger.info('EosLockRecords', eosLockRecords);
+      logger.info('CkbMintRecords', ckbMintRecords);
 
       assert(eosLockRecords.length === 1);
       const eosLockRecord = eosLockRecords[0];
@@ -135,21 +135,13 @@ async function main() {
         await account.getLockscript(),
       );
 
-      logger.debug('sudt balance:', balance.toString(4));
-      logger.debug('expect balance:', new Amount(lockAmount, 4).toString(4));
+      logger.info('sudt balance:', balance.toString(4));
+      logger.info('expect balance:', new Amount(lockAmount, 4).toString(4));
       return balance.eq(new Amount(lockAmount, 4));
     },
     1000 * 10,
   );
 
-  //unlock eos
-  // const unlockRecord = {
-  //   ckbTxHash: genRandomHex(32),
-  //   asset: lockAsset,
-  //   amount: lockAmount,
-  //   recipientAddress: lockAccount,
-  // };
-  // await ckbDb.createEosUnlock([unlockRecord]);
   // send burn tx
   const burnAmount = new Amount('0.0001', 4);
   const generator = new CkbTxGenerator(ckb, new IndexerCollector(indexer));
@@ -172,8 +164,8 @@ async function main() {
         await account.getLockscript(),
       );
 
-      logger.debug('sudt balance:', balance);
-      logger.debug('expect balance:', new Amount(lockAmount, 4).sub(burnAmount));
+      logger.info('sudt balance:', balance);
+      logger.info('expect balance:', new Amount(lockAmount, 4).sub(burnAmount));
       return balance.eq(new Amount(lockAmount, 4).sub(burnAmount));
     },
     1000 * 10,
@@ -193,13 +185,13 @@ async function main() {
       if (eosUnlockRecords.length === 0) {
         return false;
       }
-      logger.debug('EosUnlockRecords', eosUnlockRecords);
+      logger.info('EosUnlockRecords', eosUnlockRecords);
       assert(eosUnlockRecords.length === 1);
       const eosUnlockRecord = eosUnlockRecords[0];
       assert(eosUnlockRecord.recipientAddress == lockAccount);
       assert(eosUnlockRecord.asset === lockAsset);
-      logger.debug('amount: ', eosUnlockRecord.amount);
-      logger.debug('amount: ', burnAmount.toString(0));
+      logger.info('amount: ', eosUnlockRecord.amount);
+      logger.info('amount: ', burnAmount.toString(0));
       assert(eosUnlockRecord.amount === burnAmount.toString(0));
       eosUnlockTxHash = eosUnlockRecord.eosTxHash;
       return true;

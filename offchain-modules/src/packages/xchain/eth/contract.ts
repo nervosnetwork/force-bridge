@@ -61,7 +61,7 @@ export class EthChain {
           topics: [ethers.utils.id('Locked(address,address,uint256,bytes,bytes)')],
           toBlock: toBlock,
         });
-        logger.info(
+        logger.debug(
           `EthChain watchLockEvents from:${fromBlock} to:${toBlock} currentBlockNumber:${currentBlockNumber} confirmNumber:${confirmNumber} logs:${logs.length}`,
         );
         for (const log of logs) {
