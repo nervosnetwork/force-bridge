@@ -25,7 +25,7 @@
     "tron-test": "ts-node ./src/scripts/integration-test/tron.ts",
     "prepare-xchain-test": "sleep 2",
     "btc-test": "ts-node ./src/scripts/integration-test/btc.ts",
-    "xchain-test": "run-s prepare-xchain-test eth-test tron-test btc-test eos-test",
+    "xchain-test": "run-s prepare-xchain-test eth-test btc-test eos-test tron-test",
     "integration-test": "run-p -r start xchain-test",
     "ci": "run-s clean build deploy integration-test",
     "test:unit": "nyc --silent ava",
