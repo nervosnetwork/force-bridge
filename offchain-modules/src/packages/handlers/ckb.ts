@@ -284,7 +284,9 @@ export class CkbHandler {
         mintRecords.map((r) => {
           r.mintHash = mintTxHash;
         });
-        console.log(`Mint Transaction has been sent with tx hash ${mintTxHash}`);
+        logger.info(
+          `CkbHandler handleMintRecords Mint Transaction has been sent, ckbTxHash ${mintTxHash}, mintIds:${mintIds}`,
+        );
         await this.db.updateCkbMint(mintRecords);
         logger.info('CkbHandler handleMintRecords mint execute completed, mintIds:', mintIds);
       } catch (e) {
