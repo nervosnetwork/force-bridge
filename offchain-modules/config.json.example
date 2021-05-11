@@ -1,5 +1,10 @@
 {
   "forceBridge": {
+    "common": {
+      "log": {
+        "level": "info"
+      }
+    },
     "eth": {
       "rpcUrl": "http://127.0.0.1:8545",
       "privateKey": "0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed37a",

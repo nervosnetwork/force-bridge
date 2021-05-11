@@ -5,13 +5,11 @@ import { asyncSleep, fromHexString, toHexString, uint8ArrayToString } from '../u
 import { Asset, BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '../ckb/model/asset';
 import { Address, AddressType, Amount, HashType, Script } from '@lay2/pw-core';
 import { Account } from '@force-bridge/ckb/model/accounts';
-
 import { CkbTxGenerator } from '@force-bridge/ckb/tx-helper/generator';
 import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
 import { ScriptType } from '@force-bridge/ckb/tx-helper/indexer';
 import { ForceBridgeCore } from '@force-bridge/core';
 import { Script as LumosScript } from '@ckb-lumos/base';
-import { BigNumber } from 'ethers';
 import { RecipientCellData } from '@force-bridge/ckb/tx-helper/generated/eth_recipient_cell';
 import { getAssetTypeByAsset } from '@force-bridge/xchain/tron/utils';
 import Transaction = CKBComponents.Transaction;
@@ -28,7 +26,7 @@ export class CkbHandler {
 
   // save unlock event first and then
   async saveBurnEvent(burns: ICkbBurn[]): Promise<void> {
-    logger.debug('save burn event:', burns);
+    logger.debug('CkbHandler saveBurnEvent:', burns);
     for (const burn of burns) {
       switch (burn.chain) {
         case ChainType.BTC:
@@ -85,10 +83,10 @@ export class CkbHandler {
     // invoke saveBurnEvent when get new one
     let latestHeight = await this.db.getCkbLatestHeight();
     while (true) {
-      logger.debug('watch burn event height: ', latestHeight);
+      logger.debug('CkbHandler watchBurnEvents height: ', latestHeight);
       const block = await this.ckb.rpc.getBlockByNumber(BigInt(latestHeight));
       if (block == null) {
-        logger.debug('waitting for new ckb block');
+        logger.debug('watchBurnEvents watchBurnEvents waiting for new ckb block');
         await asyncSleep(5000);
         continue;
       }
@@ -113,9 +111,15 @@ export class CkbHandler {
             cellData: cellData,
           };
           burnTxs.set(tx.hash, data);
+          logger.info(
+            `CkbHandler watchBurnEvents receive burnedTx, ckbTxHash:${
+              tx.hash
+            } senderLockHash:${senderLockHash} cellData:${JSON.stringify(cellData, null, 2)}`,
+          );
         }
       }
-      logger.debug('get new burn events and save to db', burnTxs);
+
+      const burnTxHashes = [];
       if (burnTxs.size > 0) {
         const ckbBurns = [];
         burnTxs.forEach((v: BurnDbData, k: string) => {
@@ -140,8 +144,10 @@ export class CkbHandler {
               break;
           }
           ckbBurns.push(burn);
+          burnTxHashes.push(k);
         });
         await this.saveBurnEvent(ckbBurns);
+        logger.info(`CkbHandler watchBurnEvents saveBurnEvent success, burnTxHashes:${burnTxHashes.join(', ')}`);
       }
       latestHeight++;
       await asyncSleep(1000);
@@ -153,10 +159,13 @@ export class CkbHandler {
       return false;
     }
     const ownLockHash = await this.getOwnLockHash();
-    logger.debug('amount: ', toHexString(new Uint8Array(cellData.getAmount().raw())));
-    logger.debug('recipient address: ', toHexString(new Uint8Array(cellData.getRecipientAddress().raw())));
-    logger.debug('asset: ', toHexString(new Uint8Array(cellData.getAsset().raw())));
-    logger.debug('chain: ', cellData.getChain());
+    logger.debug('CkbHandler isBurnTx amount: ', toHexString(new Uint8Array(cellData.getAmount().raw())));
+    logger.debug(
+      'CkbHandler isBurnTx recipient address: ',
+      toHexString(new Uint8Array(cellData.getRecipientAddress().raw())),
+    );
+    logger.debug('CkbHandler isBurnTx asset: ', toHexString(new Uint8Array(cellData.getAsset().raw())));
+    logger.debug('CkbHandler isBurnTx chain: ', cellData.getChain());
     let asset;
     const assetAddress = toHexString(new Uint8Array(cellData.getAsset().raw()));
     switch (cellData.getChain()) {
@@ -188,8 +197,8 @@ export class CkbHandler {
       hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
       args: this.getBridgeLockHash(asset),
     };
-    logger.debug('expectType:', expectType);
-    logger.debug('sudtType:', sudtType);
+    logger.debug('CkbHandler isBurnTx expectType:', expectType);
+    logger.debug('CkbHandler isBurnTx sudtType:', sudtType);
     if (sudtType == null || expectType.codeHash != sudtType.codeHash || expectType.args != sudtType.args) {
       return false;
     }
@@ -208,17 +217,26 @@ export class CkbHandler {
     const generator = new CkbTxGenerator(this.ckb, new IndexerCollector(this.indexer));
     while (true) {
       const mintRecords = await this.db.getCkbMintRecordsToMint();
-      logger.debug('new mintRecords: ', mintRecords);
       if (mintRecords.length == 0) {
         logger.debug('wait for new mint records');
         await asyncSleep(3000);
         continue;
       }
+      logger.info(`CkbHandler handleMintRecords new mintRecords:${JSON.stringify(mintRecords, null, 2)}`);
+
+      const mintIds = mintRecords
+        .map((ckbMint) => {
+          return ckbMint.id;
+        })
+        .join(', ');
+
       const records = mintRecords.map((r) => this.filterMintRecords(r, ownLockHash));
       const newTokens = await this.filterNewTokens(records);
-
       if (newTokens.length > 0) {
-        logger.debug('bridge cell is not exist. do create bridge cell.');
+        logger.info(
+          `CkbHandler handleMintRecords bridge cell is not exist. do create bridge cell. ownLockHash:${ownLockHash.toString()}`,
+        );
+        logger.info(`CkbHandler handleMintRecords createBridgeCell newToken:${JSON.stringify(newTokens, null, 2)}`);
         await this.createBridgeCell(newTokens, generator);
       }
 
@@ -230,7 +248,9 @@ export class CkbHandler {
         const rawTx = await generator.mint(await account.getLockscript(), records);
         const signedTx = this.ckb.signTransaction(this.PRI_KEY)(rawTx);
         const mintTxHash = await this.ckb.rpc.sendTransaction(signedTx);
-        console.log(`Mint Transaction has been sent with tx hash ${mintTxHash}`);
+        logger.info(
+          `CkbHandler handleMintRecords Mint Transaction has been sent, ckbTxHash ${mintTxHash}, mintIds:${mintIds}`,
+        );
         const txStatus = await this.waitUntilCommitted(mintTxHash, 200);
         if (txStatus.txStatus.status === 'committed') {
           mintRecords.map((r) => {
@@ -243,11 +263,14 @@ export class CkbHandler {
             r.mintHash = mintTxHash;
             r.message = `mint execute failed.the tx status is ${txStatus.txStatus.status}`;
           });
-          logger.error('mint execute failed: ', mintRecords);
+          logger.error(
+            `CkbHandler handleMintRecords mint execute failed txStatus:${txStatus.txStatus.status}, mintIds:${mintIds}`,
+          );
         }
         await this.db.updateCkbMint(mintRecords);
+        logger.info('CkbHandler handleMintRecords mint execute completed, mintIds:', mintIds);
       } catch (e) {
-        logger.debug('mint execute failed:', e.toString());
+        logger.debug(`CkbHandler handleMintRecords mint error:${e.toString()}, mintIds:${mintIds}`);
         mintRecords.map((r) => {
           r.status = 'error';
           r.message = e.toString();
@@ -298,13 +321,13 @@ export class CkbHandler {
       }
       assets.push(record.asset.toBridgeLockscriptArgs());
 
-      logger.debug('record:', record);
+      logger.debug('CkbHandler filterNewTokens record:', record);
       const bridgeCellLockscript = {
         codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
         hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
         args: record.asset.toBridgeLockscriptArgs(),
       };
-      logger.debug('record: bridgeCellLockscript ', bridgeCellLockscript);
+      logger.debug('CkbHandler filterNewTokens bridgeCellLockscript ', bridgeCellLockscript);
       const searchKey = {
         script: new Script(
           bridgeCellLockscript.codeHash,
@@ -355,9 +378,16 @@ export class CkbHandler {
 
   async waitUntilCommitted(txHash: string, timeout: number) {
     let waitTime = 0;
+    let statusMap = new Map<string, boolean>();
+
     while (true) {
       const txStatus = await this.ckb.rpc.getTransaction(txHash);
-      logger.debug(`tx ${txHash} status: ${txStatus.txStatus.status}, index: ${waitTime}`);
+      if (!statusMap.get(txStatus.txStatus.status)) {
+        logger.info(
+          `CkbHandler waitUntilCommitted tx ${txHash} status: ${txStatus.txStatus.status}, index: ${waitTime}`,
+        );
+        statusMap.set(txStatus.txStatus.status, true);
+      }
       if (txStatus.txStatus.status === 'committed') {
         return txStatus;
       }

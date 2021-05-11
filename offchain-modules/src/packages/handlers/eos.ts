@@ -247,7 +247,7 @@ export class EosHandler {
       try {
         actions = await this.chain.getActions(this.config.bridgerAccount, pos, offset);
       } catch (e) {
-        logger.error(`EosHandler getActions pos:${pos} offset:${offset} error:${e}`);
+        logger.error(`EosHandler getActions pos:${pos} offset:${offset} error:${e.toString()}`);
         await asyncSleep(3000);
       }
       const actLen = actions.actions.length;
@@ -312,7 +312,7 @@ export class EosHandler {
         }
         await this.processUnLockEvents(todoRecords);
       } catch (e) {
-        logger.error('EosHandler watchUnlockEvents error:', e);
+        logger.error('EosHandler watchUnlockEvents error:', e.toString());
         await asyncSleep(3000);
       }
     }
@@ -320,6 +320,7 @@ export class EosHandler {
 
   async processUnLockEvents(records: EosUnlock[]) {
     for (const record of records) {
+      logger.info(`EosHandler processUnLockEvents get new unlockEvent:${JSON.stringify(record, null, 2)}`);
       record.status = 'pending';
       const unlockTx = await this.buildUnlockTx(record);
       if (this.config.privateKeys.length === 0) {
@@ -364,7 +365,9 @@ export class EosHandler {
         record.status = 'error';
         record.message = e.message;
         logger.error(
-          `EosHandler pushSignedTransaction failed eosTxHash:${txHash} ckbTxHash:${record.ckbTxHash} receiver:${record.recipientAddress} amount:${record.amount} asset:${record.asset} error:${e}`,
+          `EosHandler pushSignedTransaction failed eosTxHash:${txHash} ckbTxHash:${record.ckbTxHash} receiver:${
+            record.recipientAddress
+          } amount:${record.amount} asset:${record.asset} error:${e.toString()}`,
         );
         await this.db.saveEosUnlock([record]);
       }
@@ -413,7 +416,7 @@ export class EosHandler {
           await this.db.saveEosUnlock(newRecords);
         }
       } catch (e) {
-        logger.error(`EosHandler checkUnlockTxStatus error:${e}`);
+        logger.error(`EosHandler checkUnlockTxStatus error:${e.toString()}`);
         await asyncSleep(3000);
       }
     }

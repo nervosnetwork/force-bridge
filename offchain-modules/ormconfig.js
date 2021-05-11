@@ -9,7 +9,7 @@ module.exports = {
   database: 'forcebridge',
   timezone: 'Z',
   synchronize: true,
-  logging: true,
+  logging: false,
   entities: ['{.,dist}/src/packages/db/entity/*.{ts,js}'],
   namingStrategy: new SnakeNamingStrategy(),
 };
