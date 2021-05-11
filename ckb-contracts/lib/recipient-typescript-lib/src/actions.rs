@@ -7,8 +7,7 @@ use alloc::string::String;
 use blake2b_ref::{Blake2b, Blake2bBuilder};
 use ckb_std::ckb_types::packed::{Byte32, Bytes, Script};
 use force_bridge_types::{
-    generated::basic,
-    generated::force_bridge_lockscript::ForceBridgeLockscriptArgs,
+    generated::basic, generated::force_bridge_lockscript::ForceBridgeLockscriptArgs,
     recipient_cell::RecipientDataView,
 };
 use molecule::prelude::{Builder, Byte, Entity};
@@ -28,7 +27,7 @@ pub fn verify_burn_token<T: Adapter>(data_loader: T, data: RecipientDataView) {
         data.chain,
         data.asset,
         &data.bridge_lock_code_hash,
-        data.bridge_lock_hash_type
+        data.bridge_lock_hash_type,
     );
     let input_sudt_num =
         data_loader.get_sudt_amount_from_source(Source::Input, &force_bridge_lock_hash);
