@@ -453,9 +453,11 @@ function transferDbRecordToResponse(
           amount: record.mint_amount,
         },
         fromTransaction: { txId: record.lock_hash, timestamp: record.lock_time },
-        toTransaction: { txId: record.mint_hash, timestamp: record.mint_time },
       },
     };
+    if (record.mint_hash) {
+      bridgeTxRecord.txSummary.toTransaction = { txId: record.mint_hash, timestamp: record.mint_time };
+    }
   } else if ('burn_hash' in record) {
     bridgeTxRecord = {
       txSummary: {
@@ -470,9 +472,11 @@ function transferDbRecordToResponse(
           amount: record.unlock_amount,
         },
         fromTransaction: { txId: record.burn_hash, timestamp: record.burn_time },
-        toTransaction: { txId: record.unlock_hash, timestamp: record.unlock_time },
       },
     };
+    if (record.unlock_hash) {
+      bridgeTxRecord.txSummary.toTransaction = { txId: record.unlock_hash, timestamp: record.unlock_time };
+    }
   } else {
     throw new Error(`the params record ${JSON.stringify(record, null, 2)} is unexpect`);
   }

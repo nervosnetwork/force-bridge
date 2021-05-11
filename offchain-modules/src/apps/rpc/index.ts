@@ -5,7 +5,7 @@ import 'module-alias/register';
 import { JSONRPCServer } from 'json-rpc-2.0';
 import { rpcConfig } from '@force-bridge/config';
 import nconf from 'nconf';
-import { logger } from '@force-bridge/utils/logger';
+import { logger, initLog } from '@force-bridge/utils/logger';
 import { ForceBridgeAPIV1Handler } from './handler';
 import { ForceBridgeCore } from '@force-bridge/core';
 import { Config } from '@force-bridge/config';
@@ -13,6 +13,7 @@ import { createConnection } from 'typeorm';
 import { GetBalancePayload, GetBridgeTransactionSummariesPayload } from './types/apiv1';
 
 const forceBridgePath = '/force-bridge/api/v1';
+const defaultLogFile = './log/force-bridge-rpc.log';
 
 async function main() {
   const configPath = process.env.CONFIG_PATH || './config.json';
@@ -21,6 +22,10 @@ async function main() {
   const config: Config = nconf.get('forceBridge');
   const rpcConfig: rpcConfig = nconf.get('forceBridge:rpc');
   await new ForceBridgeCore().init(config);
+  if (!config.common.log.logFile) {
+    config.common.log.logFile = defaultLogFile;
+  }
+  initLog(ForceBridgeCore.config.common.log);
 
   const server = new JSONRPCServer();
 
