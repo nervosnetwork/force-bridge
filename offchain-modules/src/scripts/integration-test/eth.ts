@@ -166,7 +166,7 @@ async function main() {
     assert(ethUnlockRecord.amount === parsedLog.args.receivedAmount.toString());
     logger.info('parsedLog recipient', ethUnlockRecord.recipientAddress);
     logger.info('parsedLog recipient', parsedLog.args.recipient);
-    assert(ethUnlockRecord.recipientAddress === parsedLog.args.recipient);
+    assert(ethUnlockRecord.recipientAddress.toLowerCase() === parsedLog.args.recipient.toLowerCase());
   };
 
   // try 100 times and wait for 3 seconds every time.
