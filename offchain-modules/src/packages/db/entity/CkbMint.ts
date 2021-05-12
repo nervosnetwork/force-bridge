@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, Column, PrimaryColumn, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
 
 export type dbTxStatus = 'todo' | 'pending' | 'success' | 'error';
 export type CkbMintStatus = dbTxStatus;
@@ -30,6 +30,7 @@ export class CkbMint {
   @Column({ default: 'todo' })
   status: CkbMintStatus;
 
+  @Index()
   @Column({ nullable: true })
   mintHash: string;
 
