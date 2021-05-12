@@ -57,7 +57,7 @@ async function main() {
   logger.info('receipt', receipt);
 
   // create eth unlock
-  const recipientAddress = '0x1000000000000000000000000000000000000001';
+  const recipientAddress = '0xfa31576d284a4eaca9914470bbd0bd202a85807d';
   const balanceBefore = await provider.getBalance(recipientAddress);
   logger.info('balanceBefore burn', balanceBefore);
 
