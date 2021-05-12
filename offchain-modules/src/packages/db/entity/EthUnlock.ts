@@ -20,7 +20,6 @@ export class EthUnlock {
   @Column({ nullable: true })
   ethTxHash: string;
 
-  @Index()
   @Column({ default: 'todo' })
   status: EthUnlockStatus;
 

@@ -30,7 +30,6 @@ export class TronUnlock {
   @Column()
   recipientAddress: string;
 
-  @Index()
   @Column({ default: 'todo' })
   status: string;
 

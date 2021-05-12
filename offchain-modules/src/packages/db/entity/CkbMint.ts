@@ -27,7 +27,6 @@ export class CkbMint {
   @Column({ default: '' })
   sudtExtraData: string;
 
-  @Index()
   @Column({ default: 'todo' })
   status: CkbMintStatus;
 
