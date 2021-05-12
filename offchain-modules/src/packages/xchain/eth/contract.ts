@@ -3,12 +3,19 @@ import { ForceBridgeCore } from '@force-bridge/core';
 import { abi } from './abi/ForceBridge.json';
 import { EthUnlock } from '@force-bridge/db/entity/EthUnlock';
 import { logger } from '@force-bridge/utils/logger';
-import { JSONRPCClient } from 'json-rpc-2.0';
-import fetch from 'node-fetch/index';
 import { EthConfig } from '@force-bridge/config';
 import { asyncSleep } from '@force-bridge/utils';
+import { MultiSigMgr } from '@force-bridge/multisig/multisig-mgr';
+import { buildSigRawData } from '@force-bridge/xchain/eth/utils';
 
 const BlockBatchSize = 100;
+
+export interface EthUnlockRecord {
+  token: string;
+  recipient: string;
+  amount: BigNumber;
+  ckbTxHash: string;
+}
 
 export class EthChain {
   protected readonly config: EthConfig;
@@ -18,6 +25,7 @@ export class EthChain {
   protected readonly bridge: ethers.Contract;
   protected readonly wallet: ethers.Wallet;
   protected readonly multiSignKeys: string[];
+  protected readonly multisigMgr: MultiSigMgr;
 
   constructor() {
     const config = ForceBridgeCore.config.eth;
@@ -30,6 +38,7 @@ export class EthChain {
     logger.debug('address', this.wallet.address);
     this.bridge = new ethers.Contract(this.bridgeContractAddr, abi, this.provider).connect(this.wallet);
     this.multiSignKeys = config.multiSignKeys;
+    this.multisigMgr = new MultiSigMgr('ETH', this.config.multiSignHosts, this.config.multiSignThreshold);
   }
 
   async watchLockEvents(startHeight = 1, handleLogFunc) {
@@ -76,8 +85,6 @@ export class EthChain {
   }
 
   async sendUnlockTxs(records: EthUnlock[]): Promise<any> {
-    // const admin = await this.bridge.admin();
-    // logger.debug('admin', admin);
     logger.debug('contract balance', await this.provider.getBalance(this.bridgeContractAddr));
     const params = records.map((r) => {
       return {
@@ -95,72 +102,17 @@ export class EthChain {
     return this.bridge.unlock(params, nonce, signatures);
   }
 
-  private async collectEthSignature(host: string, payload): Promise<string> {
-    const client = new JSONRPCClient((jsonRPCRequest) =>
-      fetch(host, {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify(jsonRPCRequest),
-      }).then((response) => {
-        if (response.status === 200) {
-          return response.json().then((jsonRPCResponse) => client.receive(jsonRPCResponse));
-        } else if (jsonRPCRequest.id !== undefined) {
-          return Promise.reject(new Error(response.statusText));
-        }
-      }),
-    );
-    const signMessage = await client.request('signEthTx', payload);
-    console.log('collectEthSignature', signMessage);
-    return signMessage;
-  }
-
   private async signUnlockRecords(domainSeparator: string, typeHash: string, records, nonce) {
-    const msg = ethers.utils.keccak256(
-      ethers.utils.solidityPack(
-        ['bytes1', 'bytes1', 'bytes32', 'bytes32'],
-        [
-          '0x19',
-          '0x01',
-          domainSeparator,
-          ethers.utils.keccak256(
-            ethers.utils.defaultAbiCoder.encode(
-              [
-                'bytes32',
-                ethers.utils.ParamType.from({
-                  components: [
-                    { name: 'token', type: 'address' },
-                    { name: 'recipient', type: 'address' },
-                    { name: 'amount', type: 'uint256' },
-                    { name: 'ckbTxHash', type: 'bytes' },
-                  ],
-                  name: 'records',
-                  type: 'tuple[]',
-                }),
-                'uint256',
-              ],
-              [typeHash, records, nonce],
-            ),
-          ),
-        ],
-      ),
-    );
-    const payload = {
-      msg: msg,
-    };
-    let signatures = '0x';
-    let number = 0;
-    for (const host of ForceBridgeCore.config.eth.multiSignHosts) {
-      if (number == ForceBridgeCore.config.eth.multiSignThreshold) {
-        break;
-      }
-      const signature = await this.collectEthSignature(host, payload);
-      if (signature != undefined) {
-        signatures += signature;
-        number++;
-      }
-    }
-    return signatures;
+    const rawData = buildSigRawData(domainSeparator, typeHash, records, nonce);
+    const sigs = await this.multisigMgr.collectSignatures({
+      rawData: rawData,
+      payload: {
+        domainSeparator: domainSeparator,
+        typeHash: typeHash,
+        unlockRecords: records,
+        nonce: nonce,
+      },
+    });
+    return '0x' + sigs.join('');
   }
 }

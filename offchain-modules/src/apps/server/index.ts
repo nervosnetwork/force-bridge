@@ -41,7 +41,9 @@ const apiPath = '/force-bridge/sign-server/api/v1';
 async function verifyCkbTx(_txSkeleton: TransactionSkeletonType): Promise<boolean> {
   return true;
 }
-async function signCkbTx(txSkeleton: TransactionSkeletonType): Promise<string> {
+
+async function signCkbTx2(payload): Promise<string> {
+  const txSkeleton = payload.payload.txSkeleton;
   if (!(await verifyCkbTx(txSkeleton))) {
     throw new Error('the rawtx is invalid!');
   }
@@ -60,7 +62,10 @@ async function signEthTx(payload): Promise<string> {
   const index = args.index;
   const privKey = ForceBridgeCore.config.eth.multiSignKeys[index];
   const wallet = new ethers.Wallet(privKey, provider);
-  const { v, r, s } = ecsign(Buffer.from(payload.msg.slice(2), 'hex'), Buffer.from(wallet.privateKey.slice(2), 'hex'));
+  const { v, r, s } = ecsign(
+    Buffer.from(payload.rawData.slice(2), 'hex'),
+    Buffer.from(wallet.privateKey.slice(2), 'hex'),
+  );
   const sigHex = toRpcSig(v, r, s);
   return sigHex.slice(2);
 }
@@ -75,8 +80,8 @@ async function main() {
 
   const server = new JSONRPCServer();
 
-  server.addMethod('signCkbTx', async (payload: TransactionSkeletonType) => {
-    return await signCkbTx(payload);
+  server.addMethod('signCkbTx', async (payload) => {
+    return await signCkbTx2(payload);
   });
   server.addMethod('signEthTx', async (payload) => {
     return await signEthTx(payload);

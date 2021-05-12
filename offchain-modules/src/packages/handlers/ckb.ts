@@ -24,6 +24,7 @@ import { serializeMultisigScript } from '@ckb-lumos/common-scripts/lib/secp256k1
 import { getMultisigLock } from '@force-bridge/ckb/tx-helper/multisig/multisig_helper';
 import { JSONRPCClient } from 'json-rpc-2.0';
 import fetch from 'node-fetch/index';
+import { MultiSigMgr } from '@force-bridge/multisig/multisig-mgr';
 
 const lumosIndexerData = './indexer-data';
 // CKB handler
@@ -34,12 +35,18 @@ export class CkbHandler {
   private indexer;
   private ckbIndexer;
   private transactionManager;
+  private multisigMgr;
   constructor(private db: CkbDb) {
     this.ckb = ForceBridgeCore.ckb;
     this.indexer = new Indexer(ForceBridgeCore.config.ckb.ckbRpcUrl, lumosIndexerData);
     this.ckbIndexer = ForceBridgeCore.ckbIndexer;
     this.indexer.startForever();
     this.transactionManager = new TransactionManager(this.indexer);
+    this.multisigMgr = new MultiSigMgr(
+      'CKB',
+      ForceBridgeCore.config.ckb.hosts,
+      ForceBridgeCore.config.ckb.multisigScript.M,
+    );
   }
 
   // save unlock event first and then
@@ -249,22 +256,15 @@ export class CkbHandler {
           ForceBridgeCore.config.ckb.fromPrivateKey,
         );
         let content1 = serializeMultisigScript(ForceBridgeCore.config.ckb.multisigScript);
-        let number = 0;
-        for (const host of ForceBridgeCore.config.ckb.hosts) {
-          if (number == ForceBridgeCore.config.ckb.multisigScript.M) {
-            break;
-          }
-          const signature = await collectCkbSignature(host, txSkeleton);
-          if (signature != undefined) {
-            content1 += signature;
-            number++;
-          }
-        }
-        // for (let i = 0; i < ForceBridgeCore.config.ckb.keys.length; i++) {
-        //   content1 += key
-        //     .signRecoverable(txSkeleton.get('signingEntries').get(1).message, ForceBridgeCore.config.ckb.keys[i])
-        //     .slice(2);
-        // }
+
+        const sigs = await this.multisigMgr.collectSignatures({
+          rawData: '',
+          payload: {
+            txSkeleton,
+          },
+        });
+        content1 += sigs.join('');
+
         const tx = sealTransaction(txSkeleton, [content0, content1]);
         console.log('tx:', JSON.stringify(tx, null, 2));
         const mintTxHash = await this.transactionManager.send_transaction(tx);
@@ -375,22 +375,15 @@ export class CkbHandler {
     console.log('signingEntries length:', txSkeleton.get('signingEntries').size);
     const message0 = txSkeleton.get('signingEntries').get(0).message;
     const content0 = key.signRecoverable(message0, ForceBridgeCore.config.ckb.fromPrivateKey);
-    // const message1 = txSkeleton.get('signingEntries').get(1).message;
     let content1 = serializeMultisigScript(ForceBridgeCore.config.ckb.multisigScript);
-    let number = 0;
-    for (const host of ForceBridgeCore.config.ckb.hosts) {
-      if (number == ForceBridgeCore.config.ckb.multisigScript.M) {
-        break;
-      }
-      const signature = await collectCkbSignature(host, txSkeleton);
-      if (signature != undefined) {
-        content1 += signature;
-        number++;
-      }
-    }
-    // for (let i = 0; i < ForceBridgeCore.config.ckb.keys.length; i++) {
-    //   content1 += key.signRecoverable(message1, ForceBridgeCore.config.ckb.keys[i]).slice(2);
-    // }
+    const sigs = await this.multisigMgr.collectSignatures({
+      rawData: txSkeleton.get('signingEntries').get(1).message,
+      payload: {
+        txSkeleton,
+      },
+    });
+    content1 += sigs.join('');
+
     const tx = sealTransaction(txSkeleton, [content0, content1]);
     console.log('tx:', JSON.stringify(tx, null, 2));
     const txHash = await this.transactionManager.send_transaction(tx);
@@ -459,27 +452,6 @@ export class CkbHandler {
     this.handleMintRecords();
     logger.info('ckb handler started 🚀');
   }
-}
-
-async function collectCkbSignature(host: string, txSkeleton): Promise<string> {
-  const client = new JSONRPCClient((jsonRPCRequest) =>
-    fetch(host, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify(jsonRPCRequest),
-    }).then((response) => {
-      if (response.status === 200) {
-        return response.json().then((jsonRPCResponse) => client.receive(jsonRPCResponse));
-      } else if (jsonRPCRequest.id !== undefined) {
-        return Promise.reject(new Error(response.statusText));
-      }
-    }),
-  );
-  const signMessage = await client.request('signCkbTx', txSkeleton);
-  console.log('sign', signMessage);
-  return signMessage;
 }
 
 type BurnDbData = {
