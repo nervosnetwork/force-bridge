@@ -248,7 +248,9 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
       default:
         throw new Error('invalid bridge chain type');
     }
-
+    logger.info(
+      `XChainNetwork :  ${XChainNetwork}, token Asset ${assetName} address type ${addressType} , userAddress:  ${userAddress}`,
+    );
     let lockRecords: LockRecord[];
     let unlockRecords: UnlockRecord[];
     switch (addressType) {
@@ -262,7 +264,6 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
       case 'Nervos':
         const ckbLockScript = ForceBridgeCore.ckb.utils.addressToScript(userAddress);
         const ckbLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>ckbLockScript);
-        logger.debug(`XChainNetwork :  ${XChainNetwork}, userAddress:  ${userAddress}`);
         lockRecords = await dbHandler.getLockRecordsByCkbAddress(userAddress, assetName);
         unlockRecords = await dbHandler.getUnlockRecordsByCkbAddress(ckbLockHash, assetName);
         break;
