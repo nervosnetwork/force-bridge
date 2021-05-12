@@ -42,8 +42,8 @@ export class CkbDb {
   async getMintRecordsToUpdate(mintHash: string): Promise<CkbMint[]> {
     return this.connection.getRepository(CkbMint).find({
       where: {
-        status: 'pending',
         mintHash: mintHash,
+        status: 'pending',
       },
       order: {
         createdAt: 'DESC',
