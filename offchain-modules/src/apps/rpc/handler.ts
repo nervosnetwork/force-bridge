@@ -224,15 +224,14 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
   }
 
   async getBridgeTransactionSummaries(
-    payload: GetBridgeTransactionSummariesPayload,
+    payload: GetBridgeTransactionSummariesPayload<XChainNetWork>,
   ): Promise<TransactionSummaryWithStatus[]> {
     const XChainNetwork = payload.network;
-    const ckbAddress = payload.userIdent;
-    const ckbLockScript = ForceBridgeCore.ckb.utils.addressToScript(ckbAddress);
-    const ckbLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>ckbLockScript);
-    const assetName = payload.assetIdent;
+    const userAddress = payload.user.ident;
+    const addressType = payload.user.network;
+    const assetName = payload.xchainAssetIdent;
     let dbHandler: IQuery;
-    logger.debug(`XChainNetwork :  ${XChainNetwork}, userAddress:  ${ckbAddress}`);
+
     switch (XChainNetwork) {
       case 'Bitcoin':
         dbHandler = new BtcDb(this.connection);
@@ -247,21 +246,36 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         dbHandler = new TronDb(this.connection);
         break;
       default:
-        throw new Error('invalid chain type');
+        throw new Error('invalid bridge chain type');
     }
 
-    // only query the txs which status is success or pending
-    const lockRecords = await dbHandler.getLockRecordsByUser(ckbAddress);
-    const unlockRecords = await dbHandler.getUnlockRecordsByUser(ckbLockHash);
+    let lockRecords: LockRecord[];
+    let unlockRecords: UnlockRecord[];
+    switch (addressType) {
+      case 'Bitcoin':
+      case 'EOS':
+      case 'Ethereum':
+      case 'Tron':
+        lockRecords = await dbHandler.getLockRecordsByXChainAddress(userAddress, assetName);
+        unlockRecords = await dbHandler.getUnlockRecordsByXChainAddress(userAddress, assetName);
+        break;
+      case 'Nervos':
+        const ckbLockScript = ForceBridgeCore.ckb.utils.addressToScript(userAddress);
+        const ckbLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>ckbLockScript);
+        logger.debug(`XChainNetwork :  ${XChainNetwork}, userAddress:  ${userAddress}`);
+        lockRecords = await dbHandler.getLockRecordsByCkbAddress(userAddress, assetName);
+        unlockRecords = await dbHandler.getUnlockRecordsByCkbAddress(ckbLockHash, assetName);
+        break;
+      default:
+        throw new Error('invalid address chain type');
+    }
 
     const result: TransactionSummaryWithStatus[] = [];
     lockRecords.forEach((lockRecord) => {
-      const txSummaryWithStatus = transferDbRecordToResponse(XChainNetwork, lockRecord);
-      result.push(txSummaryWithStatus);
+      result.push(transferDbRecordToResponse(XChainNetwork, lockRecord));
     });
     unlockRecords.forEach((unlockRecord) => {
-      const txSummaryWithStatus = transferDbRecordToResponse(XChainNetwork, unlockRecord);
-      result.push(txSummaryWithStatus);
+      result.push(transferDbRecordToResponse(XChainNetwork, unlockRecord));
     });
     // Todo: add paging
     return result;
