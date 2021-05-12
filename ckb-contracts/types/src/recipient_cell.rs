@@ -16,6 +16,7 @@ pub struct RecipientDataView {
     pub chain: u8,
     pub asset: String,
     pub bridge_lock_code_hash: [u8; 32],
+    pub bridge_lock_hash_type: u8,
     pub owner_lock_hash: [u8; 32],
     pub amount: u128,
     pub fee: u128,
@@ -33,6 +34,8 @@ impl RecipientDataView {
         let mut bridge_lock_code_hash = [0u8; 32];
         bridge_lock_code_hash.copy_from_slice(data_reader.bridge_lock_code_hash().raw_data());
 
+        let bridge_lock_hash_type = data_reader.bridge_lock_hash_type().to_entity().into();
+
         let mut owner_lock_hash = [0u8; 32];
         owner_lock_hash.copy_from_slice(data_reader.owner_lock_hash().raw_data());
 
@@ -49,6 +52,7 @@ impl RecipientDataView {
             chain,
             asset,
             bridge_lock_code_hash,
+            bridge_lock_hash_type,
             owner_lock_hash,
             amount,
             fee,
@@ -72,6 +76,7 @@ impl RecipientDataView {
                     .try_into()
                     .expect("bridge_lock_code_hash convert fail"),
             )
+            .bridge_lock_hash_type(self.bridge_lock_hash_type.into())
             .amount(self.amount.into())
             .fee(self.fee.into())
             .build();
@@ -90,6 +95,7 @@ mod tests {
             chain: 1,
             asset: "TRC".to_string(),
             bridge_lock_code_hash: [1u8; 32],
+            bridge_lock_hash_type: 0,
             owner_lock_hash: [2u8; 32],
             amount: 100,
             fee: 100,
@@ -106,6 +112,10 @@ mod tests {
         assert_eq!(
             eth_recipient_data.bridge_lock_code_hash,
             new_eth_recipient_data.bridge_lock_code_hash
+        );
+        assert_eq!(
+            eth_recipient_data.bridge_lock_hash_type,
+            new_eth_recipient_data.bridge_lock_hash_type
         );
         assert_eq!(
             eth_recipient_data.owner_lock_hash,
