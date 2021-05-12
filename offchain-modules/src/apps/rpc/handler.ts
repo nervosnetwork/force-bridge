@@ -459,7 +459,7 @@ function transferDbRecordToResponse(
       txSummary: {
         fromAsset: {
           network: XChainNetwork,
-          ident: getTokenShadowIdent(XChainNetwork, record.asset),
+          ident: record.asset,
           amount: record.lock_amount,
         },
         toAsset: {
