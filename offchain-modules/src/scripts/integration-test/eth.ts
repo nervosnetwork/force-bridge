@@ -3,7 +3,7 @@ import { ethers } from 'ethers';
 import nconf from 'nconf';
 import { Config, EthConfig } from '@force-bridge/config';
 import { initLog, logger } from '@force-bridge/utils/logger';
-import {asyncSleep, parsePrivateKey, stringToUint8Array, toHexString, uint8ArrayToString} from '@force-bridge/utils';
+import { asyncSleep, parsePrivateKey, stringToUint8Array, toHexString, uint8ArrayToString } from '@force-bridge/utils';
 import { createConnection } from 'typeorm';
 import { ETH_ADDRESS } from '@force-bridge/xchain/eth';
 import { CkbMint, EthLock, EthUnlock } from '@force-bridge/db/model';

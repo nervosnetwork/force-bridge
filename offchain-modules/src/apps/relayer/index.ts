@@ -15,7 +15,7 @@ import { BtcDb } from '@force-bridge/db/btc';
 import { BTCChain } from '@force-bridge/xchain/btc';
 import { BtcHandler } from '@force-bridge/handlers/btc';
 import { initLog } from '@force-bridge/utils/logger';
-import {parsePrivateKey} from "@force-bridge/utils";
+import { parsePrivateKey } from '@force-bridge/utils';
 
 const defaultLogFile = './log/force-bridge-relay.log';
 
@@ -40,7 +40,7 @@ async function main() {
   ckbHandler.start();
 
   if (config.eos !== undefined) {
-    config.eos.privateKeys = config.eos.privateKeys.map(pk => parsePrivateKey(pk));
+    config.eos.privateKeys = config.eos.privateKeys.map((pk) => parsePrivateKey(pk));
     const eosDb = new EosDb(conn);
     const eosHandler = new EosHandler(eosDb, ForceBridgeCore.config.eos);
     eosHandler.start();
@@ -49,20 +49,20 @@ async function main() {
   // start xchain handlers if config exists
   if (config.eth !== undefined) {
     config.eth.privateKey = parsePrivateKey(config.eth.privateKey);
-    config.eth.multiSignKeys = config.eth.multiSignKeys.map(pk => parsePrivateKey(pk));
+    config.eth.multiSignKeys = config.eth.multiSignKeys.map((pk) => parsePrivateKey(pk));
     const ethDb = new EthDb(conn);
     const ethChain = new EthChain();
     const ethHandler = new EthHandler(ethDb, ethChain);
     ethHandler.start();
   }
   if (config.tron !== undefined) {
-    config.tron.committee.keys = config.tron.committee.keys.map(pk => parsePrivateKey(pk));
+    config.tron.committee.keys = config.tron.committee.keys.map((pk) => parsePrivateKey(pk));
     const tronDb = new TronDb(conn);
     const tronHandler = new TronHandler(tronDb);
     tronHandler.start();
   }
   if (config.btc !== undefined) {
-    config.btc.privateKeys = config.btc.privateKeys.map(pk => parsePrivateKey(pk));
+    config.btc.privateKeys = config.btc.privateKeys.map((pk) => parsePrivateKey(pk));
     const btcDb = new BtcDb(conn);
     const btcChain = new BTCChain();
     const btcHandler = new BtcHandler(btcDb, btcChain);
