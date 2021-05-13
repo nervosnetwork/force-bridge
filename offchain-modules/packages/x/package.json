@@ -1,34 +1,34 @@
 {
-  "name": "force-bridge",
+  "name": "@force-bridge/x",
   "version": "0.0.1",
   "description": "",
-  "private": true,
+  "main": "dist",
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
-    "start": "ts-node ./packages/app-relayer/src/index.ts",
-    "rpc": "ts-node ./packages/app-rpc-server/src/index.ts",
-    "rpc-test": "ts-node ./packages/scripts/src/integration-test/rpc.ts",
-    "demo": "ts-node-dev scripts/src/demo.ts",
-    "build": "lerna run build",
+    "start": "ts-node ./src/apps/relayer/index.ts",
+    "rpc": "ts-node ./src/apps/rpc/index.ts",
+    "rpc-test": "ts-node ./src/scripts/integration-test/rpc.ts",
+    "demo": "ts-node-dev scripts/demo.ts",
+    "build": "rimraf dist && tsc",
     "test": "ava",
     "lint": "run-p check:prettier check:eslint build",
     "lint-staged": "eslint --fix -c .eslintrc.next.js $(git diff --name-only --relative | grep -E \"(.ts$)\")",
     "fix": "run-p fix:prettier fix:eslint",
     "fix:eslint": "eslint src/**/*.ts --fix",
     "fix:prettier": "prettier --write .",
-    "watch:start": "ts-node-dev --respawn --transpile-only ./packages/apps/relayer/index.ts",
+    "watch:start": "ts-node-dev --respawn --transpile-only ./src/apps/relayer/index.ts",
     "watch:ava": "ava --watch",
     "watch:build": "tsc -w",
     "check:prettier": "prettier -c .",
     "check:eslint": "eslint src/**/*.ts",
     "clean": "rimraf lumos_db dist force-bridge.sqlite",
-    "eth-test": "ts-node ./packages/scripts/src/integration-test/eth.ts",
-    "eos-test": "ts-node ./packages/scripts/src/integration-test/eos.ts",
-    "tron-test": "ts-node ./packages/scripts/src/integration-test/tron.ts",
+    "eth-test": "ts-node ./src/scripts/integration-test/eth.ts",
+    "eos-test": "ts-node ./src/scripts/integration-test/eos.ts",
+    "tron-test": "ts-node ./src/scripts/integration-test/tron.ts",
     "prepare-xchain-test": "sleep 2",
-    "btc-test": "ts-node ./packages/scripts/src/integration-test/btc.ts",
+    "btc-test": "ts-node ./src/scripts/integration-test/btc.ts",
     "xchain-test": "run-s prepare-xchain-test eth-test tron-test btc-test eos-test",
     "integration-test": "run-p -r start xchain-test",
     "ci": "run-s clean build deploy integration-test",
@@ -37,7 +37,7 @@
     "cov:html": "nyc report --reporter=html",
     "cov:send": "nyc report --reporter=lcov && codecov",
     "cov:check": "nyc report && nyc check-coverage --lines 100 --functions 100 --branches 100",
-    "deploy": "ts-node-dev ./packages/scripts/src/deploy_ckb.ts"
+    "deploy": "ts-node-dev ./src/scripts/deploy_ckb.ts"
   },
   "author": "",
   "license": "MIT",
@@ -124,14 +124,7 @@
     ]
   },
   "_moduleAliases": {
-    "@force-bridge/ckb": "packages/x/dist/ckb",
-    "@force-bridge/db": "packages/x/dist/db",
-    "@force-bridge/handlers": "packages/x/dist/handlers",
-    "@force-bridge/utils": "packages/x/dist/utils",
-    "@force-bridge/xchain": "packages/x/dist/xchain",
-    "@force-bridge/config": "packages/x/dist/config",
-    "@force-bridge/core": "packages/x/dist/core",
-    "@force-bridge/events": "packages/x/dist/events"
+    "@force-bridge": "dist"
   },
   "lint-staged": {
     "src/**/*.ts": [
