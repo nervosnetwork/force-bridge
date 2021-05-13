@@ -58,8 +58,10 @@ export class EthDb implements IQuery {
       .getRepository(CkbMint)
       .createQueryBuilder('ckb')
       .innerJoinAndSelect('eth_lock', 'eth', 'eth.tx_hash = ckb.id')
-      .where('ckb.recipient_lockscript = :recipient', { recipient: ckbRecipientAddr })
-      .where('ckb.asset = :asset', { asset: XChainAsset })
+      .where('ckb.recipient_lockscript = :recipient AND ckb.asset = :asset', {
+        recipient: ckbRecipientAddr,
+        asset: XChainAsset,
+      })
       .select(
         `
         eth.sender as sender, 
@@ -75,6 +77,7 @@ export class EthDb implements IQuery {
         ckb.message as message 
       `,
       )
+      .orderBy('ckb.updated_at', 'DESC')
       .getRawMany();
   }
 
@@ -83,10 +86,10 @@ export class EthDb implements IQuery {
       .getRepository(CkbBurn)
       .createQueryBuilder('ckb')
       .innerJoinAndSelect('eth_unlock', 'eth', 'eth.ckb_tx_hash = ckb.ckb_tx_hash')
-      .where('ckb.sender_lock_hash = :sender_lock_hash', {
+      .where('ckb.sender_lock_hash = :sender_lock_hash AND ckb.asset = :asset', {
         sender_lock_hash: ckbLockScriptHash,
+        asset: XChainAsset,
       })
-      .where('ckb.asset = :asset', { asset: XChainAsset })
       .select(
         `
         ckb.sender_lock_hash as sender, 
@@ -102,6 +105,7 @@ export class EthDb implements IQuery {
         eth.message as message 
       `,
       )
+      .orderBy('ckb.updated_at', 'DESC')
       .getRawMany();
   }
 
@@ -110,8 +114,7 @@ export class EthDb implements IQuery {
       .getRepository(CkbMint)
       .createQueryBuilder('ckb')
       .innerJoinAndSelect('eth_lock', 'eth', 'eth.tx_hash = ckb.id')
-      .where('eth.sender = :sender', { sender: XChainSender })
-      .where('ckb.asset = :asset', { asset: XChainAsset })
+      .where('eth.sender = :sender AND ckb.asset = :asset', { sender: XChainSender, asset: XChainAsset })
       .select(
         `
         eth.sender as sender, 
@@ -127,6 +130,7 @@ export class EthDb implements IQuery {
         ckb.message as message 
       `,
       )
+      .orderBy('ckb.updated_at', 'DESC')
       .getRawMany();
   }
 
@@ -135,10 +139,10 @@ export class EthDb implements IQuery {
       .getRepository(CkbBurn)
       .createQueryBuilder('ckb')
       .innerJoinAndSelect('eth_unlock', 'eth', 'eth.ckb_tx_hash = ckb.ckb_tx_hash')
-      .where('ckb.recipient_address = :recipient_address', {
+      .where('ckb.recipient_address = :recipient_address AND ckb.asset = :asset', {
         recipient_address: XChainRecipientAddr,
+        asset: XChainAsset,
       })
-      .where('ckb.asset = :asset', { asset: XChainAsset })
       .select(
         `
         ckb.sender_lock_hash as sender, 
@@ -154,6 +158,7 @@ export class EthDb implements IQuery {
         eth.message as message 
       `,
       )
+      .orderBy('ckb.updated_at', 'DESC')
       .getRawMany();
   }
 }

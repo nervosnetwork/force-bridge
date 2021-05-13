@@ -65,8 +65,10 @@ export class EosDb implements IQuery {
       .getRepository(CkbMint)
       .createQueryBuilder('ckb')
       .innerJoinAndSelect('eos_lock', 'eos', 'eos.id = ckb.id')
-      .where('ckb.recipient_lockscript = :recipient', { recipient: ckbRecipientAddr })
-      .where('ckb.asset = :asset', { asset: XChainAsset })
+      .where('ckb.recipient_lockscript = :recipient AND ckb.asset = :asset', {
+        recipient: ckbRecipientAddr,
+        asset: XChainAsset,
+      })
       .select(
         `
         eos.sender as sender, 
@@ -82,6 +84,7 @@ export class EosDb implements IQuery {
         ckb.message as message
       `,
       )
+      .orderBy('ckb.updated_at', 'DESC')
       .getRawMany();
   }
 
@@ -90,10 +93,10 @@ export class EosDb implements IQuery {
       .getRepository(CkbBurn)
       .createQueryBuilder('ckb')
       .innerJoinAndSelect('eos_unlock', 'eos', 'eos.ckb_tx_hash = ckb.ckb_tx_hash')
-      .where('ckb.sender_lock_hash = :sender_lock_hash', {
+      .where('ckb.sender_lock_hash = :sender_lock_hash AND ckb.asset = :asset', {
         sender_lock_hash: ckbLockScriptHash,
+        asset: XChainAsset,
       })
-      .where('ckb.asset = :asset', { asset: XChainAsset })
       .select(
         `
         ckb.sender_lock_hash as sender, 
@@ -109,6 +112,7 @@ export class EosDb implements IQuery {
         eos.message as message
       `,
       )
+      .orderBy('ckb.updated_at', 'DESC')
       .getRawMany();
   }
 
@@ -117,8 +121,7 @@ export class EosDb implements IQuery {
       .getRepository(CkbMint)
       .createQueryBuilder('ckb')
       .innerJoinAndSelect('eos_lock', 'eos', 'eos.id = ckb.id')
-      .where('eos.sender = :sender', { sender: XChainSender })
-      .where('ckb.asset = :asset', { asset: XChainAsset })
+      .where('eos.sender = :sender AND ckb.asset = :asset', { sender: XChainSender, asset: XChainAsset })
       .select(
         `
         eos.sender as sender, 
@@ -134,6 +137,7 @@ export class EosDb implements IQuery {
         ckb.message as message
       `,
       )
+      .orderBy('ckb.updated_at', 'DESC')
       .getRawMany();
   }
 
@@ -142,10 +146,10 @@ export class EosDb implements IQuery {
       .getRepository(CkbBurn)
       .createQueryBuilder('ckb')
       .innerJoinAndSelect('eos_unlock', 'eos', 'eos.ckb_tx_hash = ckb.ckb_tx_hash')
-      .where('ckb.recipient_address = :recipient_address', {
+      .where('ckb.recipient_address = :recipient_address AND ckb.asset = :asset', {
         recipient_address: XChainRecipientAddr,
+        asset: XChainAsset,
       })
-      .where('ckb.asset = :asset', { asset: XChainAsset })
       .select(
         `
         ckb.sender_lock_hash as sender, 
@@ -161,6 +165,7 @@ export class EosDb implements IQuery {
         eos.message as message
       `,
       )
+      .orderBy('ckb.updated_at', 'DESC')
       .getRawMany();
   }
 }
