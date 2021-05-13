@@ -18,7 +18,7 @@ import { Reader } from 'ckb-js-toolkit';
 
 async function main() {
   console.log('start');
-  const path = '/Users/huwenchao/code/cryptape/force-bridge-core/offchain-modules/privkeys/eth';
+  const path = 'privkeys/eth';
   const pk = await parsePrivateKey(path);
   console.log(`pk: ${pk}`);
   // const account = new Account(PRI_KEY);
