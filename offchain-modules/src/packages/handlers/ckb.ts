@@ -5,7 +5,7 @@ import { asyncSleep, fromHexString, toHexString, uint8ArrayToString } from '../u
 import { Asset, BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '../ckb/model/asset';
 import { Address, AddressType, Amount, HashType, Script } from '@lay2/pw-core';
 import { Account } from '@force-bridge/ckb/model/accounts';
-import { CkbTxGenerator } from '@force-bridge/ckb/tx-helper/generator';
+import { CkbTxGenerator, MintAssetRecord } from '@force-bridge/ckb/tx-helper/generator';
 import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
 import { ScriptType } from '@force-bridge/ckb/tx-helper/indexer';
 import { ForceBridgeCore } from '@force-bridge/core';
@@ -92,6 +92,13 @@ export class CkbHandler {
       }
       const burnTxs = new Map();
       for (const tx of block.transactions) {
+        if (await this.isMintTx(tx)) {
+          const pendingMintTxs = await this.db.getMintRecordsToUpdate(tx.hash);
+          pendingMintTxs.map((r) => {
+            r.status = 'success';
+          });
+          await this.db.updateCkbMint(pendingMintTxs);
+        }
         const recipientData = tx.outputsData[0];
         let cellData;
         try {
@@ -152,6 +159,32 @@ export class CkbHandler {
       latestHeight++;
       await asyncSleep(1000);
     }
+  }
+
+  async isMintTx(tx: Transaction): Promise<boolean> {
+    if (tx.outputs.length < 1 || !tx.outputs[0].type) {
+      return false;
+    }
+    const firstOutputTypeCodeHash = tx.outputs[0].type.codeHash;
+    const expectSudtTypeCodeHash = ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash;
+    // verify tx output sudt cell
+    if (firstOutputTypeCodeHash != expectSudtTypeCodeHash) {
+      return false;
+    }
+    const committeeLockHash = await this.getOwnLockHash();
+    // verify tx input: committee cell.
+    const preHash = tx.inputs[0].previousOutput.txHash;
+    const txPrevious = await this.ckb.rpc.getTransaction(preHash);
+    if (txPrevious == null) {
+      return false;
+    }
+    const firstInputLock = txPrevious.transaction.outputs[Number(tx.inputs[0].previousOutput.index)].lock;
+    const firstInputLockHash = this.ckb.utils.scriptToHash(<CKBComponents.Script>firstInputLock);
+
+    logger.info(
+      `CkbHandler isMintTx tx ${tx.hash} sender lock hash is ${firstInputLockHash}. first output type code hash is ${firstOutputTypeCodeHash}.`,
+    );
+    return firstInputLockHash === committeeLockHash;
   }
 
   async isBurnTx(tx: Transaction, cellData: RecipientCellData): Promise<boolean> {
@@ -259,9 +292,7 @@ export class CkbHandler {
           });
         } else {
           mintRecords.map((r) => {
-            r.status = 'error';
             r.mintHash = mintTxHash;
-            r.message = `mint execute failed.the tx status is ${txStatus.txStatus.status}`;
           });
           logger.error(
             `CkbHandler handleMintRecords mint execute failed txStatus:${txStatus.txStatus.status}, mintIds:${mintIds}`,
@@ -281,7 +312,7 @@ export class CkbHandler {
     }
   }
 
-  filterMintRecords(r: CkbMint, ownLockHash: string): any {
+  filterMintRecords(r: CkbMint, ownLockHash: string): MintAssetRecord {
     switch (r.chain) {
       case ChainType.BTC:
         return {
@@ -312,7 +343,7 @@ export class CkbHandler {
     }
   }
 
-  async filterNewTokens(records: any[]): Promise<any[]> {
+  async filterNewTokens(records: MintAssetRecord[]): Promise<MintAssetRecord[]> {
     const newTokens = [];
     const assets = [];
     for (const record of records) {
@@ -344,7 +375,7 @@ export class CkbHandler {
     return newTokens;
   }
 
-  async createBridgeCell(newTokens: any[], generator: CkbTxGenerator) {
+  async createBridgeCell(newTokens: MintAssetRecord[], generator: CkbTxGenerator) {
     const account = new Account(this.PRI_KEY);
     const scripts = newTokens.map((r) => {
       return {

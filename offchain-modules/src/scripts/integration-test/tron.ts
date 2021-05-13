@@ -239,7 +239,7 @@ async function main() {
 
       //await checkEffect(trc20TxHash, 'TVWvkCasxAJUyzPKMQ2Rus1NtmBwrkVyBR', 'trc20');
     } catch (e) {
-      logger.warn(`The tron component integration not pass yet. i:${i} error:${e.toString()}`);
+      logger.warn(`The tron component integration not pass yet. i:${i} error:`, e);
       continue;
     }
     logger.info('The tron component integration test pass!');

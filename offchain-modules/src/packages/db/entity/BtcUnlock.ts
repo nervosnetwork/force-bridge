@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryColumn, Index, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, Column, PrimaryColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { dbTxStatus } from '@force-bridge/db/entity/CkbMint';
 
 export type BtcUnlockStatus = dbTxStatus;
@@ -23,7 +23,6 @@ export class BtcUnlock {
   @Column({ nullable: true })
   btcTxHash: string;
 
-  @Index()
   @Column({ default: 'todo' })
   status: BtcUnlockStatus;
 
