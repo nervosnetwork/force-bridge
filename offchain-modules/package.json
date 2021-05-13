@@ -13,7 +13,7 @@
     "demo": "ts-node-dev scripts/src/demo.ts",
     "build": "lerna run build",
     "test": "ava",
-    "lint": "run-p check:prettier check:eslint build",
+    "lint": "run-p check:prettier check:eslint",
     "lint-staged": "eslint --fix -c .eslintrc.next.js $(git diff --name-only --relative | grep -E \"(.ts$)\")",
     "fix": "run-p fix:prettier fix:eslint",
     "fix:eslint": "eslint src/**/*.ts --fix",
@@ -22,14 +22,14 @@
     "watch:ava": "ava --watch",
     "watch:build": "tsc -w",
     "check:prettier": "prettier -c .",
-    "check:eslint": "eslint src/**/*.ts",
+    "check:eslint": "eslint packages/*/src/**/*.ts",
     "clean": "rimraf lumos_db dist force-bridge.sqlite",
     "eth-test": "ts-node ./packages/scripts/src/integration-test/eth.ts",
     "eos-test": "ts-node ./packages/scripts/src/integration-test/eos.ts",
     "tron-test": "ts-node ./packages/scripts/src/integration-test/tron.ts",
     "prepare-xchain-test": "sleep 2",
     "btc-test": "ts-node ./packages/scripts/src/integration-test/btc.ts",
-    "xchain-test": "run-s prepare-xchain-test eth-test tron-test btc-test eos-test",
+    "xchain-test": "run-s prepare-xchain-test btc-test",
     "integration-test": "run-p -r start xchain-test",
     "ci": "run-s clean build deploy integration-test",
     "test:unit": "nyc --silent ava",
@@ -102,9 +102,9 @@
   },
   "ava": {
     "files": [
-      "src/**/test/**/*.ts",
-      "src/**/*.spec.ts",
-      "!src/**/helper.ts"
+      "packages/*/src/**/test/**/*.ts",
+      "packages/*/src/**/*.spec.ts",
+      "!packages/*/src/**/helper.ts"
     ],
     "extensions": [
       "ts"
