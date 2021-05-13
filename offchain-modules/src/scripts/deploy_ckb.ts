@@ -76,6 +76,7 @@ function getPreDeployedAssets() {
     new BtcAsset('btc', ownerLockHash),
     new EthAsset('0x0000000000000000000000000000000000000000', ownerLockHash),
     new TronAsset('trx', ownerLockHash),
+    new EosAsset('EOS', ownerLockHash),
   ];
 }
 
