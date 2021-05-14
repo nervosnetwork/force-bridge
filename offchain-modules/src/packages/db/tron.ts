@@ -53,12 +53,15 @@ export class TronDb implements IQuery {
     });
   }
 
-  async getLockRecordsByUser(ckbRecipientAddr: string): Promise<LockRecord[]> {
+  async getLockRecordsByCkbAddress(ckbRecipientAddr: string, XChainAsset: string): Promise<LockRecord[]> {
     return await this.connection
       .getRepository(CkbMint)
       .createQueryBuilder('ckb')
       .innerJoinAndSelect('tron_lock', 'tron', 'tron.tx_hash = ckb.id')
-      .where('ckb.recipient_lockscript = :recipient', { recipient: ckbRecipientAddr })
+      .where('ckb.recipient_lockscript = :recipient AND ckb.asset = :asset', {
+        recipient: ckbRecipientAddr,
+        asset: XChainAsset,
+      })
       .select(
         `
         tron.sender as sender, 
@@ -74,16 +77,18 @@ export class TronDb implements IQuery {
         ckb.message as message 
       `,
       )
+      .orderBy('ckb.updated_at', 'DESC')
       .getRawMany();
   }
 
-  async getUnlockRecordsByUser(ckbLockScriptHash: string): Promise<UnlockRecord[]> {
+  async getUnlockRecordsByCkbAddress(ckbLockScriptHash: string, XChainAsset: string): Promise<UnlockRecord[]> {
     return await this.connection
       .getRepository(CkbBurn)
       .createQueryBuilder('ckb')
       .innerJoinAndSelect('tron_unlock', 'tron', 'tron.ckb_tx_hash = ckb.ckb_tx_hash')
-      .where('ckb.sender_lock_hash = :sender_lock_hash', {
+      .where('ckb.sender_lock_hash = :sender_lock_hash AND ckb.asset = :asset', {
         sender_lock_hash: ckbLockScriptHash,
+        asset: XChainAsset,
       })
       .select(
         `
@@ -100,6 +105,60 @@ export class TronDb implements IQuery {
         tron.message as message
       `,
       )
+      .orderBy('ckb.updated_at', 'DESC')
+      .getRawMany();
+  }
+
+  async getLockRecordsByXChainAddress(XChainSender: string, XChainAsset: string): Promise<LockRecord[]> {
+    return await this.connection
+      .getRepository(CkbMint)
+      .createQueryBuilder('ckb')
+      .innerJoinAndSelect('tron_lock', 'tron', 'tron.tx_hash = ckb.id')
+      .where('tron.sender = :sender AND ckb.asset = :asset', { sender: XChainSender, asset: XChainAsset })
+      .select(
+        `
+        tron.sender as sender, 
+        ckb.recipient_lockscript as recipient , 
+        tron.amount as lock_amount,
+        ckb.amount as mint_amount,
+        tron.tx_hash as lock_hash,
+        ckb.mint_hash as mint_hash,
+        tron.updated_at as lock_time, 
+        ckb.updated_at as mint_time,
+        ckb.status as status,
+        ckb.asset as asset,
+        ckb.message as message 
+      `,
+      )
+      .orderBy('ckb.updated_at', 'DESC')
+      .getRawMany();
+  }
+
+  async getUnlockRecordsByXChainAddress(XChainRecipientAddr: string, XChainAsset: string): Promise<UnlockRecord[]> {
+    return await this.connection
+      .getRepository(CkbBurn)
+      .createQueryBuilder('ckb')
+      .innerJoinAndSelect('tron_unlock', 'tron', 'tron.ckb_tx_hash = ckb.ckb_tx_hash')
+      .where('ckb.recipient_address = :recipient_address AND ckb.asset = :asset', {
+        recipient_address: XChainRecipientAddr,
+        asset: XChainAsset,
+      })
+      .select(
+        `
+        ckb.sender_lock_hash as sender, 
+        ckb.recipient_address as recipient , 
+        ckb.amount as burn_amount, 
+        tron.amount as unlock_amount,
+        ckb.ckb_tx_hash as burn_hash,
+        tron.tron_tx_hash as unlock_hash,
+        tron.updated_at as unlock_time, 
+        ckb.updated_at as burn_time, 
+        tron.status as status,
+        ckb.asset as asset,
+        tron.message as message
+      `,
+      )
+      .orderBy('ckb.updated_at', 'DESC')
       .getRawMany();
   }
 }
