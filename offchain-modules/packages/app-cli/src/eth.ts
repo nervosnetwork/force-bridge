@@ -1,14 +1,14 @@
-import commander from 'commander';
-import { getSudtBalance, parseOptions, waitUnlockTxCompleted } from './utils';
-import { ethers } from 'ethers';
-import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
-import { EthAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { Account } from '@force-bridge/x/dist/ckb/model/accounts';
-import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
+import { EthAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
-import { Amount } from '@lay2/pw-core';
+import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
+import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
+import { Amount } from '@lay2/pw-core';
+import commander from 'commander';
+import { ethers } from 'ethers';
 import { formatEther } from 'ethers/lib/utils';
+import { getSudtBalance, parseOptions, waitUnlockTxCompleted } from './utils';
 
 const ETH_ASSET = '0x0000000000000000000000000000000000000000';
 

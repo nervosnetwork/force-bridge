@@ -1,5 +1,5 @@
-import { logger } from '@force-bridge/x/dist/utils/logger';
 import { asyncSleep } from '@force-bridge/x/dist/utils';
+import { logger } from '@force-bridge/x/dist/utils/logger';
 
 type waitFn = () => Promise<boolean>;
 

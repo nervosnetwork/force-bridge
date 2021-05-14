@@ -1,4 +1,5 @@
-import axios from 'axios';
+import { Script as LumosScript } from '@ckb-lumos/base';
+import { RPC } from '@ckb-lumos/rpc';
 import {
   CollectorOptions,
   Collector,
@@ -11,10 +12,9 @@ import {
   Script,
   SUDT,
 } from '@lay2/pw-core';
-import { logger } from '../../utils/logger';
-import { Script as LumosScript } from '@ckb-lumos/base';
-import { RPC } from '@ckb-lumos/rpc';
+import axios from 'axios';
 import { asyncSleep } from '../../utils';
+import { logger } from '../../utils/logger';
 
 export enum ScriptType {
   type = 'type',

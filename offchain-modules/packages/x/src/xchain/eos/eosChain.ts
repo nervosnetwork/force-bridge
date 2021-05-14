@@ -1,6 +1,5 @@
-import { Api, JsonRpc } from 'eosjs';
-import fetch from 'node-fetch/index';
 import { TextDecoder, TextEncoder } from 'util';
+import { Api, JsonRpc } from 'eosjs';
 import { SignatureProvider, TransactConfig, Transaction, TransactResult } from 'eosjs/dist/eosjs-api-interfaces';
 import {
   GetAccountResult,
@@ -11,7 +10,8 @@ import {
   GetTransactionResult,
   PushTransactionArgs,
 } from 'eosjs/dist/eosjs-rpc-interfaces';
-import { EosAssetAmount, getPrecisionFromAmount } from '@force-bridge/xchain/eos/utils';
+import fetch from 'node-fetch/index';
+import { EosAssetAmount } from './utils';
 
 export class EosChain {
   private readonly rpc: JsonRpc;

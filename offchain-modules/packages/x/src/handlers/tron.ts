@@ -1,14 +1,12 @@
-import { TronDb } from '../db';
-import { logger } from '../utils/logger';
-import { asyncSleep } from '../utils';
+import TronGrid from 'trongrid';
+import TronWeb from 'tronweb';
+import { ChainType } from '../ckb/model/asset';
 import { ForceBridgeCore } from '../core';
-import { ITronLock, TronUnlock, ICkbMint, TronLock } from '@force-bridge/db/model';
-import { ChainType } from '@force-bridge/ckb/model/asset';
-import { promises } from 'fs';
-import { sign } from '@force-bridge/ckb/tx-helper/signer';
-import { getAssetTypeByAsset } from '@force-bridge/xchain/tron/utils';
-const TronWeb = require('tronweb');
-const TronGrid = require('trongrid');
+import { TronDb } from '../db';
+import { ICkbMint, ITronLock, TronUnlock } from '../db/model';
+import { asyncSleep } from '../utils';
+import { logger } from '../utils/logger';
+import { getAssetTypeByAsset } from '../xchain/tron/utils';
 
 const TRX_ASSET_LENGTH = 3;
 const TRC10_ASSET_LENGTH = 7;
@@ -27,6 +25,7 @@ export class TronHandler {
   private tronWeb;
   private tronGrid;
   private committee;
+
   constructor(private db: TronDb) {
     this.tronWeb = new TronWeb({ fullHost: ForceBridgeCore.config.tron.tronGridUrl });
     this.tronGrid = new TronGrid(this.tronWeb);

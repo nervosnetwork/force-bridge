@@ -1,10 +1,10 @@
-import nconf from 'nconf';
-import { ForceBridgeCore } from '@force-bridge/x/dist/core';
-import { Config } from '@force-bridge/x/dist/config';
 import { Asset } from '@force-bridge/x/dist/ckb/model/asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
-import { Amount, Script } from '@lay2/pw-core';
+import { Config } from '@force-bridge/x/dist/config';
+import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { asyncSleep } from '@force-bridge/x/dist/utils';
+import { Amount, HashType, Script } from '@lay2/pw-core';
+import nconf from 'nconf';
 
 export async function initConfig() {
   const configPath = process.env.CONFIG_PATH || './config-cli.json';
@@ -40,7 +40,7 @@ export async function getSudtBalance(address: string, asset: Asset): Promise<Amo
   const collector = new IndexerCollector(ForceBridgeCore.indexer);
   return await collector.getSUDTBalance(
     new Script(sudtType.codeHash, sudtType.args, sudtType.hashType),
-    new Script(userScript.codeHash, userScript.args, userScript.hashType),
+    new Script(userScript.codeHash, userScript.args, userScript.hashType as HashType),
   );
 }
 

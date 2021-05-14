@@ -1,25 +1,27 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
 // todo: remove lumos indexer dep, use collector in packages/ckb/tx-helper/collector
-import { blake2b, asyncSleep as sleep } from '@force-bridge/x/dist/utils';
-import { OutPoint, Script } from '@lay2/pw-core';
-import RawTransactionParams from '@nervosnetwork/ckb-sdk-core';
-import { RPCClient } from 'rpc-bitcoin';
-import path from 'path';
-const axios = require('axios');
 import { promises as fs } from 'fs';
-const nconf = require('nconf');
-const CKB = require('@nervosnetwork/ckb-sdk-core').default;
-const utils = require('@nervosnetwork/ckb-sdk-utils');
+import path from 'path';
+import { asyncSleep as sleep, blake2b } from '@force-bridge/x/dist/utils';
+import { OutPoint, Script } from '@lay2/pw-core';
+import { RPCClient } from 'rpc-bitcoin';
+import RawTransactionParams from '@nervosnetwork/ckb-sdk-core';
+import nconf from 'nconf';
+import utils from '@nervosnetwork/ckb-sdk-utils';
+import axios from 'axios';
+
 const configPath = './config.json';
 nconf.env().file({ file: configPath });
 const CKB_URL = nconf.get('forceBridge:ckb:ckbRpcUrl');
 const CKB_IndexerURL = nconf.get('forceBridge:ckb:ckbIndexerUrl');
 const PRI_KEY = nconf.get('forceBridge:ckb:privateKey');
-const ckb = new CKB(CKB_URL);
+const ckb = new RawTransactionParams(CKB_URL);
 const PUB_KEY = ckb.utils.privateKeyToPublicKey(PRI_KEY);
 const ARGS = `0x${ckb.utils.blake160(PUB_KEY, 'hex')}`;
 const ADDRESS = ckb.utils.pubkeyToAddress(PUB_KEY);
 
 const PATH_PROJECT_ROOT = path.join(__dirname, '../../../..');
+
 function pathFromProjectRoot(subPath: string): string {
   return path.join(PATH_PROJECT_ROOT, subPath);
 }
@@ -227,6 +229,7 @@ async function setOwnerLockHash() {
   nconf.set('forceBridge:ckb:ownerLockHash', ownerLockHash);
   nconf.save();
 }
+
 const setXChainStartTime = async () => {
   const btcRPCParams = nconf.get('forceBridge:btc:clientParams');
   const btcRPCClient = new RPCClient(btcRPCParams);

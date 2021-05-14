@@ -1,18 +1,8 @@
 // invoke in eos handler
 
 import { Connection, Repository } from 'typeorm';
-import {
-  CkbMint,
-  EosUnlock,
-  EosLock,
-  ICkbMint,
-  IEosLock,
-  IQuery,
-  LockRecord,
-  UnlockRecord,
-  CkbBurn,
-} from '@force-bridge/db/model';
-import { EosUnlockStatus } from '@force-bridge/db/entity/EosUnlock';
+import { EosUnlockStatus } from './entity/EosUnlock';
+import { CkbBurn, CkbMint, EosLock, EosUnlock, ICkbMint, IEosLock, IQuery, LockRecord, UnlockRecord } from './model';
 
 export class EosDb implements IQuery {
   private ckbMintRepository: Repository<CkbMint>;

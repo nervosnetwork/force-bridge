@@ -1,14 +1,5 @@
 import { logger } from '@force-bridge/x/dist/utils/logger';
 import CKB from '@nervosnetwork/ckb-sdk-core';
-import { Account } from '@force-bridge/x/dist/ckb/model/accounts';
-import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
-import PWCore, { Amount } from '@lay2/pw-core';
-import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
-import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
-import { fromHexString, stringToUint8Array, toHexString, uint8ArrayToString } from '@force-bridge/x/dist/utils';
-import { BigNumber, ethers } from 'ethers';
-import { ForceBridgeCore } from '@force-bridge/x/dist/core';
-import { Reader } from 'ckb-js-toolkit';
 
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
 const CKB_INDEXER_URL = process.env.CKB_INDEXER_URL || 'http://127.0.0.1:8116';

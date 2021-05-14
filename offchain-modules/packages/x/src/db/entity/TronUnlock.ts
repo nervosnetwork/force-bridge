@@ -1,5 +1,5 @@
-import { Entity, PrimaryColumn, CreateDateColumn, Column, UpdateDateColumn, Index } from 'typeorm';
-import { dbTxStatus } from '@force-bridge/db/entity/CkbMint';
+import { Column, CreateDateColumn, Entity, Index, PrimaryColumn, UpdateDateColumn } from 'typeorm';
+import { dbTxStatus } from './CkbMint';
 
 export type TronUnlockStatus = dbTxStatus;
 

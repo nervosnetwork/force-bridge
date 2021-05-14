@@ -1,14 +1,23 @@
-import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
-import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { Asset, BtcAsset, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
-import { Amount, Script } from '@lay2/pw-core';
-import { API, AssetType, NetworkBase, NetworkTypes } from './types';
+import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
+import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
+import { EthDb, TronDb } from '@force-bridge/x/dist/db';
+import { BtcDb } from '@force-bridge/x/dist/db/btc';
+import { EosDb } from '@force-bridge/x/dist/db/eos';
+import { IQuery, LockRecord, UnlockRecord } from '@force-bridge/x/dist/db/model';
+import { stringToUint8Array } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
+import { IBalance } from '@force-bridge/x/dist/xchain/btc';
+import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
+import { Amount, HashType, Script } from '@lay2/pw-core';
 import bitcore from 'bitcore-lib';
 import { ethers } from 'ethers';
-import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
-import { stringToUint8Array } from '@force-bridge/x/dist/utils';
+import { RPCClient } from 'rpc-bitcoin';
+import { Connection } from 'typeorm';
+import Web3 from 'web3';
+import { AbiItem } from 'web3-utils';
+import { API, AssetType, NetworkBase, NetworkTypes } from './types';
 import {
   BalancePayload,
   BridgeTransactionStatus,
@@ -19,14 +28,6 @@ import {
   TransactionSummaryWithStatus,
   XChainNetWork,
 } from './types/apiv1';
-import { IQuery, LockRecord, UnlockRecord } from '@force-bridge/x/dist/db/model';
-import { EthDb, TronDb } from '@force-bridge/x/dist/db';
-import { EosDb } from '@force-bridge/x/dist/db/eos';
-import { BtcDb } from '@force-bridge/x/dist/db/btc';
-import { RPCClient } from 'rpc-bitcoin';
-import { IBalance } from '@force-bridge/x/dist/xchain/btc';
-import { Connection } from 'typeorm';
-const Web3 = require('web3');
 // The minimum ABI to get ERC20 Token balance
 const minERC20ABI = [
   // balanceOf
@@ -49,7 +50,7 @@ const minERC20ABI = [
 
 export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
   connection: Connection;
-  web3: typeof Web3;
+  web3: Web3;
   constructor(conn: Connection) {
     this.connection = conn;
     this.web3 = new Web3(ForceBridgeCore.config.eth.rpcUrl);
@@ -65,7 +66,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     const network = payload.asset.network;
     let tx;
     switch (network) {
-      case 'Ethereum':
+      case 'Ethereum': {
         const provider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
         const bridgeContractAddr = ForceBridgeCore.config.eth.contractAddress;
         const bridge = new ethers.Contract(bridgeContractAddr, abi, provider);
@@ -85,6 +86,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
             break;
         }
         break;
+      }
       // case 'Tron':
       //   const tronWeb = new TronWeb({
       //     fullHost: ForceBridgeCore.config.tron.tronGridUrl,
@@ -204,7 +206,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     const txId = payload.txId;
     let status;
     switch (network) {
-      case 'Ethereum':
+      case 'Ethereum': {
         const provider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
         const receipt = await provider.getTransactionReceipt(txId);
         if (receipt == null) {
@@ -218,6 +220,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
           status = 'Successful';
           break;
         }
+      }
       default:
         Promise.reject(new Error('not yet'));
     }
@@ -380,20 +383,22 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
   async getAccountBalance(value: BalancePayload): Promise<AssetType> {
     let balance: string;
     switch (value.network) {
-      case 'Ethereum':
+      case 'Ethereum': {
         const tokenAddress = value.assetIdent;
         const userAddress = value.userIdent;
         if (tokenAddress === '0x0000000000000000000000000000000000000000') {
           const eth_amount = await this.web3.eth.getBalance(userAddress);
           balance = eth_amount.toString();
         } else {
-          const TokenContract = new this.web3.eth.Contract(minERC20ABI, tokenAddress);
+          const TokenContract = new this.web3.eth.Contract(minERC20ABI as AbiItem[], tokenAddress);
           const erc20_amount = await TokenContract.methods.balanceOf(userAddress).call();
           balance = erc20_amount.toString();
         }
         logger.debug(`balance of address: ${userAddress} on ETH is ${balance}`);
         break;
-      case 'Bitcoin':
+      }
+
+      case 'Bitcoin': {
         const rpcClient = new RPCClient(ForceBridgeCore.config.btc.clientParams);
         const liveUtxos: IBalance = await rpcClient.scantxoutset({
           action: 'start',
@@ -402,7 +407,9 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         logger.debug(`BalanceOf address:${value.userIdent} on BTC is ${liveUtxos.total_amount} btc`);
         balance = bitcore.Unit.fromBTC(liveUtxos.total_amount).toSatoshis();
         break;
-      case 'Nervos':
+      }
+
+      case 'Nervos': {
         const userScript = ForceBridgeCore.ckb.utils.addressToScript(value.userIdent);
         const sudtType = {
           codeHash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
@@ -412,10 +419,12 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         const collector = new IndexerCollector(ForceBridgeCore.indexer);
         const sudt_amount = await collector.getSUDTBalance(
           new Script(sudtType.codeHash, sudtType.args, sudtType.hashType),
-          new Script(userScript.codeHash, userScript.args, userScript.hashType),
+          new Script(userScript.codeHash, userScript.args, userScript.hashType as HashType),
         );
         balance = sudt_amount.toString(0);
         break;
+      }
+
       case 'EOS':
         // Todo: add EOS Balance query
         break;

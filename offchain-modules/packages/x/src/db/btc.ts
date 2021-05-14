@@ -1,4 +1,7 @@
 // invoke in BTC handler
+import { Connection, Not, Repository } from 'typeorm';
+import { ForceBridgeCore } from '../core';
+import { BtcUnlockStatus } from './entity/BtcUnlock';
 import {
   BtcLock,
   BtcUnlock,
@@ -10,10 +13,7 @@ import {
   IQuery,
   LockRecord,
   UnlockRecord,
-} from '@force-bridge/db/model';
-import { Connection, Not, Repository } from 'typeorm';
-import { BtcUnlockStatus } from '@force-bridge/db/entity/BtcUnlock';
-import { ForceBridgeCore } from '@force-bridge/core';
+} from './model';
 
 export class BtcDb implements IQuery {
   private ckbMintRepository: Repository<CkbMint>;
@@ -35,6 +35,7 @@ export class BtcDb implements IQuery {
     const dbRecords = records.map((r) => this.ckbMintRepository.create(r));
     await this.ckbMintRepository.save(dbRecords);
   }
+
   async createBtcUnlock(records: IBtcUnLock[]): Promise<void> {
     const dbRecords = records.map((r) => this.btcUnlockRepository.create(r));
     await this.btcUnlockRepository.save(dbRecords);

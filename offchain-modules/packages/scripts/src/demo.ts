@@ -1,14 +1,12 @@
 // const path = require('path');
 // const os = require('os');
-const fs = require('fs').promises;
-const nconf = require('nconf');
+import { promises as fs } from 'fs';
+import nconf from 'nconf';
+import { CellCollector, Indexer } from '@ckb-lumos/indexer';
+import CKB from '@nervosnetwork/ckb-sdk-core';
+import utils from '@nervosnetwork/ckb-sdk-utils';
+
 const configPath = './config.json';
-
-/* eslint-disable import/no-extraneous-dependencies */
-const { Indexer, CellCollector } = require('@ckb-lumos/indexer');
-const CKB = require('@nervosnetwork/ckb-sdk-core').default;
-const utils = require('@nervosnetwork/ckb-sdk-utils');
-
 const LUMOS_DB = './lumos_db';
 // const LUMOS_DB = path.join(os.tmpdir(), 'lumos_db')
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
@@ -60,7 +58,7 @@ const deploy = async () => {
   rawTx.outputsData.push(utils.bytesToHex(sudtBin));
   // create bridge cell
   const bridgeCellCapacity = 100n * 10n ** 8n;
-  const bridgeCellLockscript = {
+  const bridgeCellLockscript: CKBComponents.Script = {
     codeHash: lockscriptCodeHash,
     hashType: 'data',
     args: BRIDGE_CELL_LOCKSCRIPT_ARGS,
@@ -104,8 +102,8 @@ const deploy = async () => {
   nconf.set('scriptsInfo', scriptsInfo);
 };
 
-function blake2b(buffer) {
-  return utils.blake2b(32, null, null, utils.PERSONAL).update(buffer).digest('binary');
+function blake2b(buffer): Uint8Array {
+  return utils.blake2b(32, null, null, utils.PERSONAL).update(buffer).digest('binary') as Uint8Array;
 }
 
 function sleep(ms) {
@@ -236,7 +234,7 @@ const mint = async () => {
     witnesses: [{ lock: '', inputType: '', outputType: '' }],
     outputsData: [bigintToSudtAmount(100), '0x', '0x'],
   };
-  const signedTx = ckb.signTransaction(PRI_KEY)(rawTx);
+  const signedTx = ckb.signTransaction(PRI_KEY)((rawTx as unknown) as CKBComponents.RawTransaction);
   console.dir({ signedTx }, { depth: null });
   const mintTxHash = await ckb.rpc.sendTransaction(signedTx);
   console.log(`Mint Transaction has been sent with tx hash ${mintTxHash}`);
@@ -306,7 +304,7 @@ const burn = async (sudtCell) => {
     outputsData: [bigintToSudtAmount(99), bigintToSudtAmount(1)],
   };
   console.dir({ rawTx }, { depth: null });
-  const signedTx = ckb.signTransaction(PRI_KEY)(rawTx);
+  const signedTx = ckb.signTransaction(PRI_KEY)((rawTx as unknown) as CKBComponents.RawTransaction);
   console.dir({ signedTx }, { depth: null });
   const burnTxHash = await ckb.rpc.sendTransaction(signedTx);
   console.log(`Burn Transaction has been sent with tx hash ${burnTxHash}`);
@@ -324,6 +322,8 @@ const bootstrap = async () => {
   const { mintTxStatus, mintTxHash } = await mint();
   console.dir({ mintTxStatus }, { depth: null });
   const sudtCell = mintTxStatus.transaction.outputs[0];
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
   sudtCell.outPoint = {
     txHash: mintTxHash,
     index: 0x0,

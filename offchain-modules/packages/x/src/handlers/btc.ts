@@ -1,10 +1,10 @@
-import { logger } from '@force-bridge/utils/logger';
-import { asyncSleep } from '@force-bridge/utils';
-import { ChainType } from '@force-bridge/ckb/model/asset';
-import { BTCChain, BtcLockData } from '@force-bridge/xchain/btc';
-import { BtcDb } from '@force-bridge/db/btc';
-import { BtcUnlock } from '@force-bridge/db/entity/BtcUnlock';
-import { ForceBridgeCore } from '@force-bridge/core';
+import { ChainType } from '../ckb/model/asset';
+import { ForceBridgeCore } from '../core';
+import { BtcDb } from '../db/btc';
+import { BtcUnlock } from '../db/entity/BtcUnlock';
+import { asyncSleep } from '../utils';
+import { logger } from '../utils/logger';
+import { BTCChain, BtcLockData } from '../xchain/btc';
 
 const CkbAddressLen = 46;
 
@@ -22,14 +22,11 @@ export class BtcHandler {
         if (targetHeight <= latestHeight) {
           continue;
         }
-        logger.debug(
-          `BtcHandler watchLockEvents db lock record latest height: ${latestHeight}. target height: ${targetHeight}`,
-        );
+        logger.debug(`'btc db lock record latest height: ${latestHeight}. target height: ${targetHeight}`);
         await this.btcChain.watchBtcTxEvents(
           latestHeight,
           targetHeight,
           async (btcLockEventData: BtcLockData) => {
-            logger.info(`BtcHandler watchBtcTxEvents newEvents:${JSON.stringify(btcLockEventData, null, 2)}`);
             await this.db.createCkbMint([
               {
                 id: btcLockEventData.txId,
@@ -52,9 +49,7 @@ export class BtcHandler {
                 blockHash: btcLockEventData.blockHash,
               },
             ]);
-            logger.info(
-              `BtcHandler watchBtcTxEvents save CkbMint and BTCLock successful for BTC tx ${btcLockEventData.txHash}.`,
-            );
+            logger.debug(`save CkbMint and BTCLock successful for BTC tx ${btcLockEventData.txHash}.`);
           },
           async (ckbTxHash: string) => {
             if (!ckbTxHash.startsWith('0x')) {
@@ -64,7 +59,7 @@ export class BtcHandler {
             if (records.length === 0) {
               return;
             }
-            logger.debug(`BtcHandler watchBtcTxEvents unlockRecords: ${JSON.stringify(records, null, 2)}`);
+            logger.debug(`unlock records: ${JSON.stringify(records, null, 2)}`);
             if (records.length > 1) {
               throw new Error(
                 `there are some unlock record which have the same ckb burn hash.  ${JSON.stringify(records, null, 2)}`,
@@ -76,7 +71,7 @@ export class BtcHandler {
         );
         latestHeight = targetHeight;
       } catch (e) {
-        logger.error('there is an error occurred during in btc chain watch event', e.toString());
+        logger.error('there is an error occurred during in btc chain watch event', e);
       }
     }
   }
@@ -85,16 +80,14 @@ export class BtcHandler {
   // send tx according to the data
   async watchUnlockEvents() {
     // todo: get and handle pending and error records
-    logger.info('BtcHandler watchUnlockEvents start');
+    logger.debug('start btc watchUnlockEvents');
     while (true) {
       await asyncSleep(1000 * 20);
       const records: BtcUnlock[] = await this.db.getBtcUnlockRecords('todo');
       if (records.length === 0) {
         continue;
       }
-      logger.debug(
-        `BtcHandler watchUnlockEvents get btc unlock record and send tx ${JSON.stringify(records, null, 2)}`,
-      );
+      logger.debug(`get btc unlock record and send tx ${JSON.stringify(records, null, 2)}`);
       try {
         // write db first, avoid send tx success and fail to write db
         records.map((r) => {
@@ -113,10 +106,7 @@ export class BtcHandler {
           r.message = e.message;
         });
         await this.db.saveBtcUnlock(records);
-        logger.error(
-          `BtcHandler watchUnlockEvents there is an error occurred during in btc chain send unlock.`,
-          e.toString(),
-        );
+        logger.error(`there is an error occurred during in btc chain send unlock.`, e);
       }
     }
   }

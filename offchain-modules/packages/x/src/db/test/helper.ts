@@ -1,7 +1,7 @@
 import os from 'os';
 import { createConnection } from 'typeorm';
-import { EthLock, CkbMint, CkbBurn, EthUnlock, TronLock, TronUnlock } from '@force-bridge/db/model';
-import { genRandomHex } from '@force-bridge/utils';
+import { genRandomHex } from '../../utils';
+import { CkbBurn, CkbMint, EthLock, EthUnlock, TronLock, TronUnlock } from '../model';
 
 export async function getTmpConnection(path = `${os.tmpdir()}/${genRandomHex(32)}/db.sqlite`) {
   const connection = await createConnection({

@@ -1,17 +1,7 @@
 // invoke in tron handler
-import {
-  CkbMint,
-  TronLock,
-  TronUnlock,
-  ICkbMint,
-  ITronLock,
-  IQuery,
-  LockRecord,
-  UnlockRecord,
-  CkbBurn,
-} from '@force-bridge/db/model';
 import { Connection, Repository } from 'typeorm';
-import { TronUnlockStatus } from '@force-bridge/db/entity/TronUnlock';
+import { TronUnlockStatus } from './entity/TronUnlock';
+import { CkbBurn, CkbMint, ICkbMint, IQuery, ITronLock, LockRecord, TronLock, TronUnlock, UnlockRecord } from './model';
 
 export class TronDb implements IQuery {
   private ckbMintRepository: Repository<CkbMint>;

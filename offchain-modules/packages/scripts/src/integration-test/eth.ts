@@ -1,32 +1,25 @@
-import 'module-alias/register';
+import assert from 'assert';
+import { Account } from '@force-bridge/x/dist/ckb/model/accounts';
+import { ChainType, EthAsset } from '@force-bridge/x/dist/ckb/model/asset';
+import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
+import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
+// import {CkbIndexer} from "@force-bridge/x/dist/ckb/tx-helper/indexer";
+import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
+import { Config, EthConfig } from '@force-bridge/x/dist/config';
+import { ForceBridgeCore } from '@force-bridge/x/dist/core';
+import { CkbDb, EthDb } from '@force-bridge/x/dist/db';
+import { CkbMint, EthLock, EthUnlock } from '@force-bridge/x/dist/db/model';
+import { asyncSleep, stringToUint8Array, toHexString, uint8ArrayToString } from '@force-bridge/x/dist/utils';
+import { logger } from '@force-bridge/x/dist/utils/logger';
+import { ETH_ADDRESS } from '@force-bridge/x/dist/xchain/eth';
+import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
+import { Amount, Script } from '@lay2/pw-core';
+import CKB from '@nervosnetwork/ckb-sdk-core';
 import { ethers } from 'ethers';
 import nconf from 'nconf';
-import { Config, EthConfig } from '@force-bridge/x/dist/config';
-import { logger } from '@force-bridge/x/dist/utils/logger';
-import {
-  asyncSleep,
-  fromHexString,
-  stringToUint8Array,
-  toHexString,
-  uint8ArrayToString,
-} from '@force-bridge/x/dist/utils';
 import { createConnection } from 'typeorm';
-import { CkbDb, EthDb } from '@force-bridge/x/dist/db';
-import { ETH_ADDRESS } from '@force-bridge/x/dist/xchain/eth';
-import { CkbMint, EthLock, EthUnlock } from '@force-bridge/x/dist/db/model';
-import assert from 'assert';
-import { ChainType, EthAsset } from '@force-bridge/x/dist/ckb/model/asset';
-import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
-import { Address, AddressType, Amount, Script } from '@lay2/pw-core';
-import { Account } from '@force-bridge/x/dist/ckb/model/accounts';
-import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
-import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { waitUntilCommitted } from './util';
-// import {CkbIndexer} from "@force-bridge/x/dist/ckb/tx-helper/indexer";
-import { ForceBridgeCore } from '@force-bridge/x/dist/core';
-import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
 
-const CKB = require('@nervosnetwork/ckb-sdk-core').default;
 // const { Indexer, CellCollector } = require('@ckb-lumos/indexer');
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
 const CKB_INDEXER_URL = process.env.CKB_INDEXER_URL || 'http://127.0.0.1:8116';

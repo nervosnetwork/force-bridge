@@ -1,11 +1,11 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
-  VersionColumn,
-  CreateDateColumn,
-  UpdateDateColumn,
   Column,
+  CreateDateColumn,
+  Entity,
   Index,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+  VersionColumn,
 } from 'typeorm';
 
 export type TronAssetType = 'trx' | 'trc10' | 'trc20';

@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, PrimaryColumn, UpdateDateColumn } from 'typeorm';
 
 export type dbTxStatus = 'todo' | 'pending' | 'success' | 'error';
 export type CkbMintStatus = dbTxStatus;

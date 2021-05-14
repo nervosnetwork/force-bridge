@@ -1,16 +1,16 @@
-import commander from 'commander';
-import { getSudtBalance, parseOptions, waitUnlockTxCompleted } from './utils';
-import { BtcAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { Account } from '@force-bridge/x/dist/ckb/model/accounts';
-import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
+import { BtcAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
-import { logger } from '@force-bridge/x/dist/utils/logger';
-import { Amount, Script } from '@lay2/pw-core';
+import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
-import { BTCChain, getBtcMainnetFee, IBalance } from '@force-bridge/x/dist/xchain/btc';
-import bitcore from 'bitcore-lib';
-import { RPCClient } from 'rpc-bitcoin';
 import { asyncSleep } from '@force-bridge/x/dist/utils';
+import { logger } from '@force-bridge/x/dist/utils/logger';
+import { BTCChain, getBtcMainnetFee, IBalance } from '@force-bridge/x/dist/xchain/btc';
+import { Amount } from '@lay2/pw-core';
+import bitcore from 'bitcore-lib';
+import commander from 'commander';
+import { RPCClient } from 'rpc-bitcoin';
+import { getSudtBalance, parseOptions, waitUnlockTxCompleted } from './utils';
 
 const Unit = bitcore.Unit;
 
