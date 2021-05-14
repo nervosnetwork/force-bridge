@@ -21,7 +21,7 @@ import { RPC } from '@ckb-lumos/rpc';
 import Transaction = CKBComponents.Transaction;
 import TransactionWithStatus = CKBComponents.TransactionWithStatus;
 import { serializeMultisigScript } from '@ckb-lumos/common-scripts/lib/secp256k1_blake160_multisig';
-import { getMultisigLock } from '@force-bridge/ckb/tx-helper/multisig/multisig_helper';
+import { getMultisigLock, getOwnLockHash } from '@force-bridge/ckb/tx-helper/multisig/multisig_helper';
 import { JSONRPCClient } from 'json-rpc-2.0';
 import fetch from 'node-fetch/index';
 import { MultiSigMgr } from '@force-bridge/multisig/multisig-mgr';
@@ -175,7 +175,7 @@ export class CkbHandler {
     if (tx.outputs.length < 1) {
       return false;
     }
-    const ownLockHash = await this.getOwnLockHash();
+    const ownLockHash = getOwnLockHash(ForceBridgeCore.config.ckb.multisigScript);
     logger.debug('amount: ', toHexString(new Uint8Array(cellData.getAmount().raw())));
     logger.debug('recipient address: ', toHexString(new Uint8Array(cellData.getRecipientAddress().raw())));
     logger.debug('asset: ', toHexString(new Uint8Array(cellData.getAsset().raw())));
@@ -226,7 +226,7 @@ export class CkbHandler {
   }
 
   async handleMintRecords(): Promise<never> {
-    const ownLockHash = await this.getOwnLockHash();
+    const ownLockHash = getOwnLockHash(ForceBridgeCore.config.ckb.multisigScript);
     const generator = new CkbTxGenerator(this.ckb, new IndexerCollector(this.ckbIndexer));
     while (true) {
       const mintRecords = await this.db.getCkbMintRecordsToMint();
@@ -258,15 +258,24 @@ export class CkbHandler {
         let content1 = serializeMultisigScript(ForceBridgeCore.config.ckb.multisigScript);
 
         const sigs = await this.multisigMgr.collectSignatures({
-          rawData: '',
+          rawData: txSkeleton.get('signingEntries').get(1).message,
           payload: {
+            sigType: 'mint',
+            mintRecords: mintRecords.map((r) => {
+              return {
+                id: r.id,
+                chain: r.chain,
+                asset: r.asset,
+                amount: r.amount,
+                recipientLockscript: r.recipientLockscript,
+              };
+            }),
             txSkeleton,
           },
         });
         content1 += sigs.join('');
 
         const tx = sealTransaction(txSkeleton, [content0, content1]);
-        console.log('tx:', JSON.stringify(tx, null, 2));
         const mintTxHash = await this.transactionManager.send_transaction(tx);
         const txStatus = await this.waitUntilCommitted(mintTxHash, 60);
         if (txStatus.txStatus.status === 'committed') {
@@ -358,17 +367,17 @@ export class CkbHandler {
   }
 
   async createBridgeCell(newTokens: any[], generator: CkbTxGenerator) {
+    const assets = [];
     const scripts = newTokens.map((r) => {
+      assets.push({
+        chain: r.asset.chainType,
+        asset: r.asset.getAddress(),
+      });
       return new Script(
         ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
         r.asset.toBridgeLockscriptArgs(),
         ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
       );
-      // return {
-      //   codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
-      //   hashType: HashType.data,
-      //   args: r.asset.toBridgeLockscriptArgs(),
-      // };
     });
 
     const txSkeleton = await generator.createBridgeCell(scripts, this.indexer);
@@ -379,6 +388,8 @@ export class CkbHandler {
     const sigs = await this.multisigMgr.collectSignatures({
       rawData: txSkeleton.get('signingEntries').get(1).message,
       payload: {
+        sigType: 'create_cell',
+        createAssets: assets,
         txSkeleton,
       },
     });
@@ -404,16 +415,6 @@ export class CkbHandler {
       logger.debug(`wait until indexer sync. index: ${index++}`);
       await asyncSleep(1000);
     }
-  }
-
-  async getOwnLockHash(): Promise<string> {
-    const multisigLockScript = getMultisigLock();
-    const ownLockHash = this.ckb.utils.scriptToHash(<CKBComponents.Script>{
-      codeHash: multisigLockScript.code_hash,
-      hashType: multisigLockScript.hash_type,
-      args: multisigLockScript.args,
-    });
-    return ownLockHash;
   }
 
   getBridgeLockHash(asset: Asset): string {

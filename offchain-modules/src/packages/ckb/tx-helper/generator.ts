@@ -243,7 +243,7 @@ export class CkbTxGenerator {
     amount: Amount,
     bridgeFee?: Amount,
   ): Promise<CKBComponents.RawTransactionToSign> {
-    const multisigLockScript = getMultisigLock();
+    const multisigLockScript = getMultisigLock(ForceBridgeCore.config.ckb.multisigScript);
     if (amount.eq(Amount.ZERO)) {
       throw new Error('amount should larger then zero!');
     }

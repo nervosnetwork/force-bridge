@@ -137,7 +137,7 @@ async function main() {
     // check sudt balance.
     const account = new Account(PRI_KEY);
     // const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
-    const multisigLockScript = getMultisigLock();
+    const multisigLockScript = getMultisigLock(ForceBridgeCore.config.ckb.multisigScript);
     const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>{
       codeHash: multisigLockScript.code_hash,
       hashType: multisigLockScript.hash_type,

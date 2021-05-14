@@ -9,9 +9,20 @@ import { EosUnlock } from '@force-bridge/db/entity/EosUnlock';
 import { TronLock } from '@force-bridge/db/entity/TronLock';
 import { TronUnlock } from '@force-bridge/db/entity/TronUnlock';
 import { ChainType } from '@force-bridge/ckb/model/asset';
-import { getRepository } from 'typeorm';
+import { Column, getRepository } from 'typeorm';
 
 export { EthUnlock, EthLock, BtcLock, BtcUnlock, EosLock, EosUnlock, CkbMint, CkbBurn, TronLock, TronUnlock };
+
+export interface ISigned {
+  sigType: string;
+  chain: number;
+  amount: string;
+  asset: string;
+  refTxHash?: string;
+  txHash: string;
+  signature: string;
+  rawData: string;
+}
 
 export interface ICkbMint {
   id: string;

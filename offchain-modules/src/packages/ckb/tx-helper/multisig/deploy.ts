@@ -29,7 +29,7 @@ const transactionManager = new TransactionManager(indexer);
 function getDataOutputCapacity() {
   const output = {
     cell_output: {
-      lock: parseAddress(getMultisigAddr()),
+      lock: parseAddress(getMultisigAddr(ForceBridgeCore.config.ckb.multisigScript)),
       type: {
         code_hash: '0x' + '0'.repeat(64),
         hash_type: 'type' as HashType,
@@ -47,8 +47,8 @@ function getDataOutputCapacity() {
 async function deploy() {
   const fromPrivateKey = ForceBridgeCore.config.ckb.fromPrivateKey;
   const fromAddress = getFromAddr();
-  const multisigLockScript = getMultisigLock();
-  const multisigAddress = getMultisigAddr();
+  const multisigLockScript = getMultisigLock(ForceBridgeCore.config.ckb.multisigScript);
+  const multisigAddress = getMultisigAddr(ForceBridgeCore.config.ckb.multisigScript);
 
   let txSkeleton = TransactionSkeleton({ cellProvider: indexer });
   const capacity = getDataOutputCapacity();

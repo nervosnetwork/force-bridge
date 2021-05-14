@@ -10,7 +10,25 @@ export interface ethCollectSignaturesPayload {
   nonce: number;
 }
 
+export type ckbSigType = 'mint' | 'create_cell';
+
+export interface mintRecord {
+  id: string;
+  chain: number;
+  asset: string;
+  amount: string;
+  recipientLockscript: string;
+}
+
+export interface createAsset {
+  chain: number;
+  asset: string;
+}
+
 export interface ckbCollectSignaturesPayload {
+  sigType: ckbSigType;
+  mintRecords?: mintRecord[];
+  createAssets?: createAsset[];
   txSkeleton: TransactionSkeletonType;
 }
 
@@ -47,12 +65,12 @@ export class MultiSigMgr {
         );
       }
       if (successSigSvr.length === this.threshold) {
+        logger.info(
+          `MultiSigMgr collectSignatures success, rawData:${params.rawData} sigServers:${successSigSvr.join(',')}`,
+        );
         break;
       }
     }
-    logger.info(
-      `MultiSigMgr collectSignatures success, rawData:${params.rawData} sigServers:${successSigSvr.join(',')}`,
-    );
     return sigs;
   }
 

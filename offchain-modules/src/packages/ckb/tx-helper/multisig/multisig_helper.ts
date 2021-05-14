@@ -5,6 +5,7 @@ import { generateAddress } from '@ckb-lumos/helpers';
 import { HexString } from '@ckb-lumos/base';
 import { init } from './init_config';
 import { ForceBridgeCore } from '@force-bridge/core';
+import { MultisigItem } from '@force-bridge/config';
 
 init();
 const config = getConfig();
@@ -15,8 +16,7 @@ if (!multisigTemplate) {
 
 const secpTemplate = getConfig().SCRIPTS.SECP256K1_BLAKE160;
 
-export function getMultisigLock() {
-  const multisigScript = ForceBridgeCore.config.ckb.multisigScript;
+export function getMultisigLock(multisigScript: MultisigItem) {
   const serializedMultisigScript = serializeMultisigScript(multisigScript);
   const args = multisigArgs(serializedMultisigScript);
   const multisigLockScript = {
@@ -26,8 +26,19 @@ export function getMultisigLock() {
   };
   return multisigLockScript;
 }
-export function getMultisigAddr(): string {
-  const multisigLockScript = getMultisigLock();
+
+export function getOwnLockHash(multisigScript: MultisigItem): string {
+  const multisigLockScript = getMultisigLock(multisigScript);
+  const ownLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>{
+    codeHash: multisigLockScript.code_hash,
+    hashType: multisigLockScript.hash_type,
+    args: multisigLockScript.args,
+  });
+  return ownLockHash;
+}
+
+export function getMultisigAddr(multisigScript: MultisigItem): string {
+  const multisigLockScript = getMultisigLock(multisigScript);
   return generateAddress(multisigLockScript);
 }
 

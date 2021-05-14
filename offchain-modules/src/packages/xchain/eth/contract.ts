@@ -8,6 +8,7 @@ import { asyncSleep } from '@force-bridge/utils';
 import { MultiSigMgr } from '@force-bridge/multisig/multisig-mgr';
 import { buildSigRawData } from '@force-bridge/xchain/eth/utils';
 
+export const lockTopic = ethers.utils.id('Locked(address,address,uint256,bytes,bytes)');
 const BlockBatchSize = 100;
 
 export interface EthUnlockRecord {

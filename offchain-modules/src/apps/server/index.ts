@@ -6,69 +6,11 @@ import { Config } from '@force-bridge/config';
 import nconf from 'nconf';
 import { logger } from '@force-bridge/utils/logger';
 import { ForceBridgeCore } from '@force-bridge/core';
-import { TransactionSkeletonType } from '@ckb-lumos/helpers';
-import { key } from '@ckb-lumos/hd';
-import { ethers } from 'ethers';
-const { ecsign, toRpcSig } = require('ethereumjs-util');
+import { signEthTx } from './eth';
+import { signCkbTx, init } from './ckb';
+import { collectSignaturesParams } from '@force-bridge/multisig/multisig-mgr';
 
 const apiPath = '/force-bridge/sign-server/api/v1';
-
-// enum ChainType {
-//   BTC,
-//   ETH,
-//   EOS,
-//   TRON,
-//   CKB = 99,
-// }
-
-// type SignPayload = {
-//   chainType: ChainType;
-//   rawTx: TransactionSkeletonType;
-// };
-
-// async function sign(payload: SignPayload) {
-//   console.log('payload:', JSON.stringify(payload, null, 2));
-//   switch (payload.chainType) {
-//     case ChainType.CKB:
-//       return await signCkbTx(payload.rawTx);
-//     case ChainType.ETH:
-//       return await signEthTx();
-//     default:
-//       throw new Error('chain type not supported!');
-//   }
-// }
-
-async function verifyCkbTx(_txSkeleton: TransactionSkeletonType): Promise<boolean> {
-  return true;
-}
-
-async function signCkbTx2(payload): Promise<string> {
-  const txSkeleton = payload.payload.txSkeleton;
-  if (!(await verifyCkbTx(txSkeleton))) {
-    throw new Error('the rawtx is invalid!');
-  }
-  const args = require('minimist')(process.argv.slice(2));
-  const index = args.index;
-  const privKey = ForceBridgeCore.config.ckb.keys[index];
-  const message = txSkeleton.signingEntries[1].message;
-  return key.signRecoverable(message, privKey).slice(2);
-}
-
-async function signEthTx(payload): Promise<string> {
-  //FIXME: verify eth_tx payload.
-  const provider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
-  logger.debug('signEthTx msg: ', payload);
-  const args = require('minimist')(process.argv.slice(2));
-  const index = args.index;
-  const privKey = ForceBridgeCore.config.eth.multiSignKeys[index];
-  const wallet = new ethers.Wallet(privKey, provider);
-  const { v, r, s } = ecsign(
-    Buffer.from(payload.rawData.slice(2), 'hex'),
-    Buffer.from(wallet.privateKey.slice(2), 'hex'),
-  );
-  const sigHex = toRpcSig(v, r, s);
-  return sigHex.slice(2);
-}
 
 async function main() {
   const args = require('minimist')(process.argv.slice(2));
@@ -78,10 +20,26 @@ async function main() {
   const config: Config = nconf.get('forceBridge');
   await new ForceBridgeCore().init(config);
 
+  init({
+    eth: {
+      rpcUrl: config.eth.rpcUrl,
+      contractAddress: config.eth.contractAddress,
+    },
+    ckb: {
+      multisigScript: config.ckb.multisigScript,
+      multisigType: config.ckb.multisigType,
+      deps: {
+        bridgeLock: config.ckb.deps.bridgeLock,
+        recipientType: config.ckb.deps.recipientType,
+        sudtType: config.ckb.deps.sudtType,
+      },
+    },
+  });
+
   const server = new JSONRPCServer();
 
-  server.addMethod('signCkbTx', async (payload) => {
-    return await signCkbTx2(payload);
+  server.addMethod('signCkbTx', async (params: collectSignaturesParams) => {
+    return await signCkbTx(params);
   });
   server.addMethod('signEthTx', async (payload) => {
     return await signEthTx(payload);
