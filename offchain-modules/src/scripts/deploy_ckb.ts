@@ -1,8 +1,14 @@
 // todo: remove lumos indexer dep, use collector in packages/ckb/tx-helper/collector
 import { blake2b, asyncSleep as sleep } from '../packages/utils';
+import { CkbTxGenerator } from '../packages/ckb/tx-helper/generator';
+import { IndexerCollector } from '../packages/ckb/tx-helper/collector';
+import { CkbIndexer } from '../packages/ckb/tx-helper/indexer';
+import { Asset, BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '../packages/ckb/model/asset';
+
 import { OutPoint, Script } from '@lay2/pw-core';
 import RawTransactionParams from '@nervosnetwork/ckb-sdk-core';
 import { RPCClient } from 'rpc-bitcoin';
+
 const axios = require('axios');
 const fs = require('fs').promises;
 const nconf = require('nconf');
@@ -14,6 +20,8 @@ const CKB_URL = nconf.get('forceBridge:ckb:ckbRpcUrl');
 const CKB_IndexerURL = nconf.get('forceBridge:ckb:ckbIndexerUrl');
 const PRI_KEY = nconf.get('forceBridge:ckb:privateKey');
 const ckb = new CKB(CKB_URL);
+const generator = new CkbTxGenerator(ckb, new IndexerCollector(new CkbIndexer(CKB_URL, CKB_IndexerURL)));
+
 const PUB_KEY = ckb.utils.privateKeyToPublicKey(PRI_KEY);
 const ARGS = `0x${ckb.utils.blake160(PUB_KEY, 'hex')}`;
 const ADDRESS = ckb.utils.pubkeyToAddress(PUB_KEY);
@@ -60,6 +68,40 @@ async function getCells(script_args: string, indexerUrl: string): Promise<RawTra
     cells.push(cell);
   }
   return cells.filter((c) => c.data === '0x' && !c.type);
+}
+
+function getPreDeployedAssets() {
+  const ownerLockHash = nconf.get('forceBridge:ckb:ownerLockHash');
+  return [
+    new BtcAsset('btc', ownerLockHash),
+    new EthAsset('0x0000000000000000000000000000000000000000', ownerLockHash),
+    new TronAsset('trx', ownerLockHash),
+    new EosAsset('EOS', ownerLockHash),
+  ];
+}
+
+async function createBridgeCell(assets: Asset[]) {
+  const { secp256k1Dep } = await ckb.loadDeps();
+
+  const lockscript = Script.fromRPC({
+    code_hash: secp256k1Dep.codeHash,
+    args: ARGS,
+    hash_type: secp256k1Dep.hashType,
+  });
+
+  let bridgeLockScripts = [];
+  for (const asset of assets) {
+    bridgeLockScripts.push({
+      codeHash: nconf.get('forceBridge:ckb:deps:bridgeLock:script:codeHash'),
+      hashType: 'data',
+      args: asset.toBridgeLockscriptArgs(),
+    });
+  }
+  const rawTx = await generator.createBridgeCell(lockscript, bridgeLockScripts);
+  const signedTx = ckb.signTransaction(PRI_KEY)(rawTx);
+  const tx_hash = await ckb.rpc.sendTransaction(signedTx);
+  const txStatus = await waitUntilCommitted(tx_hash);
+  console.log('pre deploy assets tx status', txStatus);
 }
 
 const deploy = async () => {
@@ -231,7 +273,12 @@ const main = async () => {
   await deploy();
   await setStartTime();
   await setOwnerLockHash();
+
+  const assets = getPreDeployedAssets();
+  await createBridgeCell(assets);
+
   await setXChainStartTime();
+
   console.log('\n\n\n---------end deploy -----------\n');
   process.exit(0);
 };
