@@ -3,7 +3,7 @@ import { ethers } from 'ethers';
 import nconf from 'nconf';
 import { Config, EthConfig } from '@force-bridge/config';
 import { initLog, logger } from '@force-bridge/utils/logger';
-import { asyncSleep, stringToUint8Array, toHexString, uint8ArrayToString } from '@force-bridge/utils';
+import { asyncSleep, parsePrivateKey, stringToUint8Array, toHexString, uint8ArrayToString } from '@force-bridge/utils';
 import { createConnection } from 'typeorm';
 import { ETH_ADDRESS } from '@force-bridge/xchain/eth';
 import { CkbMint, EthLock, EthUnlock } from '@force-bridge/db/model';
@@ -41,7 +41,7 @@ async function main() {
   const provider = new ethers.providers.JsonRpcProvider(config.rpcUrl);
   const bridgeContractAddr = config.contractAddress;
   const bridge = new ethers.Contract(bridgeContractAddr, abi, provider);
-  const wallet = new ethers.Wallet(config.privateKey, provider);
+  const wallet = new ethers.Wallet(parsePrivateKey(config.privateKey), provider);
   const bridgeWithSigner = bridge.connect(wallet);
   const iface = new ethers.utils.Interface(abi);
 
