@@ -1,15 +1,15 @@
-import commander from 'commander';
-import { JsSignatureProvider } from 'eosjs/dist/eosjs-jssig';
-import { EosChain } from '@force-bridge/x/dist/xchain/eos/eosChain';
-import { getSudtBalance, parseOptions, waitUnlockTxCompleted } from './utils';
-import { EosAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { Account } from '@force-bridge/x/dist/ckb/model/accounts';
-import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
+import { EosAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
-import { Amount } from '@lay2/pw-core';
+import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { asyncSleep } from '@force-bridge/x/dist/utils';
+import { EosChain } from '@force-bridge/x/dist/xchain/eos/eosChain';
 import { EosAssetAmount } from '@force-bridge/x/dist/xchain/eos/utils';
+import { Amount } from '@lay2/pw-core';
+import commander from 'commander';
+import { JsSignatureProvider } from 'eosjs/dist/eosjs-jssig';
+import { getSudtBalance, parseOptions, waitUnlockTxCompleted } from './utils';
 
 export const eosCmd = new commander.Command('eos');
 eosCmd

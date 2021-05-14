@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
-import { Asset, ChainType } from './ckb/model/asset';
 import { Amount } from '@lay2/pw-core';
+import { Asset, ChainType } from './ckb/model/asset';
 
 export type EthLockEvent = {
   name: 'EthLockEvent';

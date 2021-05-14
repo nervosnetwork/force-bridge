@@ -81,6 +81,7 @@ function serializeTable(buffers) {
 
 export class Bytes {
   private view;
+
   constructor(reader, { validate = true } = {}) {
     this.view = new DataView(assertArrayBuffer(reader));
     if (validate) {
@@ -119,6 +120,7 @@ export function SerializeBytes(value) {
 
 export class Byte32 {
   private view;
+
   constructor(reader, { validate = true } = {}) {
     this.view = new DataView(assertArrayBuffer(reader));
     if (validate) {
@@ -151,6 +153,7 @@ export function SerializeByte32(value) {
 
 export class ForceBridgeLockscriptArgs {
   private view;
+
   constructor(reader, { validate = true } = {}) {
     this.view = new DataView(assertArrayBuffer(reader));
     if (validate) {

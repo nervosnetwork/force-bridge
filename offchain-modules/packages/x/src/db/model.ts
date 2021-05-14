@@ -1,15 +1,15 @@
-import { EthUnlock } from '@force-bridge/db/entity/EthUnlock';
-import { CkbBurn } from '@force-bridge/db/entity/CkbBurn';
-import { CkbMint, dbTxStatus } from '@force-bridge/db/entity/CkbMint';
-import { BtcUnlock } from '@force-bridge/db/entity/BtcUnlock';
-import { BtcLock } from '@force-bridge/db/entity/BtcLock';
-import { EthLock } from '@force-bridge/db/entity/EthLock';
-import { EosLock } from '@force-bridge/db/entity/EosLock';
-import { EosUnlock } from '@force-bridge/db/entity/EosUnlock';
-import { TronLock } from '@force-bridge/db/entity/TronLock';
-import { TronUnlock } from '@force-bridge/db/entity/TronUnlock';
-import { ChainType } from '@force-bridge/ckb/model/asset';
 import { getRepository } from 'typeorm';
+import { ChainType } from '../ckb/model/asset';
+import { BtcLock } from './entity/BtcLock';
+import { BtcUnlock } from './entity/BtcUnlock';
+import { CkbBurn } from './entity/CkbBurn';
+import { CkbMint, dbTxStatus } from './entity/CkbMint';
+import { EosLock } from './entity/EosLock';
+import { EosUnlock } from './entity/EosUnlock';
+import { EthLock } from './entity/EthLock';
+import { EthUnlock } from './entity/EthUnlock';
+import { TronLock } from './entity/TronLock';
+import { TronUnlock } from './entity/TronUnlock';
 
 // export { EthUnlock, EthLock, BtcLock, BtcUnlock, EosLock, EosUnlock, CkbMint, CkbBurn, TronLock, TronUnlock };
 
@@ -81,6 +81,7 @@ export interface ITronUnlock {
 }
 
 export type XchainUnlock = EthUnlock | BtcUnlock | EosUnlock;
+
 export async function transformBurnEvent(burn: CkbBurn): Promise<XchainUnlock> {
   throw new Error('Method not implemented.');
 }
@@ -150,6 +151,7 @@ export interface IBtcLock {
   blockHash: string;
   txIndex: number;
 }
+
 export interface IBtcUnLock {
   ckbTxHash: string;
   chain: number;
@@ -188,5 +190,6 @@ export interface UnlockRecord {
 
 export interface IQuery {
   getLockRecordsByUser(ckbRecipientAddr: string): Promise<LockRecord[]>;
+
   getUnlockRecordsByUser(ckbLockScriptHash: string): Promise<UnlockRecord[]>;
 }

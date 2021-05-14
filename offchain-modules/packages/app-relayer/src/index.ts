@@ -1,19 +1,18 @@
 import 'reflect-metadata';
-import 'module-alias/register';
-import nconf from 'nconf';
+import { Config } from '@force-bridge/x/dist/config';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { CkbDb, EthDb, TronDb } from '@force-bridge/x/dist/db';
-import { CkbHandler } from '@force-bridge/x/dist/handlers/ckb';
-import { EthHandler } from '@force-bridge/x/dist/handlers/eth';
-import { Config } from '@force-bridge/x/dist/config';
-import { createConnection } from 'typeorm';
-import { EthChain } from '@force-bridge/x/dist/xchain/eth';
-import { EosHandler } from '@force-bridge/x/dist/handlers/eos';
-import { EosDb } from '@force-bridge/x/dist/db/eos';
-import { TronHandler } from '@force-bridge/x/dist/handlers/tron';
 import { BtcDb } from '@force-bridge/x/dist/db/btc';
-import { BTCChain } from '@force-bridge/x/dist/xchain/btc';
+import { EosDb } from '@force-bridge/x/dist/db/eos';
 import { BtcHandler } from '@force-bridge/x/dist/handlers/btc';
+import { CkbHandler } from '@force-bridge/x/dist/handlers/ckb';
+import { EosHandler } from '@force-bridge/x/dist/handlers/eos';
+import { EthHandler } from '@force-bridge/x/dist/handlers/eth';
+import { TronHandler } from '@force-bridge/x/dist/handlers/tron';
+import { BTCChain } from '@force-bridge/x/dist/xchain/btc';
+import { EthChain } from '@force-bridge/x/dist/xchain/eth';
+import nconf from 'nconf';
+import { createConnection } from 'typeorm';
 
 async function main() {
   const configPath = process.env.CONFIG_PATH || './config.json';

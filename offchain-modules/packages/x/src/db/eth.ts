@@ -1,18 +1,8 @@
 // invoke in eth handler
-import {
-  CkbBurn,
-  CkbMint,
-  EthLock,
-  EthUnlock,
-  ICkbMint,
-  IEthLock,
-  IQuery,
-  LockRecord,
-  UnlockRecord,
-} from '@force-bridge/db/model';
 import { Connection, Repository } from 'typeorm';
-import { EthUnlockStatus } from '@force-bridge/db/entity/EthUnlock';
-import { ForceBridgeCore } from '@force-bridge/core';
+import { ForceBridgeCore } from '../core';
+import { EthUnlockStatus } from './entity/EthUnlock';
+import { CkbBurn, CkbMint, EthLock, EthUnlock, ICkbMint, IEthLock, IQuery, LockRecord, UnlockRecord } from './model';
 
 export class EthDb implements IQuery {
   private ckbMintRepository: Repository<CkbMint>;

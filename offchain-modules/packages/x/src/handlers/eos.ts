@@ -1,16 +1,16 @@
-import { logger } from '../utils/logger';
-import { asyncSleep } from '../utils';
-import { EosDb } from '@force-bridge/db/eos';
-import { EosChain } from '@force-bridge/xchain/eos/eosChain';
-import { EosUnlock, EosUnlockStatus } from '@force-bridge/db/entity/EosUnlock';
-import { OrderedActionResult, PushTransactionArgs } from 'eosjs/dist/eosjs-rpc-interfaces';
-import { EosConfig } from '@force-bridge/config';
-import { EosAssetAmount, getTxIdFromSerializedTx } from '@force-bridge/xchain/eos/utils';
-import { JsSignatureProvider } from 'eosjs/dist/eosjs-jssig';
-import { ChainType } from '@force-bridge/ckb/model/asset';
-import { getEosLockId } from '@force-bridge/db/entity/EosLock';
-import { TransactResult } from 'eosjs/dist/eosjs-api-interfaces';
 import { Amount } from '@lay2/pw-core';
+import { TransactResult } from 'eosjs/dist/eosjs-api-interfaces';
+import { JsSignatureProvider } from 'eosjs/dist/eosjs-jssig';
+import { OrderedActionResult, PushTransactionArgs } from 'eosjs/dist/eosjs-rpc-interfaces';
+import { ChainType } from '../ckb/model/asset';
+import { EosConfig } from '../config';
+import { getEosLockId } from '../db/entity/EosLock';
+import { EosUnlock, EosUnlockStatus } from '../db/entity/EosUnlock';
+import { EosDb } from '../db/eos';
+import { asyncSleep } from '../utils';
+import { logger } from '../utils/logger';
+import { EosChain } from '../xchain/eos/eosChain';
+import { EosAssetAmount, getTxIdFromSerializedTx } from '../xchain/eos/utils';
 
 const EosTokenAccount = 'eosio.token';
 const EosTokenTransferActionName = 'transfer';
@@ -35,6 +35,7 @@ export class EosHandler {
   private chain: EosChain;
   private readonly signatureProvider: JsSignatureProvider;
   private assetPrecisionCache: Map<string, number>;
+
   constructor(db: EosDb, config: EosConfig) {
     this.db = db;
     this.config = config;

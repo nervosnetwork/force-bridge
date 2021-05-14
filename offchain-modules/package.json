@@ -16,13 +16,11 @@
     "lint": "run-p check:prettier check:eslint",
     "lint-staged": "eslint --fix -c .eslintrc.next.js $(git diff --name-only --relative | grep -E \"(.ts$)\")",
     "fix": "run-p fix:prettier fix:eslint",
-    "fix:eslint": "eslint src/**/*.ts --fix",
+    "fix:eslint": "eslint --format=pretty 'packages/*/src/**/*.ts'",
     "fix:prettier": "prettier --write .",
     "watch:start": "ts-node-dev --respawn --transpile-only ./packages/apps/relayer/index.ts",
-    "watch:ava": "ava --watch",
-    "watch:build": "tsc -w",
     "check:prettier": "prettier -c .",
-    "check:eslint": "eslint packages/*/src/**/*.ts",
+    "check:eslint": "yarn eslint --format=pretty 'packages/*/src/**/*.ts'",
     "clean": "rimraf lumos_db dist force-bridge.sqlite",
     "eth-test": "ts-node ./packages/scripts/src/integration-test/eth.ts",
     "eos-test": "ts-node ./packages/scripts/src/integration-test/eos.ts",
@@ -88,7 +86,6 @@
     "json-rpc-2.0": "^0.2.16",
     "lodash": "^4.17.20",
     "log4js": "^6.3.0",
-    "module-alias": "^2.2.2",
     "mysql2": "^2.2.5",
     "nconf": "^0.11.2",
     "node-fetch": "^1.7.3",
@@ -114,24 +111,11 @@
       "tsconfig-paths/register"
     ]
   },
-  "bin": {
-    "forcecli": "./dist/src/apps/cli/index.js"
-  },
   "nyc": {
     "extends": "@istanbuljs/nyc-config-typescript",
     "exclude": [
       "**/*.spec.ts"
     ]
-  },
-  "_moduleAliases": {
-    "@force-bridge/ckb": "packages/x/dist/ckb",
-    "@force-bridge/db": "packages/x/dist/db",
-    "@force-bridge/handlers": "packages/x/dist/handlers",
-    "@force-bridge/utils": "packages/x/dist/utils",
-    "@force-bridge/xchain": "packages/x/dist/xchain",
-    "@force-bridge/config": "packages/x/dist/config",
-    "@force-bridge/core": "packages/x/dist/core",
-    "@force-bridge/events": "packages/x/dist/events"
   },
   "lint-staged": {
     "src/**/*.ts": [

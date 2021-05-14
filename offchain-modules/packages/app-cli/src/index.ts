@@ -1,15 +1,15 @@
 #!/usr/bin/env node
-import 'module-alias/register';
 import commander from 'commander';
-import { eosCmd } from './eos';
-import { tronCmd } from './tron';
-import { ethCmd } from './eth';
-import { initConfig } from './utils';
 import { btcCmd } from './btc';
+import { eosCmd } from './eos';
+import { ethCmd } from './eth';
+import { tronCmd } from './tron';
+import { initConfig } from './utils';
 
 export const program = commander.program;
 
 const version = '0.0.1';
+
 async function main() {
   await initConfig();
 

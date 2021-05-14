@@ -1,11 +1,10 @@
-import { logger } from '@force-bridge/utils/logger';
-import { asyncSleep } from '@force-bridge/utils';
-import { ChainType } from '@force-bridge/ckb/model/asset';
-import { BTCChain, BtcLockData } from '@force-bridge/xchain/btc';
-import { BtcDb } from '@force-bridge/db/btc';
-import { throws } from 'assert';
-import { BtcUnlock } from '@force-bridge/db/entity/BtcUnlock';
-import { ForceBridgeCore } from '@force-bridge/core';
+import { ChainType } from '../ckb/model/asset';
+import { ForceBridgeCore } from '../core';
+import { BtcDb } from '../db/btc';
+import { BtcUnlock } from '../db/entity/BtcUnlock';
+import { asyncSleep } from '../utils';
+import { logger } from '../utils/logger';
+import { BTCChain, BtcLockData } from '../xchain/btc';
 
 const CkbAddressLen = 46;
 

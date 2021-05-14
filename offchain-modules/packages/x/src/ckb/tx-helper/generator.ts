@@ -1,15 +1,13 @@
-import { Address, Amount, HashType, Script } from '@lay2/pw-core';
 import { Script as LumosScript } from '@ckb-lumos/base';
-import { Asset, ChainType } from '../model/asset';
-import { logger } from '../../utils/logger';
-import { ScriptType } from '../../ckb/tx-helper/indexer';
+import { Address, Amount, Script } from '@lay2/pw-core';
+import CKB from '@nervosnetwork/ckb-sdk-core';
 import { IndexerCollector } from '../../ckb/tx-helper/collector';
-import { fromHexString, stringToUint8Array, toHexString, bigintToSudtAmount } from '../../utils';
-import { ForceBridgeCore } from '../../core';
 import { SerializeRecipientCellData } from '../../ckb/tx-helper/generated/eth_recipient_cell';
-import { Account } from '@force-bridge/ckb/model/accounts';
-
-const CKB = require('@nervosnetwork/ckb-sdk-core').default;
+import { ScriptType } from '../../ckb/tx-helper/indexer';
+import { ForceBridgeCore } from '../../core';
+import { bigintToSudtAmount, fromHexString, stringToUint8Array, toHexString } from '../../utils';
+import { logger } from '../../utils/logger';
+import { Asset } from '../model/asset';
 
 export interface MintAssetRecord {
   asset: Asset;
@@ -18,7 +16,7 @@ export interface MintAssetRecord {
 }
 
 export class CkbTxGenerator {
-  constructor(private ckb: typeof CKB, private collector: IndexerCollector) {}
+  constructor(private ckb: CKB, private collector: IndexerCollector) {}
 
   async createBridgeCell(
     fromLockscript: Script,
@@ -62,7 +60,7 @@ export class CkbTxGenerator {
       outputsData,
     };
     logger.debug('createBridgeCell rawTx:', rawTx);
-    return rawTx;
+    return rawTx as CKBComponents.RawTransactionToSign;
   }
 
   async mint(userLockscript: Script, records: MintAssetRecord[]): Promise<CKBComponents.RawTransactionToSign> {
@@ -163,7 +161,7 @@ export class CkbTxGenerator {
       outputsData,
     };
     logger.debug('generate mint rawTx:', rawTx);
-    return rawTx;
+    return rawTx as CKBComponents.RawTransactionToSign;
   }
 
   /*
@@ -303,7 +301,7 @@ export class CkbTxGenerator {
       outputsData,
     };
     logger.debug('generate burn rawTx:', rawTx);
-    return rawTx;
+    return rawTx as CKBComponents.RawTransactionToSign;
   }
 
   handleChangeCell(inputCells, outputs, outputsData, userLockscript, fee): void {

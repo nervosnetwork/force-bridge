@@ -1,14 +1,10 @@
+import { ChainType } from '../ckb/model/asset';
 import { EthDb } from '../db';
-import { logger } from '../utils/logger';
+import { EthUnlockStatus } from '../db/entity/EthUnlock';
+import { EthUnlock } from '../db/model';
 import { asyncSleep, fromHexString, uint8ArrayToString } from '../utils';
-import { abi } from '../xchain/eth/abi/ForceBridge.json';
-import { ForceBridgeCore } from '../core';
-import { ethers } from 'ethers';
-import { CkbMint, EthUnlock } from '@force-bridge/db/model';
-import { ChainType } from '@force-bridge/ckb/model/asset';
-import { getRepository } from 'typeorm';
-import { EthUnlockStatus } from '@force-bridge/db/entity/EthUnlock';
-import { EthChain } from '@force-bridge/xchain/eth';
+import { logger } from '../utils/logger';
+import { EthChain } from '../xchain/eth';
 
 export class EthHandler {
   constructor(private db: EthDb, private ethChain: EthChain) {}
@@ -57,6 +53,7 @@ export class EthHandler {
   async getUnlockRecords(status: EthUnlockStatus): Promise<EthUnlock[]> {
     return this.db.getEthUnlockRecordsToUnlock(status);
   }
+
   // watch the eth_unlock table and handle the new unlock events
   // send tx according to the data
   async watchUnlockEvents() {

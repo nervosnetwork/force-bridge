@@ -1,13 +1,12 @@
+import { ecsign, toRpcSig } from 'ethereumjs-util';
 import { BigNumber, ethers } from 'ethers';
-import { EthDb } from '@force-bridge/db';
-import { ForceBridgeCore } from '@force-bridge/core';
+import { EthConfig } from '../../config';
+import { ForceBridgeCore } from '../../core';
+import { EthUnlock } from '../../db/entity/EthUnlock';
+import { asyncSleep } from '../../utils';
+import { logger } from '../../utils/logger';
 import { abi } from './abi/ForceBridge.json';
-import { EthUnlock } from '@force-bridge/db/entity/EthUnlock';
-import { logger } from '@force-bridge/utils/logger';
-import { ChainType } from '@force-bridge/ckb/model/asset';
-import { EthConfig } from '@force-bridge/config';
-import { asyncSleep } from '@force-bridge/utils';
-const { ecsign, toRpcSig } = require('ethereumjs-util');
+
 const { keccak256, defaultAbiCoder, solidityPack } = ethers.utils;
 
 const BlockBatchSize = 100;

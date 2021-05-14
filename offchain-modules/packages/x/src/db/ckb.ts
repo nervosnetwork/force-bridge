@@ -1,22 +1,23 @@
 // invoke in ckb handler
 import { Connection } from 'typeorm';
+import { ForceBridgeCore } from '../core';
 import {
-  CkbMint,
-  CkbBurn,
-  EthUnlock,
-  EosUnlock,
   BtcUnlock,
+  CkbBurn,
+  CkbMint,
+  EosUnlock,
+  EthUnlock,
+  IBtcUnLock,
+  ICkbBurn,
   IEosUnlock,
   IEthUnlock,
   ITronUnlock,
   TronUnlock,
-  ICkbBurn,
-  IBtcUnLock,
-} from '@force-bridge/db/model';
-import { ForceBridgeCore } from '@force-bridge/core';
+} from './model';
 
 export class CkbDb {
   constructor(private connection: Connection) {}
+
   // invoke when getting new burn events
   async saveCkbBurn(records: ICkbBurn[]): Promise<void> {
     await this.connection.manager.save(records);

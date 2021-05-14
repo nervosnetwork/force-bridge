@@ -1,15 +1,14 @@
-import express from 'express';
-import cors from 'cors';
-import bodyParser from 'body-parser';
-import 'module-alias/register';
-import { JSONRPCServer } from 'json-rpc-2.0';
-import { rpcConfig } from '@force-bridge/x/dist/config';
-import nconf from 'nconf';
-import { logger } from '@force-bridge/x/dist/utils/logger';
-import { ForceBridgeAPIV1Handler } from './handler';
+import { rpcConfig, Config } from '@force-bridge/x/dist/config';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
-import { Config } from '@force-bridge/x/dist/config';
+import { logger } from '@force-bridge/x/dist/utils/logger';
+import bodyParser from 'body-parser';
+import cors from 'cors';
+import express from 'express';
+import { JSONRPCServer } from 'json-rpc-2.0';
+import nconf from 'nconf';
 import { createConnection } from 'typeorm';
+import { ForceBridgeAPIV1Handler } from './handler';
+
 import { GetBalancePayload, GetBridgeTransactionSummariesPayload } from './types/apiv1';
 
 const forceBridgePath = '/force-bridge/api/v1';
@@ -45,6 +44,7 @@ async function main() {
     "result": "Hello, World!"
   }
   * */
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   server.addMethod('echo', ({ text }) => text); //for test
   server.addMethod('generateBridgeOutNervosTransaction', forceBridgeRpc.generateBridgeOutNervosTransaction);

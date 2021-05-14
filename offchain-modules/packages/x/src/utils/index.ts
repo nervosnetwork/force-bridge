@@ -1,12 +1,11 @@
 import * as utils from '@nervosnetwork/ckb-sdk-utils';
-import { logger } from '@force-bridge/utils/logger';
 
 export function asyncSleep(ms = 0) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-export function blake2b(buffer) {
-  return utils.blake2b(32, null, null, utils.PERSONAL).update(buffer).digest('binary');
+export function blake2b(buffer): Uint8Array {
+  return utils.blake2b(32, null, null, utils.PERSONAL).update(buffer).digest('binary') as Uint8Array;
 }
 
 export function genRandomHex(size: number) {

@@ -1,19 +1,17 @@
+import { Script as LumosScript } from '@ckb-lumos/base';
+import { Address, AddressType, Amount, HashType, Script } from '@lay2/pw-core';
+import { Account } from '../ckb/model/accounts';
+import { Asset, BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '../ckb/model/asset';
+import { IndexerCollector } from '../ckb/tx-helper/collector';
+import { RecipientCellData } from '../ckb/tx-helper/generated/eth_recipient_cell';
+import { CkbTxGenerator } from '../ckb/tx-helper/generator';
+import { ScriptType } from '../ckb/tx-helper/indexer';
+import { ForceBridgeCore } from '../core';
 import { CkbDb } from '../db';
 import { CkbMint, ICkbBurn } from '../db/model';
-import { logger } from '../utils/logger';
 import { asyncSleep, fromHexString, toHexString, uint8ArrayToString } from '../utils';
-import { Asset, BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '../ckb/model/asset';
-import { Address, AddressType, Amount, HashType, Script } from '@lay2/pw-core';
-import { Account } from '@force-bridge/ckb/model/accounts';
-
-import { CkbTxGenerator } from '@force-bridge/ckb/tx-helper/generator';
-import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
-import { ScriptType } from '@force-bridge/ckb/tx-helper/indexer';
-import { ForceBridgeCore } from '@force-bridge/core';
-import { Script as LumosScript } from '@ckb-lumos/base';
-import { BigNumber } from 'ethers';
-import { RecipientCellData } from '@force-bridge/ckb/tx-helper/generated/eth_recipient_cell';
-import { getAssetTypeByAsset } from '@force-bridge/xchain/tron/utils';
+import { logger } from '../utils/logger';
+import { getAssetTypeByAsset } from '../xchain/tron/utils';
 import Transaction = CKBComponents.Transaction;
 import TransactionWithStatus = CKBComponents.TransactionWithStatus;
 
@@ -24,6 +22,7 @@ export class CkbHandler {
   private ckb = ForceBridgeCore.ckb;
   private indexer = ForceBridgeCore.indexer;
   private PRI_KEY = ForceBridgeCore.config.ckb.privateKey;
+
   constructor(private db: CkbDb) {}
 
   // save unlock event first and then

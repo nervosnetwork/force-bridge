@@ -1,9 +1,7 @@
 import anyTest, { TestInterface } from 'ava';
+import { Connection } from 'typeorm';
+import { CkbDb, EthDb } from '..';
 import { getTmpConnection } from './helper';
-import { CkbBurn } from '@force-bridge/db/entity/CkbBurn';
-import { Connection, getRepository } from 'typeorm';
-import { CkbDb, EthDb } from '@force-bridge/db';
-import { CkbMint } from '@force-bridge/db/entity/CkbMint';
 
 const test = anyTest as TestInterface<{
   path: string;
