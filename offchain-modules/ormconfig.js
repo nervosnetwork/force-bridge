@@ -10,6 +10,6 @@ module.exports = {
   timezone: 'Z',
   synchronize: true,
   logging: true,
-  entities: ['packages/x/dist/db/entity/*.{ts,js}'],
+  entities: ['packages/x/dist/db/entity/*.js'],
   namingStrategy: new SnakeNamingStrategy(),
 };

@@ -1,10 +1,10 @@
 // const path = require('path');
 // const os = require('os');
 import { promises as fs } from 'fs';
-import nconf from 'nconf';
 import { CellCollector, Indexer } from '@ckb-lumos/indexer';
 import CKB from '@nervosnetwork/ckb-sdk-core';
-import utils from '@nervosnetwork/ckb-sdk-utils';
+import * as utils from '@nervosnetwork/ckb-sdk-utils';
+import nconf from 'nconf';
 
 const configPath = './config.json';
 const LUMOS_DB = './lumos_db';
