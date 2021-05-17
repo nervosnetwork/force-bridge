@@ -265,10 +265,12 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         unlockRecords = await dbHandler.getUnlockRecordsByXChainAddress(userAddress, assetName);
         break;
       case 'Nervos':
-        const ckbLockScript = ForceBridgeCore.ckb.utils.addressToScript(userAddress);
-        const ckbLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>ckbLockScript);
-        lockRecords = await dbHandler.getLockRecordsByCkbAddress(userAddress, assetName);
-        unlockRecords = await dbHandler.getUnlockRecordsByCkbAddress(ckbLockHash, assetName);
+        {
+          const ckbLockScript = ForceBridgeCore.ckb.utils.addressToScript(userAddress);
+          const ckbLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>ckbLockScript);
+          lockRecords = await dbHandler.getLockRecordsByCkbAddress(userAddress, assetName);
+          unlockRecords = await dbHandler.getUnlockRecordsByCkbAddress(ckbLockHash, assetName);
+        }
         break;
       default:
         throw new Error('invalid address chain type');

@@ -409,7 +409,7 @@ export class CkbHandler {
 
   async waitUntilCommitted(txHash: string, timeout: number) {
     let waitTime = 0;
-    let statusMap = new Map<string, boolean>();
+    const statusMap = new Map<string, boolean>();
 
     while (true) {
       const txStatus = await this.ckb.rpc.getTransaction(txHash);

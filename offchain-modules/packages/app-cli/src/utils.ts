@@ -9,7 +9,6 @@ import { initLog } from '@force-bridge/x/dist/utils/logger';
 
 const defaultLogFile = './log/force-bridge-cli.log';
 
-
 export async function initConfig() {
   const configPath = process.env.CONFIG_PATH || './config-cli.json';
   nconf.env().file({ file: configPath });

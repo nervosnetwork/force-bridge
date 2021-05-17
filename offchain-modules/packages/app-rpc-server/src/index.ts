@@ -9,7 +9,7 @@ import nconf from 'nconf';
 import { createConnection } from 'typeorm';
 import { ForceBridgeAPIV1Handler } from './handler';
 
-import { GetBalancePayload, GetBridgeTransactionSummariesPayload } from './types/apiv1';
+import { GetBalancePayload, GetBridgeTransactionSummariesPayload, XChainNetWork } from './types/apiv1';
 
 const forceBridgePath = '/force-bridge/api/v1';
 const defaultLogFile = './log/force-bridge-rpc.log';

@@ -99,7 +99,7 @@ async function createBridgeCell(assets: Asset[]) {
     hash_type: secp256k1Dep.hashType,
   });
 
-  let bridgeLockScripts = [];
+  const bridgeLockScripts = [];
   for (const asset of assets) {
     bridgeLockScripts.push({
       codeHash: nconf.get('forceBridge:ckb:deps:bridgeLock:script:codeHash'),
