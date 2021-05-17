@@ -4,11 +4,11 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { asyncSleep as sleep, blake2b } from '@force-bridge/x/dist/utils';
 import { OutPoint, Script } from '@lay2/pw-core';
-import { RPCClient } from 'rpc-bitcoin';
 import RawTransactionParams from '@nervosnetwork/ckb-sdk-core';
-import nconf from 'nconf';
-import utils from '@nervosnetwork/ckb-sdk-utils';
+import * as utils from '@nervosnetwork/ckb-sdk-utils';
 import axios from 'axios';
+import nconf from 'nconf';
+import { RPCClient } from 'rpc-bitcoin';
 
 const configPath = './config.json';
 nconf.env().file({ file: configPath });
