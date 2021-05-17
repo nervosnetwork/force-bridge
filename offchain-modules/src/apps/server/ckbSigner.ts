@@ -1,31 +1,11 @@
-import { ForceBridgeCore } from '@force-bridge/core';
 import { key } from '@ckb-lumos/hd';
 import { ckbCollectSignaturesPayload, collectSignaturesParams, mintRecord } from '@force-bridge/multisig/multisig-mgr';
 import { ChainType, EthAsset } from '@force-bridge/ckb/model/asset';
-import { ethers } from 'ethers';
-import { abi } from '@force-bridge/xchain/eth/abi/ForceBridge.json';
-import { Config } from './config';
 import { lockTopic } from '@force-bridge/xchain/eth';
 import { fromHexString, uint8ArrayToString } from '@force-bridge/utils';
 import { Address, AddressType, Amount } from '@lay2/pw-core';
-import { getOwnLockHash } from '@force-bridge/ckb/tx-helper/multisig/multisig_helper';
 import { Cell } from '@ckb-lumos/base';
-import { Connection, createConnection } from 'typeorm';
-import { SignedDb } from '@force-bridge/db/signed';
-
-let ethProvider: ethers.providers.JsonRpcProvider;
-let ethInterface: ethers.utils.Interface;
-let config: Config;
-// let conn: Connection;
-// let signedDb: SignedDb;
-
-export async function init(cfg: Config) {
-  ethProvider = new ethers.providers.JsonRpcProvider(cfg.eth.rpcUrl);
-  ethInterface = new ethers.utils.Interface(abi);
-  config = cfg;
-  // conn = await createConnection();
-  // signedDb = new SignedDb(conn);
-}
+import { SigServer } from './sigserver';
 
 async function verifyCreateCellTx(rawData: string, payload: ckbCollectSignaturesPayload): Promise<Error> {
   const txSkeleton = payload.txSkeleton;
@@ -35,7 +15,7 @@ async function verifyCreateCellTx(rawData: string, payload: ckbCollectSignatures
   }
 
   const createAssets = payload.createAssets;
-  const ownLockHash = getOwnLockHash(config.ckb.multisigScript);
+  const ownLockHash = SigServer.getOwnLockHash();
   for (let i = 0; i < createAssets.length; i++) {
     const createAsset = createAssets[i];
     if (createAsset.chain !== ChainType.ETH) {
@@ -44,7 +24,7 @@ async function verifyCreateCellTx(rawData: string, payload: ckbCollectSignatures
 
     const output = txSkeleton.outputs[i];
     const lockScript = output.cell_output.lock;
-    if (lockScript.code_hash !== config.ckb.deps.bridgeLock.script.codeHash) {
+    if (lockScript.code_hash !== SigServer.config.ckb.deps.bridgeLock.script.codeHash) {
       continue;
     }
     if (output.data !== '0x') {
@@ -62,9 +42,9 @@ async function verifyCreateCellTx(rawData: string, payload: ckbCollectSignatures
         }`,
       );
     }
-    if (lockScript.hash_type !== config.ckb.deps.bridgeLock.script.hashType) {
+    if (lockScript.hash_type !== SigServer.config.ckb.deps.bridgeLock.script.hashType) {
       return new Error(
-        `create bridge cell lockScript hash_type:${lockScript.hash_type} doesn't match with ${config.ckb.deps.bridgeLock.script.hashType}, asset chain:${createAsset.chain} address:${createAsset.asset}`,
+        `create bridge cell lockScript hash_type:${lockScript.hash_type} doesn't match with ${SigServer.config.ckb.deps.bridgeLock.script.hashType}, asset chain:${createAsset.chain} address:${createAsset.asset}`,
       );
     }
   }
@@ -93,7 +73,7 @@ async function verifyMintTx(rawData: string, payload: ckbCollectSignaturesPayloa
     if (!output.cell_output.type) {
       return;
     }
-    if (output.cell_output.type.code_hash === config.ckb.deps.sudtType.script.codeHash) {
+    if (output.cell_output.type.code_hash === SigServer.config.ckb.deps.sudtType.script.codeHash) {
       mintCells.push(output);
     }
   });
@@ -120,12 +100,12 @@ async function verifyMintTx(rawData: string, payload: ckbCollectSignaturesPayloa
 
 async function verifyEthMintRecord(record: mintRecord): Promise<Error> {
   let success = false;
-  const txReceipt = await ethProvider.getTransactionReceipt(record.id);
+  const txReceipt = await SigServer.ethProvider.getTransactionReceipt(record.id);
   for (const log of txReceipt.logs) {
-    if (log.address !== config.eth.contractAddress) {
+    if (log.address !== SigServer.config.eth.contractAddress) {
       continue;
     }
-    const parsedLog = ethInterface.parseLog(log);
+    const parsedLog = SigServer.ethInterface.parseLog(log);
     if (parsedLog.topic !== lockTopic) {
       continue;
     }
@@ -153,14 +133,14 @@ async function verifyEthMintRecord(record: mintRecord): Promise<Error> {
 }
 
 async function verifyEthMintTx(mintRecord: mintRecord, output: Cell): Promise<Error> {
-  const ownLockHash = getOwnLockHash(config.ckb.multisigScript);
+  const ownLockHash = SigServer.getOwnLockHash();
   const recipient = new Address(mintRecord.recipientLockscript, AddressType.ckb);
   const amount = new Amount(mintRecord.amount, 0);
   const asset = new EthAsset(mintRecord.asset, ownLockHash);
   const recipientLockscript = recipient.toLockScript();
   const bridgeCellLockscript = {
-    codeHash: config.ckb.deps.bridgeLock.script.codeHash,
-    hashType: config.ckb.deps.bridgeLock.script.hashType,
+    codeHash: SigServer.config.ckb.deps.bridgeLock.script.codeHash,
+    hashType: SigServer.config.ckb.deps.bridgeLock.script.hashType,
     args: asset.toBridgeLockscriptArgs(),
   };
 
@@ -176,17 +156,17 @@ async function verifyEthMintTx(mintRecord: mintRecord, output: Cell): Promise<Er
   }
 
   const typeScript = output.cell_output.type;
-  if (typeScript.code_hash !== config.ckb.deps.sudtType.script.codeHash) {
+  if (typeScript.code_hash !== SigServer.config.ckb.deps.sudtType.script.codeHash) {
     return new Error(
-      `typescript code_hash:${typeScript.code_hash} doesn't match with:${config.ckb.deps.sudtType.script.codeHash}`,
+      `typescript code_hash:${typeScript.code_hash} doesn't match with:${SigServer.config.ckb.deps.sudtType.script.codeHash}`,
     );
   }
-  if (typeScript.hash_type !== config.ckb.deps.sudtType.script.hashType) {
+  if (typeScript.hash_type !== SigServer.config.ckb.deps.sudtType.script.hashType) {
     return new Error(
-      `typescript hash_type:${typeScript.hash_type} doesn't match with:${config.ckb.deps.sudtType.script.hashType}`,
+      `typescript hash_type:${typeScript.hash_type} doesn't match with:${SigServer.config.ckb.deps.sudtType.script.hashType}`,
     );
   }
-  const sudtArgs = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
+  const sudtArgs = SigServer.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
   if (sudtArgs !== typeScript.args) {
     return new Error(`typescript args:${typeScript.args} doesn't with ${sudtArgs}`);
   }
@@ -221,7 +201,7 @@ export async function signCkbTx(params: collectSignaturesParams): Promise<string
 
   const args = require('minimist')(process.argv.slice(2));
   const index = args.index;
-  const privKey = ForceBridgeCore.config.ckb.keys[index];
+  const privKey = SigServer.config.ckb.keys[index];
   const message = txSkeleton.signingEntries[1].message;
   const sig = key.signRecoverable(message, privKey).slice(2);
 

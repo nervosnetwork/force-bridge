@@ -3,9 +3,12 @@ import { ConfigItem, MultisigItem, ScriptItem } from '@force-bridge/config';
 export interface EthConfig {
   rpcUrl: string;
   contractAddress: string;
+  multiSignKeys: string[];
 }
 
 export interface CkbConfig {
+  ckbRpcUrl: string;
+  keys: string[];
   multisigScript: MultisigItem;
   multisigType: ScriptItem;
   deps: {
@@ -15,7 +18,7 @@ export interface CkbConfig {
   };
 }
 
-export interface Config {
+export interface SigServerConfig {
   eth?: EthConfig;
   ckb?: CkbConfig;
 }
