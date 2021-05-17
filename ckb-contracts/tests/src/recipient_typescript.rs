@@ -54,6 +54,7 @@ fn get_correct_case() -> TestCase {
                     chain: 1,
                     asset: "trx".to_string(),
                     bridge_lock_code_hash: lock_hash,
+                    bridge_lock_hash_type: 0,
                     owner_lock_hash: [0u8; 32],
                     amount: 100,
                     fee: 10,

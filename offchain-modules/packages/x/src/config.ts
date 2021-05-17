@@ -83,7 +83,17 @@ export interface rpcConfig {
   };
 }
 
+export interface logConfig {
+  level: string;
+  logFile: string;
+}
+
+export interface commonConfig {
+  log: logConfig;
+}
+
 export interface Config {
+  common: commonConfig;
   ckb: CkbConfig;
   eth?: EthConfig;
   eos?: EosConfig;

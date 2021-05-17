@@ -8,7 +8,7 @@ import { Config, TronConfig } from '@force-bridge/x/dist/config';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { CkbMint, TronLock, TronUnlock } from '@force-bridge/x/dist/db/model';
 import { asyncSleep } from '@force-bridge/x/dist/utils';
-import { logger } from '@force-bridge/x/dist/utils/logger';
+import { initLog, logger } from '@force-bridge/x/dist/utils/logger';
 import { Amount, Script } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import nconf from 'nconf';
@@ -72,10 +72,11 @@ async function main() {
   const configPath = process.env.CONFIG_PATH || './config.json';
   nconf.env().file({ file: configPath });
   const config: TronConfig = nconf.get('forceBridge:tron');
-  logger.debug('config', config);
   const conf: Config = nconf.get('forceBridge');
   // init bridge force core
   await new ForceBridgeCore().init(conf);
+  conf.common.log.logFile = './log/tron-ci.log';
+  initLog(conf.common.log);
 
   const tronWeb = new TronWeb({
     fullHost: config.tronGridUrl,
@@ -90,9 +91,11 @@ async function main() {
   const memo = recipientLockscript.concat(',').concat(sudtExtraData);
 
   const trxLockRes = await transferTrx(tronWeb, from, to, amount, memo, userPrivateKey);
+  logger.info('trxLockRes:', trxLockRes);
   const trxTxHash: string = trxLockRes.transaction.txID;
 
   const trc10LockRes = await transferTrc10(tronWeb, from, to, amount, '1000696', memo, userPrivateKey);
+  logger.info('trc10LockRes:', trc10LockRes);
   const trc10TxHash: string = trc10LockRes.transaction.txID;
 
   const trc20LockRes = await transferTrc20(
@@ -139,7 +142,7 @@ async function main() {
         txHash: txHash,
       },
     });
-    logger.debug('tronLockRecords', tronLockRecords);
+    logger.info('tronLockRecords', tronLockRecords);
     assert(tronLockRecords.length === 1);
     const tronLockRecord = tronLockRecords[0];
 
@@ -153,7 +156,7 @@ async function main() {
         id: txHash.concat('_').concat(tronLockRecord.txIndex.toString()),
       },
     });
-    logger.debug('ckbMintRecords', ckbMintRecords);
+    logger.info('ckbMintRecords', ckbMintRecords);
     assert(ckbMintRecords.length === 1);
     const ckbMintRecord = ckbMintRecords[0];
     assert(ckbMintRecord.chain === ChainType.TRON);
@@ -167,9 +170,9 @@ async function main() {
     const balance = await getBalance(assetName);
 
     if (!sendBurn) {
-      logger.debug('assetName', assetName);
-      logger.debug('sudt balance:', balance);
-      logger.debug('expect balance:', new Amount(amount.toString(), 0));
+      logger.info('assetName', assetName);
+      logger.info('sudt balance:', balance);
+      logger.info('expect balance:', new Amount(amount.toString(), 0));
       assert(balance.eq(new Amount(amount.toString(), 0)));
     }
   };
@@ -188,7 +191,7 @@ async function main() {
       );
       const signedTx = ckb.signTransaction(PRI_KEY)(burnTx);
       burnTxHash = await ckb.rpc.sendTransaction(signedTx);
-      console.log(`burn Transaction has been sent with tx hash ${burnTxHash}`);
+      console.info(`burn Transaction has been sent with tx hash ${burnTxHash}`);
       await waitUntilCommitted(ckb, burnTxHash, 60);
       return burnTxHash;
     }
@@ -199,9 +202,9 @@ async function main() {
     const burnAmount = 1;
     const balance = await getBalance(assetName);
 
-    logger.debug('sudt balance:', balance);
+    logger.info('sudt balance:', balance);
     const expectBalance = new Amount((amount - burnAmount).toString(), 0);
-    logger.debug('expect sudt balance:', expectBalance);
+    logger.info('expect sudt balance:', expectBalance);
     assert(balance.eq(expectBalance));
 
     // check unlock record send
@@ -236,7 +239,7 @@ async function main() {
 
       //await checkEffect(trc20TxHash, 'TVWvkCasxAJUyzPKMQ2Rus1NtmBwrkVyBR', 'trc20');
     } catch (e) {
-      logger.warn('The tron component integration not pass yet.', { i, e });
+      logger.warn(`The tron component integration not pass yet. i:${i} error:`, e);
       continue;
     }
     logger.info('The tron component integration test pass!');

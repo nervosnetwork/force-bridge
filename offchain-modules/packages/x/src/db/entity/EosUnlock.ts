@@ -20,7 +20,6 @@ export class EosUnlock {
   @Column({ nullable: true })
   eosTxHash: string;
 
-  @Index()
   @Column({ default: 'todo' })
   status: EosUnlockStatus;
 

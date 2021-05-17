@@ -1,4 +1,6 @@
 import * as utils from '@nervosnetwork/ckb-sdk-utils';
+import fs from 'fs';
+import * as lodash from 'lodash';
 
 export function asyncSleep(ms = 0) {
   return new Promise((r) => setTimeout(r, ms));
@@ -39,4 +41,13 @@ export function stringToUint8Array(str): Uint8Array {
 
 export function isEmptyArray<T>(array: T[]): boolean {
   return !(array && array.length);
+}
+
+export function parsePrivateKey(path: string): string {
+  if (fs.existsSync(path)) {
+    const pk = `${fs.readFileSync(path)}`;
+    return lodash.trim(pk);
+  } else {
+    return path;
+  }
 }

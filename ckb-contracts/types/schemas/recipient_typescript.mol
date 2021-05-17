@@ -5,6 +5,7 @@ table RecipientCellData {
     chain: byte,
     asset: Bytes,
     bridge_lock_code_hash: Byte32,
+    bridge_lock_hash_type: byte,
     owner_lock_hash: Byte32,
     amount: Uint128,
     fee: Uint128,

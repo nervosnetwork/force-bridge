@@ -1,6 +1,6 @@
 import { rpcConfig, Config } from '@force-bridge/x/dist/config';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
-import { logger } from '@force-bridge/x/dist/utils/logger';
+import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import express from 'express';
@@ -12,6 +12,7 @@ import { ForceBridgeAPIV1Handler } from './handler';
 import { GetBalancePayload, GetBridgeTransactionSummariesPayload } from './types/apiv1';
 
 const forceBridgePath = '/force-bridge/api/v1';
+const defaultLogFile = './log/force-bridge-rpc.log';
 
 async function main() {
   const configPath = process.env.CONFIG_PATH || './config.json';
@@ -20,6 +21,10 @@ async function main() {
   const config: Config = nconf.get('forceBridge');
   const rpcConfig: rpcConfig = nconf.get('forceBridge:rpc');
   await new ForceBridgeCore().init(config);
+  if (!config.common.log.logFile) {
+    config.common.log.logFile = defaultLogFile;
+  }
+  initLog(ForceBridgeCore.config.common.log);
 
   const server = new JSONRPCServer();
 
@@ -50,9 +55,12 @@ async function main() {
   server.addMethod('generateBridgeOutNervosTransaction', forceBridgeRpc.generateBridgeOutNervosTransaction);
   server.addMethod('generateBridgeInNervosTransaction', forceBridgeRpc.generateBridgeInNervosTransaction);
   server.addMethod('sendSignedTransaction', forceBridgeRpc.sendSignedTransaction);
-  server.addMethod('getBridgeTransactionSummaries', async (payload: GetBridgeTransactionSummariesPayload) => {
-    return await forceBridgeRpc.getBridgeTransactionSummaries(payload);
-  });
+  server.addMethod(
+    'getBridgeTransactionSummaries',
+    async (payload: GetBridgeTransactionSummariesPayload<XChainNetWork>) => {
+      return await forceBridgeRpc.getBridgeTransactionSummaries(payload);
+    },
+  );
   server.addMethod('getBalance', async (payload: GetBalancePayload) => {
     return await forceBridgeRpc.getBalance(payload);
   });
