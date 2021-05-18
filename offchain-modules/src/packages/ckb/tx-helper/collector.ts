@@ -67,4 +67,33 @@ export class IndexerCollector extends Collector {
     });
     return balance;
   }
+
+  async getCellsByLockscriptAndCapacityWhenBurn(
+    lockscript: Script,
+    recipientTypeCodeHash: string,
+    needCapacity: Amount,
+  ): Promise<IndexerCell[]> {
+    let accCapacity = Amount.ZERO;
+    const terminator: Terminator = (index, c) => {
+      const cell = c;
+      if (accCapacity.gte(needCapacity)) {
+        return { stop: true, push: false };
+      }
+      if (cell.type !== undefined && cell.type.codeHash == recipientTypeCodeHash) {
+        return { stop: false, push: true };
+      }
+      if (cell.data.length / 2 - 1 > 0 || cell.type !== undefined) {
+        return { stop: false, push: false };
+      } else {
+        accCapacity = accCapacity.add(new Amount(cell.capacity, 0));
+        return { stop: false, push: true };
+      }
+    };
+    const searchKey = {
+      script: lockscript.serializeJson() as LumosScript,
+      script_type: ScriptType.lock,
+    };
+    const cells = await this.indexer.getCells(searchKey, terminator);
+    return cells;
+  }
 }
