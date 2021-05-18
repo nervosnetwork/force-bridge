@@ -4,13 +4,14 @@ import 'module-alias/register';
 import { JSONRPCServer } from 'json-rpc-2.0';
 import nconf from 'nconf';
 import { logger } from '@force-bridge/utils/logger';
-import { signEthTx } from './eth';
+import { signEthTx } from './ethSigner';
 import { collectSignaturesParams } from '@force-bridge/multisig/multisig-mgr';
 import { SigServer } from './sigserver';
-import { SigServerConfig } from './config';
 import { signCkbTx } from './ckbSigner';
 import { createConnection } from 'typeorm';
 import { SignedDb } from '@force-bridge/db/signed';
+import { ForceBridgeCore } from '@force-bridge/core';
+import { Config } from '@force-bridge/config';
 
 const apiPath = '/force-bridge/sign-server/api/v1';
 
@@ -18,18 +19,18 @@ async function main() {
   const args = require('minimist')(process.argv.slice(2));
   const configPath = process.env.CONFIG_PATH || './config.json';
   nconf.env().file({ file: configPath });
-  const config: SigServerConfig = nconf.get('forceBridge');
-
-  new SigServer(config);
+  const cfg: Config = nconf.get('forceBridge');
+  await new ForceBridgeCore().init(cfg);
+  // const conn = await createConnection();
+  let conn;
+  new SigServer(cfg, conn);
 
   const server = new JSONRPCServer();
-  const conn = await createConnection();
-  const signedDb = new SignedDb(conn);
   server.addMethod('signCkbTx', async (params: collectSignaturesParams) => {
     return await signCkbTx(params);
   });
   server.addMethod('signEthTx', async (payload: collectSignaturesParams) => {
-    return await signEthTx(payload, signedDb);
+    return await signEthTx(payload);
   });
 
   const app = express();
