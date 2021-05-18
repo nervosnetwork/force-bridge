@@ -9,8 +9,14 @@ import { Config, EthConfig } from '@force-bridge/x/dist/config';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { CkbDb, EthDb } from '@force-bridge/x/dist/db';
 import { CkbMint, EthLock, EthUnlock } from '@force-bridge/x/dist/db/model';
-import { asyncSleep, stringToUint8Array, toHexString, uint8ArrayToString } from '@force-bridge/x/dist/utils';
-import { logger } from '@force-bridge/x/dist/utils/logger';
+import {
+  asyncSleep,
+  parsePrivateKey,
+  stringToUint8Array,
+  toHexString,
+  uint8ArrayToString,
+} from '@force-bridge/x/dist/utils';
+import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
 import { ETH_ADDRESS } from '@force-bridge/x/dist/xchain/eth';
 import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
 import { Amount, Script } from '@lay2/pw-core';

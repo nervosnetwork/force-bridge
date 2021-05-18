@@ -2,11 +2,11 @@
 // todo: remove lumos indexer dep, use collector in packages/ckb/tx-helper/collector
 import { promises as fs } from 'fs';
 import path from 'path';
-import { asyncSleep as sleep, blake2b } from '@force-bridge/x/dist/utils';
-import { CkbTxGenerator } from '@force-bridge/x/dists/ckb/tx-helper/generator';
+import { Asset, BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
+import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
 import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
-import { Asset, BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '../packages/ckb/model/asset';
+import { asyncSleep as sleep, blake2b } from '@force-bridge/x/dist/utils';
 
 import { OutPoint, Script } from '@lay2/pw-core';
 import RawTransactionParams from '@nervosnetwork/ckb-sdk-core';

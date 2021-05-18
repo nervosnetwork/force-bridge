@@ -3,9 +3,9 @@ import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { Config } from '@force-bridge/x/dist/config';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { asyncSleep } from '@force-bridge/x/dist/utils';
+import { initLog } from '@force-bridge/x/dist/utils/logger';
 import { Amount, HashType, Script } from '@lay2/pw-core';
 import nconf from 'nconf';
-import { initLog } from '@force-bridge/x/dist/utils/logger';
 
 const defaultLogFile = './log/force-bridge-cli.log';
 

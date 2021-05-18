@@ -1,5 +1,5 @@
-import * as utils from '@nervosnetwork/ckb-sdk-utils';
 import fs from 'fs';
+import * as utils from '@nervosnetwork/ckb-sdk-utils';
 import * as lodash from 'lodash';
 
 export function asyncSleep(ms = 0) {

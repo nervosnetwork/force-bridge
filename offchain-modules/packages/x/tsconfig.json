@@ -13,11 +13,7 @@
     "declaration": true,
     "declarationMap": true,
     "outDir": "dist",
-    "skipLibCheck": true,
-    "baseUrl": ".",
-    "paths": {
-      "@force-bridge/*": ["src/*"]
-    }
+    "skipLibCheck": true
   },
   "include": ["src", "src/**/*.json"]
 }

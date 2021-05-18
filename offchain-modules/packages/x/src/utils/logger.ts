@@ -1,5 +1,5 @@
 import { configure, getLogger } from 'log4js';
-import { logConfig } from '@force-bridge/config';
+import { logConfig } from '../config';
 export const logger = getLogger('@force-bridge/core');
 
 const logPattern = '%[[%d %p %f{2}:%l]%] %m%n';

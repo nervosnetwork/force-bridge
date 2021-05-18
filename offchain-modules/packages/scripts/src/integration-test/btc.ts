@@ -11,8 +11,9 @@ import { BtcLock } from '@force-bridge/x/dist/db/entity/BtcLock';
 import { BtcUnlock } from '@force-bridge/x/dist/db/entity/BtcUnlock';
 import { CkbMint } from '@force-bridge/x/dist/db/entity/CkbMint';
 import { asyncSleep } from '@force-bridge/x/dist/utils';
-import { logger } from '@force-bridge/x/dist/utils/logger';
+import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
 import { BTCChain, getBtcMainnetFee } from '@force-bridge/x/dist/xchain/btc';
+
 import { Amount, Script } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import bitcore from 'bitcore-lib';

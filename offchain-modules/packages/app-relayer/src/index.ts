@@ -9,12 +9,12 @@ import { CkbHandler } from '@force-bridge/x/dist/handlers/ckb';
 import { EosHandler } from '@force-bridge/x/dist/handlers/eos';
 import { EthHandler } from '@force-bridge/x/dist/handlers/eth';
 import { TronHandler } from '@force-bridge/x/dist/handlers/tron';
+import { parsePrivateKey } from '@force-bridge/x/dist/utils';
+import { initLog } from '@force-bridge/x/dist/utils/logger';
 import { BTCChain } from '@force-bridge/x/dist/xchain/btc';
 import { EthChain } from '@force-bridge/x/dist/xchain/eth';
 import nconf from 'nconf';
 import { createConnection } from 'typeorm';
-import { initLog } from '@force-bridge/utils/logger';
-import { parsePrivateKey } from '@force-bridge/utils';
 
 const defaultLogFile = './log/force-bridge-relay.log';
 

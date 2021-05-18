@@ -1,10 +1,10 @@
 import { Config } from '@force-bridge/x/dist/config';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { asyncSleep } from '@force-bridge/x/dist/utils';
+import { initLog, logger } from '@force-bridge/x/dist/utils/logger';
 import { ethers } from 'ethers';
 import { JSONRPCClient } from 'json-rpc-2.0';
 import nconf from 'nconf';
-import { initLog, logger } from '@force-bridge/x/dist/utils/logger';
 
 const CKB_PRI_KEY = process.env.PRI_KEY || '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
 

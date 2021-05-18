@@ -1,6 +1,6 @@
+import { parsePrivateKey } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
 import CKB from '@nervosnetwork/ckb-sdk-core';
-import { parsePrivateKey } from '@force-bridge/x/dist/utils';
 
 // const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
 // const CKB_INDEXER_URL = process.env.CKB_INDEXER_URL || 'http://127.0.0.1:8116';

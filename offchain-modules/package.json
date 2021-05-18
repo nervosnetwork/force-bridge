@@ -16,7 +16,7 @@
     "lint": "run-p check:prettier check:eslint",
     "lint-staged": "eslint --fix -c .eslintrc.next.js $(git diff --cached --staged --name-only --relative | grep -E \"(.ts$)\")",
     "fix": "run-p fix:prettier fix:eslint",
-    "fix:eslint": "eslint --format=pretty 'packages/*/src/**/*.ts'",
+    "fix:eslint": "eslint --fix --format=pretty 'packages/*/src/**/*.ts'",
     "fix:prettier": "prettier --write .",
     "watch:start": "ts-node-dev --respawn --transpile-only ./packages/apps/relayer/index.ts",
     "check:prettier": "prettier -c .",
@@ -120,10 +120,9 @@
     ]
   },
   "lint-staged": {
-    "src/**/*.ts": [
+    "packages/*/src/**/*.ts": [
       "npm run lint-staged",
       "git add"
     ]
-  },
-
+  }
 }
