@@ -1,6 +1,6 @@
 import { key } from '@ckb-lumos/hd';
 import { ckbCollectSignaturesPayload, collectSignaturesParams, mintRecord } from '@force-bridge/multisig/multisig-mgr';
-import { ChainType, EthAsset } from '@force-bridge/ckb/model/asset';
+import { BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '@force-bridge/ckb/model/asset';
 import { lockTopic } from '@force-bridge/xchain/eth';
 import { fromHexString, uint8ArrayToString } from '@force-bridge/utils';
 import { Address, AddressType, Amount } from '@lay2/pw-core';
@@ -19,8 +19,22 @@ async function verifyCreateCellTx(rawData: string, payload: ckbCollectSignatures
   const ownLockHash = SigServer.getOwnLockHash();
   for (let i = 0; i < createAssets.length; i++) {
     const createAsset = createAssets[i];
-    if (createAsset.chain !== ChainType.ETH) {
-      return Promise.reject(new Error(`chain type:${createAsset.chain} doesn't support`));
+    let asset;
+    switch (createAsset.chain) {
+      case ChainType.BTC:
+        asset = new BtcAsset(createAsset.asset, ownLockHash);
+        break;
+      case ChainType.ETH:
+        asset = new EthAsset(createAsset.asset, ownLockHash);
+        break;
+      case ChainType.TRON:
+        asset = new TronAsset(createAsset.asset, ownLockHash);
+        break;
+      case ChainType.EOS:
+        asset = new EosAsset(createAsset.asset, ownLockHash);
+        break;
+      default:
+        return Promise.reject(new Error(`chain type:${createAsset.chain} doesn't support`));
     }
 
     const output = txSkeleton.outputs[i];
@@ -33,7 +47,6 @@ async function verifyCreateCellTx(rawData: string, payload: ckbCollectSignatures
         `create bridge cell data:${output.data} doesn't match with 0x, asset chain:${createAsset.chain} address:${createAsset.asset}`,
       );
     }
-    const asset = new EthAsset(createAsset.asset, ownLockHash);
     if (lockScript.args !== asset.toBridgeLockscriptArgs()) {
       return new Error(
         `create bridge cell lockScript args:${
@@ -86,6 +99,14 @@ async function verifyMintTx(rawData: string, payload: ckbCollectSignaturesPayloa
   let err: Error;
   for (let i = 0; i < mintRecords.length; i++) {
     const mintRecord = mintRecords[i];
+    if (
+      mintRecord.chain === ChainType.BTC ||
+      mintRecord.chain === ChainType.EOS ||
+      mintRecord.chain === ChainType.TRON
+    ) {
+      //those chains doesn't verify now
+      continue;
+    }
     err = await verifyEthMintRecord(mintRecord);
     if (err) {
       return err;
