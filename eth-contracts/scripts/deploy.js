@@ -4,10 +4,10 @@
 // When running the script with `hardhat run <script>` you'll find the Hardhat
 // Runtime Environment's members available in the global scope.
 const { Wallet } = require('ethers');
-const hre = require('hardhat');
+const { upgrades } = require("hardhat");
 const nconf = require('nconf');
 
-async function main() {
+async function deploy() {
   const configPath =
     process.env.CONFIG_PATH || '../offchain-modules/config.json';
   nconf.env().file({ file: configPath });
@@ -18,7 +18,7 @@ async function main() {
 
   const multiSignThreshold = nconf.get('forceBridge:eth:multiSignThreshold');
   const ForceBridge = await ethers.getContractFactory('ForceBridge');
-  const bridge = await ForceBridge.deploy(validators, multiSignThreshold);
+  const bridge = await upgrades.deployProxy(ForceBridge, [validators, multiSignThreshold], { initializer: 'initialize' });
   await bridge.deployed();
   const eth_node = nconf.get('forceBridge:eth:rpcUrl');
   const provider = ethers.getDefaultProvider(eth_node);
@@ -28,6 +28,17 @@ async function main() {
   nconf.save();
 
   console.log(`ForceBridge deployed to: ${bridge.address}`);
+}
+
+async function upgrade() {
+  const ForceBridge = await ethers.getContractFactory('ForceBridge');
+  console.log("Upgrading ForceBridge...");
+  const biods = await upgrades.upgradeProxy(process.env.ForceBridge, ForceBridge);
+  console.log("ForceBridge upgraded");
+}
+async function main() {
+  await deploy();
+  // await upgrade();
 }
 
 main()

@@ -1,4 +1,4 @@
-const { ethers } = require('hardhat');
+const { ethers,upgrades } = require('hardhat');
 const { expect } = require('chai');
 const { keccak256, defaultAbiCoder, toUtf8Bytes } = ethers.utils;
 const {
@@ -40,7 +40,7 @@ describe('ForceBridge', () => {
       'contracts/ForceBridge.sol:ForceBridge'
     );
 
-    forceBridge = await factory.deploy(validators, multisigThreshold);
+    forceBridge = await upgrades.deployProxy(factory,[validators, multisigThreshold]);
     await forceBridge.deployTransaction.wait(1);
 
     contractAddress = forceBridge.address;

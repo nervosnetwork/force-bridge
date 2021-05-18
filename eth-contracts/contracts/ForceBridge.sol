@@ -7,8 +7,9 @@ import {SafeERC20} from "./libraries/SafeERC20.sol";
 import {Address} from "./libraries/Address.sol";
 import {MultisigUtils} from "./libraries/MultisigUtils.sol";
 import {SafeMath} from "./libraries/SafeMath.sol";
+import {Initializable} from  "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
-contract ForceBridge {
+contract ForceBridge  is Initializable {
     using Address for address;
     using SafeERC20 for IERC20;
 
@@ -59,7 +60,7 @@ contract ForceBridge {
         bytes ckbTxHash;
     }
 
-    constructor(address[] memory validators, uint256 multisigThreshold) {
+    function initialize(address[] memory validators, uint256 multisigThreshold) public initializer {
         // set DOMAIN_SEPARATOR
         // refer: https://github.com/OpenZeppelin/openzeppelin-contracts/blob/24a0bc23cfe3fbc76f8f2510b78af1e948ae6651/contracts/utils/cryptography/draft-EIP712.sol
         bytes32 hashedName = keccak256(bytes(NAME_712));
