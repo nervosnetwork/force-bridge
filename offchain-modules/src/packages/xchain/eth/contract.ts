@@ -87,7 +87,7 @@ export class EthChain {
 
   async sendUnlockTxs(records: EthUnlock[]): Promise<any> {
     logger.debug('contract balance', await this.provider.getBalance(this.bridgeContractAddr));
-    const params = records.map((r) => {
+    const params: EthUnlockRecord[] = records.map((r) => {
       return {
         token: r.asset,
         recipient: r.recipientAddress,
@@ -97,13 +97,18 @@ export class EthChain {
     });
     const domainSeparator = await this.bridge.DOMAIN_SEPARATOR();
     const typeHash = await this.bridge.UNLOCK_TYPEHASH();
-    const nonce = await this.bridge.latestUnlockNonce_();
+    const nonce: number = await this.bridge.latestUnlockNonce_();
     const signatures = this.signUnlockRecords(domainSeparator, typeHash, params, nonce);
     logger.debug('sendUnlockTxs params', params);
     return this.bridge.unlock(params, nonce, signatures);
   }
 
-  private async signUnlockRecords(domainSeparator: string, typeHash: string, records, nonce) {
+  private async signUnlockRecords(
+    domainSeparator: string,
+    typeHash: string,
+    records: EthUnlockRecord[],
+    nonce: number,
+  ) {
     const rawData = buildSigRawData(domainSeparator, typeHash, records, nonce);
     const sigs = await this.multisigMgr.collectSignatures({
       rawData: rawData,

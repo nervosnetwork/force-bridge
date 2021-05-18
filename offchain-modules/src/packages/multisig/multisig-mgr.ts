@@ -35,6 +35,7 @@ export interface ckbCollectSignaturesPayload {
 export interface collectSignaturesParams {
   rawData: string;
   payload: ethCollectSignaturesPayload | ckbCollectSignaturesPayload;
+  failedTxHash?: string;
 }
 
 export class MultiSigMgr {

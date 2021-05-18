@@ -9,6 +9,8 @@ import { collectSignaturesParams } from '@force-bridge/multisig/multisig-mgr';
 import { SigServer } from './sigserver';
 import { SigServerConfig } from './config';
 import { signCkbTx } from './ckbSigner';
+import { createConnection } from 'typeorm';
+import { SignedDb } from '@force-bridge/db/signed';
 
 const apiPath = '/force-bridge/sign-server/api/v1';
 
@@ -21,11 +23,13 @@ async function main() {
   new SigServer(config);
 
   const server = new JSONRPCServer();
+  const conn = await createConnection();
+  const signedDb = new SignedDb(conn);
   server.addMethod('signCkbTx', async (params: collectSignaturesParams) => {
     return await signCkbTx(params);
   });
-  server.addMethod('signEthTx', async (payload) => {
-    return await signEthTx(payload);
+  server.addMethod('signEthTx', async (payload: collectSignaturesParams) => {
+    return await signEthTx(payload, signedDb);
   });
 
   const app = express();

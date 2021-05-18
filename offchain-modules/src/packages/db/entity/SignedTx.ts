@@ -24,10 +24,7 @@ export class SignedTx {
   txHash: string;
 
   @Column()
-  signature: string;
-
-  @Column()
-  rawData: string;
+  singerPubkey: string;
 
   @CreateDateColumn()
   createdAt: string;

@@ -1,4 +1,4 @@
-import { Connection, Repository } from 'typeorm';
+import { Connection, In, Repository } from 'typeorm';
 import { ISigned } from '@force-bridge/db/model';
 import { SignedTx } from '@force-bridge/db/entity/SignedTx';
 
@@ -19,5 +19,13 @@ export class SignedDb {
       .createQueryBuilder('s')
       .where(`refTxHash in (${refTxHashes.join(',')})`)
       .getMany();
+  }
+  async getSignedByPubkeyAndMsgHash(pubkey: string, refTxHashes: string[]): Promise<SignedTx[]> {
+    return this.signedRepository.find({
+      where: {
+        refTxHash: In([refTxHashes]),
+        singerPubkey: pubkey,
+      },
+    });
   }
 }

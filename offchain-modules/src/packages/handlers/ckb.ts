@@ -124,7 +124,7 @@ export class CkbHandler {
         } catch (e) {
           continue;
         }
-        if (await this.isBurnTx(tx, cellData)) {
+        if (await isBurnTx(tx, cellData)) {
           const burnPreviousTx: TransactionWithStatus = await this.ckb.rpc.getTransaction(
             tx.inputs[0].previousOutput.txHash,
           );
@@ -169,60 +169,6 @@ export class CkbHandler {
       latestHeight++;
       await asyncSleep(1000);
     }
-  }
-
-  async isBurnTx(tx: Transaction, cellData: RecipientCellData): Promise<boolean> {
-    if (tx.outputs.length < 1) {
-      return false;
-    }
-    const ownLockHash = getOwnLockHash(ForceBridgeCore.config.ckb.multisigScript);
-    logger.debug('amount: ', toHexString(new Uint8Array(cellData.getAmount().raw())));
-    logger.debug('recipient address: ', toHexString(new Uint8Array(cellData.getRecipientAddress().raw())));
-    logger.debug('asset: ', toHexString(new Uint8Array(cellData.getAsset().raw())));
-    logger.debug('chain: ', cellData.getChain());
-    let asset;
-    const assetAddress = toHexString(new Uint8Array(cellData.getAsset().raw()));
-    switch (cellData.getChain()) {
-      case ChainType.BTC:
-        asset = new BtcAsset(uint8ArrayToString(fromHexString(assetAddress)), ownLockHash);
-        break;
-      case ChainType.ETH:
-        asset = new EthAsset(uint8ArrayToString(fromHexString(assetAddress)), ownLockHash);
-        break;
-      case ChainType.TRON:
-        asset = new TronAsset(uint8ArrayToString(fromHexString(assetAddress)), ownLockHash);
-        break;
-      case ChainType.EOS:
-        asset = new EosAsset(uint8ArrayToString(fromHexString(assetAddress)), ownLockHash);
-        break;
-      default:
-        return false;
-    }
-
-    // verify tx input: sudt cell.
-    const preHash = tx.inputs[0].previousOutput.txHash;
-    const txPrevious = await this.ckb.rpc.getTransaction(preHash);
-    if (txPrevious == null) {
-      return false;
-    }
-    const sudtType = txPrevious.transaction.outputs[Number(tx.inputs[0].previousOutput.index)].type;
-    const expectType = {
-      codeHash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
-      hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
-      args: this.getBridgeLockHash(asset),
-    };
-    logger.debug('expectType:', expectType);
-    logger.debug('sudtType:', sudtType);
-    if (sudtType == null || expectType.codeHash != sudtType.codeHash || expectType.args != sudtType.args) {
-      return false;
-    }
-
-    // verify tx output recipientLockscript: recipient cell.
-    const recipientScript = tx.outputs[0].type;
-    const expect = ForceBridgeCore.config.ckb.deps.recipientType.script;
-    logger.debug('recipientScript:', recipientScript);
-    logger.debug('expect:', expect);
-    return recipientScript.codeHash == expect.codeHash;
   }
 
   async handleMintRecords(): Promise<never> {
@@ -453,6 +399,65 @@ export class CkbHandler {
     this.handleMintRecords();
     logger.info('ckb handler started 🚀');
   }
+}
+export async function isBurnTx(tx: Transaction, cellData: RecipientCellData): Promise<boolean> {
+  if (tx.outputs.length < 1) {
+    return false;
+  }
+  const ownLockHash = getOwnLockHash(ForceBridgeCore.config.ckb.multisigScript);
+  logger.debug('amount: ', toHexString(new Uint8Array(cellData.getAmount().raw())));
+  logger.debug('recipient address: ', toHexString(new Uint8Array(cellData.getRecipientAddress().raw())));
+  logger.debug('asset: ', toHexString(new Uint8Array(cellData.getAsset().raw())));
+  logger.debug('chain: ', cellData.getChain());
+  let asset;
+  const assetAddress = toHexString(new Uint8Array(cellData.getAsset().raw()));
+  switch (cellData.getChain()) {
+    case ChainType.BTC:
+      asset = new BtcAsset(uint8ArrayToString(fromHexString(assetAddress)), ownLockHash);
+      break;
+    case ChainType.ETH:
+      asset = new EthAsset(uint8ArrayToString(fromHexString(assetAddress)), ownLockHash);
+      break;
+    case ChainType.TRON:
+      asset = new TronAsset(uint8ArrayToString(fromHexString(assetAddress)), ownLockHash);
+      break;
+    case ChainType.EOS:
+      asset = new EosAsset(uint8ArrayToString(fromHexString(assetAddress)), ownLockHash);
+      break;
+    default:
+      return false;
+  }
+
+  // verify tx input: sudt cell.
+  const preHash = tx.inputs[0].previousOutput.txHash;
+  const txPrevious = await ForceBridgeCore.ckb.rpc.getTransaction(preHash);
+  if (txPrevious == null) {
+    return false;
+  }
+  const sudtType = txPrevious.transaction.outputs[Number(tx.inputs[0].previousOutput.index)].type;
+  const bridgeCellLockscript = {
+    codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
+    hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
+    args: asset.toBridgeLockscriptArgs(),
+  };
+  const bridgeLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
+  const expectType = {
+    codeHash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
+    hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
+    args: bridgeLockHash,
+  };
+  logger.debug('expectType:', expectType);
+  logger.debug('sudtType:', sudtType);
+  if (sudtType == null || expectType.codeHash != sudtType.codeHash || expectType.args != sudtType.args) {
+    return false;
+  }
+
+  // verify tx output recipientLockscript: recipient cell.
+  const recipientScript = tx.outputs[0].type;
+  const expect = ForceBridgeCore.config.ckb.deps.recipientType.script;
+  logger.debug('recipientScript:', recipientScript);
+  logger.debug('expect:', expect);
+  return recipientScript.codeHash == expect.codeHash;
 }
 
 type BurnDbData = {
