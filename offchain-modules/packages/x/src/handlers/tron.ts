@@ -78,8 +78,9 @@ export class TronHandler {
         }
       } catch (e) {
         logger.error('TronHandler watchLockEvents error:', e);
+      } finally {
+        await asyncSleep(3000);
       }
-      await asyncSleep(3000);
     }
   }
 
@@ -156,8 +157,9 @@ export class TronHandler {
         }
       } catch (e) {
         logger.error('TronHandler watchUnlockEvents error:', e);
+      } finally {
+        await asyncSleep(3000);
       }
-      await asyncSleep(3000);
     }
   }
 
