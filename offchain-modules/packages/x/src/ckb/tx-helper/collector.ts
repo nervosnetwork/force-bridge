@@ -80,6 +80,7 @@ export class IndexerCollector extends Collector {
         return { stop: true, push: false };
       }
       if (cell.type !== undefined && cell.type.codeHash == recipientTypeCodeHash) {
+        accCapacity = accCapacity.add(new Amount(cell.capacity, 0));
         return { stop: false, push: true };
       }
       if (cell.data.length / 2 - 1 > 0 || cell.type !== undefined) {
