@@ -180,11 +180,10 @@ export class TronHandler {
         if (trc20LockEvents.length != 0) {
           minTimestamp = Math.max(trc20LockEvents[trc20LockEvents.length - 1].timestamp, minTimestamp);
         }
-        await asyncSleep(3000);
       } catch (e) {
         logger.error('TronHandler watchLockEvents error:', e);
-        setTimeout(() => this.watchLockEvents(), 3000);
       }
+      await asyncSleep(3000);
     }
   }
 
@@ -334,11 +333,10 @@ export class TronHandler {
             await this.db.saveTronUnlock([unlockRecord]);
           }
         }
-        await asyncSleep(3000);
       } catch (e) {
         logger.error('TronHandler watchUnlockEvents error:', e);
-        setTimeout(() => this.watchLockEvents(), 3000);
       }
+      await asyncSleep(3000);
     }
   }
 
