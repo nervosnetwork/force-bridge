@@ -1,25 +1,12 @@
 {
+  "extends": "./tsconfig.build.json",
   "compilerOptions": {
-    "module": "commonjs",
-    "composite": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "target": "es2020",
-    "types": ["node", "jest"],
-    "emitDecoratorMetadata": true,
+    "types": ["node"],
     "experimentalDecorators": true,
-    "resolveJsonModule": true,
-    "moduleResolution": "node",
-    "sourceMap": true,
-    "declaration": true,
-    "declarationMap": true,
-    "outDir": "dist",
-    "skipLibCheck": true,
-    "baseUrl": "./src",
+    "emitDecoratorMetadata": true,
+    "baseUrl": ".",
     "paths": {
-      "@force-bridge/*": ["./packages/*"]
+      "@force-bridge/*": ["packages/*/src"]
     }
-  },
-  "include": ["src/**/*.ts", "src/**/*.json"],
-  "exclude": ["node_modules/**"]
+  }
 }
