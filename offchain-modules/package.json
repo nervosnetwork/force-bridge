@@ -2,29 +2,31 @@
   "name": "force-bridge",
   "version": "0.0.1",
   "description": "",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
-    "start": "ts-node ./src/apps/relayer/index.ts",
-    "rpc": "ts-node ./src/apps/rpc/index.ts",
-    "rpc-test": "ts-node ./src/scripts/integration-test/rpc.ts",
-    "demo": "ts-node-dev scripts/demo.ts",
-    "build": "tsc",
+    "start": "ts-node ./packages/app-relayer/src/index.ts",
+    "rpc": "ts-node ./packages/app-rpc-server/src/index.ts",
+    "rpc-test": "ts-node ./packages/scripts/src/integration-test/rpc.ts",
+    "demo": "ts-node-dev scripts/src/demo.ts",
+    "build": "lerna run build",
     "test": "ava",
-    "lint": "run-p check:prettier check:eslint build",
-    "lint-staged": "eslint --fix -c .eslintrc.next.js $(git diff --cached --staged --name-only --relative | grep -E \"(.ts$)\")",
+    "lint": "run-p check:prettier check:eslint",
+    "lint-staged": "eslint --fix $(git diff --cached --staged --name-only --relative | grep -E \"(.ts$)\")",
     "fix": "run-p fix:prettier fix:eslint",
-    "fix:eslint": "eslint src/**/*.ts --fix",
+    "fix:eslint": "eslint --fix --format=pretty 'packages/*/src/**/*.ts'",
     "fix:prettier": "prettier --write .",
-    "watch:start": "ts-node-dev --respawn --transpile-only ./src/apps/relayer/index.ts",
-    "watch:ava": "ava --watch",
-    "watch:build": "tsc -w",
+    "watch:start": "ts-node-dev --respawn --transpile-only ./packages/apps/relayer/index.ts",
     "check:prettier": "prettier -c .",
-    "check:eslint": "eslint src/**/*.ts",
+    "check:eslint": "yarn eslint --format=pretty 'packages/*/src/**/*.ts'",
     "clean": "rimraf lumos_db dist force-bridge.sqlite",
-    "eth-test": "ts-node ./src/scripts/integration-test/eth.ts",
-    "eos-test": "ts-node ./src/scripts/integration-test/eos.ts",
-    "tron-test": "ts-node ./src/scripts/integration-test/tron.ts",
+    "eth-test": "ts-node ./packages/scripts/src/integration-test/eth.ts",
+    "eos-test": "ts-node ./packages/scripts/src/integration-test/eos.ts",
+    "tron-test": "ts-node ./packages/scripts/src/integration-test/tron.ts",
     "prepare-xchain-test": "sleep 2",
-    "btc-test": "ts-node ./src/scripts/integration-test/btc.ts",
+    "btc-test": "ts-node ./packages/scripts/src/integration-test/btc.ts",
     "xchain-test": "run-s prepare-xchain-test eth-test btc-test eos-test tron-test",
     "integration-test": "run-p -r start xchain-test",
     "ci": "run-s clean build deploy integration-test",
@@ -33,7 +35,7 @@
     "cov:html": "nyc report --reporter=html",
     "cov:send": "nyc report --reporter=lcov && codecov",
     "cov:check": "nyc report && nyc check-coverage --lines 100 --functions 100 --branches 100",
-    "deploy": "ts-node-dev ./src/scripts/deploy_ckb.ts",
+    "deploy": "ts-node-dev ./packages/scripts/src/deploy_ckb.ts",
     "prepare": "cd .. && husky install offchain-modules/.husky"
   },
   "author": "",
@@ -54,6 +56,7 @@
     "eslint-plugin-prettier": "^3.3.1",
     "eslint-plugin-tsc": "^2.0.0",
     "husky": "^6.0.0",
+    "lerna": "^4.0.0",
     "lint-staged": "^10.5.4",
     "nodemon": "^2.0.7",
     "npm-run-all": "^4.1.5",
@@ -86,7 +89,6 @@
     "json-rpc-2.0": "^0.2.16",
     "lodash": "^4.17.20",
     "log4js": "^6.3.0",
-    "module-alias": "^2.2.2",
     "mysql2": "^2.2.5",
     "nconf": "^0.11.2",
     "node-fetch": "^1.7.3",
@@ -100,9 +102,9 @@
   },
   "ava": {
     "files": [
-      "src/**/test/**/*.ts",
-      "src/**/*.spec.ts",
-      "!src/**/helper.ts"
+      "packages/*/src/**/test/**/*.ts",
+      "packages/*/src/**/*.spec.ts",
+      "!packages/*/src/**/helper.ts"
     ],
     "extensions": [
       "ts"
@@ -112,27 +114,16 @@
       "tsconfig-paths/register"
     ]
   },
-  "bin": {
-    "forcecli": "./dist/src/apps/cli/index.js"
-  },
   "nyc": {
     "extends": "@istanbuljs/nyc-config-typescript",
     "exclude": [
       "**/*.spec.ts"
     ]
   },
-  "_moduleAliases": {
-    "@force-bridge": "dist/src/packages"
-  },
   "lint-staged": {
-    "src/**/*.ts": [
+    "packages/*/src/**/*.ts": [
       "npm run lint-staged",
       "git add"
     ]
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
   }
 }

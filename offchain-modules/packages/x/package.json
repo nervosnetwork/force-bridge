@@ -1,0 +1,112 @@
+{
+  "name": "@force-bridge/x",
+  "version": "0.0.1",
+  "description": "",
+  "main": "dist",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "start": "ts-node ./src/apps/relayer/index.ts",
+    "rpc": "ts-node ./src/apps/rpc/index.ts",
+    "rpc-test": "ts-node ./src/scripts/integration-test/rpc.ts",
+    "demo": "ts-node-dev scripts/demo.ts",
+    "build": "rimraf dist && tsc",
+    "test": "ava",
+    "lint": "eslint src/**/*.ts",
+    "lint-staged": "eslint --fix -c .eslintrc.next.js $(git diff --name-only --relative | grep -E \"(.ts$)\")",
+    "fix": "run-p fix:prettier fix:eslint",
+    "fix:eslint": "eslint src/**/*.ts --fix",
+    "fix:prettier": "prettier --write .",
+    "watch:start": "ts-node-dev --respawn --transpile-only ./src/apps/relayer/index.ts",
+    "watch:ava": "ava --watch",
+    "watch:build": "tsc -w",
+    "check:prettier": "prettier -c .",
+    "check:eslint": "eslint src/**/*.ts",
+    "clean": "rimraf lumos_db dist force-bridge.sqlite",
+    "eth-test": "ts-node ./src/scripts/integration-test/eth.ts",
+    "eos-test": "ts-node ./src/scripts/integration-test/eos.ts",
+    "tron-test": "ts-node ./src/scripts/integration-test/tron.ts",
+    "prepare-xchain-test": "sleep 2",
+    "btc-test": "ts-node ./src/scripts/integration-test/btc.ts",
+    "xchain-test": "run-s prepare-xchain-test eth-test tron-test btc-test eos-test",
+    "integration-test": "run-p -r start xchain-test",
+    "ci": "run-s clean build deploy integration-test",
+    "test:unit": "nyc --silent ava",
+    "cov": "run-s build test:unit",
+    "cov:html": "nyc report --reporter=html",
+    "cov:send": "nyc report --reporter=lcov && codecov",
+    "cov:check": "nyc report && nyc check-coverage --lines 100 --functions 100 --branches 100",
+    "deploy": "ts-node-dev ./src/scripts/deploy_ckb.ts"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@nervosnetwork/ckb-types": "^0.39.0",
+    "@types/log4js": "^2.3.5"
+  },
+  "dependencies": {
+    "@ckb-lumos/base": "^0.16.0",
+    "@ckb-lumos/indexer": "^0.16.0",
+    "@ckb-lumos/rpc": "^0.16.0",
+    "@lay2/pw-core": "^0.3.22",
+    "@nervosnetwork/ckb-sdk-core": "^0.39.0",
+    "@types/node": "^14.14.31",
+    "axios": "^0.21.1",
+    "bitcore-lib": "^8.25.7",
+    "ckb-js-toolkit": "^0.10.2",
+    "commander": "^7.2.0",
+    "cors": "^2.8.5",
+    "dotenv": "^8.2.0",
+    "eosjs": "^22.0.0-rc2",
+    "eosjs-api": "^7.0.4",
+    "ethers": "^5.0.32",
+    "json-rpc-2.0": "^0.2.16",
+    "lodash": "^4.17.20",
+    "log4js": "^6.3.0",
+    "mysql2": "^2.2.5",
+    "nconf": "^0.11.2",
+    "node-fetch": "^1.7.3",
+    "reflect-metadata": "^0.1.13",
+    "rpc-bitcoin": "^2.0.0",
+    "sqlite3": "^5.0.2",
+    "trongrid": "^1.2.6",
+    "tronweb": "^3.2.3",
+    "typeorm": "^0.2.31",
+    "typeorm-naming-strategies": "^2.0.0"
+  },
+  "ava": {
+    "files": [
+      "src/**/test/**/*.ts",
+      "src/**/*.spec.ts",
+      "!src/**/helper.ts"
+    ],
+    "extensions": [
+      "ts"
+    ],
+    "require": [
+      "ts-node/register",
+      "tsconfig-paths/register"
+    ]
+  },
+  "bin": {
+    "forcecli": "./dist/src/apps/cli/index.js"
+  },
+  "nyc": {
+    "extends": "@istanbuljs/nyc-config-typescript",
+    "exclude": [
+      "**/*.spec.ts"
+    ]
+  },
+  "lint-staged": {
+    "src/**/*.ts": [
+      "npm run lint-staged",
+      "git add"
+    ]
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  }
+}
