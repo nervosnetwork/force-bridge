@@ -6,6 +6,7 @@ import { IndexerCollector } from '../ckb/tx-helper/collector';
 import { RecipientCellData } from '../ckb/tx-helper/generated/eth_recipient_cell';
 import { CkbTxGenerator, MintAssetRecord } from '../ckb/tx-helper/generator';
 import { ScriptType } from '../ckb/tx-helper/indexer';
+import { forceBridgeRole } from '../config';
 import { ForceBridgeCore } from '../core';
 import { CkbDb } from '../db';
 import { CkbMint, ICkbBurn } from '../db/model';
@@ -22,57 +23,59 @@ export class CkbHandler {
   private ckb = ForceBridgeCore.ckb;
   private indexer = ForceBridgeCore.indexer;
   private PRI_KEY = ForceBridgeCore.config.ckb.privateKey;
-  constructor(private db: CkbDb) {}
+  constructor(private db: CkbDb, private role: forceBridgeRole) {}
 
   // save unlock event first and then
   async saveBurnEvent(burns: ICkbBurn[]): Promise<void> {
     logger.debug('CkbHandler saveBurnEvent:', burns);
     for (const burn of burns) {
-      switch (burn.chain) {
-        case ChainType.BTC:
-          await this.db.createBtcUnlock([
-            {
-              ckbTxHash: burn.ckbTxHash,
-              asset: burn.asset,
-              amount: burn.amount,
-              chain: burn.chain,
-              recipientAddress: burn.recipientAddress,
-            },
-          ]);
-          break;
-        case ChainType.ETH:
-          await this.db.createEthUnlock([
-            {
-              ckbTxHash: burn.ckbTxHash,
-              asset: burn.asset,
-              amount: burn.amount,
-              recipientAddress: burn.recipientAddress,
-            },
-          ]);
-          break;
-        case ChainType.TRON:
-          await this.db.createTronUnlock([
-            {
-              ckbTxHash: burn.ckbTxHash,
-              asset: burn.asset,
-              assetType: getAssetTypeByAsset(burn.asset),
-              amount: burn.amount,
-              recipientAddress: burn.recipientAddress,
-            },
-          ]);
-          break;
-        case ChainType.EOS:
-          await this.db.createEosUnlock([
-            {
-              ckbTxHash: burn.ckbTxHash,
-              asset: burn.asset,
-              amount: burn.amount,
-              recipientAddress: burn.recipientAddress,
-            },
-          ]);
-          break;
-        default:
-          throw new Error(`wrong burn chain type: ${burn.chain}`);
+      if (this.role === 'collector') {
+        switch (burn.chain) {
+          case ChainType.BTC:
+            await this.db.createBtcUnlock([
+              {
+                ckbTxHash: burn.ckbTxHash,
+                asset: burn.asset,
+                amount: burn.amount,
+                chain: burn.chain,
+                recipientAddress: burn.recipientAddress,
+              },
+            ]);
+            break;
+          case ChainType.ETH:
+            await this.db.createEthUnlock([
+              {
+                ckbTxHash: burn.ckbTxHash,
+                asset: burn.asset,
+                amount: burn.amount,
+                recipientAddress: burn.recipientAddress,
+              },
+            ]);
+            break;
+          case ChainType.TRON:
+            await this.db.createTronUnlock([
+              {
+                ckbTxHash: burn.ckbTxHash,
+                asset: burn.asset,
+                assetType: getAssetTypeByAsset(burn.asset),
+                amount: burn.amount,
+                recipientAddress: burn.recipientAddress,
+              },
+            ]);
+            break;
+          case ChainType.EOS:
+            await this.db.createEosUnlock([
+              {
+                ckbTxHash: burn.ckbTxHash,
+                asset: burn.asset,
+                amount: burn.amount,
+                recipientAddress: burn.recipientAddress,
+              },
+            ]);
+            break;
+          default:
+            throw new Error(`wrong burn chain type: ${burn.chain}`);
+        }
       }
       await this.db.createCkbBurn([burn]);
     }
@@ -93,11 +96,7 @@ export class CkbHandler {
       const burnTxs = new Map();
       for (const tx of block.transactions) {
         if (await this.isMintTx(tx)) {
-          const pendingMintTxs = await this.db.getMintRecordsToUpdate(tx.hash);
-          pendingMintTxs.map((r) => {
-            r.status = 'success';
-          });
-          await this.db.updateCkbMint(pendingMintTxs);
+          await this.onMintTx(tx);
         }
         const recipientData = tx.outputsData[0];
         let cellData;
@@ -125,40 +124,54 @@ export class CkbHandler {
           );
         }
       }
+      await this.onBurnTxs(latestHeight, burnTxs);
 
-      const burnTxHashes = [];
-      if (burnTxs.size > 0) {
-        const ckbBurns = [];
-        burnTxs.forEach((v: BurnDbData, k: string) => {
-          const chain = v.cellData.getChain();
-          let burn: ICkbBurn;
-          switch (chain) {
-            case ChainType.BTC:
-            case ChainType.TRON:
-            case ChainType.ETH:
-            case ChainType.EOS:
-              burn = {
-                senderLockHash: v.senderLockScriptHash,
-                ckbTxHash: k,
-                asset: uint8ArrayToString(new Uint8Array(v.cellData.getAsset().raw())),
-                chain,
-                amount: Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.cellData.getAmount().raw()))}`).toString(
-                  0,
-                ),
-                recipientAddress: uint8ArrayToString(new Uint8Array(v.cellData.getRecipientAddress().raw())),
-                blockNumber: latestHeight,
-              };
-              break;
-          }
-          ckbBurns.push(burn);
-          burnTxHashes.push(k);
-        });
-        await this.saveBurnEvent(ckbBurns);
-        logger.info(`CkbHandler watchBurnEvents saveBurnEvent success, burnTxHashes:${burnTxHashes.join(', ')}`);
-      }
       latestHeight++;
       await asyncSleep(1000);
     }
+  }
+
+  async onMintTx(tx: Transaction) {
+    if (this.role !== 'collector') {
+      return;
+    }
+    const pendingMintTxs = await this.db.getMintRecordsToUpdate(tx.hash);
+    pendingMintTxs.map((r) => {
+      r.status = 'success';
+    });
+    await this.db.updateCkbMint(pendingMintTxs);
+  }
+
+  async onBurnTxs(latestHeight: number, burnTxs: Map<string, BurnDbData>) {
+    if (burnTxs.size === 0) {
+      return;
+    }
+    const burnTxHashes = [];
+    const ckbBurns = [];
+    burnTxs.forEach((v: BurnDbData, k: string) => {
+      const chain = v.cellData.getChain();
+      let burn: ICkbBurn;
+      switch (chain) {
+        case ChainType.BTC:
+        case ChainType.TRON:
+        case ChainType.ETH:
+        case ChainType.EOS:
+          burn = {
+            senderLockHash: v.senderLockScriptHash,
+            ckbTxHash: k,
+            asset: uint8ArrayToString(new Uint8Array(v.cellData.getAsset().raw())),
+            chain,
+            amount: Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.cellData.getAmount().raw()))}`).toString(0),
+            recipientAddress: uint8ArrayToString(new Uint8Array(v.cellData.getRecipientAddress().raw())),
+            blockNumber: latestHeight,
+          };
+          break;
+      }
+      ckbBurns.push(burn);
+      burnTxHashes.push(k);
+    });
+    await this.saveBurnEvent(ckbBurns);
+    logger.info(`CkbHandler processBurnTxs saveBurnEvent success, burnTxHashes:${burnTxHashes.join(', ')}`);
   }
 
   async isMintTx(tx: Transaction): Promise<boolean> {
@@ -245,6 +258,9 @@ export class CkbHandler {
   }
 
   async handleMintRecords(): Promise<never> {
+    if (this.role !== 'collector') {
+      return;
+    }
     const account = new Account(this.PRI_KEY);
     const ownLockHash = await this.getOwnLockHash();
     const generator = new CkbTxGenerator(this.ckb, new IndexerCollector(this.indexer));

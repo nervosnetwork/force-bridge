@@ -3,7 +3,7 @@ import { TransactResult } from 'eosjs/dist/eosjs-api-interfaces';
 import { JsSignatureProvider } from 'eosjs/dist/eosjs-jssig';
 import { OrderedActionResult, PushTransactionArgs } from 'eosjs/dist/eosjs-rpc-interfaces';
 import { ChainType } from '../ckb/model/asset';
-import { EosConfig } from '../config';
+import { EosConfig, forceBridgeRole } from '../config';
 import { getEosLockId } from '../db/entity/EosLock';
 import { EosUnlock, EosUnlockStatus } from '../db/entity/EosUnlock';
 import { EosDb } from '../db/eos';
@@ -11,7 +11,6 @@ import { asyncSleep } from '../utils';
 import { logger } from '../utils/logger';
 import { EosChain } from '../xchain/eos/eosChain';
 import { EosAssetAmount, getTxIdFromSerializedTx } from '../xchain/eos/utils';
-
 const EosTokenAccount = 'eosio.token';
 const EosTokenTransferActionName = 'transfer';
 
@@ -30,13 +29,15 @@ export class EosLockEvent {
 }
 
 export class EosHandler {
+  private role: forceBridgeRole;
   private db: EosDb;
   private config: EosConfig;
   private chain: EosChain;
   private readonly signatureProvider: JsSignatureProvider;
   private assetPrecisionCache: Map<string, number>;
 
-  constructor(db: EosDb, config: EosConfig) {
+  constructor(db: EosDb, config: EosConfig, role: forceBridgeRole) {
+    this.role = role;
     this.db = db;
     this.config = config;
     this.signatureProvider = new JsSignatureProvider(this.config.privateKeys);
@@ -285,8 +286,15 @@ export class EosHandler {
       memo: lockEvent.Memo,
       blockNumber: lockEvent.BlockNumber,
     };
+    logger.info(
+      `EosHandler process EosLock successful for eos tx:${lockEvent.TxHash} from:${lockEvent.From} amount:${lockEvent.Amount} asset:${lockEvent.Asset} memo:${lockEvent.Memo}.`,
+    );
+
     const fragments = lockRecord.memo.split(',');
 
+    if (this.role !== 'collector') {
+      return;
+    }
     await this.db.createCkbMint([
       {
         id: lockRecord.id,
@@ -299,11 +307,14 @@ export class EosHandler {
     ]);
     await this.db.createEosLock([lockRecord]);
     logger.info(
-      `EosHandler process CkbMint and EosLock successful for eos tx:${lockEvent.TxHash} from:${lockEvent.From} amount:${lockEvent.Amount} asset:${lockEvent.Asset} memo:${lockEvent.Memo}.`,
+      `EosHandler process CkbMint successful for eos tx:${lockEvent.TxHash} from:${lockEvent.From} amount:${lockEvent.Amount} asset:${lockEvent.Asset} memo:${lockEvent.Memo}.`,
     );
   }
 
   async watchUnlockEvents() {
+    if (this.role !== 'collector') {
+      return;
+    }
     while (true) {
       try {
         const todoRecords = await this.getUnlockRecords('todo');
@@ -376,6 +387,9 @@ export class EosHandler {
   }
 
   async checkUnlockTxStatus() {
+    if (this.role != 'collector') {
+      return;
+    }
     if (!this.config.onlyWatchIrreversibleBlock) {
       return;
     }

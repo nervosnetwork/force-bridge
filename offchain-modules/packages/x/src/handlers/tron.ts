@@ -1,6 +1,7 @@
 import TronGrid from 'trongrid';
 import TronWeb from 'tronweb';
 import { ChainType } from '../ckb/model/asset';
+import { forceBridgeRole } from '../config';
 import { ForceBridgeCore } from '../core';
 import { TronDb } from '../db';
 import { ICkbMint, ITronLock, TronUnlock } from '../db/model';
@@ -23,7 +24,7 @@ export class TronHandler {
   private tronGrid;
   private committee;
 
-  constructor(private db: TronDb) {
+  constructor(private db: TronDb, private role: forceBridgeRole) {
     this.tronWeb = new TronWeb({ fullHost: ForceBridgeCore.config.tron.tronGridUrl });
     this.tronGrid = new TronGrid(this.tronWeb);
     this.committee = ForceBridgeCore.config.tron.committee;
@@ -67,7 +68,9 @@ export class TronHandler {
           tronLockRecords.push(tronLock);
         }
 
-        await this.db.createCkbMint(ckbMintRecords);
+        if (this.role === 'collector') {
+          await this.db.createCkbMint(ckbMintRecords);
+        }
         await this.db.createTronLock(tronLockRecords);
 
         if (trxAndTrc10Events.length != 0) {
@@ -87,6 +90,9 @@ export class TronHandler {
   // watch the tron_unlock table and handle the new unlock events
   // send tx according to the data
   async watchUnlockEvents(): Promise<void> {
+    if (this.role !== 'collector') {
+      return;
+    }
     for (;;) {
       try {
         logger.debug('TronHandler watchUnlockEvents flush pending tx to confirm');

@@ -1,4 +1,5 @@
 import { ChainType } from '../ckb/model/asset';
+import { forceBridgeRole } from '../config';
 import { EthDb } from '../db';
 import { EthUnlockStatus } from '../db/entity/EthUnlock';
 import { EthUnlock } from '../db/model';
@@ -7,7 +8,7 @@ import { logger } from '../utils/logger';
 import { EthChain } from '../xchain/eth';
 
 export class EthHandler {
-  constructor(private db: EthDb, private ethChain: EthChain) {}
+  constructor(private db: EthDb, private ethChain: EthChain, private role: forceBridgeRole) {}
 
   // listen ETH chain and handle the new lock events
   async watchLockEvents() {
@@ -27,16 +28,19 @@ export class EthHandler {
         if (amount === '0') {
           return;
         }
-        await this.db.createCkbMint([
-          {
-            id: log.transactionHash,
-            chain: ChainType.ETH,
-            amount: amount,
-            asset: parsedLog.args.token,
-            recipientLockscript: uint8ArrayToString(fromHexString(parsedLog.args.recipientLockscript)),
-            sudtExtraData: parsedLog.args.sudtExtraData,
-          },
-        ]);
+        if (this.role === 'collector') {
+          await this.db.createCkbMint([
+            {
+              id: log.transactionHash,
+              chain: ChainType.ETH,
+              amount: amount,
+              asset: parsedLog.args.token,
+              recipientLockscript: uint8ArrayToString(fromHexString(parsedLog.args.recipientLockscript)),
+              sudtExtraData: parsedLog.args.sudtExtraData,
+            },
+          ]);
+          logger.info(`EthHandler watchLockEvents save CkbMint successful for eth tx ${log.transactionHash}.`);
+        }
         await this.db.createEthLock([
           {
             txHash: log.transactionHash,
@@ -49,9 +53,7 @@ export class EthHandler {
             sender: parsedLog.args.sender,
           },
         ]);
-        logger.info(
-          `EthHandler watchLockEvents save CkbMint and EthLock successful for eth tx ${log.transactionHash}.`,
-        );
+        logger.info(`EthHandler watchLockEvents save EthLock successful for eth tx ${log.transactionHash}.`);
       } catch (e) {
         logger.error(`EthHandler watchLockEvents error: ${e}`);
         await asyncSleep(3000);
@@ -66,6 +68,9 @@ export class EthHandler {
   // watch the eth_unlock table and handle the new unlock events
   // send tx according to the data
   async watchUnlockEvents() {
+    if (this.role !== 'collector') {
+      return;
+    }
     // todo: get and handle pending and error records
     while (true) {
       await asyncSleep(15000);

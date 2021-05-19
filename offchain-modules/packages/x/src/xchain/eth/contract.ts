@@ -1,6 +1,6 @@
 import { ecsign, toRpcSig } from 'ethereumjs-util';
 import { BigNumber, ethers } from 'ethers';
-import { EthConfig } from '../../config';
+import { EthConfig, forceBridgeRole } from '../../config';
 import { ForceBridgeCore } from '../../core';
 import { EthUnlock } from '../../db/entity/EthUnlock';
 import { asyncSleep } from '../../utils';
@@ -12,6 +12,7 @@ const { keccak256, defaultAbiCoder, solidityPack } = ethers.utils;
 const BlockBatchSize = 100;
 
 export class EthChain {
+  protected readonly role: forceBridgeRole;
   protected readonly config: EthConfig;
   protected readonly provider: ethers.providers.JsonRpcProvider;
   protected readonly bridgeContractAddr: string;
@@ -20,17 +21,19 @@ export class EthChain {
   protected readonly wallet: ethers.Wallet;
   protected readonly multiSignKeys: string[];
 
-  constructor() {
+  constructor(role: forceBridgeRole) {
     const config = ForceBridgeCore.config.eth;
     const url = config.rpcUrl;
+    this.role = role;
     this.config = config;
     this.provider = new ethers.providers.JsonRpcProvider(url);
     this.bridgeContractAddr = config.contractAddress;
     this.iface = new ethers.utils.Interface(abi);
-    this.wallet = new ethers.Wallet(config.privateKey, this.provider);
-    logger.debug('address', this.wallet.address);
-    this.bridge = new ethers.Contract(this.bridgeContractAddr, abi, this.provider).connect(this.wallet);
-    this.multiSignKeys = config.multiSignKeys;
+    if (role === 'collector') {
+      this.wallet = new ethers.Wallet(config.privateKey, this.provider);
+      this.bridge = new ethers.Contract(this.bridgeContractAddr, abi, this.provider).connect(this.wallet);
+      this.multiSignKeys = config.multiSignKeys;
+    }
   }
 
   async watchLockEvents(startHeight = 1, handleLogFunc) {
