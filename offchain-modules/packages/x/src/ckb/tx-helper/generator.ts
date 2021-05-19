@@ -274,8 +274,9 @@ export class CkbTxGenerator {
 
     const needSupplyCap = outputCap - sudtCellCapacity * BigInt(sudtCells.length) + fee;
     if (needSupplyCap > 0) {
-      const needSupplyCapCells = await this.collector.getCellsByLockscriptAndCapacity(
+      const needSupplyCapCells = await this.collector.getCellsByLockscriptAndCapacityWhenBurn(
         fromLockscript,
+        recipientTypeScript.codeHash,
         new Amount(`0x${needSupplyCap.toString(16)}`, 0),
       );
       inputCells = inputCells.concat(needSupplyCapCells);
