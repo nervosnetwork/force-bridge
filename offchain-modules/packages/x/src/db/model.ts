@@ -24,6 +24,16 @@ export { CkbBurn } from './entity/CkbBurn';
 export { TronLock } from './entity/TronLock';
 export { TronUnlock } from './entity/TronUnlock';
 
+export interface ISigned {
+  sigType: string;
+  chain: number;
+  amount: string;
+  asset: string;
+  refTxHash: string;
+  txHash: string;
+  pubkey: string;
+}
+
 export interface ICkbMint {
   id: string;
   chain: ChainType;

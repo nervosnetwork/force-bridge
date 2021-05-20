@@ -38,7 +38,7 @@ async function main() {
   await new ForceBridgeCore().init(conf);
 
   const rpcUrl = config.rpcUrl;
-  const PRI_KEY = ForceBridgeCore.config.ckb.privateKey;
+  const PRI_KEY = ForceBridgeCore.config.ckb.fromPrivateKey;
   const lockAccount = 'alice';
   const lockAccountPri = ['5KQG4541B1FtDC11gu3NrErWniqTaPHBpmikSztnX8m36sK5px5'];
   const chain = new EosChain(rpcUrl, new JsSignatureProvider(lockAccountPri));
@@ -115,7 +115,12 @@ async function main() {
 
   // check sudt balance.
   const account = new Account(PRI_KEY);
-  const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
+  const multisigLockScript = getMultisigLock(ForceBridgeCore.config.ckb.multisigScript);
+  const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>{
+    codeHash: multisigLockScript.code_hash,
+    hashType: multisigLockScript.hash_type,
+    args: multisigLockScript.args,
+  });
   const asset = new EosAsset(lockAsset, ownLockHash);
   const bridgeCellLockscript = {
     codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,

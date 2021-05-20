@@ -53,7 +53,7 @@ export class EthHandler {
           `EthHandler watchLockEvents save CkbMint and EthLock successful for eth tx ${log.transactionHash}.`,
         );
       } catch (e) {
-        logger.error(`EthHandler watchLockEvents error: ${e}`);
+        logger.error(`EthHandler watchLockEvents error: ${e.toString()}`);
         await asyncSleep(3000);
       }
     });

@@ -13,6 +13,7 @@ import { CkbMint } from '@force-bridge/x/dist/db/entity/CkbMint';
 import { asyncSleep } from '@force-bridge/x/dist/utils';
 import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
 import { BTCChain, getBtcMainnetFee } from '@force-bridge/x/dist/xchain/btc';
+import { getMultisigLock } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 
 import { Amount, Script } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
@@ -43,9 +44,7 @@ async function main() {
 
   // init bridge force core
   await new ForceBridgeCore().init(config);
-
-  logger.debug(`config: ${config}`);
-  const PRI_KEY = ForceBridgeCore.config.ckb.privateKey;
+  const PRI_KEY = ForceBridgeCore.config.ckb.fromPrivateKey;
   const client = new RPCClient(config.btc.clientParams);
   const btcChain = new BTCChain();
 
@@ -128,7 +127,12 @@ async function main() {
 
   // check sudt balance.
   const account = new Account(PRI_KEY);
-  const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
+  const multisigLockScript = getMultisigLock(ForceBridgeCore.config.ckb.multisigScript);
+  const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>{
+    codeHash: multisigLockScript.code_hash,
+    hashType: multisigLockScript.hash_type,
+    args: multisigLockScript.args,
+  });
   const asset = new BtcAsset('btc', ownLockHash);
   const bridgeCellLockscript = {
     codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,

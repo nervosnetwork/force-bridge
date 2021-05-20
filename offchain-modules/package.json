@@ -36,7 +36,10 @@
     "cov:send": "nyc report --reporter=lcov && codecov",
     "cov:check": "nyc report && nyc check-coverage --lines 100 --functions 100 --branches 100",
     "deploy": "ts-node-dev ./packages/scripts/src/deploy_ckb.ts",
-    "prepare": "cd .. && husky install offchain-modules/.husky"
+    "prepare": "cd .. && husky install offchain-modules/.husky",
+    "init-multisig": "ts-node ./src/packages/ckb/tx-helper/multisig/deploy.ts",
+    "sign-server1": "ts-node ./src/apps/server/index.ts --port 8090 --index 0",
+    "sign-server2": "ts-node ./src/apps/server/index.ts --port 8091 --index 1"
   },
   "author": "",
   "license": "MIT",
@@ -71,9 +74,14 @@
     "typescript": "^4.2.2"
   },
   "dependencies": {
-    "@ckb-lumos/base": "^0.16.0",
-    "@ckb-lumos/indexer": "^0.16.0",
-    "@ckb-lumos/rpc": "^0.16.0",
+    "@ckb-lumos/base": "0.14.1",
+    "@ckb-lumos/indexer": "0.14.1",
+    "@ckb-lumos/rpc": "0.16.0",
+    "@ckb-lumos/common-scripts": "0.14.1",
+    "@ckb-lumos/config-manager": "0.14.1",
+    "@ckb-lumos/hd": "0.14.1",
+    "@ckb-lumos/helpers": "0.14.1",
+    "@ckb-lumos/transaction-manager": "0.14.1",
     "@lay2/pw-core": "^0.3.22",
     "@nervosnetwork/ckb-sdk-core": "^0.39.0",
     "@types/node": "^15.0.2",
@@ -121,9 +129,14 @@
     ]
   },
   "lint-staged": {
-    "packages/*/src/**/*.ts": [
+    "src/**/*.ts": [
       "npm run lint-staged",
       "git add"
     ]
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
   }
 }

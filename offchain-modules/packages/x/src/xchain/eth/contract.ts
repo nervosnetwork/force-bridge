@@ -6,10 +6,18 @@ import { EthUnlock } from '../../db/entity/EthUnlock';
 import { asyncSleep } from '../../utils';
 import { logger } from '../../utils/logger';
 import { abi } from './abi/ForceBridge.json';
+import { MultiSigMgr } from '@force-bridge/multisig/multisig-mgr';
+import { buildSigRawData } from '@force-bridge/xchain/eth/utils';
 
-const { keccak256, defaultAbiCoder, solidityPack } = ethers.utils;
-
+export const lockTopic = ethers.utils.id('Locked(address,address,uint256,bytes,bytes)');
 const BlockBatchSize = 100;
+
+export interface EthUnlockRecord {
+  token: string;
+  recipient: string;
+  amount: BigNumber;
+  ckbTxHash: string;
+}
 
 export class EthChain {
   protected readonly config: EthConfig;
@@ -19,6 +27,7 @@ export class EthChain {
   protected readonly bridge: ethers.Contract;
   protected readonly wallet: ethers.Wallet;
   protected readonly multiSignKeys: string[];
+  protected readonly multisigMgr: MultiSigMgr;
 
   constructor() {
     const config = ForceBridgeCore.config.eth;
@@ -31,6 +40,7 @@ export class EthChain {
     logger.debug('address', this.wallet.address);
     this.bridge = new ethers.Contract(this.bridgeContractAddr, abi, this.provider).connect(this.wallet);
     this.multiSignKeys = config.multiSignKeys;
+    this.multisigMgr = new MultiSigMgr('ETH', this.config.multiSignHosts, this.config.multiSignThreshold);
   }
 
   async watchLockEvents(startHeight = 1, handleLogFunc) {
@@ -78,7 +88,7 @@ export class EthChain {
 
   async sendUnlockTxs(records: EthUnlock[]): Promise<any> {
     logger.debug('contract balance', await this.provider.getBalance(this.bridgeContractAddr));
-    const params = records.map((r) => {
+    const params: EthUnlockRecord[] = records.map((r) => {
       return {
         token: r.asset,
         recipient: r.recipientAddress,
@@ -88,50 +98,28 @@ export class EthChain {
     });
     const domainSeparator = await this.bridge.DOMAIN_SEPARATOR();
     const typeHash = await this.bridge.UNLOCK_TYPEHASH();
-    const nonce = await this.bridge.latestUnlockNonce_();
+    const nonce: number = await this.bridge.latestUnlockNonce_();
     const signatures = this.signUnlockRecords(domainSeparator, typeHash, params, nonce);
     logger.debug('sendUnlockTxs params', params);
     return this.bridge.unlock(params, nonce, signatures);
   }
 
-  private signUnlockRecords(domainSeparator: string, typeHash: string, records, nonce) {
-    const msg = ethers.utils.keccak256(
-      ethers.utils.solidityPack(
-        ['bytes1', 'bytes1', 'bytes32', 'bytes32'],
-        [
-          '0x19',
-          '0x01',
-          domainSeparator,
-          ethers.utils.keccak256(
-            ethers.utils.defaultAbiCoder.encode(
-              [
-                'bytes32',
-                ethers.utils.ParamType.from({
-                  components: [
-                    { name: 'token', type: 'address' },
-                    { name: 'recipient', type: 'address' },
-                    { name: 'amount', type: 'uint256' },
-                    { name: 'ckbTxHash', type: 'bytes' },
-                  ],
-                  name: 'records',
-                  type: 'tuple[]',
-                }),
-                'uint256',
-              ],
-              [typeHash, records, nonce],
-            ),
-          ),
-        ],
-      ),
-    );
-
-    let signatures = '0x';
-    for (let i = 0; i < this.multiSignKeys.length; i++) {
-      const wallet = new ethers.Wallet(this.multiSignKeys[i], this.provider);
-      const { v, r, s } = ecsign(Buffer.from(msg.slice(2), 'hex'), Buffer.from(wallet.privateKey.slice(2), 'hex'));
-      const sigHex = toRpcSig(v, r, s);
-      signatures += sigHex.slice(2);
-    }
-    return signatures;
+  private async signUnlockRecords(
+    domainSeparator: string,
+    typeHash: string,
+    records: EthUnlockRecord[],
+    nonce: number,
+  ) {
+    const rawData = buildSigRawData(domainSeparator, typeHash, records, nonce);
+    const sigs = await this.multisigMgr.collectSignatures({
+      rawData: rawData,
+      payload: {
+        domainSeparator: domainSeparator,
+        typeHash: typeHash,
+        unlockRecords: records,
+        nonce: nonce,
+      },
+    });
+    return '0x' + sigs.join('');
   }
 }

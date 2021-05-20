@@ -44,7 +44,7 @@ export async function getSudtBalance(address: string, asset: Asset): Promise<Amo
   };
 
   const userScript = ForceBridgeCore.ckb.utils.addressToScript(address);
-  const collector = new IndexerCollector(ForceBridgeCore.indexer);
+  const collector = new IndexerCollector(ForceBridgeCore.ckbIndexer);
   return await collector.getSUDTBalance(
     new Script(sudtType.codeHash, sudtType.args, sudtType.hashType),
     new Script(userScript.codeHash, userScript.args, userScript.hashType as HashType),

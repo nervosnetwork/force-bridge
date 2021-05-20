@@ -15,6 +15,9 @@ import nconf from 'nconf';
 import TronWeb from 'tronweb';
 import { createConnection } from 'typeorm';
 import { waitUntilCommitted } from './util';
+import { getMultisigLock } from '@force-bridge/ckb/tx-helper/multisig/multisig_helper';
+// import { multisigLockScript } from '@force-bridge/ckb/tx-helper/multisig/multisig_helper';
+const TronWeb = require('tronweb');
 
 const PRI_KEY = '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
@@ -115,7 +118,13 @@ async function main() {
 
   const getBalance = async (assetName) => {
     const account = new Account(PRI_KEY);
-    const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
+    // const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
+    const multisigLockScript = getMultisigLock(ForceBridgeCore.config.ckb.multisigScript);
+    const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>{
+      codeHash: multisigLockScript.code_hash,
+      hashType: multisigLockScript.hash_type,
+      args: multisigLockScript.args,
+    });
     const asset = new TronAsset(assetName, ownLockHash);
     const bridgeCellLockscript = {
       codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
@@ -181,7 +190,12 @@ async function main() {
     const burnAmount = 1;
     if (!sendBurn) {
       const account = new Account(PRI_KEY);
-      const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
+      const multisigLockScript = getMultisigLock(ForceBridgeCore.config.ckb.multisigScript);
+      const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>{
+        codeHash: multisigLockScript.code_hash,
+        hashType: multisigLockScript.hash_type,
+        args: multisigLockScript.args,
+      });
       const generator = new CkbTxGenerator(ckb, new IndexerCollector(indexer));
       const burnTx = await generator.burn(
         await account.getLockscript(),

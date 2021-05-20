@@ -16,6 +16,10 @@ async function main() {
   // logger.debug('address', account.address);
   // const pw = await new PWCore(CKB_URL).init();
   // const indexer = new CkbIndexer(CKB_INDEXER_URL, CKB_URL);
+  // const ckbRpc = new RPC('http://127.0.0.1:8114');
+  // // const tx = await ckbRpc.get_transaction('0x3e41080968db4f2b4db5d546ffb886a2e46a4444c57b0653563482de84d6da59');
+  // const tx = await ckbRpc.get_live_cell({tx_hash: '0x3e41080968db4f2b4db5d546ffb886a2e46a4444c57b0653563482de84d6da59', index: '0x0'}, false);
+  // console.dir(tx, {depth: null})
   // const collector = new IndexerCollector(indexer);
   // const generator = new CkbTxGenerator(collector);
   // const bb = BigNumber.from('0.0001');
