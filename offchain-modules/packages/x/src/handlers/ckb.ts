@@ -7,7 +7,7 @@ import { Asset, BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '../ck
 import { IndexerCollector } from '../ckb/tx-helper/collector';
 import { RecipientCellData } from '../ckb/tx-helper/generated/eth_recipient_cell';
 import { CkbTxGenerator, MintAssetRecord } from '../ckb/tx-helper/generator';
-import { ScriptType } from '../ckb/tx-helper/indexer';
+import { CkbIndexer, ScriptType } from '../ckb/tx-helper/indexer';
 import { ForceBridgeCore } from '../core';
 import { CkbDb } from '../db';
 import { CkbMint, ICkbBurn } from '../db/model';
@@ -24,17 +24,18 @@ import TransactionManager from '@ckb-lumos/transaction-manager';
 import { RPC } from '@ckb-lumos/rpc';
 import { getOwnLockHash } from '../ckb/tx-helper/multisig/multisig_helper';
 import { MultiSigMgr } from '../multisig/multisig-mgr';
+import CKB from '@nervosnetwork/ckb-sdk-core';
 
 const lumosIndexerData = './indexer-data';
 // CKB handler
 // 1. Listen CKB chain to get new burn events.
 // 2. Listen database to get new mint events, send tx.
 export class CkbHandler {
-  private ckb;
-  private indexer;
-  private ckbIndexer;
-  private transactionManager;
-  private multisigMgr;
+  private ckb: CKB;
+  private indexer: Indexer;
+  private ckbIndexer: CkbIndexer;
+  private transactionManager: TransactionManager;
+  private multisigMgr: MultiSigMgr;
   constructor(private db: CkbDb) {
     this.ckb = ForceBridgeCore.ckb;
     this.indexer = new Indexer(ForceBridgeCore.config.ckb.ckbRpcUrl, lumosIndexerData);
@@ -213,7 +214,7 @@ export class CkbHandler {
 
   async handleMintRecords(): Promise<never> {
     const ownLockHash = getOwnLockHash(ForceBridgeCore.config.ckb.multisigScript);
-    const generator = new CkbTxGenerator(this.ckb, new IndexerCollector(this.indexer));
+    const generator = new CkbTxGenerator(this.ckb, new IndexerCollector(this.ckbIndexer));
     while (true) {
       const mintRecords = await this.db.getCkbMintRecordsToMint();
       if (mintRecords.length == 0) {
@@ -223,7 +224,7 @@ export class CkbHandler {
       }
       logger.info(`CkbHandler handleMintRecords new mintRecords:${JSON.stringify(mintRecords, null, 2)}`);
 
-      await this.indexer.waitUntilSync();
+      await this.ckbIndexer.waitUntilSync();
       const mintIds = mintRecords
         .map((ckbMint) => {
           return ckbMint.id;
@@ -382,7 +383,6 @@ export class CkbHandler {
     });
 
     const txSkeleton = await generator.createBridgeCell(scripts, this.indexer);
-    logger.info(`signingEntries length:, ${JSON.stringify(txSkeleton, null, 2)}`);
     const message0 = txSkeleton.get('signingEntries').get(0).message;
     const content0 = key.signRecoverable(message0, ForceBridgeCore.config.ckb.fromPrivateKey);
     let content1 = serializeMultisigScript(ForceBridgeCore.config.ckb.multisigScript);
