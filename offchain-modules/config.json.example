@@ -100,7 +100,8 @@
           }
         }
       },
-      "startBlockHeight": 1
+      "startBlockHeight": 1,
+      "confirmNumber": 1
     },
     "tron": {
       "tronGridUrl": "https://api.shasta.trongrid.io",

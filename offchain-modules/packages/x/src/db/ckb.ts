@@ -1,5 +1,5 @@
 // invoke in ckb handler
-import { Connection } from 'typeorm';
+import { Connection, DeleteResult, UpdateResult } from 'typeorm';
 import { ForceBridgeCore } from '../core';
 import {
   BtcUnlock,
@@ -86,5 +86,37 @@ export class CkbDb {
     const btcUnlockRepo = this.connection.getRepository(BtcUnlock);
     const dbRecords = records.map((r) => btcUnlockRepo.create(r));
     await btcUnlockRepo.save(dbRecords);
+  }
+
+  async removeUnconfirmedCkbBurn(currentBlockHeight: number, confirmNumber: number): Promise<DeleteResult> {
+    return this.connection
+      .getRepository(CkbBurn)
+      .createQueryBuilder()
+      .delete()
+      .where('block_number >= :blockNumber', { blockNumber: currentBlockHeight - confirmNumber })
+      .execute();
+  }
+
+  async getUnconfirmedCkbBurnToConfirm(currentBlockHeight: number, confirmNumber: number): Promise<CkbBurn[]> {
+    const confirmedHeight = currentBlockHeight - confirmNumber;
+    return this.connection
+      .getRepository(CkbBurn)
+      .createQueryBuilder()
+      .select()
+      .where('block_number <= :confirmedHeight And confirm_status = "unconfirmed"', {
+        confirmedHeight: confirmedHeight,
+        endHeight: currentBlockHeight,
+      })
+      .getMany();
+  }
+
+  async updateCkbBurnConfirmStatus(txHashes: string[]): Promise<UpdateResult> {
+    return this.connection
+      .getRepository(CkbBurn)
+      .createQueryBuilder()
+      .update()
+      .set({ confirmStatus: 'confirmed' })
+      .where('ckb_tx_hash in (:txHashes)', { txHashes: txHashes.join(',') })
+      .execute();
   }
 }

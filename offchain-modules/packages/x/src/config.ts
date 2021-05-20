@@ -28,6 +28,7 @@ export interface CkbConfig {
     sudtType: ConfigItem;
   };
   startBlockHeight: number;
+  confirmNumber: number;
 }
 
 export interface EthConfig {

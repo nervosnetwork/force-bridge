@@ -9,12 +9,15 @@ import { ScriptType } from '../ckb/tx-helper/indexer';
 import { forceBridgeRole } from '../config';
 import { ForceBridgeCore } from '../core';
 import { CkbDb } from '../db';
-import { CkbMint, ICkbBurn } from '../db/model';
+import { CkbBurn, CkbMint, ICkbBurn } from '../db/model';
 import { asyncSleep, fromHexString, toHexString, uint8ArrayToString } from '../utils';
 import { logger } from '../utils/logger';
 import { getAssetTypeByAsset } from '../xchain/tron/utils';
 import Transaction = CKBComponents.Transaction;
 import TransactionWithStatus = CKBComponents.TransactionWithStatus;
+import Block = CKBComponents.Block;
+
+const lastHandleCkbBlockKey = 'lastHandleCkbBlock';
 
 // CKB handler
 // 1. Listen CKB chain to get new burn events.
@@ -23,112 +26,165 @@ export class CkbHandler {
   private ckb = ForceBridgeCore.ckb;
   private indexer = ForceBridgeCore.indexer;
   private PRI_KEY = ForceBridgeCore.config.ckb.privateKey;
-  constructor(private db: CkbDb, private role: forceBridgeRole) {}
+  private lastHandledBlockHeight: number;
+  private lastHandledBlockHash: string;
+  constructor(private db: CkbDb, private kvDb, private role: forceBridgeRole) {}
 
-  // save unlock event first and then
-  async saveBurnEvent(burns: ICkbBurn[]): Promise<void> {
-    logger.debug('CkbHandler saveBurnEvent:', burns);
-    for (const burn of burns) {
-      if (this.role === 'collector') {
-        switch (burn.chain) {
-          case ChainType.BTC:
-            await this.db.createBtcUnlock([
-              {
-                ckbTxHash: burn.ckbTxHash,
-                asset: burn.asset,
-                amount: burn.amount,
-                chain: burn.chain,
-                recipientAddress: burn.recipientAddress,
-              },
-            ]);
-            break;
-          case ChainType.ETH:
-            await this.db.createEthUnlock([
-              {
-                ckbTxHash: burn.ckbTxHash,
-                asset: burn.asset,
-                amount: burn.amount,
-                recipientAddress: burn.recipientAddress,
-              },
-            ]);
-            break;
-          case ChainType.TRON:
-            await this.db.createTronUnlock([
-              {
-                ckbTxHash: burn.ckbTxHash,
-                asset: burn.asset,
-                assetType: getAssetTypeByAsset(burn.asset),
-                amount: burn.amount,
-                recipientAddress: burn.recipientAddress,
-              },
-            ]);
-            break;
-          case ChainType.EOS:
-            await this.db.createEosUnlock([
-              {
-                ckbTxHash: burn.ckbTxHash,
-                asset: burn.asset,
-                amount: burn.amount,
-                recipientAddress: burn.recipientAddress,
-              },
-            ]);
-            break;
-          default:
-            throw new Error(`wrong burn chain type: ${burn.chain}`);
-        }
+  async getLastHandledBlock(): Promise<{ blockNumber: number; blockHash: string }> {
+    const lastHandledBlock = await this.kvDb.get(lastHandleCkbBlockKey);
+    if (!lastHandledBlock || lastHandledBlock.length === 0) {
+      return { blockNumber: 0, blockHash: '' };
+    }
+    const block = lastHandledBlock[0].value.split(',');
+    return { blockNumber: parseInt(block[0]), blockHash: block[1] };
+  }
+
+  async setLastHandledBlock(blockNumber: number, blockHash: string): Promise<void> {
+    this.lastHandledBlockHeight = blockNumber;
+    this.lastHandledBlockHash = blockHash;
+    await this.kvDb.set(lastHandleCkbBlockKey, `${blockNumber},${blockHash}`);
+  }
+
+  async onCkbBurnConfirmed(confirmedCkbBurns: ICkbBurn[]) {
+    if (this.role !== 'collector') {
+      return;
+    }
+    for (const burn of confirmedCkbBurns) {
+      logger.info(`CkbHandler onCkbBurnConfirmed burnRecord:${JSON.stringify(burn, undefined, 2)}`);
+      switch (burn.chain) {
+        case ChainType.BTC:
+          await this.db.createBtcUnlock([
+            {
+              ckbTxHash: burn.ckbTxHash,
+              asset: burn.asset,
+              amount: burn.amount,
+              chain: burn.chain,
+              recipientAddress: burn.recipientAddress,
+            },
+          ]);
+          break;
+        case ChainType.ETH:
+          await this.db.createEthUnlock([
+            {
+              ckbTxHash: burn.ckbTxHash,
+              asset: burn.asset,
+              amount: burn.amount,
+              recipientAddress: burn.recipientAddress,
+            },
+          ]);
+          break;
+        case ChainType.EOS:
+          await this.db.createEosUnlock([
+            {
+              ckbTxHash: burn.ckbTxHash,
+              asset: burn.asset,
+              amount: burn.amount,
+              recipientAddress: burn.recipientAddress,
+            },
+          ]);
+          break;
+        case ChainType.TRON:
+          await this.db.createTronUnlock([
+            {
+              ckbTxHash: burn.ckbTxHash,
+              asset: burn.asset,
+              assetType: getAssetTypeByAsset(burn.asset),
+              amount: burn.amount,
+              recipientAddress: burn.recipientAddress,
+            },
+          ]);
+          break;
+        default:
+          throw new Error(`wrong burn chain type: ${burn.chain}`);
       }
-      await this.db.createCkbBurn([burn]);
     }
   }
 
-  async watchBurnEvents(): Promise<never> {
-    // get cursor from db, usually the block height, to start the poll or subscribe
-    // invoke saveBurnEvent when get new one
-    let latestHeight = await this.db.getCkbLatestHeight();
-    while (true) {
-      logger.debug('CkbHandler watchBurnEvents height: ', latestHeight);
-      const block = await this.ckb.rpc.getBlockByNumber(BigInt(latestHeight));
+  async watchNewBlock() {
+    const lastHandledBlock = await this.getLastHandledBlock();
+    if (lastHandledBlock.blockNumber === 0) {
+      const currentBlock = await this.ckb.rpc.getTipHeader();
+      this.lastHandledBlockHeight = Number(currentBlock.number);
+      this.lastHandledBlockHash = currentBlock.hash;
+    } else {
+      this.lastHandledBlockHeight = lastHandledBlock.blockNumber;
+      this.lastHandledBlockHash = lastHandledBlock.blockHash;
+    }
+
+    for (;;) {
+      const nextBlockHeight = this.lastHandledBlockHeight + 1;
+      const block = await this.ckb.rpc.getBlockByNumber(BigInt(nextBlockHeight));
       if (block == null) {
-        logger.debug('watchBurnEvents watchBurnEvents waiting for new ckb block');
         await asyncSleep(5000);
         continue;
       }
-      const burnTxs = new Map();
-      for (const tx of block.transactions) {
-        if (await this.isMintTx(tx)) {
-          await this.onMintTx(tx);
-        }
-        const recipientData = tx.outputsData[0];
-        let cellData;
-        try {
-          cellData = new RecipientCellData(fromHexString(recipientData).buffer);
-        } catch (e) {
-          continue;
-        }
-        if (await this.isBurnTx(tx, cellData)) {
-          const burnPreviousTx: TransactionWithStatus = await this.ckb.rpc.getTransaction(
-            tx.inputs[0].previousOutput.txHash,
-          );
-          const senderLockHash = this.ckb.utils.scriptToHash(
-            burnPreviousTx.transaction.outputs[Number(tx.inputs[0].previousOutput.index)].lock,
-          );
-          const data: BurnDbData = {
-            senderLockScriptHash: senderLockHash,
-            cellData: cellData,
-          };
-          burnTxs.set(tx.hash, data);
-          logger.info(
-            `CkbHandler watchBurnEvents receive burnedTx, ckbTxHash:${
-              tx.hash
-            } senderLockHash:${senderLockHash} cellData:${JSON.stringify(cellData, null, 2)}`,
-          );
-        }
-      }
-      await this.onBurnTxs(latestHeight, burnTxs);
-
-      latestHeight++;
-      await asyncSleep(1000);
+      await this.onBlock(block);
     }
+  }
+
+  async onBlock(block: Block) {
+    const blockNumber = Number(block.header.number);
+    const blockHash = block.header.hash;
+    logger.info(`CkbHandler onBlock blockHeight:${blockNumber} blockHash:${blockHash}`);
+
+    const confirmNumber = ForceBridgeCore.config.ckb.confirmNumber;
+    const confirmedBlockHeight = blockNumber - confirmNumber >= 0 ? blockNumber - confirmNumber : 0;
+    if (
+      confirmNumber !== 0 &&
+      this.lastHandledBlockHeight === blockNumber - 1 &&
+      this.lastHandledBlockHash !== '' &&
+      block.header.parentHash !== this.lastHandledBlockHash
+    ) {
+      logger.warn(
+        `CkbHandler onBlock blockHeight:${blockNumber} parentHash:${block.header.parentHash} != lastHandledBlockHash:${this.lastHandledBlockHash} fork occur removeUnconfirmedLock events from:${confirmedBlockHeight}`,
+      );
+      await this.db.removeUnconfirmedCkbBurn(blockNumber, confirmNumber);
+
+      const confirmedBlock = await this.ckb.rpc.getBlockByNumber(BigInt(confirmedBlockHeight));
+      await this.setLastHandledBlock(Number(confirmedBlock.header.number), confirmedBlock.header.hash);
+      return;
+    }
+
+    await this.setLastHandledBlock(blockNumber, blockHash);
+    const unconfirmedTxs = await this.db.getUnconfirmedCkbBurnToConfirm(blockNumber, confirmNumber);
+    const confirmedTxHashes = unconfirmedTxs.map((burn) => {
+      return burn.ckbTxHash;
+    });
+    await this.db.updateCkbBurnConfirmStatus(confirmedTxHashes);
+    await this.onCkbBurnConfirmed(unconfirmedTxs);
+
+    const burnTxs = new Map();
+    for (const tx of block.transactions) {
+      if (await this.isMintTx(tx)) {
+        await this.onMintTx(tx);
+      }
+      const recipientData = tx.outputsData[0];
+      let cellData;
+      try {
+        cellData = new RecipientCellData(fromHexString(recipientData).buffer);
+      } catch (e) {
+        continue;
+      }
+      if (await this.isBurnTx(tx, cellData)) {
+        const burnPreviousTx: TransactionWithStatus = await this.ckb.rpc.getTransaction(
+          tx.inputs[0].previousOutput.txHash,
+        );
+        const senderLockHash = this.ckb.utils.scriptToHash(
+          burnPreviousTx.transaction.outputs[Number(tx.inputs[0].previousOutput.index)].lock,
+        );
+        const data: BurnDbData = {
+          senderLockScriptHash: senderLockHash,
+          cellData: cellData,
+        };
+        burnTxs.set(tx.hash, data);
+        logger.info(
+          `CkbHandler watchBurnEvents receive burnedTx, ckbTxHash:${
+            tx.hash
+          } senderLockHash:${senderLockHash} cellData:${JSON.stringify(cellData, null, 2)}`,
+        );
+      }
+    }
+    await this.onBurnTxs(blockNumber, burnTxs);
   }
 
   async onMintTx(tx: Transaction) {
@@ -170,7 +226,7 @@ export class CkbHandler {
       ckbBurns.push(burn);
       burnTxHashes.push(k);
     });
-    await this.saveBurnEvent(ckbBurns);
+    await this.db.createCkbBurn(ckbBurns);
     logger.info(`CkbHandler processBurnTxs saveBurnEvent success, burnTxHashes:${burnTxHashes.join(', ')}`);
   }
 
@@ -447,7 +503,7 @@ export class CkbHandler {
   }
 
   start(): void {
-    this.watchBurnEvents();
+    this.watchNewBlock();
     this.handleMintRecords();
     logger.info('ckb handler started 🚀');
   }
