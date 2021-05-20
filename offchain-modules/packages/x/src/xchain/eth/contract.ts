@@ -78,20 +78,36 @@ export class EthChain {
 
   async sendUnlockTxs(records: EthUnlock[]): Promise<any> {
     logger.debug('contract balance', await this.provider.getBalance(this.bridgeContractAddr));
+    const bridgeFeeRecords = new Array(0);
     const params = records.map((r) => {
+      const index = bridgeFeeRecords.findIndex((feeRecord) => feeRecord.token === r.asset);
+      if (-1 === index) {
+        const bridgeFeeRecord = {
+          token: r.asset,
+          recipient: this.wallet.address,
+          amount: BigNumber.from(r.bridgeFee),
+          ckbTxHash: '0x',
+        };
+        bridgeFeeRecords.push(bridgeFeeRecord);
+      } else {
+        const bridgeFeeRecord = bridgeFeeRecords[index];
+        bridgeFeeRecord.amount = bridgeFeeRecord.amount.add(BigNumber.from(r.bridgeFee));
+      }
+
       return {
         token: r.asset,
         recipient: r.recipientAddress,
-        amount: BigNumber.from(r.amount),
+        amount: BigNumber.from(r.amount).sub(r.bridgeFee),
         ckbTxHash: r.ckbTxHash,
       };
     });
+    const paramsWithBridgeFee = params.concat(bridgeFeeRecords);
     const domainSeparator = await this.bridge.DOMAIN_SEPARATOR();
     const typeHash = await this.bridge.UNLOCK_TYPEHASH();
     const nonce = await this.bridge.latestUnlockNonce_();
-    const signatures = this.signUnlockRecords(domainSeparator, typeHash, params, nonce);
-    logger.debug('sendUnlockTxs params', params);
-    return this.bridge.unlock(params, nonce, signatures);
+    const signatures = this.signUnlockRecords(domainSeparator, typeHash, paramsWithBridgeFee, nonce);
+    logger.debug('sendUnlockTxs params', paramsWithBridgeFee);
+    return this.bridge.unlock(paramsWithBridgeFee, nonce, signatures);
   }
 
   private signUnlockRecords(domainSeparator: string, typeHash: string, records, nonce) {

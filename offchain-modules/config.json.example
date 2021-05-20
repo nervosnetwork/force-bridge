@@ -16,7 +16,57 @@
       "multiSignThreshold": 2,
       "contractAddress": "0x8326e1d621Cd32752920ed2A44B49bB1a96c7391",
       "confirmNumber": 5,
-      "startBlockHeight": 1
+      "startBlockHeight": 1,
+      "assetWhiteList": [
+        {
+          "address": "0x0000000000000000000000000000000000000000",
+          "name": "ETH",
+          "symbol": "ETH",
+          "decimal": 18,
+          "logoURL": "https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=002",
+          "minimalBridgeAmount": "0.001",
+          "bridgeFee": {
+            "in": "0.00001",
+            "out": "0.00002"
+          }
+        },
+        {
+          "address": "0x7Af456bf0065aADAB2E6BEc6DaD3731899550b84",
+          "name": "DAI",
+          "symbol": "DAI",
+          "decimal": 18,
+          "logoURL": "https://cryptologos.cc/logos/single-collateral-dai-sai-logo.svg?v=002",
+          "minimalBridgeAmount": "0.001",
+          "bridgeFee": {
+            "in": "0.00001",
+            "out": "0.00002"
+          }
+        },
+        {
+          "address": "0x74a3dbd5831f45CD0F3002Bb87a59B7C15b1B5E6",
+          "name": "USDT",
+          "symbol": "USDT",
+          "decimal": 6,
+          "logoURL": "https://cryptologos.cc/logos/tether-usdt-logo.svg?v=002",
+          "minimalBridgeAmount": "0.001",
+          "bridgeFee": {
+            "in": "0.00001",
+            "out": "0.00002"
+          }
+        },
+        {
+          "address": "0x265566D4365d80152515E800ca39424300374A83",
+          "name": "USDC",
+          "symbol": "USDC",
+          "decimal": 6,
+          "logoURL": "https://cryptologos.cc/logos/usd-coin-usdc-logo.svg?v=002",
+          "minimalBridgeAmount": "0.001",
+          "bridgeFee": {
+            "in": "0.00001",
+            "out": "0.00002"
+          }
+        }
+      ]
     },
     "eos": {
       "rpcUrl": "http://127.0.0.1:8888",

@@ -12,6 +12,7 @@ import { Asset } from '../model/asset';
 export interface MintAssetRecord {
   asset: Asset;
   amount: Amount;
+  bridgeFee: Amount;
   recipient: Address;
 }
 
@@ -70,6 +71,7 @@ export class CkbTxGenerator {
     const outputsData = new Array(0);
     const sudtCellCapacity = 300n * 10n ** 8n;
     const assets = new Array(0);
+    const bridgeFeeCells = new Array(0);
     for (const record of records) {
       if (record.amount.eq(Amount.ZERO)) {
         continue;
@@ -92,9 +94,14 @@ export class CkbTxGenerator {
         capacity: `0x${sudtCellCapacity.toString(16)}`,
       };
       outputs.push(outputSudtCell);
-      outputsData.push(record.amount.toUInt128LE());
+      const bridgeFee = record.bridgeFee;
+      const mintAmount = record.amount.sub(bridgeFee);
+      outputsData.push(mintAmount.toUInt128LE());
 
-      if (assets.indexOf(record.asset.toBridgeLockscriptArgs()) != -1) {
+      const assetIndex = assets.indexOf(record.asset.toBridgeLockscriptArgs());
+      if (assetIndex != -1) {
+        const bridgeFeeCell = bridgeFeeCells[assetIndex];
+        bridgeFeeCell.amount = bridgeFeeCell.amount.add(bridgeFee);
         continue;
       }
       assets.push(record.asset.toBridgeLockscriptArgs());
@@ -119,10 +126,44 @@ export class CkbTxGenerator {
       outputs.push(outputBridgeCell);
       outputsData.push('0x');
       bridgeCells.push(bridgeCell);
+
+      // const feeCellSearchKey = {
+      //   script: new Script(
+      //     ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
+      //     sudtArgs,
+      //     ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
+      //   ).serializeJson() as LumosScript,
+      //   script_type: ScriptType.type,
+      //   filter: {
+      //     script: userLockscript.serializeJson() as LumosScript,
+      //   },
+      // };
+      // const feeCells = await this.collector.collectSudtByAmount(feeCellSearchKey, new Amount('0'));
+      // if (feeCells.length == 0) {
+      //   throw new Error('failed to generate mint tx. the live bridge fee cell is not found!');
+      // }
+
+      const bridgeFeeCell = {
+        lock: userLockscript,
+        type: {
+          codeHash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
+          hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
+          args: sudtArgs,
+        },
+        capacity: `0x${sudtCellCapacity.toString(16)}`,
+        amount: bridgeFee,
+      };
+      bridgeFeeCells.push(bridgeFeeCell);
     }
 
+    bridgeFeeCells.forEach((cell) => {
+      outputs.push({ lock: cell.lock, type: cell.type, capacity: cell.capacity });
+      outputsData.push(cell.amount.toUInt128LE());
+    });
+
     const fee = 100000n;
-    const needSupplyCap = sudtCellCapacity * BigInt(records.length) + fee;
+    // TODO reuse bridgeFeeCell
+    const needSupplyCap = sudtCellCapacity * BigInt(records.length + bridgeFeeCells.length) + fee;
     const supplyCapCells = await this.collector.getCellsByLockscriptAndCapacity(
       userLockscript,
       new Amount(`0x${needSupplyCap.toString(16)}`, 0),

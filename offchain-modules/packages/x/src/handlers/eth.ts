@@ -1,4 +1,5 @@
-import { ChainType } from '../ckb/model/asset';
+import { Amount } from '@lay2/pw-core';
+import { ChainType, EthAsset } from '../ckb/model/asset';
 import { EthDb } from '../db';
 import { EthUnlockStatus } from '../db/entity/EthUnlock';
 import { EthUnlock } from '../db/model';
@@ -24,9 +25,9 @@ export class EthHandler {
         );
         logger.debug('EthHandler watchLockEvents eth lockEvtLog:', { log, parsedLog });
         const amount = parsedLog.args.lockedAmount.toString();
-        if (amount === '0') {
-          return;
-        }
+        const asset = new EthAsset(parsedLog.args.token);
+        if (!asset.inWhiteList(new Amount(amount, 0))) return;
+
         await this.db.createCkbMint([
           {
             id: log.transactionHash,
@@ -89,6 +90,7 @@ export class EthHandler {
         // write db first, avoid send tx success and fail to write db
         records.map((r) => {
           r.status = 'pending';
+          r.bridgeFee = new EthAsset(r.asset).getBridgeFee('out');
         });
         await this.db.saveEthUnlock(records);
         const txRes = await this.ethChain.sendUnlockTxs(records);

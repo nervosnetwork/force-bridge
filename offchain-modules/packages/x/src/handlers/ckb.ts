@@ -218,6 +218,9 @@ export class CkbHandler {
         return false;
     }
 
+    if (!asset.inWhiteList(Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(cellData.getAmount().raw()))}`)))
+      return false;
+
     // verify tx input: sudt cell.
     const preHash = tx.inputs[0].previousOutput.txHash;
     const txPrevious = await this.ckb.rpc.getTransaction(preHash);
@@ -274,8 +277,9 @@ export class CkbHandler {
       }
 
       try {
-        mintRecords.map((r) => {
+        mintRecords.map((r, i) => {
           r.status = 'pending';
+          r.bridgeFee = records[i].bridgeFee.toString(0);
         });
         await this.db.updateCkbMint(mintRecords);
         const rawTx = await generator.mint(await account.getLockscript(), records);
@@ -314,30 +318,42 @@ export class CkbHandler {
 
   filterMintRecords(r: CkbMint, ownLockHash: string): MintAssetRecord {
     switch (r.chain) {
-      case ChainType.BTC:
+      case ChainType.BTC: {
+        const asset = new BtcAsset(r.asset, ownLockHash);
         return {
-          asset: new BtcAsset(r.asset, ownLockHash),
+          asset,
           recipient: new Address(r.recipientLockscript, AddressType.ckb),
           amount: new Amount(r.amount, 0),
+          bridgeFee: new Amount(asset.getBridgeFee('in'), 0),
         };
-      case ChainType.ETH:
+      }
+      case ChainType.ETH: {
+        const asset = new EthAsset(r.asset, ownLockHash);
         return {
-          asset: new EthAsset(r.asset, ownLockHash),
+          asset,
           recipient: new Address(r.recipientLockscript, AddressType.ckb),
           amount: new Amount(r.amount, 0),
+          bridgeFee: new Amount(asset.getBridgeFee('in'), 0),
         };
-      case ChainType.TRON:
+      }
+      case ChainType.TRON: {
+        const asset = new TronAsset(r.asset, ownLockHash);
         return {
-          asset: new TronAsset(r.asset, ownLockHash),
+          asset,
           amount: new Amount(r.amount, 0),
+          bridgeFee: new Amount(asset.getBridgeFee('in'), 0),
           recipient: new Address(r.recipientLockscript, AddressType.ckb),
         };
-      case ChainType.EOS:
+      }
+      case ChainType.EOS: {
+        const asset = new EosAsset(r.asset, ownLockHash);
         return {
-          asset: new EosAsset(r.asset, ownLockHash),
+          asset,
           amount: new Amount(r.amount, 0),
+          bridgeFee: new Amount(asset.getBridgeFee('in'), 0),
           recipient: new Address(r.recipientLockscript, AddressType.ckb),
         };
+      }
       default:
         throw new Error('asset not supported!');
     }

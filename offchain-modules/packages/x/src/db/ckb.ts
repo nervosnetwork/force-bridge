@@ -28,7 +28,7 @@ export class CkbDb {
     return rawRes[0].max_block_number || ForceBridgeCore.config.ckb.startBlockHeight;
   }
 
-  async getCkbMintRecordsToMint(take = 1): Promise<CkbMint[]> {
+  async getCkbMintRecordsToMint(take = 100): Promise<CkbMint[]> {
     return this.connection.getRepository(CkbMint).find({
       where: {
         status: 'todo',

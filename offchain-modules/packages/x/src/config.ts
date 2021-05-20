@@ -36,6 +36,7 @@ export interface EthConfig {
   multiSignThreshold: number;
   confirmNumber: number;
   startBlockHeight: number;
+  assetWhiteList: WhiteListEthAsset[];
 }
 
 export interface EosConfig {
@@ -90,6 +91,16 @@ export interface logConfig {
 
 export interface commonConfig {
   log: logConfig;
+}
+
+export interface WhiteListEthAsset {
+  address: string;
+  name: string;
+  symbol: string;
+  logoURL: string;
+  decimal: number;
+  minimalBridgeAmount: string;
+  bridgeFee: { in: string; out: string };
 }
 
 export interface Config {
