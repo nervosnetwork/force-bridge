@@ -1,4 +1,5 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryColumn, UpdateDateColumn } from 'typeorm';
+import { txConfirmStatus } from './EthLock';
 
 @Entity()
 export class CkbBurn {
