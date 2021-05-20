@@ -34,7 +34,7 @@ export class EthDb implements IQuery {
     await this.ethLockRepository.save(dbRecords);
   }
 
-  async getEthUnlockRecordsToUnlock(status: EthUnlockStatus, take = 1): Promise<EthUnlock[]> {
+  async getEthUnlockRecordsToUnlock(status: EthUnlockStatus, take = 100): Promise<EthUnlock[]> {
     return this.ethUnlockRepository.find({
       where: {
         status,

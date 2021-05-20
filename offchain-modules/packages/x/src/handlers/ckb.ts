@@ -260,6 +260,7 @@ export class CkbHandler {
       }
       logger.info(`CkbHandler handleMintRecords new mintRecords:${JSON.stringify(mintRecords, null, 2)}`);
 
+      await this.indexer.waitUntilSync();
       const mintIds = mintRecords
         .map((ckbMint) => {
           return ckbMint.id;
@@ -312,7 +313,6 @@ export class CkbHandler {
         });
         await this.db.updateCkbMint(mintRecords);
       }
-      await this.indexer.waitUntilSync();
     }
   }
 

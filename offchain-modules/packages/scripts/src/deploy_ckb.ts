@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
-// todo: remove lumos indexer dep, use collector in packages/ckb/tx-helper/collector
 import { promises as fs } from 'fs';
 import path from 'path';
 import { Asset, BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
@@ -7,7 +6,6 @@ import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
 import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
 import { asyncSleep as sleep, blake2b } from '@force-bridge/x/dist/utils';
-
 import { OutPoint, Script } from '@lay2/pw-core';
 import RawTransactionParams from '@nervosnetwork/ckb-sdk-core';
 import * as utils from '@nervosnetwork/ckb-sdk-utils';
@@ -21,7 +19,8 @@ const CKB_URL = nconf.get('forceBridge:ckb:ckbRpcUrl');
 const CKB_IndexerURL = nconf.get('forceBridge:ckb:ckbIndexerUrl');
 const PRI_KEY = nconf.get('forceBridge:ckb:privateKey');
 const ckb = new RawTransactionParams(CKB_URL);
-const generator = new CkbTxGenerator(ckb, new IndexerCollector(new CkbIndexer(CKB_URL, CKB_IndexerURL)));
+const ckbIndexer = new CkbIndexer(CKB_URL, CKB_IndexerURL);
+const generator = new CkbTxGenerator(ckb, new IndexerCollector(ckbIndexer));
 const PUB_KEY = ckb.utils.privateKeyToPublicKey(PRI_KEY);
 const ARGS = `0x${ckb.utils.blake160(PUB_KEY, 'hex')}`;
 const ADDRESS = ckb.utils.pubkeyToAddress(PUB_KEY);
@@ -286,6 +285,7 @@ const main = async () => {
   await setOwnerLockHash();
 
   const assets = getPreDeployedAssets();
+  await ckbIndexer.waitUntilSync();
   await createBridgeCell(assets);
 
   await setXChainStartTime();
@@ -294,4 +294,9 @@ const main = async () => {
   process.exit(0);
 };
 
-main();
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
