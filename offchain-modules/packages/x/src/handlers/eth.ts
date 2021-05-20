@@ -66,7 +66,7 @@ export class EthHandler {
 
         logger.info(`EthHandler init getLogs from:${this.lastHandledBlockHeight} to:${endBlockNumber}`);
 
-        await this.ethChain.getLogs(this.lastHandledBlockHeight, endBlockNumber, async (log, parsedLog) => {
+        await this.ethChain.getLogs(this.lastHandledBlockHeight, endBlockNumber - 1, async (log, parsedLog) => {
           await this.onLogs(log, parsedLog);
         });
         const endBlock = await this.ethChain.getBlock(endBlockNumber);
