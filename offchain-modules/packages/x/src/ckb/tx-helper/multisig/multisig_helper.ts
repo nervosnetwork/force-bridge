@@ -1,11 +1,12 @@
+import { HexString } from '@ckb-lumos/base';
 import { serializeMultisigScript, multisigArgs } from '@ckb-lumos/common-scripts/lib/from_info';
 import { getConfig } from '@ckb-lumos/config-manager';
 import { key } from '@ckb-lumos/hd';
 import { generateAddress } from '@ckb-lumos/helpers';
-import { HexString } from '@ckb-lumos/base';
+// import { MultisigItem } from '../config';
+import { MultisigItem } from '../../../config';
+import { ForceBridgeCore } from '../../../core';
 import { init } from './init_config';
-import { ForceBridgeCore } from '@force-bridge/core';
-import { MultisigItem } from '@force-bridge/config';
 
 init();
 const config = getConfig();

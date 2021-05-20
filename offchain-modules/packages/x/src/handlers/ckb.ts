@@ -1,5 +1,7 @@
 import { Script as LumosScript } from '@ckb-lumos/base';
 import { Address, AddressType, Amount, HashType, Script } from '@lay2/pw-core';
+import { JSONRPCClient } from 'json-rpc-2.0';
+import fetch from 'node-fetch/index';
 import { Account } from '../ckb/model/accounts';
 import { Asset, BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '../ckb/model/asset';
 import { IndexerCollector } from '../ckb/tx-helper/collector';
@@ -15,15 +17,13 @@ import { getAssetTypeByAsset } from '../xchain/tron/utils';
 import Transaction = CKBComponents.Transaction;
 import TransactionWithStatus = CKBComponents.TransactionWithStatus;
 import { serializeMultisigScript } from '@ckb-lumos/common-scripts/lib/secp256k1_blake160_multisig';
-import { getMultisigLock, getOwnLockHash } from '@force-bridge/ckb/tx-helper/multisig/multisig_helper';
-import { JSONRPCClient } from 'json-rpc-2.0';
-import fetch from 'node-fetch/index';
-import { MultiSigMgr } from '@force-bridge/multisig/multisig-mgr';
 import { Indexer } from '@ckb-lumos/indexer';
 import { sealTransaction } from '@ckb-lumos/helpers';
 import { key } from '@ckb-lumos/hd';
 import TransactionManager from '@ckb-lumos/transaction-manager';
 import { RPC } from '@ckb-lumos/rpc';
+import { getOwnLockHash } from '../ckb/tx-helper/multisig/multisig_helper';
+import { MultiSigMgr } from '../multisig/multisig-mgr';
 
 const lumosIndexerData = './indexer-data';
 // CKB handler

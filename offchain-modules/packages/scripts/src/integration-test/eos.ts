@@ -5,6 +5,7 @@ import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
 
 import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
+import { getMultisigLock } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { Config, EosConfig } from '@force-bridge/x/dist/config';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { CkbMint } from '@force-bridge/x/dist/db/entity/CkbMint';

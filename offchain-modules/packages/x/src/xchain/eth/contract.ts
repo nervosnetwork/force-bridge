@@ -3,11 +3,11 @@ import { BigNumber, ethers } from 'ethers';
 import { EthConfig } from '../../config';
 import { ForceBridgeCore } from '../../core';
 import { EthUnlock } from '../../db/entity/EthUnlock';
+import { MultiSigMgr } from '../../multisig/multisig-mgr';
 import { asyncSleep } from '../../utils';
 import { logger } from '../../utils/logger';
 import { abi } from './abi/ForceBridge.json';
-import { MultiSigMgr } from '@force-bridge/multisig/multisig-mgr';
-import { buildSigRawData } from '@force-bridge/xchain/eth/utils';
+import { buildSigRawData } from './utils';
 
 export const lockTopic = ethers.utils.id('Locked(address,address,uint256,bytes,bytes)');
 const BlockBatchSize = 100;

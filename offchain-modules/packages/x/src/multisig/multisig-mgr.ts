@@ -1,7 +1,7 @@
-import { httpRequest } from '@force-bridge/multisig/client';
-import { logger } from '@force-bridge/utils/logger';
-import { EthUnlockRecord } from '@force-bridge/xchain/eth';
 import { TransactionSkeletonType } from '@ckb-lumos/helpers';
+import { logger } from '../utils/logger';
+import { EthUnlockRecord } from '../xchain/eth';
+import { httpRequest } from './client';
 
 export interface ethCollectSignaturesPayload {
   domainSeparator: string;
@@ -50,8 +50,8 @@ export class MultiSigMgr {
 
   public async collectSignatures(params: collectSignaturesParams): Promise<string[]> {
     logger.info(`collectSignatures rawData:${params.rawData} payload:${JSON.stringify(params.payload, null, 2)}`);
-    let successSigSvr = [];
-    let sigs = [];
+    const successSigSvr = [];
+    const sigs = [];
     for (const svrHost of this.sigServerHosts) {
       try {
         const sig = await this.requestSig(svrHost, params);

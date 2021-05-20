@@ -1,6 +1,6 @@
 import { Connection, In, Repository } from 'typeorm';
-import { ISigned } from '@force-bridge/db/model';
-import { SignedTx } from '@force-bridge/db/entity/SignedTx';
+import { SignedTx } from './entity/SignedTx';
+import { ISigned } from './model';
 
 export class SignedDb {
   private signedRepository: Repository<SignedTx>;

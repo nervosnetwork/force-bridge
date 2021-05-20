@@ -22,7 +22,7 @@ async function main() {
   const configPath = process.env.CONFIG_PATH || './config.json';
   nconf.env().file({ file: configPath });
   const config: Config = nconf.get('forceBridge');
-  config.ckb.privateKey = parsePrivateKey(config.ckb.privateKey);
+  config.ckb.fromPrivateKey = parsePrivateKey(config.ckb.fromPrivateKey);
   if (!config.common.log.logFile) {
     config.common.log.logFile = defaultLogFile;
   }

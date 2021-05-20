@@ -4,6 +4,7 @@ import { ChainType, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
 import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
+import { getMultisigLock } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { Config, TronConfig } from '@force-bridge/x/dist/config';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { CkbMint, TronLock, TronUnlock } from '@force-bridge/x/dist/db/model';
@@ -15,9 +16,7 @@ import nconf from 'nconf';
 import TronWeb from 'tronweb';
 import { createConnection } from 'typeorm';
 import { waitUntilCommitted } from './util';
-import { getMultisigLock } from '@force-bridge/ckb/tx-helper/multisig/multisig_helper';
 // import { multisigLockScript } from '@force-bridge/ckb/tx-helper/multisig/multisig_helper';
-const TronWeb = require('tronweb');
 
 const PRI_KEY = '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';

@@ -6,6 +6,7 @@ import { Asset, BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '@forc
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
 import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
+import { generateTypeIDScript } from '@force-bridge/x/dist/ckb/tx-helper/multisig/typeid';
 import { asyncSleep as sleep, blake2b } from '@force-bridge/x/dist/utils';
 
 import { OutPoint, Script } from '@lay2/pw-core';

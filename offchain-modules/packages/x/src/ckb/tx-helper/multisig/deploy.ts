@@ -1,20 +1,18 @@
-import 'module-alias/register';
-import { Indexer } from '@ckb-lumos/indexer';
-import { init } from './init_config';
-import { TransactionSkeleton, sealTransaction, parseAddress, minimalCellCapacity } from '@ckb-lumos/helpers';
 import { HashType } from '@ckb-lumos/base';
 import { common } from '@ckb-lumos/common-scripts';
 import { key } from '@ckb-lumos/hd';
-import { generateTypeIDScript } from './typeid';
+import { TransactionSkeleton, sealTransaction, parseAddress, minimalCellCapacity } from '@ckb-lumos/helpers';
+import { Indexer } from '@ckb-lumos/indexer';
 import { RPC } from '@ckb-lumos/rpc';
-import { asyncSleep as sleep } from '@force-bridge/utils';
-import { ForceBridgeCore } from '@force-bridge/core';
-import { Config } from '@force-bridge/config';
-import { getFromAddr, getMultisigAddr, getMultisigLock } from '@force-bridge/ckb/tx-helper/multisig/multisig_helper';
-
-const TransactionManager = require('@ckb-lumos/transaction-manager');
-const CKB = require('@nervosnetwork/ckb-sdk-core').default;
-const nconf = require('nconf');
+import TransactionManager from '@ckb-lumos/transaction-manager';
+import CKB from '@nervosnetwork/ckb-sdk-core';
+import nconf from 'nconf';
+import { Config } from '../../../config';
+import { ForceBridgeCore } from '../../../core';
+import { asyncSleep as sleep } from '../../../utils';
+import { init } from './init_config';
+import { getFromAddr, getMultisigAddr, getMultisigLock } from './multisig_helper';
+import { generateTypeIDScript } from './typeid';
 
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
 init();
