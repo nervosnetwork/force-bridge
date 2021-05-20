@@ -107,6 +107,7 @@ export class EthHandler {
         } else {
           records.map((r) => {
             r.status = 'error';
+            r.message = 'unlock tx failed';
           });
           logger.error('EthHandler watchLockEvents unlock execute failed:', receipt);
         }
