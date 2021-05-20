@@ -173,8 +173,8 @@ async function main() {
       logger.info('assetName', assetName);
       logger.info('beforeLockBalance', beforeLockBalance);
       logger.info('sudt balance:', balance);
-      logger.info('expect balance:', new Amount(amount.toString(), 0) + beforeLockBalance);
-      assert(balance.eq(new Amount(amount.toString(), 0) + beforeLockBalance));
+      logger.info('expect balance:', new Amount(amount.toString(), 0).add(beforeLockBalance));
+      assert(balance.eq(new Amount(amount.toString(), 0).add(beforeLockBalance)));
     }
   };
 
