@@ -135,7 +135,7 @@ async function main() {
     return balance;
   };
 
-  const checkLock = async (txHash, assetName, assetType, sendBurn) => {
+  const checkLock = async (txHash, assetName, assetType, beforeLockBalance, sendBurn) => {
     // check TronLock and CkbMint saved.
     const tronLockRecords = await conn.manager.find(TronLock, {
       where: {
@@ -171,9 +171,10 @@ async function main() {
 
     if (!sendBurn) {
       logger.info('assetName', assetName);
+      logger.info('beforeLockBalance', beforeLockBalance);
       logger.info('sudt balance:', balance);
-      logger.info('expect balance:', new Amount(amount.toString(), 0));
-      assert(balance.eq(new Amount(amount.toString(), 0)));
+      logger.info('expect balance:', new Amount(amount.toString(), 0) + beforeLockBalance);
+      assert(balance.eq(new Amount(amount.toString(), 0) + beforeLockBalance));
     }
   };
 
@@ -227,7 +228,8 @@ async function main() {
   for (let i = 0; i < 100; i++) {
     await asyncSleep(10000);
     try {
-      await checkLock(trxTxHash, 'trx', 'trx', trxSendBurn);
+      const beforeLockBalance = await getBalance('trx');
+      await checkLock(trxTxHash, 'trx', 'trx', beforeLockBalance, trxSendBurn);
       burnTrxTxHash = await burn(trxSendBurn, 'trx', burnTrxTxHash);
       trxSendBurn = true;
       await checkUnlock(burnTrxTxHash, 'trx');
