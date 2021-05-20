@@ -1,4 +1,7 @@
-
+import { Config } from '@force-bridge/x/dist/config';
+import { ForceBridgeCore } from '@force-bridge/x/dist/core';
+import { collectSignaturesParams } from '@force-bridge/x/dist/multisig/multisig-mgr';
+import { logger } from '@force-bridge/x/dist/utils/logger';
 import bodyParser from 'body-parser';
 import express from 'express';
 import { JSONRPCServer } from 'json-rpc-2.0';
@@ -8,10 +11,6 @@ import { createConnection } from 'typeorm';
 import { signCkbTx } from './ckbSigner';
 import { signEthTx } from './ethSigner';
 import { SigServer } from './sigServer';
-import {logger} from "@force-bridge/x/dist/utils/logger";
-import {ForceBridgeCore} from "@force-bridge/x/dist/core";
-import {Config} from "@force-bridge/x/dist/config";
-import {collectSignaturesParams} from "@force-bridge/x/dist/multisig/multisig-mgr";
 const apiPath = '/force-bridge/sign-server/api/v1';
 
 async function main() {
