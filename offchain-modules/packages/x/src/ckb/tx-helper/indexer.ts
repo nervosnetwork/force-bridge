@@ -124,7 +124,7 @@ export class CkbIndexer {
           return infos;
         }
       }
-      if (liveCells.length < sizeLimit) {
+      if (cursor === '0x') {
         break;
       }
     }
