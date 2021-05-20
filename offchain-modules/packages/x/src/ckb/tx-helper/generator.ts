@@ -192,14 +192,14 @@ export class CkbTxGenerator {
     };
     const args = this.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
     const searchKey = {
-      script: new Script(
-        ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
-        args,
-        ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
-      ).serializeJson() as LumosScript,
-      script_type: ScriptType.type,
+      script: fromLockscript.serializeJson() as LumosScript,
+      script_type: ScriptType.lock,
       filter: {
-        script: fromLockscript.serializeJson() as LumosScript,
+        script: new Script(
+          ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
+          args,
+          ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
+        ).serializeJson() as LumosScript,
       },
     };
     const sudtCells = await this.collector.collectSudtByAmount(searchKey, amount);
