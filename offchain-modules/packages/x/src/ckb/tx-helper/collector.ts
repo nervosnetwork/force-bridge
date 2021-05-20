@@ -53,7 +53,7 @@ export class IndexerCollector extends Collector {
   async getSUDTBalance(sudtType: Script, userLock: Script): Promise<Amount> {
     const searchKey = {
       script: userLock.serializeJson() as LumosScript,
-      script_type: ScriptType.type,
+      script_type: ScriptType.lock,
       filter: {
         script: sudtType.serializeJson() as LumosScript,
       },
