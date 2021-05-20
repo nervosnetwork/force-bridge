@@ -1,13 +1,17 @@
-import { key } from '@ckb-lumos/hd';
-import { ckbCollectSignaturesPayload, collectSignaturesParams, mintRecord } from '@force-bridge/multisig/multisig-mgr';
-import { BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '@force-bridge/ckb/model/asset';
-import { lockTopic } from '@force-bridge/xchain/eth';
-import { fromHexString, uint8ArrayToString } from '@force-bridge/utils';
-import { Address, AddressType, Amount } from '@lay2/pw-core';
 import { Cell } from '@ckb-lumos/base';
-import { ForceBridgeCore } from '@force-bridge/core';
+import { key } from '@ckb-lumos/hd';
+import { BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
+import { ForceBridgeCore } from '@force-bridge/x/dist/core';
+import {
+  ckbCollectSignaturesPayload,
+  collectSignaturesParams,
+  mintRecord,
+} from '@force-bridge/x/dist/multisig/multisig-mgr';
+import { fromHexString, uint8ArrayToString } from '@force-bridge/x/dist/utils';
+import { lockTopic } from '@force-bridge/x/dist/xchain/eth';
+import { Address, AddressType, Amount } from '@lay2/pw-core';
+import minimist from 'minimist';
 import { SigServer } from './sigServer';
-
 async function verifyCreateCellTx(rawData: string, payload: ckbCollectSignaturesPayload): Promise<Error> {
   const txSkeleton = payload.txSkeleton;
   const sigData = txSkeleton.signingEntries[1].message;
@@ -17,7 +21,7 @@ async function verifyCreateCellTx(rawData: string, payload: ckbCollectSignatures
 
   const createAssets = payload.createAssets;
   const ownLockHash = SigServer.getOwnLockHash();
-  let bridgeCells = [];
+  const bridgeCells = [];
   txSkeleton.outputs.forEach((output) => {
     if (!output.cell_output.lock) {
       return;
@@ -91,7 +95,7 @@ async function verifyMintTx(rawData: string, payload: ckbCollectSignaturesPayloa
   //   return new Error(`refTxHashes:${mintTxHashes.join(',')} had already signed`);
   // }
 
-  let mintCells = [];
+  const mintCells = [];
   txSkeleton.outputs.forEach((output) => {
     if (!output.cell_output.type) {
       return;
@@ -230,7 +234,7 @@ export async function signCkbTx(params: collectSignaturesParams): Promise<string
       return Promise.reject(new Error(`invalid sigType:${payload.sigType}`));
   }
 
-  const args = require('minimist')(process.argv.slice(2));
+  const args = minimist(process.argv.slice(2));
   const index = args.index;
   const privKey = ForceBridgeCore.config.ckb.keys[index];
   const message = txSkeleton.signingEntries[1].message;

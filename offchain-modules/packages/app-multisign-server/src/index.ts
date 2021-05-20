@@ -1,22 +1,21 @@
-import express from 'express';
-import bodyParser from 'body-parser';
-import 'module-alias/register';
-import { JSONRPCServer } from 'json-rpc-2.0';
-import nconf from 'nconf';
-import { logger } from '@force-bridge/utils/logger';
-import { signEthTx } from './ethSigner';
-import { collectSignaturesParams } from '@force-bridge/multisig/multisig-mgr';
-import { SigServer } from './sigServer';
-import { signCkbTx } from './ckbSigner';
-import { createConnection } from 'typeorm';
-import { SignedDb } from '@force-bridge/db/signed';
-import { ForceBridgeCore } from '@force-bridge/core';
-import { Config } from '@force-bridge/config';
 
+import bodyParser from 'body-parser';
+import express from 'express';
+import { JSONRPCServer } from 'json-rpc-2.0';
+import minimist from 'minimist';
+import nconf from 'nconf';
+import { createConnection } from 'typeorm';
+import { signCkbTx } from './ckbSigner';
+import { signEthTx } from './ethSigner';
+import { SigServer } from './sigServer';
+import {logger} from "@force-bridge/x/dist/utils/logger";
+import {ForceBridgeCore} from "@force-bridge/x/dist/core";
+import {Config} from "@force-bridge/x/dist/config";
+import {collectSignaturesParams} from "@force-bridge/x/dist/multisig/multisig-mgr";
 const apiPath = '/force-bridge/sign-server/api/v1';
 
 async function main() {
-  const args = require('minimist')(process.argv.slice(2));
+  const args = minimist(process.argv.slice(2));
   const configPath = process.env.CONFIG_PATH || './config.json';
   nconf.env().file({ file: configPath });
   const cfg: Config = nconf.get('forceBridge');

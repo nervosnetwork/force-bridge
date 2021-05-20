@@ -1,10 +1,10 @@
+import { getMultisigLock } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
+import { Config } from '@force-bridge/x/dist/config';
+import { ForceBridgeCore } from '@force-bridge/x/dist/core';
+import { SignedDb } from '@force-bridge/x/dist/db/signed';
+import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
 import { ethers } from 'ethers';
-import { abi } from '@force-bridge/xchain/eth/abi/ForceBridge.json';
-import { getMultisigLock } from '@force-bridge/ckb/tx-helper/multisig/multisig_helper';
-import { SignedDb } from '@force-bridge/db/signed';
 import { Connection, createConnection } from 'typeorm';
-import { Config } from '@force-bridge/config';
-import { ForceBridgeCore } from '@force-bridge/core';
 
 export class SigServer {
   // static config: SigServerConfig;

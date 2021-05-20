@@ -1,17 +1,17 @@
-import { BigNumber, ethers } from 'ethers';
-import { ForceBridgeCore } from '@force-bridge/core';
-import { logger } from '@force-bridge/utils/logger';
-import { isBurnTx } from '@force-bridge/handlers/ckb';
-import { RecipientCellData } from '@force-bridge/ckb/tx-helper/generated/eth_recipient_cell';
-import { fromHexString, toHexString, uint8ArrayToString } from '@force-bridge/utils';
-import { collectSignaturesParams, ethCollectSignaturesPayload } from '@force-bridge/multisig/multisig-mgr';
-import { buildSigRawData } from '@force-bridge/xchain/eth/utils';
-import { EthUnlockRecord } from '@force-bridge/xchain/eth';
-import { Amount } from '@lay2/pw-core';
-import { ChainType, EthAsset } from '@force-bridge/ckb/model/asset';
-const { ecsign, toRpcSig } = require('ethereumjs-util');
+import { RecipientCellData } from '@force-bridge/x/dist/ckb/tx-helper/generated/eth_recipient_cell';
+import { ForceBridgeCore } from '@force-bridge/x/dist/core';
+import { isBurnTx } from '@force-bridge/x/dist/handlers/ckb';
+import { collectSignaturesParams, ethCollectSignaturesPayload } from '@force-bridge/x/dist/multisig/multisig-mgr';
+import { fromHexString, toHexString, uint8ArrayToString } from '@force-bridge/x/dist/utils';
+import { logger } from '@force-bridge/x/dist/utils/logger';
+import { EthUnlockRecord } from '@force-bridge/x/dist/xchain/eth';
 
-import { abi } from '@force-bridge/xchain/eth/abi/ForceBridge.json';
+import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
+import { buildSigRawData } from '@force-bridge/x/dist/xchain/eth/utils';
+import { Amount } from '@lay2/pw-core';
+import { ecsign, toRpcSig } from 'ethereumjs-util';
+import { BigNumber } from 'ethers';
+import minimist from 'minimist';
 import { SigServer } from './sigServer';
 
 const UnlockABIFuncName = 'unlock';
@@ -82,7 +82,7 @@ async function checkDuplicateEthTx(pubKey: string, payload: ethCollectSignatures
 export async function signEthTx(params: collectSignaturesParams): Promise<string> {
   logger.info('signEthTx params: ', JSON.stringify(params, undefined, 2));
 
-  const args = require('minimist')(process.argv.slice(2));
+  const args = minimist(process.argv.slice(2));
   const index = args.index;
   const privKey = ForceBridgeCore.config.eth.multiSignKeys[index];
 
@@ -127,7 +127,7 @@ export async function signEthTx(params: collectSignaturesParams): Promise<string
 }
 
 async function verifyUnlockRecord(unlockRecords: EthUnlockRecord[]): Promise<Error> {
-  for (let record of unlockRecords) {
+  for (const record of unlockRecords) {
     const burnTx = await ForceBridgeCore.ckb.rpc.getTransaction(record.ckbTxHash);
     if (burnTx.txStatus.status !== 'committed') {
       return new Error(`burnTx:${record.ckbTxHash} status:${burnTx.txStatus.status} != committed`);
