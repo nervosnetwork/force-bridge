@@ -1,7 +1,7 @@
-import {Amount} from "@lay2/pw-core";
-import { SerializeForceBridgeLockscriptArgs } from '../../ckb/tx-helper/generated/force_bridge_lockscript';
+import { Amount } from '@lay2/pw-core';
 import { ForceBridgeCore } from '../../core';
 import { fromHexString, stringToUint8Array, toHexString } from '../../utils';
+import { SerializeForceBridgeLockscriptArgs } from '../tx-helper/generated/force_bridge_lockscript';
 
 export enum ChainType {
   BTC,
