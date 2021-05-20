@@ -22,6 +22,7 @@ struct TestParams {
     asset: String,
     owner_lock_hash: [u8; 32],
     bridge_lock_code_hash: [u8; 32],
+    bridge_lock_hash_type: u8,
     bridge_lock_hash: [u8; 32],
 }
 
@@ -31,6 +32,7 @@ fn get_correct_params() -> TestParams {
     let asset = "trx".to_string();
     let owner_lock_hash = [100u8; 32];
     let bridge_lock_code_hash = [1u8; 32];
+    let bridge_lock_hash_type = 0;
     let bridge_lock_hash = [
         218u8, 23, 180, 100, 78, 151, 151, 22, 206, 10, 203, 43, 214, 141, 196, 63, 115, 243, 138,
         86, 163, 57, 218, 146, 244, 255, 64, 70, 230, 209, 238, 159,
@@ -46,6 +48,7 @@ fn get_correct_params() -> TestParams {
         asset,
         owner_lock_hash,
         bridge_lock_code_hash,
+        bridge_lock_hash_type,
         bridge_lock_hash,
     }
 }
@@ -58,6 +61,7 @@ fn generate_correct_mock(test_params: TestParams) -> MockDataLoader {
         chain: test_params.chain,
         asset: test_params.asset,
         bridge_lock_code_hash: test_params.bridge_lock_code_hash,
+        bridge_lock_hash_type: test_params.bridge_lock_hash_type,
         owner_lock_hash: test_params.owner_lock_hash,
         amount: test_params.amount,
         fee: test_params.fee,

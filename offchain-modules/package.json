@@ -10,6 +10,7 @@
     "build": "tsc",
     "test": "ava",
     "lint": "run-p check:prettier check:eslint build",
+    "lint-staged": "eslint --fix -c .eslintrc.next.js $(git diff --cached --staged --name-only --relative | grep -E \"(.ts$)\")",
     "fix": "run-p fix:prettier fix:eslint",
     "fix:eslint": "eslint src/**/*.ts --fix",
     "fix:prettier": "prettier --write .",
@@ -33,6 +34,7 @@
     "cov:send": "nyc report --reporter=lcov && codecov",
     "cov:check": "nyc report && nyc check-coverage --lines 100 --functions 100 --branches 100",
     "deploy": "ts-node-dev ./src/scripts/deploy_ckb.ts",
+    "prepare": "cd .. && husky install offchain-modules/.husky",
     "init-multisig": "ts-node ./src/packages/ckb/tx-helper/multisig/deploy.ts",
     "sign-server1": "ts-node ./src/apps/server/index.ts --port 8090 --index 0",
     "sign-server2": "ts-node ./src/apps/server/index.ts --port 8091 --index 1"
@@ -43,6 +45,7 @@
     "@istanbuljs/nyc-config-typescript": "^1.0.1",
     "@nervosnetwork/ckb-types": "^0.39.0",
     "@types/jest": "^26.0.19",
+    "@types/lodash": "^4.14.169",
     "@types/log4js": "^2.3.5",
     "@typescript-eslint/eslint-plugin": "^4.18.0",
     "@typescript-eslint/parser": "^4.18.0",
@@ -52,7 +55,9 @@
     "eslint-formatter-pretty": "^4.0.0",
     "eslint-plugin-import": "^2.22.1",
     "eslint-plugin-prettier": "^3.3.1",
-    "husky": "^4.3.6",
+    "eslint-plugin-tsc": "^2.0.0",
+    "husky": "^6.0.0",
+    "lint-staged": "^10.5.4",
     "nodemon": "^2.0.7",
     "npm-run-all": "^4.1.5",
     "nyc": "^15.1.0",
@@ -76,7 +81,7 @@
     "@ckb-lumos/transaction-manager": "0.14.1",
     "@lay2/pw-core": "^0.3.22",
     "@nervosnetwork/ckb-sdk-core": "^0.39.0",
-    "@types/node": "^14.14.31",
+    "@types/node": "^15.0.2",
     "axios": "^0.21.1",
     "bitcore-lib": "^8.25.7",
     "ckb-js-toolkit": "^0.10.2",
@@ -98,13 +103,8 @@
     "sqlite3": "^5.0.2",
     "trongrid": "^1.2.6",
     "tronweb": "^3.2.3",
-    "typeorm": "^0.2.31",
+    "typeorm": "^0.2.32",
     "typeorm-naming-strategies": "^2.0.0"
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "yarn lint"
-    }
   },
   "ava": {
     "files": [
@@ -131,5 +131,16 @@
   },
   "_moduleAliases": {
     "@force-bridge": "dist/src/packages"
+  },
+  "lint-staged": {
+    "src/**/*.ts": [
+      "npm run lint-staged",
+      "git add"
+    ]
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
   }
 }

@@ -110,7 +110,7 @@ export function EthLock2CkbMint(record: EthLock): CkbMint {
 export interface IEosLock {
   id: string;
   globalActionSeq: number;
-  accountActionSeq: number;
+  actionPos: number;
   txHash: string;
   actionIndex: number;
   sender: string;
@@ -186,6 +186,8 @@ export interface UnlockRecord {
 }
 
 export interface IQuery {
-  getLockRecordsByUser(ckbRecipientAddr: string): Promise<LockRecord[]>;
-  getUnlockRecordsByUser(ckbLockScriptHash: string): Promise<UnlockRecord[]>;
+  getLockRecordsByCkbAddress(ckbRecipientAddr: string, XChainAsset: string): Promise<LockRecord[]>;
+  getUnlockRecordsByCkbAddress(ckbLockScriptHash: string, XChainAsset: string): Promise<UnlockRecord[]>;
+  getLockRecordsByXChainAddress(XChainSender: string, XChainAsset: string): Promise<LockRecord[]>;
+  getUnlockRecordsByXChainAddress(XChainRecipientAddr: string, XChainAsset: string): Promise<UnlockRecord[]>;
 }

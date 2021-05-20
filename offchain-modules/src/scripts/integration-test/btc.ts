@@ -1,10 +1,9 @@
 import 'module-alias/register';
-import { logger } from '@force-bridge/utils/logger';
+import { initLog, logger } from '@force-bridge/utils/logger';
 import { RPCClient } from 'rpc-bitcoin';
 import bitcore from 'bitcore-lib';
 import { asyncSleep } from '@force-bridge/utils';
 import { createConnection } from 'typeorm';
-import { CkbDb } from '@force-bridge/db';
 import { Config } from '@force-bridge/config';
 import { BTCChain, getBtcMainnetFee } from '@force-bridge/xchain/btc';
 import { BtcDb } from '@force-bridge/db/btc';
@@ -35,12 +34,13 @@ async function main() {
 
   const conn = await createConnection();
   const btcDb = new BtcDb(conn);
-  const ckbDb = new CkbDb(conn);
 
   const configPath = process.env.CONFIG_PATH || './config.json';
   nconf.env().file({ file: configPath });
   const config: Config = nconf.get('forceBridge');
-  logger.debug(`config: ${config}`);
+  config.common.log.logFile = './log/btc-ci.log';
+  initLog(config.common.log);
+
   // init bridge force core
   await new ForceBridgeCore().init(config);
   const PRI_KEY = ForceBridgeCore.config.ckb.fromPrivateKey;
@@ -83,7 +83,7 @@ async function main() {
     LockEventReceipent + 'do lock',
     feeRate.fastestFee,
   );
-  logger.debug(
+  logger.info(
     `user ${userAddr.toString()} lock 50000 satoshis; the lock tx hash is ${lockTxHash} after block ${lockStartHeight}`,
   );
   let latestHeight = await btcDb.getLatestHeight();
@@ -109,8 +109,8 @@ async function main() {
         return false;
       }
 
-      logger.debug('btcLockRecords', btcLockRecords);
-      logger.debug('CkbMintRecords', ckbMintRecords);
+      logger.info('btcLockRecords', btcLockRecords);
+      logger.info('CkbMintRecords', ckbMintRecords);
 
       assert(btcLockRecords.length === 1);
       const btcLockRecord = btcLockRecords[0];
@@ -152,8 +152,8 @@ async function main() {
         await account.getLockscript(),
       );
 
-      logger.debug('sudt balance:', balance);
-      logger.debug('expect balance:', new Amount(lockAmount.toString(), 0));
+      logger.info('sudt balance:', balance);
+      logger.info('expect balance:', new Amount(lockAmount.toString(), 0));
       return balance.eq(new Amount(lockAmount.toString(), 0));
     },
     1000 * 10,
@@ -171,7 +171,7 @@ async function main() {
   );
   const signedTx = ckb.signTransaction(PRI_KEY)(burnTx);
   const burnTxHash = await ckb.rpc.sendTransaction(signedTx);
-  console.log(`burn Transaction has been sent with tx hash ${burnTxHash}`);
+  console.info(`burn Transaction has been sent with tx hash ${burnTxHash}`);
   await waitUntilCommitted(ckb, burnTxHash, 60);
 
   await waitFnCompleted(
@@ -182,8 +182,8 @@ async function main() {
         await account.getLockscript(),
       );
 
-      logger.debug('sudt balance:', balance);
-      logger.debug('expect balance:', new Amount(lockAmount.toString(), 0).sub(burnAmount));
+      logger.info('sudt balance:', balance);
+      logger.info('expect balance:', new Amount(lockAmount.toString(), 0).sub(burnAmount));
       return balance.eq(new Amount(lockAmount.toString(), 0).sub(burnAmount));
     },
     1000 * 10,
@@ -201,12 +201,12 @@ async function main() {
       if (btcUnlockRecords.length === 0) {
         return false;
       }
-      logger.debug('btcUnlockRecords', btcUnlockRecords);
+      logger.info('btcUnlockRecords', btcUnlockRecords);
       assert(btcUnlockRecords.length === 1);
       const eosUnlockRecord = btcUnlockRecords[0];
       assert(eosUnlockRecord.recipientAddress == userAddr.toString());
-      logger.debug('amount: ', eosUnlockRecord.amount);
-      logger.debug('amount: ', burnAmount.toString(0));
+      logger.info('amount: ', eosUnlockRecord.amount);
+      logger.info('amount: ', burnAmount.toString(0));
       assert(eosUnlockRecord.amount === burnAmount.toString(0));
       return true;
     },
@@ -214,12 +214,12 @@ async function main() {
   );
 
   const lockRecords: BtcLock[] = await btcDb.getLockRecordByHash(lockTxHash);
-  logger.debug(`successful lock records ${JSON.stringify(lockRecords, null, 2)}`);
+  logger.info(`successful lock records ${JSON.stringify(lockRecords, null, 2)}`);
   const unlockRecords: BtcUnlock[] = await btcDb.getBtcUnlockRecords('success');
-  logger.debug(`successful unlock records  ${JSON.stringify(unlockRecords, null, 2)}`);
+  logger.info(`successful unlock records  ${JSON.stringify(unlockRecords, null, 2)}`);
   assert(lockRecords[0].data.startsWith(LockEventReceipent));
   assert(unlockRecords[0].recipientAddress === userAddr.toString());
-  logger.debug('end btc test lock and unlock');
+  logger.info('end btc test lock and unlock');
 }
 
 main()

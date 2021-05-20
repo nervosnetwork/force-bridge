@@ -1,8 +1,13 @@
 {
   "forceBridge": {
+    "common": {
+      "log": {
+        "level": "info"
+      }
+    },
     "eth": {
       "rpcUrl": "http://127.0.0.1:8545",
-      "privateKey": "0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed37a",
+      "privateKey": "privkeys/eth",
       "multiSignKeys": [
         "0x859bd720921bb5e60e3133ca11d534edebae38e7c1cd97214f310b4ce400155b",
         "0x193c96316c6cada898f067004aa07a5d48fcecdb1aa158784f2e8868a4db7ce8",
@@ -18,17 +23,18 @@
       "startBlockHeight": 1
     },
     "eos": {
-      "rpcUrl": "https://jungle3.cryptolions.io:443",
-      "chainId": "2a02a0053e5a8cf73a56ba0fda11e4d92e0238a4a2aa74fccf46d5a910746840",
-      "bridgerAccount": "ericwang1112",
+      "rpcUrl": "http://127.0.0.1:8888",
+      "chainId": "6ec2642bbcdc429f0994e98f5b8e8d677c04f0e17c4a48a6821523bf7412e60f",
+      "bridgerAccount": "forcebridge1",
       "bridgerAccountPermission": "active",
       "publicKeys": [
         "EOS4z7R4woUWaU2srBqqJFcj7TLnig4X8LHnq7wvJkkNcM1dKnF4X",
         "EOS6DdTKJaPCkuePnRh55qE875hQUdt5yH47v9838cLAnYVUZtVBF"
       ],
       "privateKeys": [
+        "5KQG4541B1FtDC11gu3NrErWniqTaPHBpmikSztnX8m36sK5px5",
         "5KjR55Q7UJpRnUx8zBdNaUC4P2573BsNLJaMR9o9wrJryYYXWU2",
-        "5KQG4541B1FtDC11gu3NrErWniqTaPHBpmikSztnX8m36sK5px5"
+        "5JWwbQDZ5UHHX5bayx7ZXJ25xvqvuPLWF1MFyEGpspkxqRvetUk"
       ],
       "latestGlobalActionSeq": -1,
       "onlyWatchIrreversibleBlock": false
@@ -47,7 +53,9 @@
             "0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed372",
             "0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed373"
         ],
-        "lockAddress": "2N1VV17PQAQbNNicsoQhyUbiLciJwYLadfW"
+        "lockAddress": "2N1VV17PQAQbNNicsoQhyUbiLciJwYLadfW",
+        "confirmNumber": 2,
+        "startBlockHeight": 1
     },
     "ckb": {
       "ckbRpcUrl": "http://127.0.0.1:8114",

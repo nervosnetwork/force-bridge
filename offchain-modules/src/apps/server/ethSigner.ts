@@ -12,7 +12,7 @@ import { ChainType, EthAsset } from '@force-bridge/ckb/model/asset';
 const { ecsign, toRpcSig } = require('ethereumjs-util');
 
 import { abi } from '@force-bridge/xchain/eth/abi/ForceBridge.json';
-import { SigServer } from './sigserver';
+import { SigServer } from './sigServer';
 
 const UnlockABIFuncName = 'unlock';
 

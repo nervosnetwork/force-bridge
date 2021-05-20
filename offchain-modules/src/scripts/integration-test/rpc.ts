@@ -6,6 +6,7 @@ import { Config } from '@force-bridge/config';
 import { ForceBridgeCore } from '@force-bridge/core';
 import nconf from 'nconf';
 import { asyncSleep } from '@force-bridge/utils';
+import { initLog, logger } from '@force-bridge/utils/logger';
 
 const CKB_PRI_KEY = process.env.PRI_KEY || '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
 
@@ -39,7 +40,7 @@ async function mint(ckbLockscript) {
     },
   };
   const unsignedMintTx = await client.request('generateBridgeInNervosTransaction', mintPayload);
-  console.log('unsignedMintTx', unsignedMintTx);
+  logger.info('unsignedMintTx', unsignedMintTx);
 
   const provider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
   const wallet = new ethers.Wallet(ForceBridgeCore.config.eth.privateKey, provider);
@@ -50,22 +51,13 @@ async function mint(ckbLockscript) {
   unsignedTx.gasLimit = ethers.BigNumber.from(1000000);
   unsignedTx.gasPrice = await provider.getGasPrice();
 
-  console.log('unsignedTx', unsignedTx);
+  logger.info('unsignedTx', unsignedTx);
 
-  //   const bridgeContractAddr = ForceBridgeCore.config.eth.contractAddress;
-  //   const bridge = new ethers.Contract(bridgeContractAddr, abi, provider);
-
-  //   const recipient = stringToUint8Array('ckt1qyqyph8v9mclls35p6snlaxajeca97tc062sa5gahk');
-  //   const ethAmount = ethers.utils.parseUnits('1', 0);
-  //   const testTx = await bridge.populateTransaction.lockETH(recipient, '0x', { value: ethAmount });
-
-  //   console.log('testTx', testTx);
   const signedTx = await wallet.signTransaction(unsignedTx);
-  console.log('signedTx', signedTx);
+  logger.info('signedTx', signedTx);
 
   const mintTxHash = (await provider.sendTransaction(signedTx)).hash;
-  // const mintTxHash = await client.request('sendSignedTransaction', sendPayload);
-  console.log('mintTxHash', mintTxHash);
+  logger.info('mintTxHash', mintTxHash);
   return mintTxHash;
 }
 
@@ -77,7 +69,7 @@ async function getTransaction(ckbAddress) {
   };
 
   const txs = await client.request('getBridgeTransactionSummaries', getTxPayload);
-  console.log('txs', JSON.stringify(txs));
+  logger.info('txs', JSON.stringify(txs));
   return txs;
 }
 
@@ -90,14 +82,13 @@ async function burn(ckbLockscript) {
     amount: '1',
   };
   const unsignedBurnTx = await client.request('generateBridgeOutNervosTransaction', burnPayload);
-  console.log('unsignedBurnTx ', unsignedBurnTx);
+  logger.info('unsignedBurnTx ', unsignedBurnTx);
 
   const signedTx = ForceBridgeCore.ckb.signTransaction(CKB_PRI_KEY)(unsignedBurnTx.rawTransaction);
-  console.log('signedTx', signedTx);
+  logger.info('signedTx', signedTx);
 
   const burnTxHash = await ForceBridgeCore.ckb.rpc.sendTransaction(signedTx);
-  //const burnTxHash = await client.request('sendSignedTransaction', sendPayload);
-  console.log('burnTxHash', burnTxHash);
+  logger.info('burnTxHash', burnTxHash);
   return burnTxHash;
 }
 
@@ -108,7 +99,7 @@ async function check(ckbAddress, txId) {
     const txs = await getTransaction(ckbAddress);
     for (const tx of txs) {
       if ((tx.status = 'Successful' && tx.txSummary.fromTransaction.txId == txId)) {
-        console.log(tx);
+        logger.info(`Tx:${tx}`);
         find = true;
         break;
       }
@@ -128,16 +119,10 @@ async function main() {
   const config: Config = nconf.get('forceBridge');
   // init bridge force core
   await new ForceBridgeCore().init(config);
+  config.common.log.logFile = './log/rpc-ci.log';
+  initLog(config.common.log);
 
   const ckbAddress = 'ckt1qyqyph8v9mclls35p6snlaxajeca97tc062sa5gahk';
-
-  //   const publicKey = ForceBridgeCore.ckb.utils.privateKeyToPublicKey(CKB_PRI_KEY);
-  //   const { secp256k1Dep } = await ForceBridgeCore.ckb.loadDeps();
-  //   const args = `0x${ForceBridgeCore.ckb.utils.blake160(publicKey, 'hex')}`;
-  //   console.log(secp256k1Dep.codeHash, args, secp256k1Dep.hashType);
-
-  //   const fromLockscript = ForceBridgeCore.ckb.utils.addressToScript(ckbAddress);
-  //   console.log(fromLockscript);
 
   const mintTxHash = await mint(ckbAddress);
   await check(ckbAddress, mintTxHash);

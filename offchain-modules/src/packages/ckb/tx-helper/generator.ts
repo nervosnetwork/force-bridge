@@ -277,12 +277,26 @@ export class CkbTxGenerator {
     });
 
     const recipientAddr = fromHexString(toHexString(stringToUint8Array(recipientAddress))).buffer;
+
+    let hashType;
+    switch (ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType) {
+      case 'data':
+        hashType = 0;
+        break;
+      case 'type':
+        hashType = 1;
+        break;
+      default:
+        throw new Error('invalid hash type');
+    }
+
     const params = {
       recipient_address: recipientAddr,
       chain: asset.chainType,
       asset: fromHexString(toHexString(stringToUint8Array(asset.getAddress()))).buffer,
       amount: fromHexString(amount.toUInt128LE()).buffer,
       bridge_lock_code_hash: fromHexString(ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash).buffer,
+      bridge_lock_hash_type: hashType,
       owner_lock_hash: fromHexString(ownerLockHash).buffer,
       fee: new Uint8Array(16).buffer,
     };

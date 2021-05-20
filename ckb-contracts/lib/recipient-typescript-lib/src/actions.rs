@@ -7,8 +7,7 @@ use alloc::string::String;
 use blake2b_ref::{Blake2b, Blake2bBuilder};
 use ckb_std::ckb_types::packed::{Byte32, Bytes, Script};
 use force_bridge_types::{
-    config::BRIDGE_LOCK_HASH_TYPE, generated::basic,
-    generated::force_bridge_lockscript::ForceBridgeLockscriptArgs,
+    generated::basic, generated::force_bridge_lockscript::ForceBridgeLockscriptArgs,
     recipient_cell::RecipientDataView,
 };
 use molecule::prelude::{Builder, Byte, Entity};
@@ -17,11 +16,18 @@ use std::prelude::v1::*;
 pub const CKB_HASH_PERSONALIZATION: &[u8] = b"ckb-default-hash";
 
 pub fn verify_burn_token<T: Adapter>(data_loader: T, data: RecipientDataView) {
-    let force_bridge_lock_hash = calc_eth_bridge_lock_hash(
+    if data.amount == 0 {
+        panic!(
+            "burn amount should be greater than 0, burned {:?}",
+            data.amount
+        )
+    }
+    let force_bridge_lock_hash = calc_xchain_bridge_lock_hash(
         &data.owner_lock_hash,
         data.chain,
         data.asset,
         &data.bridge_lock_code_hash,
+        data.bridge_lock_hash_type,
     );
     let input_sudt_num =
         data_loader.get_sudt_amount_from_source(Source::Input, &force_bridge_lock_hash);
@@ -48,11 +54,12 @@ pub fn verify_burn_token<T: Adapter>(data_loader: T, data: RecipientDataView) {
     }
 }
 
-fn calc_eth_bridge_lock_hash(
+fn calc_xchain_bridge_lock_hash(
     owner_lock_hash: &[u8; 32],
     chain: u8,
     asset: String,
     for_bridge_lock_code_hash: &[u8; 32],
+    for_bridge_lock_hash_type: u8,
 ) -> [u8; 32] {
     let args = ForceBridgeLockscriptArgs::new_builder()
         .owner_lock_hash(
@@ -70,7 +77,7 @@ fn calc_eth_bridge_lock_hash(
             Byte32::from_slice(for_bridge_lock_code_hash)
                 .expect("for_bridge_lock_code_hash invalid"),
         )
-        .hash_type(Byte::new(BRIDGE_LOCK_HASH_TYPE))
+        .hash_type(Byte::new(for_bridge_lock_hash_type))
         .args(Bytes::new_builder().set(bytes_vec).build())
         .build();
 

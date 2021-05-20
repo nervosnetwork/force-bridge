@@ -5,8 +5,8 @@ import { lockTopic } from '@force-bridge/xchain/eth';
 import { fromHexString, uint8ArrayToString } from '@force-bridge/utils';
 import { Address, AddressType, Amount } from '@lay2/pw-core';
 import { Cell } from '@ckb-lumos/base';
-import { SigServer } from './sigserver';
 import { ForceBridgeCore } from '@force-bridge/core';
+import { SigServer } from './sigServer';
 
 async function verifyCreateCellTx(rawData: string, payload: ckbCollectSignaturesPayload): Promise<Error> {
   const txSkeleton = payload.txSkeleton;
@@ -17,6 +17,18 @@ async function verifyCreateCellTx(rawData: string, payload: ckbCollectSignatures
 
   const createAssets = payload.createAssets;
   const ownLockHash = SigServer.getOwnLockHash();
+  let bridgeCells = [];
+  txSkeleton.outputs.forEach((output) => {
+    if (!output.cell_output.lock) {
+      return;
+    }
+    if (output.cell_output.lock.code_hash === ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash) {
+      bridgeCells.push(output);
+    }
+  });
+  if (bridgeCells.length !== createAssets.length) {
+    return new Error(`create bridge recode length:${bridgeCells.length} doesn't match with:${createAssets.length}`);
+  }
   for (let i = 0; i < createAssets.length; i++) {
     const createAsset = createAssets[i];
     let asset;
@@ -37,11 +49,8 @@ async function verifyCreateCellTx(rawData: string, payload: ckbCollectSignatures
         return Promise.reject(new Error(`chain type:${createAsset.chain} doesn't support`));
     }
 
-    const output = txSkeleton.outputs[i];
+    const output = bridgeCells[i];
     const lockScript = output.cell_output.lock;
-    if (lockScript.code_hash !== ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash) {
-      continue;
-    }
     if (output.data !== '0x') {
       return new Error(
         `create bridge cell data:${output.data} doesn't match with 0x, asset chain:${createAsset.chain} address:${createAsset.asset}`,

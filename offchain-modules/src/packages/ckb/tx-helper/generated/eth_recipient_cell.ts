@@ -79,6 +79,105 @@ function serializeTable(buffers) {
   return buffer;
 }
 
+export class RecipientCellData {
+  private view;
+  constructor(reader, { validate = true } = {}) {
+    this.view = new DataView(assertArrayBuffer(reader));
+    if (validate) {
+      this.validate();
+    }
+  }
+
+  validate(compatible = false) {
+    const offsets = verifyAndExtractOffsets(this.view, 0, true);
+    new Bytes(this.view.buffer.slice(offsets[0], offsets[1]), { validate: false }).validate();
+    if (offsets[2] - offsets[1] !== 1) {
+      throw new Error(`Invalid offset for chain: ${offsets[1]} - ${offsets[2]}`);
+    }
+    new Bytes(this.view.buffer.slice(offsets[2], offsets[3]), { validate: false }).validate();
+    new Byte32(this.view.buffer.slice(offsets[3], offsets[4]), { validate: false }).validate();
+    if (offsets[5] - offsets[4] !== 1) {
+      throw new Error(`Invalid offset for bridge_lock_hash_type: ${offsets[4]} - ${offsets[5]}`);
+    }
+    new Byte32(this.view.buffer.slice(offsets[5], offsets[6]), { validate: false }).validate();
+    new Uint128(this.view.buffer.slice(offsets[6], offsets[7]), { validate: false }).validate();
+    new Uint128(this.view.buffer.slice(offsets[7], offsets[8]), { validate: false }).validate();
+  }
+
+  getRecipientAddress() {
+    const start = 4;
+    const offset = this.view.getUint32(start, true);
+    const offset_end = this.view.getUint32(start + 4, true);
+    return new Bytes(this.view.buffer.slice(offset, offset_end), { validate: false });
+  }
+
+  getChain() {
+    const start = 8;
+    const offset = this.view.getUint32(start, true);
+    const offset_end = this.view.getUint32(start + 4, true);
+    return new DataView(this.view.buffer.slice(offset, offset_end)).getUint8(0);
+  }
+
+  getAsset() {
+    const start = 12;
+    const offset = this.view.getUint32(start, true);
+    const offset_end = this.view.getUint32(start + 4, true);
+    return new Bytes(this.view.buffer.slice(offset, offset_end), { validate: false });
+  }
+
+  getBridgeLockCodeHash() {
+    const start = 16;
+    const offset = this.view.getUint32(start, true);
+    const offset_end = this.view.getUint32(start + 4, true);
+    return new Byte32(this.view.buffer.slice(offset, offset_end), { validate: false });
+  }
+
+  getBridgeLockHashType() {
+    const start = 20;
+    const offset = this.view.getUint32(start, true);
+    const offset_end = this.view.getUint32(start + 4, true);
+    return new DataView(this.view.buffer.slice(offset, offset_end)).getUint8(0);
+  }
+
+  getOwnerLockHash() {
+    const start = 24;
+    const offset = this.view.getUint32(start, true);
+    const offset_end = this.view.getUint32(start + 4, true);
+    return new Byte32(this.view.buffer.slice(offset, offset_end), { validate: false });
+  }
+
+  getAmount() {
+    const start = 28;
+    const offset = this.view.getUint32(start, true);
+    const offset_end = this.view.getUint32(start + 4, true);
+    return new Uint128(this.view.buffer.slice(offset, offset_end), { validate: false });
+  }
+
+  getFee() {
+    const start = 32;
+    const offset = this.view.getUint32(start, true);
+    const offset_end = this.view.byteLength;
+    return new Uint128(this.view.buffer.slice(offset, offset_end), { validate: false });
+  }
+}
+
+export function SerializeRecipientCellData(value) {
+  const buffers = [];
+  buffers.push(SerializeBytes(value.recipient_address));
+  const chainView = new DataView(new ArrayBuffer(1));
+  chainView.setUint8(0, value.chain);
+  buffers.push(chainView.buffer);
+  buffers.push(SerializeBytes(value.asset));
+  buffers.push(SerializeByte32(value.bridge_lock_code_hash));
+  const bridgeLockHashTypeView = new DataView(new ArrayBuffer(1));
+  bridgeLockHashTypeView.setUint8(0, value.bridge_lock_hash_type);
+  buffers.push(bridgeLockHashTypeView.buffer);
+  buffers.push(SerializeByte32(value.owner_lock_hash));
+  buffers.push(SerializeUint128(value.amount));
+  buffers.push(SerializeUint128(value.fee));
+  return serializeTable(buffers);
+}
+
 export class Bytes {
   private view;
   constructor(reader, { validate = true } = {}) {
@@ -180,93 +279,3 @@ export function SerializeUint128(value) {
   assertDataLength(buffer.byteLength, 16);
   return buffer;
 }
-
-export class RecipientCellData {
-  private view;
-  constructor(reader, { validate = true } = {}) {
-    this.view = new DataView(assertArrayBuffer(reader));
-    if (validate) {
-      this.validate();
-    }
-  }
-
-  validate(compatible = false) {
-    const offsets = verifyAndExtractOffsets(this.view, 0, true);
-    new Bytes(this.view.buffer.slice(offsets[0], offsets[1]), { validate: false }).validate();
-    if (offsets[2] - offsets[1] !== 1) {
-      throw new Error(`Invalid offset for chain: ${offsets[1]} - ${offsets[2]}`);
-    }
-    new Bytes(this.view.buffer.slice(offsets[2], offsets[3]), { validate: false }).validate();
-    new Byte32(this.view.buffer.slice(offsets[3], offsets[4]), { validate: false }).validate();
-    new Byte32(this.view.buffer.slice(offsets[4], offsets[5]), { validate: false }).validate();
-    new Uint128(this.view.buffer.slice(offsets[5], offsets[6]), { validate: false }).validate();
-    new Uint128(this.view.buffer.slice(offsets[6], offsets[7]), { validate: false }).validate();
-  }
-
-  getRecipientAddress() {
-    const start = 4;
-    const offset = this.view.getUint32(start, true);
-    const offset_end = this.view.getUint32(start + 4, true);
-    return new Bytes(this.view.buffer.slice(offset, offset_end), { validate: false });
-  }
-
-  getChain() {
-    const start = 8;
-    const offset = this.view.getUint32(start, true);
-    const offset_end = this.view.getUint32(start + 4, true);
-    return new DataView(this.view.buffer.slice(offset, offset_end)).getUint8(0);
-  }
-
-  getAsset() {
-    const start = 12;
-    const offset = this.view.getUint32(start, true);
-    const offset_end = this.view.getUint32(start + 4, true);
-    return new Bytes(this.view.buffer.slice(offset, offset_end), { validate: false });
-  }
-
-  getBridgeLockCodeHash() {
-    const start = 16;
-    const offset = this.view.getUint32(start, true);
-    const offset_end = this.view.getUint32(start + 4, true);
-    return new Byte32(this.view.buffer.slice(offset, offset_end), { validate: false });
-  }
-
-  getOwnerLockHash() {
-    const start = 20;
-    const offset = this.view.getUint32(start, true);
-    const offset_end = this.view.getUint32(start + 4, true);
-    return new Byte32(this.view.buffer.slice(offset, offset_end), { validate: false });
-  }
-
-  getAmount() {
-    const start = 24;
-    const offset = this.view.getUint32(start, true);
-    const offset_end = this.view.getUint32(start + 4, true);
-    return new Uint128(this.view.buffer.slice(offset, offset_end), { validate: false });
-  }
-
-  getFee() {
-    const start = 28;
-    const offset = this.view.getUint32(start, true);
-    const offset_end = this.view.byteLength;
-    return new Uint128(this.view.buffer.slice(offset, offset_end), { validate: false });
-  }
-}
-
-export function SerializeRecipientCellData(value) {
-  const buffers = [];
-  buffers.push(SerializeBytes(value.recipient_address));
-  const chainView = new DataView(new ArrayBuffer(1));
-  chainView.setUint8(0, value.chain);
-  buffers.push(chainView.buffer);
-  buffers.push(SerializeBytes(value.asset));
-  buffers.push(SerializeByte32(value.bridge_lock_code_hash));
-  buffers.push(SerializeByte32(value.owner_lock_hash));
-  buffers.push(SerializeUint128(value.amount));
-  buffers.push(SerializeUint128(value.fee));
-  return serializeTable(buffers);
-}
-
-// module.exports = {
-//   RecipientCellData
-// };

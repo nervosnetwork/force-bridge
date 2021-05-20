@@ -106,11 +106,10 @@ async function doUnlock(
 
   const account = new Account(privateKey);
   const generator = new CkbTxGenerator(ForceBridgeCore.ckb, new IndexerCollector(ForceBridgeCore.ckbIndexer));
-  const ownLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
   const burnTx = await generator.burn(
     await account.getLockscript(),
     recipientAddress,
-    new EosAsset(assetAmount.Asset, ownLockHash),
+    new EosAsset(assetAmount.Asset, ForceBridgeCore.config.ckb.ownerLockHash),
     new Amount(assetAmount.Amount, assetAmount.Precision),
   );
   const signedTx = ForceBridgeCore.ckb.signTransaction(privateKey)(burnTx);
@@ -144,10 +143,7 @@ async function doBalanceOf(
     console.log(balance);
   }
   if (address) {
-    const ownLockHash = ForceBridgeCore.ckb.utils.scriptToHash(
-      <CKBComponents.Script>ForceBridgeCore.ckb.utils.addressToScript(address),
-    );
-    const asset = new EosAsset(token, ownLockHash);
+    const asset = new EosAsset(token, ForceBridgeCore.config.ckb.ownerLockHash);
     const balance = await getSudtBalance(address, asset);
     console.log(
       `BalanceOf address:${address} on ckb is ${balance.toString(await chain.getCurrencyPrecision(token))} ${token}`,

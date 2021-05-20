@@ -39,6 +39,18 @@ export class CkbDb {
     });
   }
 
+  async getMintRecordsToUpdate(mintHash: string): Promise<CkbMint[]> {
+    return this.connection.getRepository(CkbMint).find({
+      where: {
+        mintHash: mintHash,
+        status: 'pending',
+      },
+      order: {
+        createdAt: 'DESC',
+      },
+    });
+  }
+
   // update mint status
   async updateCkbMint(records: CkbMint[]): Promise<void> {
     await this.connection.manager.save(records);

@@ -86,12 +86,11 @@ async function doUnlock(
   const privateKey = options.get('privateKey');
 
   const account = new Account(privateKey);
-  const ownLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
   const generator = new CkbTxGenerator(ForceBridgeCore.ckb, new IndexerCollector(ForceBridgeCore.ckbIndexer));
   const burnTx = await generator.burn(
     await account.getLockscript(),
     recipientAddress,
-    new TronAsset('trx', ownLockHash),
+    new TronAsset('trx', ForceBridgeCore.config.ckb.ownerLockHash),
     new Amount(amount, 6),
   );
   const signedTx = ForceBridgeCore.ckb.signTransaction(privateKey)(burnTx);
@@ -114,10 +113,7 @@ async function doBalanceOf(opts: { address: boolean; origin?: boolean }, command
     console.log(accountInfo);
     return;
   }
-  const ownLockHash = ForceBridgeCore.ckb.utils.scriptToHash(
-    <CKBComponents.Script>ForceBridgeCore.ckb.utils.addressToScript(address),
-  );
-  const asset = new TronAsset('trx', ownLockHash);
+  const asset = new TronAsset('trx', ForceBridgeCore.config.ckb.ownerLockHash);
   const balance = await getSudtBalance(address, asset);
   console.log(`BalanceOf address:${address} on ckb is ${balance.toString(6)}`);
 }

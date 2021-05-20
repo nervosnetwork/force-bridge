@@ -3,7 +3,7 @@ import { asyncSleep } from '../utils';
 import { EosDb } from '@force-bridge/db/eos';
 import { EosChain } from '@force-bridge/xchain/eos/eosChain';
 import { EosUnlock, EosUnlockStatus } from '@force-bridge/db/entity/EosUnlock';
-import { PushTransactionArgs } from 'eosjs/dist/eosjs-rpc-interfaces';
+import { OrderedActionResult, PushTransactionArgs } from 'eosjs/dist/eosjs-rpc-interfaces';
 import { EosConfig } from '@force-bridge/config';
 import { EosAssetAmount, getTxIdFromSerializedTx } from '@force-bridge/xchain/eos/utils';
 import { JsSignatureProvider } from 'eosjs/dist/eosjs-jssig';
@@ -19,7 +19,7 @@ export class EosLockEvent {
   TxHash: string;
   ActionIndex: number;
   BlockNumber: number;
-  AccountActionSeq: number;
+  ActionPos: number;
   GlobalActionSeq: number;
   Asset: string;
   Precision: number;
@@ -78,19 +78,51 @@ export class EosHandler {
     )) as PushTransactionArgs;
   }
 
-  async watchLockEvents() {
-    //check chain id
-    const curBlockInfo = await this.chain.getCurrentBlockInfo();
-    if (curBlockInfo.chain_id != this.config.chainId) {
-      logger.error(`EosHandler chainId:${curBlockInfo.chain_id} doesn't match with:${this.config.chainId}`);
-      return;
+  isLockAction(action: OrderedActionResult): boolean {
+    const actionTrace = action.action_trace;
+    const act = actionTrace.act;
+    if (act.account !== EosTokenAccount || act.name !== EosTokenTransferActionName) {
+      return false;
     }
-
-    let latestActionSeq = await this.db.getLastedGlobalActionSeq();
-    if (latestActionSeq < this.config.latestGlobalActionSeq && this.config.latestGlobalActionSeq !== 0) {
-      latestActionSeq = this.config.latestGlobalActionSeq;
+    const data = act.data;
+    if (data.to !== this.config.bridgerAccount) {
+      return false;
     }
+    return true;
+  }
 
+  async processAction(pos: number, action: OrderedActionResult) {
+    const actionTrace = action.action_trace;
+    const act = actionTrace.act;
+    const data = act.data;
+    const amountAsset = EosAssetAmount.assetAmountFromQuantity(data.quantity);
+    this.setPrecision(amountAsset.Asset, amountAsset.Precision);
+    const lockEvent = {
+      TxHash: actionTrace.trx_id,
+      ActionIndex: actionTrace.action_ordinal,
+      BlockNumber: actionTrace.block_num,
+      ActionPos: pos,
+      GlobalActionSeq: action.global_action_seq,
+      Asset: amountAsset.Asset,
+      Precision: amountAsset.Precision,
+      From: data.from,
+      To: data.to,
+      Amount: amountAsset.Amount,
+      Memo: data.memo,
+    };
+    logger.info(
+      `EosHandler watched transfer blockNumber:${actionTrace.block_num} globalActionSeq:${action.global_action_seq} txHash:${actionTrace.trx_id} from:${data.from} to:${data.to} amount:${lockEvent.Amount} asset:${lockEvent.Asset} memo:${data.memo}`,
+    );
+    try {
+      await this.processLockEvent(lockEvent);
+    } catch (err) {
+      logger.error(
+        `EosHandler process eosLock event failed. blockNumber:${actionTrace.block_num} globalActionSeq:${action.global_action_seq} tx:${lockEvent.TxHash} from:${lockEvent.From} amount:${lockEvent.Amount} asset:${lockEvent.Asset} memo:${lockEvent.Memo} error:${err}.`,
+      );
+    }
+  }
+
+  async doWatchLockEventsInDescOrder(latestActionSeq: number) {
     let pos = 0;
     const offset = 20;
     while (true) {
@@ -140,41 +172,10 @@ export class EosHandler {
           break;
         }
         latestActionSeq = action.global_action_seq;
-
-        const actionTrace = action.action_trace;
-        const act = actionTrace.act;
-        if (act.account !== EosTokenAccount || act.name !== EosTokenTransferActionName) {
+        if (!this.isLockAction(action)) {
           continue;
         }
-        const data = act.data;
-        if (data.to !== this.config.bridgerAccount) {
-          continue;
-        }
-        const amountAsset = EosAssetAmount.assetAmountFromQuantity(data.quantity);
-        this.setPrecision(amountAsset.Asset, amountAsset.Precision);
-        const lockEvent = {
-          TxHash: actionTrace.trx_id,
-          ActionIndex: actionTrace.action_ordinal,
-          BlockNumber: actionTrace.block_num,
-          AccountActionSeq: action.account_action_seq,
-          GlobalActionSeq: action.global_action_seq,
-          Asset: amountAsset.Asset,
-          Precision: amountAsset.Precision,
-          From: data.from,
-          To: data.to,
-          Amount: amountAsset.Amount,
-          Memo: data.memo,
-        };
-        logger.info(
-          `EosHandler watched transfer blockNumber:${actionTrace.block_num} globalActionSeq:${action.global_action_seq} txHash:${actionTrace.trx_id} from:${data.from} to:${data.to} amount:${lockEvent.Amount} asset:${lockEvent.Asset} memo:${data.memo}`,
-        );
-        try {
-          await this.processLockEvent(lockEvent);
-        } catch (err) {
-          logger.error(
-            `EosHandler process eosLock event failed. blockNumber:${actionTrace.block_num} globalActionSeq:${action.global_action_seq} tx:${lockEvent.TxHash} from:${lockEvent.From} amount:${lockEvent.Amount} asset:${lockEvent.Asset} memo:${lockEvent.Memo} error:${err}.`,
-          );
-        }
+        await this.processAction(0, action); //don't need in desc order
       }
       if (hasReversibleAction) {
         //wait actions become irreversible
@@ -185,10 +186,95 @@ export class EosHandler {
     }
   }
 
+  async doWatchLockEventsInAscOrder(latestActionSeq: number) {
+    const lastActionPos = await this.db.getActionPos(latestActionSeq);
+    const offset = 20;
+    let pos = lastActionPos;
+    while (true) {
+      let actions;
+      try {
+        actions = await this.chain.getActions(this.config.bridgerAccount, pos, offset);
+      } catch (e) {
+        logger.error(`EosHandler getActions pos:${pos} offset:${offset} error:${e}`);
+        await asyncSleep(3000);
+        continue;
+      }
+
+      const actLen = actions.actions.length;
+      if (actLen === 0) {
+        await asyncSleep(3000);
+        continue;
+      }
+
+      let hasReversibleAction = false;
+      for (let i = 0; i <= actLen - 1; i++) {
+        const action = actions.actions[i];
+        if (action.global_action_seq <= latestActionSeq) {
+          continue;
+        }
+        if (this.config.onlyWatchIrreversibleBlock && action.block_num > actions.last_irreversible_block) {
+          hasReversibleAction = true;
+          break;
+        }
+        latestActionSeq = action.global_action_seq;
+        if (!this.isLockAction(action)) {
+          continue;
+        }
+        await this.processAction(pos + 1, action); //don't need in desc order
+      }
+
+      if (hasReversibleAction) {
+        //wait actions become irreversible
+        await asyncSleep(3000);
+      } else {
+        pos += actLen;
+      }
+    }
+  }
+
+  async watchLockEvents() {
+    //check chain id
+    const curBlockInfo = await this.chain.getCurrentBlockInfo();
+    if (curBlockInfo.chain_id != this.config.chainId) {
+      logger.error(`EosHandler chainId:${curBlockInfo.chain_id} doesn't match with:${this.config.chainId}`);
+      return;
+    }
+
+    while (true) {
+      let actions;
+      const pos = 0;
+      const offset = 10;
+      try {
+        actions = await this.chain.getActions(this.config.bridgerAccount, pos, offset);
+      } catch (e) {
+        logger.error(`EosHandler getActions pos:${pos} offset:${offset} error:${e.toString()}`);
+        await asyncSleep(3000);
+      }
+      const actLen = actions.actions.length;
+      if (actLen === 0 || actLen === 1) {
+        await asyncSleep(3000);
+        continue;
+      }
+
+      let latestActionSeq = await this.db.getLastedGlobalActionSeq();
+      if (latestActionSeq < this.config.latestGlobalActionSeq && this.config.latestGlobalActionSeq !== 0) {
+        latestActionSeq = this.config.latestGlobalActionSeq;
+      }
+
+      //the order getAction is desc in jungle testnet, and asc in product env
+      if (actions.actions[0].global_action_seq < actions.actions[actLen - 1].global_action_seq) {
+        await this.doWatchLockEventsInAscOrder(latestActionSeq);
+      } else {
+        await this.doWatchLockEventsInDescOrder(latestActionSeq);
+      }
+      break;
+    }
+  }
+
   async processLockEvent(lockEvent: EosLockEvent) {
     const lockRecord = {
       id: getEosLockId(lockEvent.TxHash, lockEvent.ActionIndex),
-      accountActionSeq: lockEvent.AccountActionSeq,
+      actionPos: lockEvent.ActionPos,
       globalActionSeq: lockEvent.GlobalActionSeq,
       txHash: lockEvent.TxHash,
       actionIndex: lockEvent.ActionIndex,
@@ -226,7 +312,7 @@ export class EosHandler {
         }
         await this.processUnLockEvents(todoRecords);
       } catch (e) {
-        logger.error('EosHandler watchUnlockEvents error:', e);
+        logger.error('EosHandler watchUnlockEvents error:', e.toString());
         await asyncSleep(3000);
       }
     }
@@ -234,6 +320,7 @@ export class EosHandler {
 
   async processUnLockEvents(records: EosUnlock[]) {
     for (const record of records) {
+      logger.info(`EosHandler processUnLockEvents get new unlockEvent:${JSON.stringify(record, null, 2)}`);
       record.status = 'pending';
       const unlockTx = await this.buildUnlockTx(record);
       if (this.config.privateKeys.length === 0) {
@@ -278,7 +365,9 @@ export class EosHandler {
         record.status = 'error';
         record.message = e.message;
         logger.error(
-          `EosHandler pushSignedTransaction failed eosTxHash:${txHash} ckbTxHash:${record.ckbTxHash} receiver:${record.recipientAddress} amount:${record.amount} asset:${record.asset} error:${e}`,
+          `EosHandler pushSignedTransaction failed eosTxHash:${txHash} ckbTxHash:${record.ckbTxHash} receiver:${
+            record.recipientAddress
+          } amount:${record.amount} asset:${record.asset} error:${e.toString()}`,
         );
         await this.db.saveEosUnlock([record]);
       }
@@ -327,7 +416,7 @@ export class EosHandler {
           await this.db.saveEosUnlock(newRecords);
         }
       } catch (e) {
-        logger.error(`EosHandler checkUnlockTxStatus error:${e}`);
+        logger.error(`EosHandler checkUnlockTxStatus error:${e.toString()}`);
         await asyncSleep(3000);
       }
     }

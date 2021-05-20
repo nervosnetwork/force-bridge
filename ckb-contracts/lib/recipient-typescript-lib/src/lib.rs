@@ -19,9 +19,9 @@ pub fn verify() -> i8 {
     0
 }
 
-// eth-recipient-typescript has two situations based on whether outputs have eth-recipient-typescript data:
+// recipient-typescript has two situations based on whether outputs have recipient-typescript data:
 // 1: if outputs have data, we ensure it's a burn-token tx.
-// 2: if outputs don't have data, it's a destroy eth-receipt-cell tx, it will always success.
+// 2: if outputs don't have data, it's a destroy receipt-cell tx, it will always success.
 pub fn _verify<T: Adapter>(data_loader: T) -> i8 {
     let data = data_loader.load_output_data();
     if let Some(data) = data {

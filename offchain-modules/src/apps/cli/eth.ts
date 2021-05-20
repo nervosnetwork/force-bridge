@@ -103,12 +103,10 @@ async function doUnlock(
 
   const account = new Account(privateKey);
   const generator = new CkbTxGenerator(ForceBridgeCore.ckb, new IndexerCollector(ForceBridgeCore.ckbIndexer));
-  const ownLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
-
   const burnTx = await generator.burn(
     await account.getLockscript(),
     recipientAddress,
-    new EthAsset(token, ownLockHash),
+    new EthAsset(token, ForceBridgeCore.config.ckb.ownerLockHash),
     new Amount(ethers.utils.parseEther(amount).toString(), 0),
   );
 
@@ -134,10 +132,7 @@ async function doBalanceOf(opts: { address: boolean; asset?: boolean; origin?: b
     return;
   }
 
-  const ownLockHash = ForceBridgeCore.ckb.utils.scriptToHash(
-    <CKBComponents.Script>ForceBridgeCore.ckb.utils.addressToScript(address),
-  );
-  const asset = new EthAsset(token, ownLockHash);
+  const asset = new EthAsset(token, ForceBridgeCore.config.ckb.ownerLockHash);
   const balance = await getSudtBalance(address, asset);
   console.log(`BalanceOf address:${address} on ckb is ${formatEther(balance.toString(0))}`);
 }

@@ -1,8 +1,8 @@
 import { CkbTxGenerator } from '@force-bridge/ckb/tx-helper/generator';
 import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
-import { Asset, BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '@force-bridge/ckb/model/asset';
+import { Asset, BtcAsset, EosAsset, EthAsset, TronAsset } from '@force-bridge/ckb/model/asset';
 import { Amount, Script } from '@lay2/pw-core';
-import { API, NetworkBase, NetworkTypes } from './types';
+import { API, AssetType, NetworkBase, NetworkTypes } from './types';
 import { ForceBridgeCore } from '@force-bridge/core';
 import { logger } from '@force-bridge/utils/logger';
 import bitcore from 'bitcore-lib';
@@ -10,12 +10,14 @@ import { ethers } from 'ethers';
 import { abi } from '@force-bridge/xchain/eth/abi/ForceBridge.json';
 import { stringToUint8Array } from '@force-bridge/utils';
 import {
+  BalancePayload,
   BridgeTransactionStatus,
   GetBalancePayload,
   GetBalanceResponse,
   GetBridgeTransactionSummariesPayload,
   TransactionSummary,
   TransactionSummaryWithStatus,
+  XChainNetWork,
 } from './types/apiv1';
 import { IQuery, LockRecord, UnlockRecord } from '@force-bridge/db/model';
 import { EthDb, TronDb } from '@force-bridge/db';
@@ -23,13 +25,34 @@ import { EosDb } from '@force-bridge/db/eos';
 import { BtcDb } from '@force-bridge/db/btc';
 import { RPCClient } from 'rpc-bitcoin';
 import { IBalance } from '@force-bridge/xchain/btc';
-
-const TronWeb = require('tronweb');
+import { Connection } from 'typeorm';
+const Web3 = require('web3');
+// The minimum ABI to get ERC20 Token balance
+const minERC20ABI = [
+  // balanceOf
+  {
+    constant: true,
+    inputs: [{ name: '_owner', type: 'address' }],
+    name: 'balanceOf',
+    outputs: [{ name: 'balance', type: 'uint256' }],
+    type: 'function',
+  },
+  // decimals
+  {
+    constant: true,
+    inputs: [],
+    name: 'decimals',
+    outputs: [{ name: '', type: 'uint8' }],
+    type: 'function',
+  },
+];
 
 export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
-  connection;
-  constructor(conn) {
+  connection: Connection;
+  web3: typeof Web3;
+  constructor(conn: Connection) {
     this.connection = conn;
+    this.web3 = new Web3(ForceBridgeCore.config.eth.rpcUrl);
   }
 
   async generateBridgeInNervosTransaction<T extends NetworkTypes>(
@@ -201,15 +224,14 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
   }
 
   async getBridgeTransactionSummaries(
-    payload: GetBridgeTransactionSummariesPayload,
+    payload: GetBridgeTransactionSummariesPayload<XChainNetWork>,
   ): Promise<TransactionSummaryWithStatus[]> {
     const XChainNetwork = payload.network;
-    const ckbAddress = payload.userIdent;
-    const ckbLockScript = ForceBridgeCore.ckb.utils.addressToScript(ckbAddress);
-    const ckbLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>ckbLockScript);
-    const assetName = payload.assetIdent;
+    const userAddress = payload.user.ident;
+    const addressType = payload.user.network;
+    const assetName = payload.xchainAssetIdent;
     let dbHandler: IQuery;
-    logger.debug(`XChainNetwork :  ${XChainNetwork}, userAddress:  ${ckbAddress}`);
+
     switch (XChainNetwork) {
       case 'Bitcoin':
         dbHandler = new BtcDb(this.connection);
@@ -224,21 +246,37 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         dbHandler = new TronDb(this.connection);
         break;
       default:
-        throw new Error('invalid chain type');
+        throw new Error('invalid bridge chain type');
     }
-
-    // only query the txs which status is success or pending
-    const lockRecords = await dbHandler.getLockRecordsByUser(ckbAddress);
-    const unlockRecords = await dbHandler.getUnlockRecordsByUser(ckbLockHash);
+    logger.info(
+      `XChainNetwork :  ${XChainNetwork}, token Asset ${assetName} address type ${addressType} , userAddress:  ${userAddress}`,
+    );
+    let lockRecords: LockRecord[];
+    let unlockRecords: UnlockRecord[];
+    switch (addressType) {
+      case 'Bitcoin':
+      case 'EOS':
+      case 'Ethereum':
+      case 'Tron':
+        lockRecords = await dbHandler.getLockRecordsByXChainAddress(userAddress, assetName);
+        unlockRecords = await dbHandler.getUnlockRecordsByXChainAddress(userAddress, assetName);
+        break;
+      case 'Nervos':
+        const ckbLockScript = ForceBridgeCore.ckb.utils.addressToScript(userAddress);
+        const ckbLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>ckbLockScript);
+        lockRecords = await dbHandler.getLockRecordsByCkbAddress(userAddress, assetName);
+        unlockRecords = await dbHandler.getUnlockRecordsByCkbAddress(ckbLockHash, assetName);
+        break;
+      default:
+        throw new Error('invalid address chain type');
+    }
 
     const result: TransactionSummaryWithStatus[] = [];
     lockRecords.forEach((lockRecord) => {
-      const txSummaryWithStatus = transferDbRecordToResponse(XChainNetwork, lockRecord);
-      result.push(txSummaryWithStatus);
+      result.push(transferDbRecordToResponse(XChainNetwork, lockRecord));
     });
     unlockRecords.forEach((unlockRecord) => {
-      const txSummaryWithStatus = transferDbRecordToResponse(XChainNetwork, unlockRecord);
-      result.push(txSummaryWithStatus);
+      result.push(transferDbRecordToResponse(XChainNetwork, unlockRecord));
     });
     // Todo: add paging
     return result;
@@ -249,10 +287,10 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     const usdt_address = '0x74a3dbd5831f45CD0F3002Bb87a59B7C15b1B5E6';
     const usdc_address = '0x265566D4365d80152515E800ca39424300374A83';
 
-    const eth_ident = getTokenShadowIdent(ChainType.ETH, eth_address);
-    const dai_ident = getTokenShadowIdent(ChainType.ETH, dai_address);
-    const usdt_ident = getTokenShadowIdent(ChainType.ETH, usdt_address);
-    const usdc_ident = getTokenShadowIdent(ChainType.ETH, usdc_address);
+    const eth_ident = getTokenShadowIdent('Ethereum', eth_address);
+    const dai_ident = getTokenShadowIdent('Ethereum', dai_address);
+    const usdt_ident = getTokenShadowIdent('Ethereum', usdt_address);
+    const usdc_ident = getTokenShadowIdent('Ethereum', usdc_address);
 
     const info = [
       {
@@ -347,76 +385,72 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     return info;
   }
   async getBalance(payload: GetBalancePayload): Promise<GetBalanceResponse> {
-    const result: GetBalanceResponse = [];
+    let balanceFutures = [];
     for (const value of payload) {
-      let balance: string;
-      switch (value.network) {
-        case 'Ethereum':
-          const provider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
-          const tokenAddress = value.assetIdent;
-          const userAddress = value.userIdent;
-          if (tokenAddress === ethers.constants.AddressZero) {
-            const eth_amount = await provider.getBalance(userAddress);
-            balance = eth_amount.toString();
-          } else {
-            const erc20ABI = [
-              'function name() view returns (string)',
-              'function symbol() view returns (string)',
-              'function balanceOf(address) view returns (uint)',
-              'function transfer(address to, uint amount)',
-              'event Transfer(address indexed from, address indexed to, uint amount)',
-            ];
-            const erc20Contract = new ethers.Contract(tokenAddress, erc20ABI, provider);
-            const erc20Amount = await erc20Contract.balanceOf(userAddress);
-            balance = erc20Amount.toString();
-          }
-          console.log(`balance of address: ${userAddress} on ETH is ${balance}`);
-          break;
-        case 'Bitcoin':
-          const rpcClient = new RPCClient(ForceBridgeCore.config.btc.clientParams);
-          const liveUtxos: IBalance = await rpcClient.scantxoutset({
-            action: 'start',
-            scanobjects: [`addr(${value.userIdent})`],
-          });
-          console.log(`BalanceOf address:${value.userIdent} on BTC is ${liveUtxos.total_amount} btc`);
-          balance = bitcore.Unit.fromBTC(liveUtxos.total_amount).toSatoshis();
-          break;
-        case 'Nervos':
-          const userScript = ForceBridgeCore.ckb.utils.addressToScript(value.userIdent);
-          const sudtType = {
-            codeHash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
-            hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
-            args: value.assetIdent,
-          };
-          const collector = new IndexerCollector(ForceBridgeCore.ckbIndexer);
-          const sudt_amount = await collector.getSUDTBalance(
-            new Script(sudtType.codeHash, sudtType.args, sudtType.hashType),
-            new Script(userScript.codeHash, userScript.args, userScript.hashType),
-          );
-          balance = sudt_amount.toString(0);
-          break;
-        case 'EOS':
-          // Todo: add EOS Balance query
-          break;
-        case 'Tron':
-          // Todo: add Tron Balance query
-          // const tronWeb = new TronWeb({ fullHost: ForceBridgeCore.config.tron.tronGridUrl });
-          // const accountInfo = await tronWeb.trx.getAccount(value.userIdent);
-          // balance = JSON.stringify(accountInfo,null,2);
-          break;
-      }
-      result.push({
-        network: value.network,
-        ident: value.assetIdent,
-        amount: balance,
-      });
+      let assetFut = this.getAccountBalance(value);
+      balanceFutures.push(assetFut);
     }
-    return result;
+    return await Promise.all(balanceFutures);
+  }
+  async getAccountBalance(value: BalancePayload): Promise<AssetType> {
+    let balance: string;
+    switch (value.network) {
+      case 'Ethereum':
+        const tokenAddress = value.assetIdent;
+        const userAddress = value.userIdent;
+        if (tokenAddress === '0x0000000000000000000000000000000000000000') {
+          const eth_amount = await this.web3.eth.getBalance(userAddress);
+          balance = eth_amount.toString();
+        } else {
+          const TokenContract = new this.web3.eth.Contract(minERC20ABI, tokenAddress);
+          const erc20_amount = await TokenContract.methods.balanceOf(userAddress).call();
+          balance = erc20_amount.toString();
+        }
+        logger.debug(`balance of address: ${userAddress} on ETH is ${balance}`);
+        break;
+      case 'Bitcoin':
+        const rpcClient = new RPCClient(ForceBridgeCore.config.btc.clientParams);
+        const liveUtxos: IBalance = await rpcClient.scantxoutset({
+          action: 'start',
+          scanobjects: [`addr(${value.userIdent})`],
+        });
+        logger.debug(`BalanceOf address:${value.userIdent} on BTC is ${liveUtxos.total_amount} btc`);
+        balance = bitcore.Unit.fromBTC(liveUtxos.total_amount).toSatoshis();
+        break;
+      case 'Nervos':
+        const userScript = ForceBridgeCore.ckb.utils.addressToScript(value.userIdent);
+        const sudtType = {
+          codeHash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
+          hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
+          args: value.assetIdent,
+        };
+        const collector = new IndexerCollector(ForceBridgeCore.ckbIndexer);
+        const sudt_amount = await collector.getSUDTBalance(
+          new Script(sudtType.codeHash, sudtType.args, sudtType.hashType),
+          new Script(userScript.codeHash, userScript.args, userScript.hashType),
+        );
+        balance = sudt_amount.toString(0);
+        break;
+      case 'EOS':
+        // Todo: add EOS Balance query
+        break;
+      case 'Tron':
+        // Todo: add Tron Balance query
+        // const tronWeb = new TronWeb({ fullHost: ForceBridgeCore.config.tron.tronGridUrl });
+        // const accountInfo = await tronWeb.trx.getAccount(value.userIdent);
+        // balance = JSON.stringify(accountInfo,null,2);
+        break;
+    }
+    return {
+      network: value.network,
+      ident: value.assetIdent,
+      amount: balance,
+    };
   }
 }
 
 function transferDbRecordToResponse(
-  XChainNetwork: string,
+  XChainNetwork: XChainNetWork,
   record: LockRecord | UnlockRecord,
 ): TransactionSummaryWithStatus {
   let bridgeTxRecord: TransactionSummary;
@@ -430,19 +464,21 @@ function transferDbRecordToResponse(
         },
         toAsset: {
           network: 'Nervos',
-          ident: record.asset,
+          ident: getTokenShadowIdent(XChainNetwork, record.asset),
           amount: record.mint_amount,
         },
         fromTransaction: { txId: record.lock_hash, timestamp: record.lock_time },
-        toTransaction: { txId: record.mint_hash, timestamp: record.mint_time },
       },
     };
+    if (record.mint_hash) {
+      bridgeTxRecord.txSummary.toTransaction = { txId: record.mint_hash, timestamp: record.mint_time };
+    }
   } else if ('burn_hash' in record) {
     bridgeTxRecord = {
       txSummary: {
         fromAsset: {
           network: 'Nervos',
-          ident: record.asset,
+          ident: getTokenShadowIdent(XChainNetwork, record.asset),
           amount: record.burn_amount,
         },
         toAsset: {
@@ -451,9 +487,11 @@ function transferDbRecordToResponse(
           amount: record.unlock_amount,
         },
         fromTransaction: { txId: record.burn_hash, timestamp: record.burn_time },
-        toTransaction: { txId: record.unlock_hash, timestamp: record.unlock_time },
       },
     };
+    if (record.unlock_hash) {
+      bridgeTxRecord.txSummary.toTransaction = { txId: record.unlock_hash, timestamp: record.unlock_time };
+    }
   } else {
     throw new Error(`the params record ${JSON.stringify(record, null, 2)} is unexpect`);
   }
@@ -479,24 +517,24 @@ function transferDbRecordToResponse(
   return txSummaryWithStatus;
 }
 
-function getTokenShadowIdent(chainType: ChainType, XChainToken: string): string {
+function getTokenShadowIdent(XChainNetwork: XChainNetWork, XChainToken: string): string {
   const ownLockHash = ForceBridgeCore.config.ckb.ownerLockHash;
   let asset: Asset;
-  switch (chainType) {
-    case ChainType.BTC:
+  switch (XChainNetwork) {
+    case 'Bitcoin':
       asset = new BtcAsset('btc', ownLockHash);
       break;
-    case ChainType.EOS:
+    case 'EOS':
       asset = new EosAsset(XChainToken, ownLockHash);
       break;
-    case ChainType.ETH:
+    case 'Ethereum':
       asset = new EthAsset(XChainToken, ownLockHash);
       break;
-    case ChainType.TRON:
+    case 'Tron':
       asset = new TronAsset(XChainToken, ownLockHash);
       break;
     default:
-      logger.warn(`chain type is ${chainType} which not support yet.`);
+      logger.warn(`chain type is ${XChainNetwork} which not support yet.`);
       return;
   }
   const bridgeCellLockscript = {

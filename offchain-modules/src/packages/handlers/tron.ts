@@ -74,7 +74,13 @@ export class TronHandler {
       });
       for (const data of txs.data) {
         if (Object.keys(data.token_info).length == 0) {
-          logger.debug('invalid trc20 tx, token info is undefined', data);
+          logger.warn(
+            `TronHandler getTrc20TxsLockEvents invalid trc20 tx, token info is undefined, data:${JSON.stringify(
+              data,
+              null,
+              2,
+            )}`,
+          );
           continue;
         }
         const tx = await this.tronWeb.trx.getTransaction(data.transaction_id);
@@ -136,27 +142,25 @@ export class TronHandler {
     if (lastTimestamp != 1) {
       startTimestamp = lastTimestamp;
     }
-    logger.debug('start time', startTimestamp);
+    logger.info('TronHandler watchLockEvents start time:', startTimestamp);
 
     let minTimestamp = startTimestamp;
-    try {
-      while (true) {
-        logger.debug('get new lock events and save to db');
 
-        logger.debug('min timestamp', minTimestamp);
+    while (true) {
+      try {
+        logger.debug(`TronHandler watchLockEvents minTimestamp:${minTimestamp}`);
 
         const ckbMintRecords: ICkbMint[] = [];
         const tronLockRecords: ITronLock[] = [];
         const trxAndTrc10Events = await this.getTrxAndTrc10LockEvents(minTimestamp);
         const trc20LockEvents = await this.getTrc20TxsLockEvents(minTimestamp);
-
         const totalLockEvents = trxAndTrc10Events.concat(trc20LockEvents);
-        logger.debug('total lock events', totalLockEvents);
 
         for (const event of totalLockEvents) {
           if (event.timestamp <= minTimestamp) {
             continue;
           }
+          logger.info(`TronHandler watchLockEvents newLockEvent:${JSON.stringify(event, null, 2)}`);
           const ckbMint = this.transferEventToCkbMint(event);
           ckbMintRecords.push(ckbMint);
           const tronLock = this.transferEventToTronLock(event);
@@ -172,12 +176,11 @@ export class TronHandler {
         if (trc20LockEvents.length != 0) {
           minTimestamp = Math.max(trc20LockEvents[trc20LockEvents.length - 1].timestamp, minTimestamp);
         }
-
+        await asyncSleep(3000);
+      } catch (e) {
+        logger.error('TronHandler watchLockEvents error:', e.toString());
         await asyncSleep(3000);
       }
-    } catch (e) {
-      logger.error('TronHandler watchLockEvents error:', e);
-      setTimeout(this.watchLockEvents, 3000);
     }
   }
 
@@ -259,9 +262,9 @@ export class TronHandler {
   // watch the tron_unlock table and handle the new unlock events
   // send tx according to the data
   async watchUnlockEvents(): Promise<void> {
-    try {
-      while (true) {
-        logger.debug('flush pending tx to confirm');
+    while (true) {
+      try {
+        logger.debug('TronHandler watchUnlockEvents flush pending tx to confirm');
         const pendingRecords = await this.db.getTronUnlockRecords('pending');
         for (const pendingRecord of pendingRecords) {
           try {
@@ -272,15 +275,23 @@ export class TronHandler {
             } else {
               pendingRecord.status = 'error';
             }
+            logger.info(
+              `TronHandler watchUnlockEvents tronTxHash:${pendingRecord.tronTxHash} status:${pendingRecord.status}`,
+            );
           } catch (e) {
-            logger.debug(`${pendingRecord.tronTxHash} not confirmed yet`, e);
+            logger.debug(
+              `TronHandler watchUnlockEvents getConfirmedTransaction error:${e.toString()}, ${
+                pendingRecord.tronTxHash
+              } not confirmed yet`,
+            );
           }
         }
         await this.db.saveTronUnlock(pendingRecords);
 
-        logger.debug('get new unlock events and send tx');
         const unlockRecords = await this.db.getTronUnlockRecords('todo');
         for (const unlockRecord of unlockRecords) {
+          logger.info(`TronHandler watchUnlockEvents getTronUnlockRecord:${JSON.stringify(unlockRecord, null, 2)}`);
+
           let signedTx;
           switch (unlockRecord.assetType) {
             case 'trx':
@@ -293,7 +304,7 @@ export class TronHandler {
               signedTx = await this.multiSignTransferTrc20(unlockRecord);
               break;
           }
-          logger.debug('tron unlock signed tx', signedTx);
+          logger.debug('TronHandler watchUnlockEvents tron unlock signed tx:', signedTx);
 
           unlockRecord.tronTxHash = signedTx.txID;
           unlockRecord.tronTxIndex = 0;
@@ -304,22 +315,26 @@ export class TronHandler {
           try {
             const broadTx = await this.tronWeb.trx.broadcast(signedTx);
             if (broadTx.result == true) {
-              logger.debug('broad tx success', broadTx);
+              logger.info('TronHandler watchUnlockEvents broad tx success ', broadTx);
             } else {
               throw new Error(`broad tx failed ${broadTx}`);
             }
           } catch (e) {
-            logger.error(`TronHandler watchUnlockEvents broadcast tx ${signedTx} error: ${e}`);
+            logger.error(
+              `TronHandler watchUnlockEvents broadcast tx ${signedTx} error: ${e.toString()} ckbTxHash:${
+                unlockRecord.ckbTxHash
+              }`,
+            );
             unlockRecord.status = 'error';
             unlockRecord.message = `tx error: ${e}`;
             await this.db.saveTronUnlock([unlockRecord]);
           }
         }
         await asyncSleep(3000);
+      } catch (e) {
+        logger.error('TronHandler watchUnlockEvents error:', e.toString());
+        setTimeout(this.watchLockEvents, 3000);
       }
-    } catch (e) {
-      logger.error('TronHandler watchUnlockEvents error:', e);
-      setTimeout(this.watchLockEvents, 3000);
     }
   }
 

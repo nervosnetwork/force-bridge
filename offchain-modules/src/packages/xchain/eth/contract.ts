@@ -69,8 +69,8 @@ export class EthChain {
           topics: [ethers.utils.id('Locked(address,address,uint256,bytes,bytes)')],
           toBlock: toBlock,
         });
-        logger.info(
-          `Eth watchLockEvents from:${fromBlock} to:${toBlock} currentBlockNumber:${currentBlockNumber} confirmNumber:${confirmNumber} logs:${logs.length}`,
+        logger.debug(
+          `EthChain watchLockEvents from:${fromBlock} to:${toBlock} currentBlockNumber:${currentBlockNumber} confirmNumber:${confirmNumber} logs:${logs.length}`,
         );
         for (const log of logs) {
           logger.debug('log', log);
@@ -79,7 +79,7 @@ export class EthChain {
         }
         fromBlock = toBlock + 1;
       } catch (err) {
-        logger.error('Eth watchLockEvents error:', err);
+        logger.error('EthChain watchLockEvents error:', err);
         await asyncSleep(3000);
       }
     }

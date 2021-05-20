@@ -6,7 +6,7 @@ import nconf from 'nconf';
 import { logger } from '@force-bridge/utils/logger';
 import { signEthTx } from './ethSigner';
 import { collectSignaturesParams } from '@force-bridge/multisig/multisig-mgr';
-import { SigServer } from './sigserver';
+import { SigServer } from './sigServer';
 import { signCkbTx } from './ckbSigner';
 import { createConnection } from 'typeorm';
 import { SignedDb } from '@force-bridge/db/signed';

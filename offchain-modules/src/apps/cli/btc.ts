@@ -104,11 +104,10 @@ async function doUnlock(
   const account = new Account(privateKey);
   const generator = new CkbTxGenerator(ForceBridgeCore.ckb, new IndexerCollector(ForceBridgeCore.ckbIndexer));
   const burnAmount = new Amount(Unit.fromBTC(amount).toSatoshis(), 0);
-  const ownLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
   const burnTx = await generator.burn(
     await account.getLockscript(),
     recipientAddress.toString(),
-    new BtcAsset('btc', ownLockHash),
+    new BtcAsset('btc', ForceBridgeCore.config.ckb.ownerLockHash),
     burnAmount,
   );
   const signedTx = ForceBridgeCore.ckb.signTransaction(privateKey)(burnTx);
@@ -136,10 +135,7 @@ async function doBalanceOf(opts: { address: boolean; origin?: boolean }, command
     return;
   }
 
-  const ownLockHash = ForceBridgeCore.ckb.utils.scriptToHash(
-    <CKBComponents.Script>ForceBridgeCore.ckb.utils.addressToScript(address),
-  );
-  const asset = new BtcAsset('btc', ownLockHash);
+  const asset = new BtcAsset('btc', ForceBridgeCore.config.ckb.ownerLockHash);
   const balance = await getSudtBalance(address, asset);
   console.log(`BalanceOf address:${address} on ckb is ${Unit.fromSatoshis(balance.toString(0)).toBTC()} btc`);
 }

@@ -4,8 +4,8 @@
 #![feature(alloc_error_handler)]
 #![feature(panic_info_message)]
 
-use ckb_std::default_alloc;
 use bridge_lockscript_lib::verify;
+use ckb_std::default_alloc;
 
 default_alloc!();
 contracts_helper::entry!(verify);

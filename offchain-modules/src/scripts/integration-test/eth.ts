@@ -2,102 +2,66 @@ import 'module-alias/register';
 import { ethers } from 'ethers';
 import nconf from 'nconf';
 import { Config, EthConfig } from '@force-bridge/config';
-import { logger } from '@force-bridge/utils/logger';
-import { asyncSleep, fromHexString, stringToUint8Array, toHexString, uint8ArrayToString } from '@force-bridge/utils';
+import { initLog, logger } from '@force-bridge/utils/logger';
+import { asyncSleep, parsePrivateKey, stringToUint8Array, toHexString, uint8ArrayToString } from '@force-bridge/utils';
 import { createConnection } from 'typeorm';
-import { CkbDb, EthDb } from '@force-bridge/db';
 import { ETH_ADDRESS } from '@force-bridge/xchain/eth';
 import { CkbMint, EthLock, EthUnlock } from '@force-bridge/db/model';
 import assert from 'assert';
 import { ChainType, EthAsset } from '@force-bridge/ckb/model/asset';
 import { abi } from '@force-bridge/xchain/eth/abi/ForceBridge.json';
-import { Address, AddressType, Amount, Script } from '@lay2/pw-core';
+import { Amount, Script } from '@lay2/pw-core';
 import { Account } from '@force-bridge/ckb/model/accounts';
 import { CkbTxGenerator } from '@force-bridge/ckb/tx-helper/generator';
 import { IndexerCollector } from '@force-bridge/ckb/tx-helper/collector';
 import { waitUntilCommitted } from './util';
-// import {CkbIndexer} from "@force-bridge/ckb/tx-helper/indexer";
 import { ForceBridgeCore } from '@force-bridge/core';
 import { CkbIndexer } from '@force-bridge/ckb/tx-helper/indexer';
 import { getMultisigLock } from '@force-bridge/ckb/tx-helper/multisig/multisig_helper';
 // import { multisigLockScript } from '@force-bridge/ckb/tx-helper/multisig/multisig_helper';
 
 const CKB = require('@nervosnetwork/ckb-sdk-core').default;
-// const { Indexer, CellCollector } = require('@ckb-lumos/indexer');
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
-// const LUMOS_DB = './lumos_db';
 const indexer = new CkbIndexer('http://127.0.0.1:8114', 'http://127.0.0.1:8116');
 const collector = new IndexerCollector(indexer);
-// indexer.startForever();
 const ckb = new CKB(CKB_URL);
 
 async function main() {
   const conn = await createConnection();
-  const ethDb = new EthDb(conn);
-  const ckbDb = new CkbDb(conn);
   const PRI_KEY = process.env.PRI_KEY || '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
 
   const configPath = process.env.CONFIG_PATH || './config.json';
   nconf.env().file({ file: configPath });
   const config: EthConfig = nconf.get('forceBridge:eth');
-  logger.debug('config', config);
   const conf: Config = nconf.get('forceBridge');
+  conf.common.log.logFile = './log/eth-ci.log';
+  initLog(conf.common.log);
+
+  logger.debug('config', config);
   // init bridge force core
   await new ForceBridgeCore().init(conf);
-  // const ForceBridge = await ethers.getContractFactory("ForceBridge");
-  // const bridge = await ForceBridge.deploy();
-  // await bridge.deployed();
-  // console.log("ForceBridge deployed to:", bridge.address);
   const provider = new ethers.providers.JsonRpcProvider(config.rpcUrl);
-  // const blockNumber = await provider.getBlockNumber();
-  // logger.debug('blockNumber:', blockNumber);
   const bridgeContractAddr = config.contractAddress;
-  // logger.debug('bridgeContractAddr:', bridgeContractAddr);
-  // const signer = provider.getSigner()
-  // logger.debug('signer:', signer);
-  // logger.debug('abi:', abi);
   const bridge = new ethers.Contract(bridgeContractAddr, abi, provider);
-  const wallet = new ethers.Wallet(config.privateKey, provider);
+  const wallet = new ethers.Wallet(parsePrivateKey(config.privateKey), provider);
   const bridgeWithSigner = bridge.connect(wallet);
   const iface = new ethers.utils.Interface(abi);
 
-  // listen
-  // bridgeWithSigner.on("Locked", (token, sender, lockedAmount, recipientLockscript, sudtExtraData) => {
-  //     logger.debug('event:', {token, sender, lockedAmount, recipientLockscript, sudtExtraData});
-  // });
-  // const filter = {
-  //   address: bridgeContractAddr,
-  //   fromBlock: 0,
-  //   // fromBlock: 'earliest',
-  //   topics: [
-  //     // the name of the event, parnetheses containing the data type of each event, no spaces
-  //     // utils.id("Transfer(address,address,uint256)")
-  //     ethers.utils.id('Locked(address,address,uint256,bytes,bytes)'),
-  //   ],
-  // };
-  // // provider.resetEventsBlock(0)
-  // provider.on(filter, async (log) => {
-  //   const parsedLog = iface.parseLog(log);
-  //   logger.debug('log:', { log, parsedLog });
-  //   // do whatever you want here
-  //   // I'm pretty sure this returns a promise, so don't forget to resolve it
-  // });
   // lock eth
   const recipientLockscript = stringToUint8Array('ckt1qyqyph8v9mclls35p6snlaxajeca97tc062sa5gahk');
-  logger.debug('recipientLockscript', toHexString(recipientLockscript));
+  logger.info('recipientLockscript', toHexString(recipientLockscript));
   const sudtExtraData = '0x01';
   const amount = ethers.utils.parseEther('0.1');
-  logger.debug('amount', amount);
   const lockRes = await bridgeWithSigner.lockETH(recipientLockscript, sudtExtraData, { value: amount });
-  logger.debug('lockRes', lockRes);
+  logger.info('lockRes', lockRes);
   const txHash = lockRes.hash;
   const receipt = await lockRes.wait();
-  logger.debug('receipt', receipt);
+  logger.info('receipt', receipt);
 
   // create eth unlock
   const recipientAddress = '0x1000000000000000000000000000000000000001';
   const balanceBefore = await provider.getBalance(recipientAddress);
-  logger.debug('balanceBefore', balanceBefore);
+  logger.info('balanceBefore burn', balanceBefore);
 
   let sendBurn = false;
   let burnTxHash;
@@ -108,15 +72,15 @@ async function main() {
         txHash,
       },
     });
-    logger.debug('ethLockRecords', ethLockRecords);
+    logger.info('ethLockRecords', ethLockRecords);
     assert(ethLockRecords.length === 1);
     const ethLockRecord = ethLockRecords[0];
     assert(ethLockRecord.sudtExtraData === sudtExtraData);
     assert(ethLockRecord.sender === wallet.address);
     assert(ethLockRecord.token === ETH_ADDRESS);
     assert(ethLockRecord.amount === amount.toString());
-    logger.debug('ethLockRecords', ethLockRecord.recipient);
-    logger.debug('ethLockRecords', `0x${toHexString(recipientLockscript)}`);
+    logger.info('ethLockRecords', ethLockRecord.recipient);
+    logger.info('ethLockRecords', `0x${toHexString(recipientLockscript)}`);
     assert(ethLockRecord.recipient === `${uint8ArrayToString(recipientLockscript)}`);
 
     const ckbMintRecords = await conn.manager.find(CkbMint, {
@@ -124,7 +88,7 @@ async function main() {
         id: txHash,
       },
     });
-    logger.debug('ckbMintRecords', ckbMintRecords);
+    logger.info('ckbMintRecords', ckbMintRecords);
     assert(ckbMintRecords.length === 1);
     const ckbMintRecord = ckbMintRecords[0];
     assert(ckbMintRecord.chain === ChainType.ETH);
@@ -161,8 +125,8 @@ async function main() {
     );
 
     if (!sendBurn) {
-      logger.debug('sudt balance:', balance);
-      logger.debug('expect balance:', new Amount(amount.toString(), 0));
+      logger.info('sudt balance:', balance);
+      logger.info('expect balance:', new Amount(amount.toString(), 0));
       assert(balance.eq(new Amount(amount.toString(), 0)));
     }
 
@@ -186,8 +150,8 @@ async function main() {
       sendBurn = true;
     }
     const expectBalance = new Amount(amount.toString(), 0).sub(new Amount(burnAmount.toString(), 0));
-    logger.debug('sudt balance:', balance);
-    logger.debug('expect balance:', expectBalance);
+    logger.info('sudt balance:', balance);
+    logger.info('expect balance:', expectBalance);
     assert(balance.eq(expectBalance));
 
     // check unlock record send
@@ -200,16 +164,16 @@ async function main() {
     const ethUnlockRecord = ethUnlockRecords[0];
     assert(ethUnlockRecord.status === 'success');
     const unlockReceipt = await provider.getTransactionReceipt(ethUnlockRecord.ethTxHash);
-    logger.debug('unlockReceipt', unlockReceipt);
+    logger.info('unlockReceipt', unlockReceipt);
     assert(unlockReceipt.logs.length === 1);
     const parsedLog = iface.parseLog(unlockReceipt.logs[0]);
-    logger.debug('parsedLog', parsedLog);
+    logger.info('parsedLog', parsedLog);
     assert(parsedLog.args.token === ethUnlockRecord.asset);
-    logger.debug('parsedLog amount', ethUnlockRecord.amount);
-    logger.debug('parsedLog amount', parsedLog.args.receivedAmount.toString());
+    logger.info('parsedLog amount', ethUnlockRecord.amount);
+    logger.info('parsedLog amount', parsedLog.args.receivedAmount.toString());
     assert(ethUnlockRecord.amount === parsedLog.args.receivedAmount.toString());
-    logger.debug('parsedLog recipient', ethUnlockRecord.recipientAddress);
-    logger.debug('parsedLog recipient', parsedLog.args.recipient);
+    logger.info('parsedLog recipient', ethUnlockRecord.recipientAddress);
+    logger.info('parsedLog recipient', parsedLog.args.recipient);
     assert(ethUnlockRecord.recipientAddress === parsedLog.args.recipient);
   };
 
@@ -219,7 +183,7 @@ async function main() {
     try {
       await checkEffect();
     } catch (e) {
-      logger.warn('The eth component integration not pass yet.', { i, e });
+      logger.warn(`The eth component integration not pass yet. i:${i} error:${e.toString()}`);
       continue;
     }
     logger.info('The eth component integration test pass!');
