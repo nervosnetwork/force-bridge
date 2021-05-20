@@ -106,7 +106,7 @@ export class CkbIndexer {
       const params = [searchKey, order, `0x${sizeLimit.toString(16)}`, cursor];
       const res = await this.request('get_cells', params);
       const liveCells = res.objects;
-      cursor = res.lastCursor;
+      cursor = res.last_cursor;
       logger.debug('liveCells', liveCells[liveCells.length - 1]);
       for (const cell of liveCells) {
         const indexCell = {
@@ -124,7 +124,7 @@ export class CkbIndexer {
           return infos;
         }
       }
-      if (cursor === '0x') {
+      if (liveCells.length < sizeLimit) {
         break;
       }
     }
