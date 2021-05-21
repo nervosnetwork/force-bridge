@@ -21,7 +21,7 @@
     "watch:start": "ts-node-dev --respawn --transpile-only ./packages/apps/relayer/index.ts",
     "check:prettier": "prettier -c .",
     "check:eslint": "yarn eslint --format=pretty 'packages/*/src/**/*.ts'",
-    "clean": "rimraf lumos_db dist force-bridge.sqlite",
+    "clean": "rimraf lumos_db indexer-data dist force-bridge.sqlite",
     "eth-test": "ts-node ./packages/scripts/src/integration-test/eth.ts",
     "eos-test": "ts-node ./packages/scripts/src/integration-test/eos.ts",
     "tron-test": "ts-node ./packages/scripts/src/integration-test/tron.ts",
