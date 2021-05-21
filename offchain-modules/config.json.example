@@ -24,10 +24,10 @@
           "symbol": "ETH",
           "decimal": 18,
           "logoURL": "https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=002",
-          "minimalBridgeAmount": "0.001",
+          "minimalBridgeAmount": "1000000000000000",
           "bridgeFee": {
-            "in": "0.00001",
-            "out": "0.00002"
+            "in": "1000000000000",
+            "out": "2000000000000"
           }
         },
         {
@@ -36,10 +36,10 @@
           "symbol": "DAI",
           "decimal": 18,
           "logoURL": "https://cryptologos.cc/logos/single-collateral-dai-sai-logo.svg?v=002",
-          "minimalBridgeAmount": "0.001",
+          "minimalBridgeAmount": "1000000000000000",
           "bridgeFee": {
-            "in": "0.00001",
-            "out": "0.00002"
+            "in": "1000000000000",
+            "out": "2000000000000"
           }
         },
         {
@@ -48,10 +48,10 @@
           "symbol": "USDT",
           "decimal": 6,
           "logoURL": "https://cryptologos.cc/logos/tether-usdt-logo.svg?v=002",
-          "minimalBridgeAmount": "0.001",
+          "minimalBridgeAmount": "1000",
           "bridgeFee": {
-            "in": "0.00001",
-            "out": "0.00002"
+            "in": "10",
+            "out": "20"
           }
         },
         {
@@ -60,10 +60,10 @@
           "symbol": "USDC",
           "decimal": 6,
           "logoURL": "https://cryptologos.cc/logos/usd-coin-usdc-logo.svg?v=002",
-          "minimalBridgeAmount": "0.001",
+          "minimalBridgeAmount": "1000",
           "bridgeFee": {
-            "in": "0.00001",
-            "out": "0.00002"
+            "in": "10",
+            "out": "20"
           }
         }
       ]

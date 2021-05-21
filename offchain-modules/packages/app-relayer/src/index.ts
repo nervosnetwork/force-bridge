@@ -54,19 +54,19 @@ async function main() {
     const ethHandler = new EthHandler(ethDb, ethChain);
     ethHandler.start();
   }
-  if (config.tron !== undefined) {
-    config.tron.committee.keys = config.tron.committee.keys.map((pk) => parsePrivateKey(pk));
-    const tronDb = new TronDb(conn);
-    const tronHandler = new TronHandler(tronDb);
-    tronHandler.start();
-  }
-  if (config.btc !== undefined) {
-    config.btc.privateKeys = config.btc.privateKeys.map((pk) => parsePrivateKey(pk));
-    const btcDb = new BtcDb(conn);
-    const btcChain = new BTCChain();
-    const btcHandler = new BtcHandler(btcDb, btcChain);
-    btcHandler.start();
-  }
+  // if (config.tron !== undefined) {
+  //   config.tron.committee.keys = config.tron.committee.keys.map((pk) => parsePrivateKey(pk));
+  //   const tronDb = new TronDb(conn);
+  //   const tronHandler = new TronHandler(tronDb);
+  //   tronHandler.start();
+  // }
+  // if (config.btc !== undefined) {
+  //   config.btc.privateKeys = config.btc.privateKeys.map((pk) => parsePrivateKey(pk));
+  //   const btcDb = new BtcDb(conn);
+  //   const btcChain = new BTCChain();
+  //   const btcHandler = new BtcHandler(btcDb, btcChain);
+  //   btcHandler.start();
+  // }
 }
 
 main();
