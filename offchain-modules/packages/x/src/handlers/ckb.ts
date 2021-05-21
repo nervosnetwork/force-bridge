@@ -7,8 +7,8 @@ import { Asset, BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '../ck
 import { IndexerCollector } from '../ckb/tx-helper/collector';
 import { RecipientCellData } from '../ckb/tx-helper/generated/eth_recipient_cell';
 import { CkbTxGenerator, MintAssetRecord } from '../ckb/tx-helper/generator';
-import { forceBridgeRole } from '../config';
 import { CkbIndexer, ScriptType } from '../ckb/tx-helper/indexer';
+import { forceBridgeRole } from '../config';
 import { ForceBridgeCore } from '../core';
 import { CkbDb } from '../db';
 import { CkbMint, ICkbBurn } from '../db/model';
