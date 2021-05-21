@@ -72,6 +72,7 @@ export class CkbTxGenerator {
     const sudtCellCapacity = 300n * 10n ** 8n;
     const assets = new Array(0);
     const bridgeFeeCells = new Array(0);
+    const reusedBridgeFeeCells = new Array(0);
     for (const record of records) {
       if (record.amount.eq(Amount.ZERO)) {
         continue;
@@ -127,21 +128,24 @@ export class CkbTxGenerator {
       outputsData.push('0x');
       bridgeCells.push(bridgeCell);
 
-      // const feeCellSearchKey = {
-      //   script: new Script(
-      //     ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
-      //     sudtArgs,
-      //     ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
-      //   ).serializeJson() as LumosScript,
-      //   script_type: ScriptType.type,
-      //   filter: {
-      //     script: userLockscript.serializeJson() as LumosScript,
-      //   },
-      // };
-      // const feeCells = await this.collector.collectSudtByAmount(feeCellSearchKey, new Amount('0'));
-      // if (feeCells.length == 0) {
-      //   throw new Error('failed to generate mint tx. the live bridge fee cell is not found!');
-      // }
+      const reuseBridgeFeeCellSearchKey = {
+        script: userLockscript.serializeJson() as LumosScript,
+        script_type: ScriptType.lock,
+        filter: {
+          script: new Script(
+            ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
+            sudtArgs,
+            ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
+          ).serializeJson() as LumosScript,
+        },
+      };
+      const reuseBridgeFeeCells = await this.collector.collectSudtByAmount(
+        reuseBridgeFeeCellSearchKey,
+        new Amount('0', 0),
+      );
+      if (reuseBridgeFeeCells.length !== 0) {
+        reusedBridgeFeeCells.push(reuseBridgeFeeCells[0]);
+      }
 
       const bridgeFeeCell = {
         lock: userLockscript,
@@ -158,7 +162,14 @@ export class CkbTxGenerator {
 
     bridgeFeeCells.forEach((cell) => {
       outputs.push({ lock: cell.lock, type: cell.type, capacity: cell.capacity });
-      outputsData.push(cell.amount.toUInt128LE());
+      const reusedBridgeFeeCell = reusedBridgeFeeCells.filter((reusedCell) => reusedCell.type.args === cell.type.args);
+      if (0 === reusedBridgeFeeCell.length) {
+        outputsData.push(cell.amount.toUInt128LE());
+      } else {
+        const reusedBridgeFeeAmount = Amount.fromUInt128LE(reusedBridgeFeeCell[0].data);
+        const bridgeFeeAmount = cell.amount.add(reusedBridgeFeeAmount);
+        outputsData.push(bridgeFeeAmount.toUInt128LE());
+      }
     });
 
     const fee = 100000n;
@@ -168,7 +179,7 @@ export class CkbTxGenerator {
       userLockscript,
       new Amount(`0x${needSupplyCap.toString(16)}`, 0),
     );
-    const inputCells = supplyCapCells.concat(bridgeCells);
+    const inputCells = supplyCapCells.concat(bridgeCells).concat(reusedBridgeFeeCells);
     const inputs = inputCells.map((cell) => {
       return { previousOutput: cell.outPoint, since: '0x0' };
     });
