@@ -1,6 +1,6 @@
 import { ecsign, toRpcSig } from 'ethereumjs-util';
 import { BigNumber, ethers } from 'ethers';
-import { EthConfig } from '../../config';
+import { EthConfig, forceBridgeRole } from '../../config';
 import { ForceBridgeCore } from '../../core';
 import { EthUnlock } from '../../db/entity/EthUnlock';
 import { MultiSigMgr } from '../../multisig/multisig-mgr';
@@ -20,6 +20,7 @@ export interface EthUnlockRecord {
 }
 
 export class EthChain {
+  protected readonly role: forceBridgeRole;
   protected readonly config: EthConfig;
   protected readonly provider: ethers.providers.JsonRpcProvider;
   protected readonly bridgeContractAddr: string;
@@ -29,18 +30,21 @@ export class EthChain {
   protected readonly multiSignKeys: string[];
   protected readonly multisigMgr: MultiSigMgr;
 
-  constructor() {
+  constructor(role: forceBridgeRole) {
     const config = ForceBridgeCore.config.eth;
     const url = config.rpcUrl;
+    this.role = role;
     this.config = config;
     this.provider = new ethers.providers.JsonRpcProvider(url);
     this.bridgeContractAddr = config.contractAddress;
     this.iface = new ethers.utils.Interface(abi);
-    this.wallet = new ethers.Wallet(config.privateKey, this.provider);
-    logger.debug('address', this.wallet.address);
-    this.bridge = new ethers.Contract(this.bridgeContractAddr, abi, this.provider).connect(this.wallet);
-    this.multiSignKeys = config.multiSignKeys;
-    this.multisigMgr = new MultiSigMgr('ETH', this.config.multiSignHosts, this.config.multiSignThreshold);
+    if (role === 'collector') {
+      this.wallet = new ethers.Wallet(config.privateKey, this.provider);
+      logger.debug('address', this.wallet.address);
+      this.bridge = new ethers.Contract(this.bridgeContractAddr, abi, this.provider).connect(this.wallet);
+      this.multiSignKeys = config.multiSignKeys;
+      this.multisigMgr = new MultiSigMgr('ETH', this.config.multiSignHosts, this.config.multiSignThreshold);
+    }
   }
 
   async watchLockEvents(startHeight = 1, handleLogFunc) {

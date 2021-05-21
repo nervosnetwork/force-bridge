@@ -1,4 +1,5 @@
 import { ChainType } from '../ckb/model/asset';
+import { forceBridgeRole } from '../config';
 import { ForceBridgeCore } from '../core';
 import { BtcDb } from '../db/btc';
 import { BtcUnlock } from '../db/entity/BtcUnlock';
@@ -9,7 +10,7 @@ import { BTCChain, BtcLockData } from '../xchain/btc';
 const CkbAddressLen = 46;
 
 export class BtcHandler {
-  constructor(private db: BtcDb, private btcChain: BTCChain) {}
+  constructor(private db: BtcDb, private btcChain: BTCChain, private role: forceBridgeRole) {}
 
   // listen BTC chain and handle the new lock events
   async watchLockEvents() {
@@ -30,15 +31,20 @@ export class BtcHandler {
           targetHeight,
           async (btcLockEventData: BtcLockData) => {
             logger.info(`BtcHandler watchBtcTxEvents newEvents:${JSON.stringify(btcLockEventData, null, 2)}`);
-            await this.db.createCkbMint([
-              {
-                id: btcLockEventData.txId,
-                chain: ChainType.BTC,
-                amount: btcLockEventData.amount,
-                asset: 'btc',
-                recipientLockscript: btcLockEventData.data.slice(0, CkbAddressLen),
-              },
-            ]);
+
+            if (this.role === 'collector') {
+              await this.db.createCkbMint([
+                {
+                  id: btcLockEventData.txId,
+                  chain: ChainType.BTC,
+                  amount: btcLockEventData.amount,
+                  asset: 'btc',
+                  recipientLockscript: btcLockEventData.data.slice(0, CkbAddressLen),
+                },
+              ]);
+              logger.info(`BtcHandler watchBtcTxEvents save CkbMint successful for BTC tx ${btcLockEventData.txHash}.`);
+            }
+
             await this.db.createBtcLock([
               {
                 txid: btcLockEventData.txId,
@@ -52,9 +58,7 @@ export class BtcHandler {
                 blockHash: btcLockEventData.blockHash,
               },
             ]);
-            logger.info(
-              `BtcHandler watchBtcTxEvents save CkbMint and BTCLock successful for BTC tx ${btcLockEventData.txHash}.`,
-            );
+            logger.info(`BtcHandler watchBtcTxEvents save BTCLock successful for BTC tx ${btcLockEventData.txHash}.`);
           },
           async (ckbTxHash: string) => {
             if (!ckbTxHash.startsWith('0x')) {
@@ -84,6 +88,9 @@ export class BtcHandler {
   // watch the BTC_unlock table and handle the new unlock events
   // send tx according to the data
   async watchUnlockEvents() {
+    if (this.role !== 'collector') {
+      return;
+    }
     // todo: get and handle pending and error records
     logger.info('BtcHandler watchUnlockEvents start');
     while (true) {
