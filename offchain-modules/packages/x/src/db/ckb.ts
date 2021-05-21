@@ -1,6 +1,7 @@
 // invoke in ckb handler
 import { Connection, DeleteResult, UpdateResult } from 'typeorm';
 import { ForceBridgeCore } from '../core';
+import { dbTxStatus } from './entity/CkbMint';
 import {
   BtcUnlock,
   CkbBurn,
@@ -57,6 +58,16 @@ export class CkbDb {
     await this.connection.manager.save(records);
   }
 
+  async updateCkbMintStatus(mintTxHash: string, status: dbTxStatus) {
+    return this.connection
+      .getRepository(CkbMint)
+      .createQueryBuilder()
+      .update()
+      .set({ status: status })
+      .where('mintHash = :minttTxHash', { minttTxHash: mintTxHash })
+      .execute();
+  }
+
   async createCkbBurn(records: ICkbBurn[]): Promise<void> {
     const ckbBurnRepo = this.connection.getRepository(CkbBurn);
     const dbRecords = records.map((r) => ckbBurnRepo.create(r));
@@ -88,28 +99,22 @@ export class CkbDb {
     await btcUnlockRepo.save(dbRecords);
   }
 
-  async removeUnconfirmedCkbBurn(currentBlockHeight: number, confirmNumber: number): Promise<DeleteResult> {
+  async removeUnconfirmedCkbBurn(confirmedBlockHeight: number): Promise<DeleteResult> {
     return this.connection
       .getRepository(CkbBurn)
       .createQueryBuilder()
       .delete()
-      .where('block_number >= :blockNumber', { blockNumber: currentBlockHeight - confirmNumber })
+      .where('block_number > :blockNumber', { blockNumber: confirmedBlockHeight })
       .execute();
   }
 
-  async getUnconfirmedCkbBurnToConfirm(
-    currentBlockHeight: number,
-    confirmNumber: number,
-    limit = 100,
-  ): Promise<CkbBurn[]> {
-    const confirmedHeight = currentBlockHeight - confirmNumber;
+  async getUnconfirmedCkbBurnToConfirm(confirmedBlockHeight: number, limit = 100): Promise<CkbBurn[]> {
     return this.connection
       .getRepository(CkbBurn)
       .createQueryBuilder()
       .select()
       .where('block_number <= :confirmedHeight And confirm_status = "unconfirmed"', {
-        confirmedHeight: confirmedHeight,
-        endHeight: currentBlockHeight,
+        confirmedHeight: confirmedBlockHeight,
       })
       .limit(limit)
       .getMany();

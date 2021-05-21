@@ -18,10 +18,10 @@ export class EthHandler {
 
   async getLastHandledBlock(): Promise<{ blockNumber: number; blockHash: string }> {
     const lastHandledBlock = await this.kvDb.get(lastHandleEthBlockKey);
-    if (!lastHandledBlock || lastHandledBlock.length === 0) {
+    if (!lastHandledBlock) {
       return { blockNumber: 0, blockHash: '' };
     }
-    const block = lastHandledBlock[0].value.split(',');
+    const block = lastHandledBlock.split(',');
     return { blockNumber: parseInt(block[0]), blockHash: block[1] };
   }
 
@@ -52,29 +52,25 @@ export class EthHandler {
     }
     const confirmNumber = ForceBridgeCore.config.eth.confirmNumber;
     const getLogBatchSize = 100;
+
     for (;;) {
-      const currentBlockHeight = await this.ethChain.getCurrentBlockNumber();
-      if (currentBlockHeight === this.lastHandledBlockHeight) {
-        break;
+      const endBlockNumber =
+        this.lastHandledBlockHeight + getLogBatchSize > currentBlockHeight
+          ? currentBlockHeight
+          : this.lastHandledBlockHeight + getLogBatchSize;
+
+      logger.info(`EthHandler init getLogs from:${this.lastHandledBlockHeight} to:${endBlockNumber}`);
+
+      const logs = await this.ethChain.getLogs(this.lastHandledBlockHeight, endBlockNumber - 1);
+      for (const log of logs) {
+        await this.onLogs(log.log, log.parsedLog);
       }
+      const endBlock = await this.ethChain.getBlock(endBlockNumber);
 
-      for (;;) {
-        const endBlockNumber =
-          this.lastHandledBlockHeight + getLogBatchSize > currentBlockHeight
-            ? currentBlockHeight
-            : this.lastHandledBlockHeight + getLogBatchSize;
-
-        logger.info(`EthHandler init getLogs from:${this.lastHandledBlockHeight} to:${endBlockNumber}`);
-
-        await this.ethChain.getLogs(this.lastHandledBlockHeight, endBlockNumber - 1, async (log, parsedLog) => {
-          await this.onLogs(log, parsedLog);
-        });
-        const endBlock = await this.ethChain.getBlock(endBlockNumber);
-        await this.setLastHandledBlock(endBlockNumber, endBlock.hash);
-        await this.confirmEthLocks(endBlockNumber, confirmNumber);
-        if (endBlockNumber == currentBlockHeight) {
-          break;
-        }
+      await this.confirmEthLocks(endBlockNumber, confirmNumber);
+      await this.setLastHandledBlock(endBlockNumber, endBlock.hash);
+      if (endBlockNumber == currentBlockHeight) {
+        break;
       }
     }
   }
@@ -99,15 +95,17 @@ export class EthHandler {
             this.lastHandledBlockHash
           } fork occur removeUnconfirmedLock events from:${block.number - confirmNumber}`,
         );
-        await this.db.removeUnconfirmedLocks(block.number, confirmNumber);
-        await this.ethChain.getLogs(block.number - confirmNumber, block.number, async (log, parsedLog) => {
-          await this.onLogs(log, parsedLog);
-        });
+        const confirmedBlockHeight = block.number - confirmNumber;
+        await this.db.removeUnconfirmedLocks(confirmedBlockHeight);
+        const logs = await this.ethChain.getLogs(confirmedBlockHeight, block.number);
+        for (const log of logs) {
+          await this.onLogs(log.log, log.parsedLog);
+        }
       }
-      await this.setLastHandledBlock(block.number, block.hash);
-      logger.info(`EthHandler onBlock blockHeight:${block.number} blockHash:${block.hash}`);
 
       await this.confirmEthLocks(block.number, confirmNumber);
+      await this.setLastHandledBlock(block.number, block.hash);
+      logger.info(`EthHandler onBlock blockHeight:${block.number} blockHash:${block.hash}`);
     } catch (e) {
       logger.error(
         `EthHandler onBlock error, blockHeight:${block.number} blockHash:${block.hash} error:${e.toString()}`,
@@ -116,7 +114,8 @@ export class EthHandler {
   }
 
   async confirmEthLocks(currentBlockHeight: number, confirmNumber: number) {
-    const confirmedLocks = await this.db.getUnconfirmedLocksToConfirm(currentBlockHeight, confirmNumber);
+    const confirmedBlockHeight = currentBlockHeight - confirmNumber;
+    const confirmedLocks = await this.db.getUnconfirmedLocksToConfirm(confirmedBlockHeight);
     if (confirmedLocks.length === 0) {
       return;
     }

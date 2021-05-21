@@ -70,18 +70,17 @@ export class EthChain {
   async getLogs(
     fromBlock: ethers.providers.BlockTag,
     toBlock: ethers.providers.BlockTag,
-    handleLogFunc,
-  ): Promise<void> {
+  ): Promise<{ log; parsedLog }[]> {
     const logs = await this.provider.getLogs({
       fromBlock: fromBlock,
       address: ForceBridgeCore.config.eth.contractAddress,
       topics: [lockTopic],
       toBlock: toBlock,
     });
-    for (const log of logs) {
+    return logs.map((log) => {
       const parsedLog = this.iface.parseLog(log);
-      await handleLogFunc(log, parsedLog);
-    }
+      return { log, parsedLog };
+    });
   }
 
   async sendUnlockTxs(records: EthUnlock[]): Promise<any> {

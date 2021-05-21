@@ -32,10 +32,10 @@ export class CkbHandler {
 
   async getLastHandledBlock(): Promise<{ blockNumber: number; blockHash: string }> {
     const lastHandledBlock = await this.kvDb.get(lastHandleCkbBlockKey);
-    if (!lastHandledBlock || lastHandledBlock.length === 0) {
+    if (!lastHandledBlock) {
       return { blockNumber: 0, blockHash: '' };
     }
-    const block = lastHandledBlock[0].value.split(',');
+    const block = lastHandledBlock.split(',');
     return { blockNumber: parseInt(block[0]), blockHash: block[1] };
   }
 
@@ -138,20 +138,21 @@ export class CkbHandler {
       logger.warn(
         `CkbHandler onBlock blockHeight:${blockNumber} parentHash:${block.header.parentHash} != lastHandledBlockHash:${this.lastHandledBlockHash} fork occur removeUnconfirmedLock events from:${confirmedBlockHeight}`,
       );
-      await this.db.removeUnconfirmedCkbBurn(blockNumber, confirmNumber);
+      await this.db.removeUnconfirmedCkbBurn(confirmedBlockHeight);
 
       const confirmedBlock = await this.ckb.rpc.getBlockByNumber(BigInt(confirmedBlockHeight));
       await this.setLastHandledBlock(Number(confirmedBlock.header.number), confirmedBlock.header.hash);
       return;
     }
 
-    await this.setLastHandledBlock(blockNumber, blockHash);
-    const unconfirmedTxs = await this.db.getUnconfirmedCkbBurnToConfirm(blockNumber, confirmNumber);
-    const confirmedTxHashes = unconfirmedTxs.map((burn) => {
-      return burn.ckbTxHash;
-    });
-    await this.db.updateCkbBurnConfirmStatus(confirmedTxHashes);
-    await this.onCkbBurnConfirmed(unconfirmedTxs);
+    const unconfirmedTxs = await this.db.getUnconfirmedCkbBurnToConfirm(confirmedBlockHeight);
+    if (unconfirmedTxs.length !== 0) {
+      const confirmedTxHashes = unconfirmedTxs.map((burn) => {
+        return burn.ckbTxHash;
+      });
+      await this.db.updateCkbBurnConfirmStatus(confirmedTxHashes);
+      await this.onCkbBurnConfirmed(unconfirmedTxs);
+    }
 
     const burnTxs = new Map();
     for (const tx of block.transactions) {
@@ -185,17 +186,14 @@ export class CkbHandler {
       }
     }
     await this.onBurnTxs(blockNumber, burnTxs);
+    await this.setLastHandledBlock(blockNumber, blockHash);
   }
 
   async onMintTx(tx: Transaction) {
     if (this.role !== 'collector') {
       return;
     }
-    const pendingMintTxs = await this.db.getMintRecordsToUpdate(tx.hash);
-    pendingMintTxs.map((r) => {
-      r.status = 'success';
-    });
-    await this.db.updateCkbMint(pendingMintTxs);
+    await this.db.updateCkbMintStatus(tx.hash, 'success');
   }
 
   async onBurnTxs(latestHeight: number, burnTxs: Map<string, BurnDbData>) {

@@ -5,7 +5,7 @@ export class KV {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Index()
+  @Index({ unique: true })
   @Column()
   key: string;
 

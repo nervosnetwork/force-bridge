@@ -34,26 +34,20 @@ export class EthDb implements IQuery {
     await this.ethLockRepository.save(dbRecords);
   }
 
-  async removeUnconfirmedLocks(currentBlockHeight: number, confirmNumber: number): Promise<DeleteResult> {
+  async removeUnconfirmedLocks(confirmedBlockHeight: number): Promise<DeleteResult> {
     return this.ethLockRepository
       .createQueryBuilder()
       .delete()
-      .where('block_number >= :blockNumber', { blockNumber: currentBlockHeight - confirmNumber })
+      .where('block_number > :blockNumber', { blockNumber: confirmedBlockHeight })
       .execute();
   }
 
-  async getUnconfirmedLocksToConfirm(
-    currentBlockHeight: number,
-    confirmNumber: number,
-    limit = 100,
-  ): Promise<EthLock[]> {
-    const confirmedHeight = currentBlockHeight - confirmNumber;
+  async getUnconfirmedLocksToConfirm(confirmedBlockHeight: number, limit = 100): Promise<EthLock[]> {
     return this.ethLockRepository
       .createQueryBuilder()
       .select()
       .where('block_number <= :confirmedHeight And confirm_status = "unconfirmed"', {
-        confirmedHeight: confirmedHeight,
-        endHeight: currentBlockHeight,
+        confirmedHeight: confirmedBlockHeight,
       })
       .limit(limit)
       .getMany();
