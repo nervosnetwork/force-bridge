@@ -97,7 +97,11 @@ export class CkbDb {
       .execute();
   }
 
-  async getUnconfirmedCkbBurnToConfirm(currentBlockHeight: number, confirmNumber: number): Promise<CkbBurn[]> {
+  async getUnconfirmedCkbBurnToConfirm(
+    currentBlockHeight: number,
+    confirmNumber: number,
+    limit = 100,
+  ): Promise<CkbBurn[]> {
     const confirmedHeight = currentBlockHeight - confirmNumber;
     return this.connection
       .getRepository(CkbBurn)
@@ -107,6 +111,7 @@ export class CkbDb {
         confirmedHeight: confirmedHeight,
         endHeight: currentBlockHeight,
       })
+      .limit(limit)
       .getMany();
   }
 

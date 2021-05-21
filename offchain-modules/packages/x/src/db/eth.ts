@@ -42,7 +42,11 @@ export class EthDb implements IQuery {
       .execute();
   }
 
-  async getUnconfirmedLocksToConfirm(currentBlockHeight: number, confirmNumber: number): Promise<EthLock[]> {
+  async getUnconfirmedLocksToConfirm(
+    currentBlockHeight: number,
+    confirmNumber: number,
+    limit = 100,
+  ): Promise<EthLock[]> {
     const confirmedHeight = currentBlockHeight - confirmNumber;
     return this.ethLockRepository
       .createQueryBuilder()
@@ -51,6 +55,7 @@ export class EthDb implements IQuery {
         confirmedHeight: confirmedHeight,
         endHeight: currentBlockHeight,
       })
+      .limit(limit)
       .getMany();
   }
 
