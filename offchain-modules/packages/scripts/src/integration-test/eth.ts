@@ -33,12 +33,13 @@ const CKB_INDEXER_URL = process.env.CKB_INDEXER_URL || 'http://127.0.0.1:8116';
 const indexer = new CkbIndexer(CKB_URL, CKB_INDEXER_URL);
 const collector = new IndexerCollector(indexer);
 const ckb = new CKB(CKB_URL);
+const RELAY_PRI_KEY = process.env.PRI_KEY || '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
 
 async function main() {
   const conn = await createConnection();
-  const PRI_KEY = process.env.PRI_KEY || '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
-  const REC_PRI_KEY = '0xd00c06bfd800d27397002dca6fb0993d5ba6399b4238b2f29ee9deb97593d2bc';
-  const REC_ADDR = 'ckt1qyqvsv5240xeh85wvnau2eky8pwrhh4jr8ts8vyj37';
+  // ckb account to recieve ckETH and send burn tx
+  const RECIPIENT_PRI_KEY = '0xd00c06bfd800d27397002dca6fb0993d5ba6399b4238b2f29ee9deb97593d2bc';
+  const RECIPIENT_ADDR = 'ckt1qyqvsv5240xeh85wvnau2eky8pwrhh4jr8ts8vyj37';
 
   const configPath = process.env.CONFIG_PATH || './config.json';
   nconf.env().file({ file: configPath });
@@ -61,7 +62,7 @@ async function main() {
   logger.info('bridge fee', bridgeFee);
 
   // lock eth
-  const recipientLockscript = stringToUint8Array(REC_ADDR);
+  const recipientLockscript = stringToUint8Array(RECIPIENT_ADDR);
   logger.info('recipientLockscript', toHexString(recipientLockscript));
   const sudtExtraData = '0x01';
   const amount = ethers.utils.parseEther('0.1');
@@ -110,20 +111,18 @@ async function main() {
     assert(ckbMintRecord.status === 'success');
     assert(ckbMintRecord.asset === ETH_ADDRESS);
     assert(ckbMintRecord.amount === amount.toString());
-    logger.info('ckbMintRecords bridge fee', ckbMintRecord.bridgeFee);
-    logger.info('bridge in fee', bridgeFee.in);
     assert(ckbMintRecord.bridgeFee === bridgeFee.in);
     assert(ckbMintRecord.recipientLockscript === `${uint8ArrayToString(recipientLockscript)}`);
 
     // check sudt balance.
-    const recievedBridgeFee = await getSudtBalance(PRI_KEY);
-    const recipientBalance = await getSudtBalance(REC_PRI_KEY);
+    const recievedBridgeFee = await getSudtBalance(RELAY_PRI_KEY);
+    const recipientBalance = await getSudtBalance(RECIPIENT_PRI_KEY);
 
     if (!sendBurn) {
-      logger.info('bridge fee sudt balance:', recievedBridgeFee);
+      logger.info('bridge fee sudt balance on chain:', recievedBridgeFee);
       logger.info('expect bridge fee balance:', new Amount(ckbMintRecord.bridgeFee, 0));
       assert(recievedBridgeFee.eq(new Amount(ckbMintRecord.bridgeFee, 0)));
-      logger.info('recipient sudt balance:', recipientBalance);
+      logger.info('recipient sudt balance on chain:', recipientBalance);
       const expectBalance = new Amount(amount.toString(), 0).sub(recievedBridgeFee);
       logger.info('expect recipient balance:', expectBalance);
       assert(recipientBalance.eq(expectBalance));
@@ -132,26 +131,28 @@ async function main() {
     // send burn tx
     const burnAmount = ethers.utils.parseEther('0.01');
     if (!sendBurn) {
-      const account = new Account(REC_PRI_KEY);
-      const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
+      const ownerAccount = new Account(RELAY_PRI_KEY);
+      const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await ownerAccount.getLockscript());
       const generator = new CkbTxGenerator(ckb, new IndexerCollector(indexer));
       const burnTx = await generator.burn(
-        await account.getLockscript(),
+        await new Account(RECIPIENT_PRI_KEY).getLockscript(),
         recipientAddress,
         new EthAsset('0x0000000000000000000000000000000000000000', ownLockHash),
         // Amount.fromUInt128LE('0x01'),
         new Amount(burnAmount.toString(), 0),
       );
-      const signedTx = ckb.signTransaction(REC_PRI_KEY)(burnTx);
+      const signedTx = ckb.signTransaction(RECIPIENT_PRI_KEY)(burnTx);
       burnTxHash = await ckb.rpc.sendTransaction(signedTx);
       console.log(`burn Transaction has been sent with tx hash ${burnTxHash}`);
       await waitUntilCommitted(ckb, burnTxHash, 60);
       sendBurn = true;
     }
-    // const expectBalance = recipientBalance.sub(new Amount(burnAmount.toString(), 0));
-    // logger.info('sudt balance:', balance);
-    // logger.info('expect balance:', expectBalance);
-    // assert(balance.eq(expectBalance));
+    const expectBalanceAfterBurn = new Amount(ckbMintRecord.amount, 0)
+      .sub(new Amount(burnAmount.toString(), 0))
+      .sub(new Amount(ckbMintRecord.bridgeFee, 0));
+    logger.info('expect recipient balance after burn:', expectBalanceAfterBurn);
+    logger.info('recipient onchain balance after burn:', recipientBalance);
+    assert(recipientBalance.eq(expectBalanceAfterBurn));
 
     // check unlock record send
     const ethUnlockRecords = await conn.manager.find(EthUnlock, {
@@ -165,12 +166,14 @@ async function main() {
     const unlockReceipt = await provider.getTransactionReceipt(ethUnlockRecord.ethTxHash);
     logger.info('unlockReceipt', unlockReceipt);
     assert(unlockReceipt.logs.length === 2);
+
     const recipientParsedLog = iface.parseLog(unlockReceipt.logs[0]);
     const expectRecipientUnlockAmount = new Amount(ethUnlockRecord.amount, 0).sub(new Amount(bridgeFee.out, 0));
-    logger.info('parsedLog', recipientParsedLog);
+    logger.info('recipient parsedLog', recipientParsedLog);
     assert(recipientParsedLog.args.token === ethUnlockRecord.asset);
     logger.info('db unlock amount', ethUnlockRecord.amount);
-    logger.info('parsedLog amount', recipientParsedLog.args.receivedAmount.toString());
+    logger.info('parsedLog recipient amount', recipientParsedLog.args.receivedAmount.toString());
+    logger.info('expect recipient amount', expectRecipientUnlockAmount.toString(0));
     assert(expectRecipientUnlockAmount.toString(0) === recipientParsedLog.args.receivedAmount.toString());
     logger.info('db unlock recipient', ethUnlockRecord.recipientAddress);
     logger.info('parsedLog recipient', recipientParsedLog.args.recipient);
@@ -207,8 +210,8 @@ main()
   });
 
 async function getSudtBalance(privKey: string): Promise<Amount> {
-  const account = new Account(privKey);
-  const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
+  const ownerAccount = new Account(RELAY_PRI_KEY);
+  const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await ownerAccount.getLockscript());
   const asset = new EthAsset('0x0000000000000000000000000000000000000000', ownLockHash);
   const bridgeCellLockscript = {
     codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
@@ -221,8 +224,9 @@ async function getSudtBalance(privKey: string): Promise<Amount> {
     hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
     args: sudtArgs,
   };
+  const userAccount = new Account(privKey);
   return await collector.getSUDTBalance(
     new Script(sudtType.codeHash, sudtType.args, sudtType.hashType),
-    await account.getLockscript(),
+    await userAccount.getLockscript(),
   );
 }

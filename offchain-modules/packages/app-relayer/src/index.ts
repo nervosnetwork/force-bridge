@@ -38,12 +38,12 @@ async function main() {
   const ckbHandler = new CkbHandler(ckbDb);
   ckbHandler.start();
 
-  if (config.eos !== undefined) {
-    config.eos.privateKeys = config.eos.privateKeys.map((pk) => parsePrivateKey(pk));
-    const eosDb = new EosDb(conn);
-    const eosHandler = new EosHandler(eosDb, ForceBridgeCore.config.eos);
-    eosHandler.start();
-  }
+  // if (config.eos !== undefined) {
+  //   config.eos.privateKeys = config.eos.privateKeys.map((pk) => parsePrivateKey(pk));
+  //   const eosDb = new EosDb(conn);
+  //   const eosHandler = new EosHandler(eosDb, ForceBridgeCore.config.eos);
+  //   eosHandler.start();
+  // }
 
   // start xchain handlers if config exists
   if (config.eth !== undefined) {
