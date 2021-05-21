@@ -33,7 +33,7 @@ jobs:
         with:
           node-version: '12.x'
       - name: install dependencies
-        run: yarn --frozen-lockfile
+        run: yarn --frozen-lockfile && yarn build
 #        if: steps.yarn-cache.outputs.cache-hit != 'true'
       - run: yarn lint
       - run: yarn cov

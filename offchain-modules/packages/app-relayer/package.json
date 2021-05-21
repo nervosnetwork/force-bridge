@@ -1,0 +1,14 @@
+{
+  "name": "@force-bridge/relayer",
+  "main": "dist",
+  "scripts": {
+    "build": "yarn run clean && yarn run compile",
+    "clean": "rimraf -rf ./dist",
+    "compile": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "yarn run build",
+    "test": "yarn run build"
+  },
+  "dependencies": {
+    "@force-bridge/x": "*"
+  }
+}
