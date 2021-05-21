@@ -1,5 +1,7 @@
 import { DepType, HashType } from '@lay2/pw-core';
 
+export type forceBridgeRole = 'watcher' | 'collector' | 'verifier';
+
 export interface ConfigItem {
   cellDep: {
     depType: DepType;
@@ -89,6 +91,7 @@ export interface logConfig {
 }
 
 export interface commonConfig {
+  role: forceBridgeRole;
   log: logConfig;
 }
 
