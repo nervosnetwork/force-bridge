@@ -61,7 +61,7 @@ export class EthHandler {
 
       logger.info(`EthHandler init getLogs from:${this.lastHandledBlockHeight} to:${endBlockNumber}`);
 
-      const logs = await this.ethChain.getLogs(this.lastHandledBlockHeight, endBlockNumber - 1);
+      const logs = await this.ethChain.getLogs(this.lastHandledBlockHeight + 1, endBlockNumber);
       for (const log of logs) {
         await this.onLogs(log.log, log.parsedLog);
       }
@@ -97,7 +97,7 @@ export class EthHandler {
         );
         const confirmedBlockHeight = block.number - confirmNumber;
         await this.db.removeUnconfirmedLocks(confirmedBlockHeight);
-        const logs = await this.ethChain.getLogs(confirmedBlockHeight, block.number);
+        const logs = await this.ethChain.getLogs(confirmedBlockHeight + 1, block.number);
         for (const log of logs) {
           await this.onLogs(log.log, log.parsedLog);
         }
