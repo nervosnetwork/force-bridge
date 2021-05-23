@@ -34,7 +34,7 @@ export class CkbDb {
         status: 'todo',
       },
       order: {
-        createdAt: 'DESC',
+        createdAt: 'ASC',
       },
       take,
     });
@@ -47,7 +47,7 @@ export class CkbDb {
         status: 'pending',
       },
       order: {
-        createdAt: 'DESC',
+        createdAt: 'ASC',
       },
     });
   }
