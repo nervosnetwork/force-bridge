@@ -1,6 +1,6 @@
 import { createConnection } from 'typeorm';
 import { ForceBridgeCore } from '../core';
-import { CkbDb, EthDb, TronDb } from '../db';
+import { CkbDb, EthDb, KVDb, TronDb } from '../db';
 import { BtcDb } from '../db/btc';
 import { EosDb } from '../db/eos';
 import { BtcHandler } from '../handlers/btc';
@@ -22,10 +22,11 @@ export async function startHandlers() {
   // init db and start handlers
   const conn = await createConnection();
   const ckbDb = new CkbDb(conn);
+  const kvDb = new KVDb(conn);
   if (isCollector) {
     ForceBridgeCore.config.ckb.privateKey = parsePrivateKey(ForceBridgeCore.config.ckb.privateKey);
   }
-  const ckbHandler = new CkbHandler(ckbDb, role);
+  const ckbHandler = new CkbHandler(ckbDb, kvDb, role);
   ckbHandler.start();
 
   // start xchain handlers if config exists
@@ -38,7 +39,7 @@ export async function startHandlers() {
     }
     const ethDb = new EthDb(conn);
     const ethChain = new EthChain(role);
-    const ethHandler = new EthHandler(ethDb, ethChain, role);
+    const ethHandler = new EthHandler(ethDb, kvDb, ethChain, role);
     ethHandler.start();
   }
   if (ForceBridgeCore.config.eos !== undefined) {
