@@ -20,7 +20,7 @@
       ],
       "multiSignThreshold": 2,
       "contractAddress": "0x8326e1d621Cd32752920ed2A44B49bB1a96c7391",
-      "confirmNumber": 5,
+      "confirmNumber": 1,
       "startBlockHeight": 1
     },
     "eos": {
@@ -123,7 +123,8 @@
           }
         }
       },
-      "startBlockHeight": 1
+      "startBlockHeight": 1,
+      "confirmNumber": 1
     },
     "tron": {
       "tronGridUrl": "https://api.shasta.trongrid.io",

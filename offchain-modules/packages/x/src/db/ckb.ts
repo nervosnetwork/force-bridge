@@ -1,6 +1,7 @@
 // invoke in ckb handler
-import { Connection } from 'typeorm';
+import { Connection, DeleteResult, UpdateResult } from 'typeorm';
 import { ForceBridgeCore } from '../core';
+import { dbTxStatus } from './entity/CkbMint';
 import {
   BtcUnlock,
   CkbBurn,
@@ -34,7 +35,7 @@ export class CkbDb {
         status: 'todo',
       },
       order: {
-        createdAt: 'DESC',
+        createdAt: 'ASC',
       },
       take,
     });
@@ -47,7 +48,7 @@ export class CkbDb {
         status: 'pending',
       },
       order: {
-        createdAt: 'DESC',
+        createdAt: 'ASC',
       },
     });
   }
@@ -55,6 +56,16 @@ export class CkbDb {
   // update mint status
   async updateCkbMint(records: CkbMint[]): Promise<void> {
     await this.connection.manager.save(records);
+  }
+
+  async updateCkbMintStatus(mintTxHash: string, status: dbTxStatus) {
+    return this.connection
+      .getRepository(CkbMint)
+      .createQueryBuilder()
+      .update()
+      .set({ status: status })
+      .where('mintHash = :mintTxHash', { mintTxHash: mintTxHash })
+      .execute();
   }
 
   async createCkbBurn(records: ICkbBurn[]): Promise<void> {
@@ -86,5 +97,36 @@ export class CkbDb {
     const btcUnlockRepo = this.connection.getRepository(BtcUnlock);
     const dbRecords = records.map((r) => btcUnlockRepo.create(r));
     await btcUnlockRepo.save(dbRecords);
+  }
+
+  async removeUnconfirmedCkbBurn(confirmedBlockHeight: number): Promise<DeleteResult> {
+    return this.connection
+      .getRepository(CkbBurn)
+      .createQueryBuilder()
+      .delete()
+      .where('block_number > :blockNumber', { blockNumber: confirmedBlockHeight })
+      .execute();
+  }
+
+  async getUnconfirmedCkbBurnToConfirm(confirmedBlockHeight: number, limit = 100): Promise<CkbBurn[]> {
+    return this.connection
+      .getRepository(CkbBurn)
+      .createQueryBuilder()
+      .select()
+      .where('block_number <= :confirmedHeight And confirm_status = "unconfirmed"', {
+        confirmedHeight: confirmedBlockHeight,
+      })
+      .limit(limit)
+      .getMany();
+  }
+
+  async updateCkbBurnConfirmStatus(txHashes: string[]): Promise<UpdateResult> {
+    return this.connection
+      .getRepository(CkbBurn)
+      .createQueryBuilder()
+      .update()
+      .set({ confirmStatus: 'confirmed' })
+      .where('ckb_tx_hash in (:txHashes)', { txHashes: txHashes })
+      .execute();
   }
 }

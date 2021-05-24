@@ -1,5 +1,7 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryColumn, UpdateDateColumn } from 'typeorm';
 
+export type txConfirmStatus = 'unconfirmed' | 'confirmed';
+
 @Entity()
 export class EthLock {
   @PrimaryColumn()
@@ -29,6 +31,9 @@ export class EthLock {
 
   @Column()
   blockHash: string;
+
+  @Column({ default: 'unconfirmed' })
+  confirmStatus: txConfirmStatus;
 
   @CreateDateColumn()
   createdAt: string;
