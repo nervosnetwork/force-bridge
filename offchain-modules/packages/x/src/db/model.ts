@@ -1,5 +1,6 @@
 import { getRepository } from 'typeorm';
 import { ChainType } from '../ckb/model/asset';
+import { SigType } from '../multisig/multisig-mgr';
 import { BtcLock } from './entity/BtcLock';
 import { BtcUnlock } from './entity/BtcUnlock';
 import { CkbBurn } from './entity/CkbBurn';
@@ -25,7 +26,7 @@ export { TronLock } from './entity/TronLock';
 export { TronUnlock } from './entity/TronUnlock';
 
 export interface ISigned {
-  sigType: string;
+  sigType: SigType;
   chain: number;
   amount: string;
   asset: string;

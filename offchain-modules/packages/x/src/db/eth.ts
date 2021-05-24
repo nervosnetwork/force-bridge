@@ -1,5 +1,5 @@
 // invoke in eth handler
-import { Connection, DeleteResult, Repository, UpdateResult } from 'typeorm';
+import { Connection, DeleteResult, In, Repository, UpdateResult } from 'typeorm';
 import { ForceBridgeCore } from '../core';
 import { EthUnlockStatus } from './entity/EthUnlock';
 import { CkbBurn, CkbMint, EthLock, EthUnlock, ICkbMint, IEthLock, IQuery, LockRecord, UnlockRecord } from './model';
@@ -178,5 +178,13 @@ export class EthDb implements IQuery {
       )
       .orderBy('ckb.updated_at', 'DESC')
       .getRawMany();
+  }
+
+  async getEthLocksByTxHashes(txHashes: string[]): Promise<EthLock[]> {
+    return this.connection.getRepository(EthLock).find({
+      where: {
+        txHash: In(txHashes),
+      },
+    });
   }
 }
