@@ -9,7 +9,7 @@ import { logger } from '../../utils/logger';
 import { abi } from './abi/ForceBridge.json';
 import { buildSigRawData } from './utils';
 
-const lockTopic = ethers.utils.id('Locked(address,address,uint256,bytes,bytes)');
+export const lockTopic = ethers.utils.id('Locked(address,address,uint256,bytes,bytes)');
 
 export interface EthUnlockRecord {
   token: string;
