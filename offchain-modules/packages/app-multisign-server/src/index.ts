@@ -3,13 +3,13 @@ import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { SignedDb } from '@force-bridge/x/dist/db/signed';
 import { startHandlers } from '@force-bridge/x/dist/handlers';
 import { collectSignaturesParams } from '@force-bridge/x/dist/multisig/multisig-mgr';
+import { getDBConnection } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
 import bodyParser from 'body-parser';
 import express from 'express';
 import { JSONRPCServer } from 'json-rpc-2.0';
 import minimist from 'minimist';
 import nconf from 'nconf';
-import { createConnection } from 'typeorm';
 import { signCkbTx } from './ckbSigner';
 import { signEthTx } from './ethSigner';
 import { SigServer } from './sigServer';
@@ -21,7 +21,7 @@ async function main() {
   nconf.env().file({ file: configPath });
   const cfg: Config = nconf.get('forceBridge');
   await new ForceBridgeCore().init(cfg);
-  const conn = await createConnection();
+  const conn = await getDBConnection();
   const signDb = new SignedDb(conn);
   //start chain handlers
   startHandlers();

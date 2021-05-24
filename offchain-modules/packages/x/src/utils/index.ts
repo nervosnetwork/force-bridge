@@ -1,6 +1,7 @@
 import fs from 'fs';
 import * as utils from '@nervosnetwork/ckb-sdk-utils';
 import * as lodash from 'lodash';
+import { Connection, createConnection, getConnectionManager, getConnectionOptions } from 'typeorm';
 
 export function asyncSleep(ms = 0) {
   return new Promise((r) => setTimeout(r, ms));
@@ -50,4 +51,19 @@ export function parsePrivateKey(path: string): string {
   } else {
     return path;
   }
+}
+
+export async function getDBConnection(): Promise<Connection> {
+  const connectionManager = await getConnectionManager();
+  // init db and start handlers
+  let conn: Connection;
+  if (!connectionManager.has('default')) {
+    // ? load connection options from ormconfig or environment
+    console.log(`Create One`);
+    conn = await createConnection();
+  } else {
+    console.log(`Have Conn `);
+    conn = await connectionManager.get();
+  }
+  return conn;
 }
