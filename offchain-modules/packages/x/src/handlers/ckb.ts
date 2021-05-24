@@ -218,7 +218,12 @@ export class CkbHandler {
         return false;
     }
 
-    if (!asset.inWhiteList(Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(cellData.getAmount().raw()))}`)))
+    if (
+      !asset.inWhiteList() ||
+      Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(cellData.getAmount().raw()))}`).lt(
+        new Amount(asset.getMinimalAmount(), 0),
+      )
+    )
       return false;
 
     // verify tx input: sudt cell.

@@ -165,6 +165,7 @@ export interface LockRecord {
   recipient: string;
   lock_amount: string;
   mint_amount: string;
+  bridge_fee: string;
   lock_hash: string;
   mint_hash: string;
   lock_time: number;
@@ -179,6 +180,7 @@ export interface UnlockRecord {
   recipient: string;
   burn_amount: string;
   unlock_amount: string;
+  bridge_fee: string;
   burn_hash: string;
   unlock_hash: string;
   burn_time: number;

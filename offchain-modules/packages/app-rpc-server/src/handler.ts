@@ -24,6 +24,10 @@ import {
   GetBalancePayload,
   GetBalanceResponse,
   GetBridgeTransactionSummariesPayload,
+  GetBridgeInNervosBridgeFeePayload,
+  GetBridgeOutNervosBridgeFeePayload,
+  GetBridgeInNervosBridgeFeeResponse,
+  GetBridgeOutNervosBridgeFeeResponse,
   TransactionSummary,
   TransactionSummaryWithStatus,
   XChainNetWork,
@@ -226,6 +230,52 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     }
   }
 
+  async getBridgeInNervosBridgeFee(
+    payload: GetBridgeInNervosBridgeFeePayload,
+  ): Promise<GetBridgeInNervosBridgeFeeResponse> {
+    switch (payload.network) {
+      case 'Ethereum': {
+        const asset = new EthAsset(payload.xchainAssetIdent);
+        const minimalAmount = asset.getMinimalAmount();
+        if (new Amount(payload.amount, 0).lt(new Amount(minimalAmount, 0)))
+          throw new Error(`minimal bridge amount is ${minimalAmount}`);
+        const bridgeFee = asset.getBridgeFee('in');
+        return {
+          fee: {
+            network: 'Nervos',
+            ident: getTokenShadowIdent('Ethereum', payload.xchainAssetIdent),
+            amount: bridgeFee,
+          },
+        };
+      }
+      default:
+        throw new Error('invalid bridge chain type');
+    }
+  }
+
+  async getBridgeOutNervosBridgeFee(
+    payload: GetBridgeOutNervosBridgeFeePayload,
+  ): Promise<GetBridgeOutNervosBridgeFeeResponse> {
+    switch (payload.network) {
+      case 'Ethereum': {
+        const asset = new EthAsset(payload.xchainAssetIdent);
+        const minimalAmount = asset.getMinimalAmount();
+        if (new Amount(payload.amount, 0).lt(new Amount(minimalAmount, 0)))
+          throw new Error(`minimal bridge amount is ${minimalAmount}`);
+        const bridgeFee = asset.getBridgeFee('out');
+        return {
+          fee: {
+            network: 'Ethereum',
+            ident: payload.xchainAssetIdent,
+            amount: bridgeFee,
+          },
+        };
+      }
+      default:
+        throw new Error('invalid bridge chain type');
+    }
+  }
+
   async getBridgeTransactionSummaries(
     payload: GetBridgeTransactionSummariesPayload<XChainNetWork>,
   ): Promise<TransactionSummaryWithStatus[]> {
@@ -403,8 +453,10 @@ function transferDbRecordToResponse(
         toAsset: {
           network: 'Nervos',
           ident: getTokenShadowIdent(XChainNetwork, record.asset),
-          amount: record.mint_amount,
+          amount: new Amount(record.mint_amount, 0).sub(new Amount(record.bridge_fee, 0)).toString(0),
         },
+        sender: record.sender,
+        recipient: record.recipient,
         fromTransaction: { txId: record.lock_hash, timestamp: record.lock_time },
       },
     };
@@ -422,8 +474,10 @@ function transferDbRecordToResponse(
         toAsset: {
           network: XChainNetwork,
           ident: record.asset,
-          amount: record.unlock_amount,
+          amount: new Amount(record.unlock_amount, 0).sub(new Amount(record.bridge_fee, 0)).toString(0),
         },
+        sender: record.sender,
+        recipient: record.recipient,
         fromTransaction: { txId: record.burn_hash, timestamp: record.burn_time },
       },
     };

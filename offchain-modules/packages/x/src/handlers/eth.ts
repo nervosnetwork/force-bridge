@@ -26,7 +26,7 @@ export class EthHandler {
         logger.debug('EthHandler watchLockEvents eth lockEvtLog:', { log, parsedLog });
         const amount = parsedLog.args.lockedAmount.toString();
         const asset = new EthAsset(parsedLog.args.token);
-        if (!asset.inWhiteList(new Amount(amount, 0))) return;
+        if (!asset.inWhiteList() || new Amount(amount, 0).lt(new Amount(asset.getMinimalAmount(), 0))) return;
 
         await this.db.createCkbMint([
           {

@@ -13,19 +13,32 @@ export enum ChainType {
 
 export abstract class Asset {
   public chainType: ChainType;
-  public inWhiteList(amount: Amount): boolean {
+  public inWhiteList(): boolean {
     switch (this.chainType) {
       case ChainType.ETH: {
         const whiteAssetList = ForceBridgeCore.config.eth.assetWhiteList;
         if (whiteAssetList.length === 0) return true;
-        const asset = whiteAssetList.find((asset) => asset.address === this.getAddress());
-        return !(!asset || amount.lt(new Amount(asset.minimalBridgeAmount, 0)));
+        return undefined !== whiteAssetList.find((asset) => asset.address === this.getAddress());
       }
       case ChainType.BTC:
       case ChainType.EOS:
       case ChainType.TRON:
       case ChainType.POLKADOT:
         return true;
+    }
+  }
+  public getMinimalAmount(): string {
+    switch (this.chainType) {
+      case ChainType.ETH: {
+        const asset = ForceBridgeCore.config.eth.assetWhiteList.find((asset) => asset.address === this.getAddress());
+        if (!asset) throw new Error('minimal amount not configed');
+        return asset.minimalBridgeAmount;
+      }
+      case ChainType.BTC:
+      case ChainType.EOS:
+      case ChainType.TRON:
+      case ChainType.POLKADOT:
+        return '0';
     }
   }
   public getBridgeFee(direction: 'in' | 'out'): string {

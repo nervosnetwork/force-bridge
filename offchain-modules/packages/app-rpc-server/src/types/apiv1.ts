@@ -13,6 +13,8 @@ export type TransactionSummary = {
   txSummary: {
     fromAsset: RequiredAsset<'amount'>;
     toAsset: RequiredAsset<'amount'>;
+    sender: string;
+    recipient: string;
     fromTransaction: TransactionIdent & { timestamp: Timestamp };
     toTransaction?: TransactionIdent & { timestamp?: Timestamp };
   };
@@ -87,6 +89,26 @@ export type GetBridgeTransactionStatusResponse = {
   status: BridgeTransactionStatus;
 };
 
+export interface GetBridgeInNervosBridgeFeePayload {
+  network: string;
+  xchainAssetIdent: string;
+  amount: string;
+}
+
+export interface GetBridgeInNervosBridgeFeeResponse {
+  fee: RequiredAsset<'amount'>;
+}
+
+export interface GetBridgeOutNervosBridgeFeePayload {
+  network: string;
+  xchainAssetIdent: string;
+  amount: string;
+}
+
+export interface GetBridgeOutNervosBridgeFeeResponse {
+  fee: RequiredAsset<'amount'>;
+}
+
 // TODO: change to the higher order generic when it impl
 // https://github.com/microsoft/TypeScript/issues/1213
 export interface ForceBridgeAPIV1 {
@@ -105,6 +127,12 @@ export interface ForceBridgeAPIV1 {
    * get the status of a transaction
    */
   getBridgeTransactionStatus: (payload: GetBridgeTransactionStatusPayload) => Promise<GetBridgeTransactionStatusResponse>;
+
+  // prettier-ignore
+  getBridgeInNervosBridgeFee: (payload: GetBridgeInNervosBridgeFeePayload) => Promise<GetBridgeInNervosBridgeFeeResponse>
+  // prettier-ignore
+  getBridgeOutNervosBridgeFee: (payload: GetBridgeOutNervosBridgeFeePayload) => Promise<GetBridgeOutNervosBridgeFeeResponse>
+
   // prettier-ignore
   getBridgeTransactionSummaries: (payload: GetBridgeTransactionSummariesPayload<XChainNetWork>) => Promise<TransactionSummaryWithStatus[]>;
 
