@@ -8,7 +8,7 @@ import { getMultisigLock } from '@force-bridge/x/dist/ckb/tx-helper/multisig/mul
 import { Config, TronConfig } from '@force-bridge/x/dist/config';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { CkbMint, TronLock, TronUnlock } from '@force-bridge/x/dist/db/model';
-import { asyncSleep } from '@force-bridge/x/dist/utils';
+import { asyncSleep, getDBConnection } from '@force-bridge/x/dist/utils';
 import { initLog, logger } from '@force-bridge/x/dist/utils/logger';
 import { Amount, Script } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
@@ -16,6 +16,7 @@ import nconf from 'nconf';
 import TronWeb from 'tronweb';
 import { createConnection } from 'typeorm';
 import { waitUntilCommitted } from './util';
+
 // import { multisigLockScript } from '@force-bridge/ckb/tx-helper/multisig/multisig_helper';
 
 const PRI_KEY = '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
@@ -69,7 +70,7 @@ async function transferTrc20(tronWeb, from, to, amount, contractAddress, memo, p
 }
 
 async function main() {
-  const conn = await createConnection();
+  const conn = await getDBConnection();
 
   const configPath = process.env.CONFIG_PATH || './config.json';
   nconf.env().file({ file: configPath });
