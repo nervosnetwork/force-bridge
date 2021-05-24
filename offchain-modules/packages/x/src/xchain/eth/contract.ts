@@ -14,7 +14,7 @@ export const lockTopic = ethers.utils.id('Locked(address,address,uint256,bytes,b
 export interface EthUnlockRecord {
   token: string;
   recipient: string;
-  amount: BigNumber;
+  amount: string;
   ckbTxHash: string;
 }
 
@@ -101,7 +101,7 @@ export class EthChain {
       return {
         token: r.asset,
         recipient: r.recipientAddress,
-        amount: BigNumber.from(r.amount),
+        amount: r.amount,
         ckbTxHash: r.ckbTxHash,
       };
     });

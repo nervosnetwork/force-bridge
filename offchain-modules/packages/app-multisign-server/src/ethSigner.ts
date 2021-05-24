@@ -1,13 +1,10 @@
 import { ChainType } from '@force-bridge/x/dist/ckb/model/asset';
-import { RecipientCellData } from '@force-bridge/x/dist/ckb/tx-helper/generated/eth_recipient_cell';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
-import { isBurnTx } from '@force-bridge/x/dist/handlers/ckb';
+import { ICkbBurn } from '@force-bridge/x/dist/db/model';
 import { collectSignaturesParams, ethCollectSignaturesPayload } from '@force-bridge/x/dist/multisig/multisig-mgr';
-import { fromHexString, toHexString, uint8ArrayToString } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
 import { EthUnlockRecord } from '@force-bridge/x/dist/xchain/eth';
 import { buildSigRawData } from '@force-bridge/x/dist/xchain/eth/utils';
-import { Amount } from '@lay2/pw-core';
 import { ecsign, toRpcSig } from 'ethereumjs-util';
 import { BigNumber } from 'ethers';
 import minimist from 'minimist';
@@ -121,30 +118,34 @@ export async function signEthTx(params: collectSignaturesParams): Promise<string
 }
 
 async function verifyUnlockRecord(unlockRecords: EthUnlockRecord[]): Promise<Error> {
+  const ckbBurnTxHashes = unlockRecords.map((record) => {
+    return record.ckbTxHash;
+  });
+  const ckbBurnRecords = await SigServer.ckbDb.getCkbBurnByTxHashes(ckbBurnTxHashes);
+  const ckbBurnMap = new Map<string, ICkbBurn>();
+
+  ckbBurnRecords.forEach((ckbBurn) => {
+    ckbBurnMap.set(ckbBurn.ckbTxHash, ckbBurn);
+  });
+
   for (const record of unlockRecords) {
-    const burnTx = await ForceBridgeCore.ckb.rpc.getTransaction(record.ckbTxHash);
-    if (burnTx.txStatus.status !== 'committed') {
-      return new Error(`burnTx:${record.ckbTxHash} status:${burnTx.txStatus.status} != committed`);
+    const ckbBurn = ckbBurnMap.get(record.ckbTxHash);
+    if (!ckbBurn) {
+      return new Error(`cannot found ckbBurn record by ckbTxHash:${record.ckbTxHash}`);
     }
-
-    const recipientData = burnTx.transaction.outputsData[0];
-    const cellData = new RecipientCellData(fromHexString(recipientData).buffer);
-    const assetAddress = uint8ArrayToString(new Uint8Array(cellData.getAsset().raw()));
-    const amount = Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(cellData.getAmount().raw()))}`).toString(0);
-    const recipientAddress = uint8ArrayToString(new Uint8Array(cellData.getRecipientAddress().raw()));
-
-    if (assetAddress !== record.token) {
-      return new Error(`burnTx assetAddress:${assetAddress} != ${record.token}`);
+    if (ckbBurn.confirmStatus !== 'confirmed') {
+      return new Error(`burnTx:${record.ckbTxHash} haven't confirmed`);
     }
-    if (!BigNumber.from(amount).eq(record.amount)) {
-      return new Error(`burnTx amount:${amount.toString()} != ${record.amount.toString()}`);
+    if (ckbBurn.asset !== record.token) {
+      return new Error(`burnTx:${record.ckbTxHash} assetAddress:${record.token} != ${ckbBurn.asset}`);
     }
-    if (recipientAddress !== record.recipient) {
-      return new Error(`burnTx recipientAddress:${recipientAddress} != ${record.recipient}`);
+    if (ckbBurn.amount !== record.amount) {
+      return new Error(`burnTx:${record.ckbTxHash} amount:${record.amount} != ${ckbBurn.amount}`);
     }
-
-    if (!(await isBurnTx(burnTx.transaction, cellData))) {
-      return new Error(`burnTx:${record.ckbTxHash} is invalidate burnTx`);
+    if (ckbBurn.recipientAddress !== record.recipient) {
+      return new Error(
+        `burnTx:${record.ckbTxHash} recipientAddress:${record.recipient} != ${ckbBurn.recipientAddress}`,
+      );
     }
   }
   return null;
