@@ -18,10 +18,9 @@ import { getAssetTypeByAsset } from '../xchain/tron/utils';
 import Transaction = CKBComponents.Transaction;
 import TransactionWithStatus = CKBComponents.TransactionWithStatus;
 import Block = CKBComponents.Block;
-
+import { Indexer } from '@ckb-lumos/sql-indexer';
 const lastHandleCkbBlockKey = 'lastHandleCkbBlock';
 import { serializeMultisigScript } from '@ckb-lumos/common-scripts/lib/secp256k1_blake160_multisig';
-import { Indexer } from '@ckb-lumos/indexer';
 import { sealTransaction } from '@ckb-lumos/helpers';
 import { key } from '@ckb-lumos/hd';
 import TransactionManager from '@ckb-lumos/transaction-manager';
@@ -36,7 +35,7 @@ const lumosIndexerData = './indexer-data';
 // 2. Listen database to get new mint events, send tx.
 export class CkbHandler {
   private ckb = ForceBridgeCore.ckb;
-  private indexer: Indexer;
+  private lumosIndexer: Indexer;
   private ckbIndexer = ForceBridgeCore.ckbIndexer;
   private transactionManager: TransactionManager;
   private multisigMgr: MultiSigMgr;
@@ -44,9 +43,8 @@ export class CkbHandler {
   private lastHandledBlockHeight: number;
   private lastHandledBlockHash: string;
   constructor(private db: CkbDb, private kvDb, private role: forceBridgeRole) {
-    this.indexer = new Indexer(ForceBridgeCore.config.ckb.ckbRpcUrl, lumosIndexerData);
-    this.indexer.startForever();
-    this.transactionManager = new TransactionManager(this.indexer);
+    this.lumosIndexer = ForceBridgeCore.lumosIndexer;
+    this.transactionManager = new TransactionManager(this.lumosIndexer);
     this.multisigMgr = new MultiSigMgr(
       'CKB',
       ForceBridgeCore.config.ckb.hosts,
@@ -320,7 +318,7 @@ export class CkbHandler {
         });
         await this.db.updateCkbMint(mintRecords);
         await this.waitUntilSync();
-        const txSkeleton = await generator.mint(records, this.indexer);
+        const txSkeleton = await generator.mint(records, this.lumosIndexer);
         logger.info(`mint tx txSkeleton ${JSON.stringify(txSkeleton, null, 2)}`);
         const content0 = key.signRecoverable(
           txSkeleton.get('signingEntries').get(0).message,
@@ -455,7 +453,7 @@ export class CkbHandler {
       );
     });
 
-    const txSkeleton = await generator.createBridgeCell(scripts, this.indexer);
+    const txSkeleton = await generator.createBridgeCell(scripts, this.lumosIndexer);
     const message0 = txSkeleton.get('signingEntries').get(0).message;
     const content0 = key.signRecoverable(message0, ForceBridgeCore.config.ckb.fromPrivateKey);
     let content1 = serializeMultisigScript(ForceBridgeCore.config.ckb.multisigScript);
@@ -481,7 +479,7 @@ export class CkbHandler {
     logger.debug('rpcTipNumber', rpcTipNumber);
     let index = 0;
     while (true) {
-      const indexerTipNumber = parseInt((await this.indexer.tip()).block_number, 16);
+      const indexerTipNumber = parseInt((await this.lumosIndexer.tip()).block_number, 16);
       logger.debug('indexerTipNumber', indexerTipNumber);
       if (indexerTipNumber >= rpcTipNumber) {
         return;
