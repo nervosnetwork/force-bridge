@@ -152,6 +152,9 @@ export class CkbHandler {
       });
       await this.db.updateCkbBurnConfirmStatus(confirmedTxHashes);
       await this.onCkbBurnConfirmed(unconfirmedTxs);
+      logger.info(
+        `CkbHandler onBlock updateCkbBurnConfirmStatus height:${blockNumber} ckbTxHashes:${confirmedTxHashes}`,
+      );
     }
 
     const burnTxs = new Map();

@@ -64,7 +64,7 @@ export class CkbDb {
       .createQueryBuilder()
       .update()
       .set({ status: status })
-      .where('mintHash = :minttTxHash', { minttTxHash: mintTxHash })
+      .where('mintHash = :mintTxHash', { mintTxHash: mintTxHash })
       .execute();
   }
 
@@ -126,7 +126,7 @@ export class CkbDb {
       .createQueryBuilder()
       .update()
       .set({ confirmStatus: 'confirmed' })
-      .where('ckb_tx_hash in (:txHashes)', { txHashes: txHashes.join(',') })
+      .where('ckb_tx_hash in (:txHashes)', { txHashes: txHashes })
       .execute();
   }
 }

@@ -58,7 +58,7 @@ export class EthDb implements IQuery {
       .createQueryBuilder()
       .update()
       .set({ confirmStatus: 'confirmed' })
-      .where('tx_hash in (:txHashes)', { txHashes: txHashes.join(',') })
+      .where('tx_hash in (:txHashes)', { txHashes: txHashes })
       .execute();
   }
 
