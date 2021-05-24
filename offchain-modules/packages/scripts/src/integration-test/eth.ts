@@ -27,8 +27,7 @@ import { ethers } from 'ethers';
 import nconf from 'nconf';
 import { createConnection } from 'typeorm';
 import { waitUntilCommitted } from './util';
-
-// const { Indexer, CellCollector } = require('@ckb-lumos/indexer');
+// const { Indexer, CellCollector } = require('@ckb-lumos/sql-indexer');
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
 const CKB_INDEXER_URL = process.env.CKB_INDEXER_URL || 'http://127.0.0.1:8116';
 // const LUMOS_DB = './lumos_db';

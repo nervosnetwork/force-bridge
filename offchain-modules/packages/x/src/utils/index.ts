@@ -1,6 +1,8 @@
 import fs from 'fs';
 import * as utils from '@nervosnetwork/ckb-sdk-utils';
+import Knex from 'knex';
 import * as lodash from 'lodash';
+import nconf from 'nconf';
 import { Connection, createConnection, getConnectionManager, getConnectionOptions } from 'typeorm';
 import { logger } from './logger';
 
@@ -67,4 +69,23 @@ export async function getDBConnection(): Promise<Connection> {
     conn = await connectionManager.get();
   }
   return conn;
+}
+export function getLumosIndexKnex(): Knex {
+  const configPath = './config.json';
+  nconf.env().file({ file: configPath });
+  const LumosDBHost = nconf.get('forceBridge:lumosDBConfig:host');
+  const LumosDBName = nconf.get('forceBridge:lumosDBConfig:database');
+  const LumosDBPort = nconf.get('forceBridge:lumosDBConfig:port');
+  const LumosDBUser = nconf.get('forceBridge:lumosDBConfig:user');
+  const LumosDBPassword = nconf.get('forceBridge:lumosDBConfig:password');
+  return Knex({
+    client: 'mysql2',
+    connection: {
+      host: LumosDBHost,
+      database: LumosDBName,
+      user: LumosDBUser,
+      password: LumosDBPassword,
+      port: LumosDBPort,
+    },
+  });
 }
