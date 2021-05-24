@@ -1,3 +1,4 @@
+import { ChainType } from '@force-bridge/x/dist/ckb/model/asset';
 import { RecipientCellData } from '@force-bridge/x/dist/ckb/tx-helper/generated/eth_recipient_cell';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { isBurnTx } from '@force-bridge/x/dist/handlers/ckb';
@@ -5,78 +6,79 @@ import { collectSignaturesParams, ethCollectSignaturesPayload } from '@force-bri
 import { fromHexString, toHexString, uint8ArrayToString } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
 import { EthUnlockRecord } from '@force-bridge/x/dist/xchain/eth';
-
-import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
 import { buildSigRawData } from '@force-bridge/x/dist/xchain/eth/utils';
 import { Amount } from '@lay2/pw-core';
 import { ecsign, toRpcSig } from 'ethereumjs-util';
 import { BigNumber } from 'ethers';
 import minimist from 'minimist';
+import { publicKeyCreate } from 'secp256k1';
 import { SigServer } from './sigServer';
 
-const UnlockABIFuncName = 'unlock';
-
-async function checkDuplicateEthTx(pubKey: string, payload: ethCollectSignaturesPayload) {
-  const signedDbRecords = await SigServer.signedDb.getSignedByPubkeyAndMsgHash(
-    pubKey,
-    payload.unlockRecords.map((record) => {
-      return record.ckbTxHash;
-    }),
-  );
-
-  if (signedDbRecords.length === 0) {
-    return;
+async function verifyDuplicateEthTx(
+  pubKey: string,
+  payload: ethCollectSignaturesPayload,
+  lastFailedTxHash?: string,
+): Promise<Error> {
+  const refTxHashes = payload.unlockRecords.map((record) => {
+    return record.ckbTxHash;
+  });
+  const lastNonce = await SigServer.signedDb.getMaxNonceByRefTxHashes(pubKey, refTxHashes);
+  if (!lastNonce) {
+    return null;
   }
-  //
-  // const burnTxs = signedDbRecords.map((r)=>{
-  //   return r.refTxHash
-  // })
-  //
-  // logger.info(`checkDuplicateEthTx burnTxs:${burnTxs.join(', ')}. more record info : ${JSON.stringify(payload)}. the sql query info ${JSON.stringify(
-  //     signedDbRecords,
-  //     null,
-  //     2,
-  // )}`)
-  //
-  //   if (!payload.failedTxHash) {
-  //     return Promise.reject(
-  //       `the request params has data that already exists. it must be provide failedTxHash to verify`,
-  //     );
-  //   }
-  //
-  //   const failedTxWithReceipt = await SigServer.ethProvider.getTransactionReceipt(payload.failedTxHash);
-  //   if (!failedTxWithReceipt || failedTxWithReceipt.status === 1) {
-  //     return Promise.reject(
-  //       `the tx ${payload.failedTxHash}  exec success or is null tx. the tx receipt is ${JSON.stringify(
-  //         failedTxWithReceipt,
-  //         null,
-  //         2,
-  //       )}`,
-  //     );
-  //   }
-  //   // Parse abi function params to compare unlock records and nonce
-  //   const failedTx = await SigServer.ethProvider.getTransaction(payload.failedTxHash);
-  //   const iface = new ethers.utils.Interface(abi);
-  //   const contractUnlockParams = iface.decodeFunctionData(UnlockABIFuncName, failedTx.data);
-  //   const unlockResults: EthUnlockRecord[] = contractUnlockParams[0];
-  //   const nonce: BigNumber = contractUnlockParams[1];
-  //   // const signature : string = contractUnlockParams[2];
-  //   if (
-  //     nonce.toString() !== payload.nonce.toString() ||
-  //     !equalsUnlockRecord(unlockResults, payload.unlockRecords)
-  //   ) {
-  //     return Promise.reject(
-  //       `the params which provided do not match the data from chain. provide record: ${JSON.stringify(
-  //         payload.unlockRecords,
-  //         null,
-  //         2,
-  //       )}, chain record: ${JSON.stringify(
-  //         unlockResults,
-  //         null,
-  //         2,
-  //       )}. provide nonce : ${payload.nonce.toString()}, chain nonce : ${nonce.toString()}`,
-  //     );
-  //   }
+  if (lastNonce === payload.nonce) {
+    // sig to tx with the same nonce, only one will be success
+    return null;
+  }
+
+  if (!lastFailedTxHash) {
+    return new Error(`miss lastFailedTxHash with duplicate refTxHash`);
+  }
+  const failedTxWithReceipt = await SigServer.ethProvider.getTransactionReceipt(lastFailedTxHash);
+  if (!failedTxWithReceipt) {
+    return new Error(`cannot found tx receipt by lastFailedTxHash:${lastFailedTxHash}`);
+  }
+  if (failedTxWithReceipt.status === 1) {
+    return new Error(`lastTxHash:${lastFailedTxHash} executed successful`);
+  }
+
+  // Parse abi function params to compare unlock records
+  const failedTx = await SigServer.ethProvider.getTransaction(lastFailedTxHash);
+  const contractUnlockParams = SigServer.ethInterface.decodeFunctionData('unlock', failedTx.data);
+  const unlockResults: EthUnlockRecord[] = contractUnlockParams[0];
+  const nonce: BigNumber = contractUnlockParams[1];
+  if (nonce.toNumber() !== lastNonce) {
+    return new Error(`nonce:${nonce} of last failed tx doesn't match with:${lastNonce}`);
+  }
+
+  if (!equalsUnlockRecord(unlockResults, payload.unlockRecords)) {
+    return new Error(`payload doesn't match with lastFailedTx:${lastFailedTxHash}`);
+  }
+}
+
+async function verifyEthTx(pubKey: string, params: collectSignaturesParams): Promise<Error> {
+  if (!('domainSeparator' in params.payload)) {
+    return Promise.reject(`the type of payload params is wrong`);
+  }
+  const payload = params.payload as ethCollectSignaturesPayload;
+
+  // Verify msg hash
+  const rawData = buildSigRawData(payload.domainSeparator, payload.typeHash, payload.unlockRecords, payload.nonce);
+  if (rawData !== params.rawData) {
+    return new Error(`rawData:${params.rawData} doesn't match with:${rawData}`);
+  }
+
+  // Verify unlock records all includes correct transactions
+  let err = await verifyUnlockRecord(payload.unlockRecords);
+  if (err) {
+    return err;
+  }
+
+  // Verify was duplicate signature to unlock txs
+  err = await verifyDuplicateEthTx(pubKey, payload, params.lastFailedTxHash);
+  if (err) {
+    return err;
+  }
 }
 
 export async function signEthTx(params: collectSignaturesParams): Promise<string> {
@@ -85,45 +87,37 @@ export async function signEthTx(params: collectSignaturesParams): Promise<string
   const args = minimist(process.argv.slice(2));
   const index = args.index;
   const privKey = ForceBridgeCore.config.eth.multiSignKeys[index];
-
-  if (!('domainSeparator' in params.payload)) {
-    return Promise.reject(`the type of payload params is wrong`);
-  }
-
+  const pubKey = privateKeyToPublicKey(privKey);
   const payload = params.payload as ethCollectSignaturesPayload;
 
-  // Verify msg hash
-  const msgHash = buildSigRawData(payload.domainSeparator, payload.typeHash, payload.unlockRecords, payload.nonce);
-  if (params.rawData !== msgHash) {
-    return Promise.reject(`the rawData ${params.rawData} does not match the calculated value`);
+  const err = verifyEthTx(pubKey, params);
+  if (err) {
+    return Promise.reject(err);
   }
 
-  // Verify unlock records all includes correct transactions
-  const err = await verifyUnlockRecord(payload.unlockRecords);
-  if (err) {
-    return Promise.reject(
-      `the unlock records ${JSON.stringify(payload.unlockRecords, null, 2)} failed to burn tx verify.`,
-    );
-  }
   // Sign the msg hash
   const { v, r, s } = ecsign(Buffer.from(params.rawData.slice(2), 'hex'), Buffer.from(privKey.slice(2), 'hex'));
   const sigHex = toRpcSig(v, r, s);
+  const signature = sigHex.slice(2);
 
-  // // Save to data base
-  // await SigServer.signedDb.createSigned(
-  //   payload.payload.unlockRecords.map((record) => {
-  //     return {
-  //       sigType: 'unlock',
-  //       chain: ChainType.ETH,
-  //       amount: record.amount.toString(),
-  //       asset: record.token,
-  //       refTxHash: record.ckbTxHash,
-  //       txHash: payload.rawData,
-  //       pubkey: pubkey,
-  //     };
-  //   }),
-  // );
-  return sigHex.slice(2);
+  // Save to data base
+  await SigServer.signedDb.createSigned(
+    payload.unlockRecords.map((record) => {
+      return {
+        sigType: 'unlock',
+        chain: ChainType.ETH,
+        amount: record.amount.toString(),
+        receiver: record.recipient,
+        asset: record.token,
+        refTxHash: record.ckbTxHash,
+        nonce: payload.nonce,
+        rawData: params.rawData,
+        pubKey: pubKey,
+        signature: signature,
+      };
+    }),
+  );
+  return signature;
 }
 
 async function verifyUnlockRecord(unlockRecords: EthUnlockRecord[]): Promise<Error> {
@@ -169,4 +163,16 @@ function equalsUnlockRecord(a, b: EthUnlockRecord[]): boolean {
     }
   }
   return true;
+}
+
+function privateKeyToPublicKey(privateKey) {
+  if (!Buffer.isBuffer(privateKey)) {
+    if (typeof privateKey !== 'string') {
+      throw new Error('Expected Buffer or string as argument');
+    }
+
+    privateKey = privateKey.slice(0, 2) === '0x' ? privateKey.slice(2) : privateKey;
+    privateKey = Buffer.from(privateKey, 'hex');
+  }
+  return Buffer.from(publicKeyCreate(privateKey, false)).toString('hex');
 }
