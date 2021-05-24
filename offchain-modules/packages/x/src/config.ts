@@ -112,6 +112,13 @@ export interface commonConfig {
   role: forceBridgeRole;
   log: logConfig;
 }
+export interface lumosDBConfig {
+  host: string;
+  database: string;
+  port: number;
+  user: string;
+  password: string;
+}
 
 export interface Config {
   common: commonConfig;
@@ -121,4 +128,5 @@ export interface Config {
   tron?: TronConfig;
   btc?: BtcConfig;
   rpc?: rpcConfig;
+  lumosDBConfig?: lumosDBConfig;
 }
