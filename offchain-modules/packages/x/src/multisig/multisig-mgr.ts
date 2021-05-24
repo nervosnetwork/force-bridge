@@ -10,7 +10,7 @@ export interface ethCollectSignaturesPayload {
   nonce: number;
 }
 
-export type ckbSigType = 'mint' | 'create_cell';
+export type SigType = 'mint' | 'create_cell' | 'unlock';
 
 export interface mintRecord {
   id: string;
@@ -26,7 +26,7 @@ export interface createAsset {
 }
 
 export interface ckbCollectSignaturesPayload {
-  sigType: ckbSigType;
+  sigType: SigType;
   mintRecords?: mintRecord[];
   createAssets?: createAsset[];
   txSkeleton: TransactionSkeletonType;

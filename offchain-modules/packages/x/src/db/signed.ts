@@ -30,13 +30,11 @@ export class SignedDb {
       .getRawOne();
   }
 
-  //
-  // async getSignedByPubkeyAndRefTxHashes(pubkey: string, refTxHashes: string[]): Promise<SignedTx[]> {
-  //   return this.signedRepository.find({
-  //     where: {
-  //       refTxHash: In(refTxHashes),
-  //       singerPubkey: pubkey,
-  //     },
-  //   });
-  // }
+  async getDistinctSignedTxByRefTxHashes(pubKey: string, refTxHashes: string[]): Promise<string[] | undefined> {
+    return this.signedRepository
+      .createQueryBuilder()
+      .select('distinct(txHash)')
+      .where('pubKey = :pubKey and refTxHash in (:refTxHashes)', { pubKey: pubKey, refTxHashes: refTxHashes })
+      .getRawMany();
+  }
 }
