@@ -245,6 +245,7 @@ export class CkbHandler {
             amount: Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.cellData.getAmount().raw()))}`).toString(0),
             recipientAddress: uint8ArrayToString(new Uint8Array(v.cellData.getRecipientAddress().raw())),
             blockNumber: latestHeight,
+            confirmStatus: 'unconfirmed',
           };
           break;
       }

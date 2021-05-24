@@ -6,7 +6,7 @@ import { CkbBurn } from './entity/CkbBurn';
 import { CkbMint, dbTxStatus } from './entity/CkbMint';
 import { EosLock } from './entity/EosLock';
 import { EosUnlock } from './entity/EosUnlock';
-import { EthLock } from './entity/EthLock';
+import { EthLock, txConfirmStatus } from './entity/EthLock';
 import { EthUnlock } from './entity/EthUnlock';
 import { TronLock } from './entity/TronLock';
 import { TronUnlock } from './entity/TronUnlock';
@@ -66,6 +66,7 @@ export interface ICkbBurn {
   amount: string;
   recipientAddress: string;
   blockNumber: number;
+  confirmStatus: txConfirmStatus;
 }
 
 export interface IEthUnlock {

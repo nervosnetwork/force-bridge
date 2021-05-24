@@ -22,10 +22,10 @@ async function main() {
   const cfg: Config = nconf.get('forceBridge');
   await new ForceBridgeCore().init(cfg);
   const conn = await createConnection();
-  const signDb = new SignedDb(conn);
+
   //start chain handlers
   startHandlers();
-  new SigServer(signDb);
+  new SigServer(conn);
 
   const server = new JSONRPCServer();
   server.addMethod('signCkbTx', async (params: collectSignaturesParams) => {
