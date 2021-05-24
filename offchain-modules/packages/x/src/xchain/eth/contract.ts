@@ -54,7 +54,7 @@ export class EthChain {
         await asyncSleep(5 * 1000);
         continue;
       }
-      handleBlockFunc(block);
+      await handleBlockFunc(block);
       height++;
     }
   }
