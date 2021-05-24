@@ -1,6 +1,7 @@
 import { Cell } from '@ckb-lumos/base';
 import { key } from '@ckb-lumos/hd';
 import { BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
+import { getOwnLockHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import {
   ckbCollectSignaturesPayload,
@@ -20,7 +21,7 @@ async function verifyCreateCellTx(rawData: string, payload: ckbCollectSignatures
   }
 
   const createAssets = payload.createAssets;
-  const ownLockHash = SigServer.getOwnLockHash();
+  const ownLockHash = getOwnLockHash(ForceBridgeCore.config.ckb.multisigScript);
   const bridgeCells = [];
   txSkeleton.outputs.forEach((output) => {
     if (!output.cell_output.lock) {
@@ -168,7 +169,7 @@ async function verifyEthMintRecord(record: mintRecord): Promise<Error> {
 }
 
 async function verifyEthMintTx(mintRecord: mintRecord, output: Cell): Promise<Error> {
-  const ownLockHash = SigServer.getOwnLockHash();
+  const ownLockHash = getOwnLockHash(ForceBridgeCore.config.ckb.multisigScript);
   const recipient = new Address(mintRecord.recipientLockscript, AddressType.ckb);
   const amount = new Amount(mintRecord.amount, 0);
   const asset = new EthAsset(mintRecord.asset, ownLockHash);

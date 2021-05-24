@@ -29,9 +29,13 @@ export interface ISigned {
   chain: number;
   amount: string;
   asset: string;
+  receiver: string;
   refTxHash: string;
-  txHash: string;
-  pubkey: string;
+  signature: string;
+  rawData: string;
+  nonce?: number;
+  txHash?: string;
+  pubKey: string;
 }
 
 export interface ICkbMint {
