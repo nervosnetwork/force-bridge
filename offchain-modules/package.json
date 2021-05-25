@@ -130,7 +130,7 @@
     ]
   },
   "lint-staged": {
-    "src/**/*.ts": [
+    "packages/*/src/**/*.ts": [
       "npm run lint-staged",
       "git add"
     ]
