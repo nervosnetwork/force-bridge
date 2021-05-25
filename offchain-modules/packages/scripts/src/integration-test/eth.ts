@@ -109,7 +109,6 @@ async function main() {
 
     // check sudt balance.
     const account = new Account(PRI_KEY);
-    // const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
     const multisigLockScript = getMultisigLock(ForceBridgeCore.config.ckb.multisigScript);
     const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>{
       codeHash: multisigLockScript.code_hash,
@@ -143,7 +142,6 @@ async function main() {
     const burnAmount = ethers.utils.parseEther('0.01');
     if (!sendBurn) {
       const account = new Account(PRI_KEY);
-      // const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
       const generator = new CkbTxGenerator(ckb, new IndexerCollector(indexer));
       const burnTx = await generator.burn(
         await account.getLockscript(),
