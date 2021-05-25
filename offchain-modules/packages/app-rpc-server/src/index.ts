@@ -1,5 +1,6 @@
 import { rpcConfig, Config } from '@force-bridge/x/dist/config';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
+import { startHandlers } from '@force-bridge/x/dist/handlers';
 import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
 import bodyParser from 'body-parser';
 import cors from 'cors';
@@ -8,7 +9,6 @@ import { JSONRPCServer } from 'json-rpc-2.0';
 import nconf from 'nconf';
 import { createConnection } from 'typeorm';
 import { ForceBridgeAPIV1Handler } from './handler';
-
 import { GetBalancePayload, GetBridgeTransactionSummariesPayload, XChainNetWork } from './types/apiv1';
 
 const forceBridgePath = '/force-bridge/api/v1';
@@ -19,12 +19,16 @@ async function main() {
   nconf.env().file({ file: configPath });
 
   const config: Config = nconf.get('forceBridge');
-  const rpcConfig: rpcConfig = nconf.get('forceBridge:rpc');
-  await new ForceBridgeCore().init(config);
+  const rpcConfig: rpcConfig = config.rpc;
   if (!config.common.log.logFile) {
     config.common.log.logFile = defaultLogFile;
   }
-  initLog(ForceBridgeCore.config.common.log);
+  initLog(config.common.log);
+  config.common.role = 'watcher';
+
+  await new ForceBridgeCore().init(config);
+  //start chain handlers
+  startHandlers();
 
   const server = new JSONRPCServer();
 

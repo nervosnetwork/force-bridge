@@ -1,5 +1,5 @@
 // invoke in eth handler
-import { Connection, Repository } from 'typeorm';
+import { Connection, DeleteResult, Repository, UpdateResult } from 'typeorm';
 import { ForceBridgeCore } from '../core';
 import { EthUnlockStatus } from './entity/EthUnlock';
 import { CkbBurn, CkbMint, EthLock, EthUnlock, ICkbMint, IEthLock, IQuery, LockRecord, UnlockRecord } from './model';
@@ -34,7 +34,35 @@ export class EthDb implements IQuery {
     await this.ethLockRepository.save(dbRecords);
   }
 
-  async getEthUnlockRecordsToUnlock(status: EthUnlockStatus, take = 100): Promise<EthUnlock[]> {
+  async removeUnconfirmedLocks(confirmedBlockHeight: number): Promise<DeleteResult> {
+    return this.ethLockRepository
+      .createQueryBuilder()
+      .delete()
+      .where('block_number > :blockNumber', { blockNumber: confirmedBlockHeight })
+      .execute();
+  }
+
+  async getUnconfirmedLocksToConfirm(confirmedBlockHeight: number, limit = 100): Promise<EthLock[]> {
+    return this.ethLockRepository
+      .createQueryBuilder()
+      .select()
+      .where('block_number <= :confirmedHeight And confirm_status = "unconfirmed"', {
+        confirmedHeight: confirmedBlockHeight,
+      })
+      .limit(limit)
+      .getMany();
+  }
+
+  async updateLockConfirmStatus(txHashes: string[]): Promise<UpdateResult> {
+    return this.ethLockRepository
+      .createQueryBuilder()
+      .update()
+      .set({ confirmStatus: 'confirmed' })
+      .where('tx_hash in (:txHashes)', { txHashes: txHashes })
+      .execute();
+  }
+
+  async getEthUnlockRecordsToUnlock(status: EthUnlockStatus, take = 1): Promise<EthUnlock[]> {
     return this.ethUnlockRepository.find({
       where: {
         status,
