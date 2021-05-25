@@ -59,6 +59,8 @@ async function main() {
   server.addMethod('generateBridgeOutNervosTransaction', forceBridgeRpc.generateBridgeOutNervosTransaction);
   server.addMethod('generateBridgeInNervosTransaction', forceBridgeRpc.generateBridgeInNervosTransaction);
   server.addMethod('sendSignedTransaction', forceBridgeRpc.sendSignedTransaction);
+  server.addMethod('getBridgeInNervosBridgeFee', forceBridgeRpc.getBridgeInNervosBridgeFee);
+  server.addMethod('getBridgeOutNervosBridgeFee', forceBridgeRpc.getBridgeOutNervosBridgeFee);
   server.addMethod(
     'getBridgeTransactionSummaries',
     async (payload: GetBridgeTransactionSummariesPayload<XChainNetWork>) => {

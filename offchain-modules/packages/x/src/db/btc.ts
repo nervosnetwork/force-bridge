@@ -106,14 +106,14 @@ export class BtcDb implements IQuery {
       .getRepository(CkbBurn)
       .createQueryBuilder('ckb')
       .innerJoinAndSelect('btc_unlock', 'btc', 'btc.ckb_tx_hash = ckb.ckb_tx_hash')
-      .where('ckb.sender_lock_hash = :sender_lock_hash AND ckb.asset = :asset', {
-        sender_lock_hash: ckbLockScriptHash,
+      .where('ckb.sender_address = :sender_address AND ckb.asset = :asset', {
+        sender_address: ckbLockScriptHash,
         asset: XChainAsset,
       })
 
       .select(
         `
-        ckb.sender_lock_hash as sender, 
+        ckb.sender_address as sender, 
         btc.recipient_address as recipient , 
         ckb.amount as burn_amount, 
         btc.amount as unlock_amount,
@@ -166,7 +166,7 @@ export class BtcDb implements IQuery {
       })
       .select(
         `
-        ckb.sender_lock_hash as sender, 
+        ckb.sender_address as sender, 
         btc.recipient_address as recipient , 
         ckb.amount as burn_amount, 
         btc.amount as unlock_amount,

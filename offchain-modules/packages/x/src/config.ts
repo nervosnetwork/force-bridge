@@ -18,6 +18,7 @@ export interface ConfigItem {
 }
 
 export interface CkbConfig {
+  network: 'Mainnet' | 'Testnet';
   ckbRpcUrl: string;
   ckbIndexerUrl: string;
   privateKey: string;

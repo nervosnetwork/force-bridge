@@ -173,18 +173,18 @@ export class CkbHandler {
         const burnPreviousTx: TransactionWithStatus = await this.ckb.rpc.getTransaction(
           tx.inputs[0].previousOutput.txHash,
         );
-        const senderLockHash = this.ckb.utils.scriptToHash(
+        const senderAddress = Account.scriptToAddress(
           burnPreviousTx.transaction.outputs[Number(tx.inputs[0].previousOutput.index)].lock,
         );
         const data: BurnDbData = {
-          senderLockScriptHash: senderLockHash,
+          senderAddress: senderAddress,
           cellData: cellData,
         };
         burnTxs.set(tx.hash, data);
         logger.info(
           `CkbHandler watchBurnEvents receive burnedTx, ckbTxHash:${
             tx.hash
-          } senderLockHash:${senderLockHash} cellData:${JSON.stringify(cellData, null, 2)}`,
+          } senderAddress:${senderAddress} cellData:${JSON.stringify(cellData, null, 2)}`,
         );
       }
     }
@@ -214,7 +214,7 @@ export class CkbHandler {
         case ChainType.ETH:
         case ChainType.EOS:
           burn = {
-            senderLockHash: v.senderLockScriptHash,
+            senderAddress: v.senderAddress,
             ckbTxHash: k,
             asset: uint8ArrayToString(new Uint8Array(v.cellData.getAsset().raw())),
             chain,
@@ -533,5 +533,5 @@ export class CkbHandler {
 
 type BurnDbData = {
   cellData: RecipientCellData;
-  senderLockScriptHash: string;
+  senderAddress: string;
 };

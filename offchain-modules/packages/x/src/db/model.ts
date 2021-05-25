@@ -45,7 +45,7 @@ export interface IEthLock {
 }
 
 export interface ICkbBurn {
-  senderLockHash: string;
+  senderAddress: string;
   ckbTxHash: string;
   chain: number;
   asset: string;
@@ -192,7 +192,7 @@ export interface UnlockRecord {
 
 export interface IQuery {
   getLockRecordsByCkbAddress(ckbRecipientAddr: string, XChainAsset: string): Promise<LockRecord[]>;
-  getUnlockRecordsByCkbAddress(ckbLockScriptHash: string, XChainAsset: string): Promise<UnlockRecord[]>;
+  getUnlockRecordsByCkbAddress(ckbAddress: string, XChainAsset: string): Promise<UnlockRecord[]>;
   getLockRecordsByXChainAddress(XChainSender: string, XChainAsset: string): Promise<LockRecord[]>;
   getUnlockRecordsByXChainAddress(XChainRecipientAddr: string, XChainAsset: string): Promise<UnlockRecord[]>;
 }

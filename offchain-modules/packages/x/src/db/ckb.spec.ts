@@ -23,7 +23,7 @@ test('ckb db works', async (t) => {
     ckbTxHash: '0x12',
     recipientAddress: '',
     blockNumber: 100,
-    senderLockHash: '0x12',
+    senderAddress: '0x12',
   };
   const ckbBurn = new CkbBurn().from(data);
   await manager.save(ckbBurn);

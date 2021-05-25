@@ -316,10 +316,8 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         break;
       case 'Nervos':
         {
-          const ckbLockScript = ForceBridgeCore.ckb.utils.addressToScript(userAddress);
-          const ckbLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>ckbLockScript);
           lockRecords = await dbHandler.getLockRecordsByCkbAddress(userAddress, assetName);
-          unlockRecords = await dbHandler.getUnlockRecordsByCkbAddress(ckbLockHash, assetName);
+          unlockRecords = await dbHandler.getUnlockRecordsByCkbAddress(userAddress, assetName);
         }
         break;
       default:

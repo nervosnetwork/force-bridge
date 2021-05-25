@@ -11,7 +11,7 @@ export class CkbBurn {
 
   @Index()
   @Column()
-  senderLockHash: string;
+  senderAddress: string;
 
   @Column()
   asset: string;
@@ -42,7 +42,7 @@ export class CkbBurn {
     asset: string;
     chain: number;
     blockNumber: number;
-    senderLockHash: string;
+    senderAddress: string;
   }) {
     const record = new CkbBurn();
     record.ckbTxHash = data.ckbTxHash;
@@ -51,7 +51,7 @@ export class CkbBurn {
     record.amount = data.amount;
     record.recipientAddress = data.recipientAddress;
     record.blockNumber = data.blockNumber;
-    record.senderLockHash = data.senderLockHash;
+    record.senderAddress = data.senderAddress;
     return record;
   }
 }
