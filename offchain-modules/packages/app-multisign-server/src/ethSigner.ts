@@ -19,7 +19,8 @@ async function verifyDuplicateEthTx(
   const refTxHashes = payload.unlockRecords.map((record) => {
     return record.ckbTxHash;
   });
-  const lastNonce = await SigServer.signedDb.getMaxNonceByRefTxHashes(pubKey, refTxHashes);
+  const lastNonceRow = await SigServer.signedDb.getMaxNonceByRefTxHashes(pubKey, refTxHashes);
+  const lastNonce = lastNonceRow.nonce;
   if (!lastNonce) {
     return null;
   }
@@ -60,7 +61,12 @@ async function verifyEthTx(pubKey: string, params: collectSignaturesParams): Pro
   const payload = params.payload as ethCollectSignaturesPayload;
 
   // Verify msg hash
-  const rawData = buildSigRawData(payload.domainSeparator, payload.typeHash, payload.unlockRecords, payload.nonce);
+  const rawData = buildSigRawData(
+    payload.domainSeparator,
+    payload.typeHash,
+    payload.unlockRecords,
+    BigNumber.from(payload.nonce),
+  );
   if (rawData !== params.rawData) {
     return new Error(`rawData:${params.rawData} doesn't match with:${rawData}`);
   }
@@ -87,7 +93,7 @@ export async function signEthTx(params: collectSignaturesParams): Promise<string
   const pubKey = privateKeyToPublicKey(privKey);
   const payload = params.payload as ethCollectSignaturesPayload;
 
-  const err = verifyEthTx(pubKey, params);
+  const err = await verifyEthTx(pubKey, params);
   if (err) {
     return Promise.reject(err);
   }
@@ -103,7 +109,7 @@ export async function signEthTx(params: collectSignaturesParams): Promise<string
       return {
         sigType: 'unlock',
         chain: ChainType.ETH,
-        amount: record.amount.toString(),
+        amount: BigNumber.from(record.amount).toString(),
         receiver: record.recipient,
         asset: record.token,
         refTxHash: record.ckbTxHash,
@@ -139,8 +145,8 @@ async function verifyUnlockRecord(unlockRecords: EthUnlockRecord[]): Promise<Err
     if (ckbBurn.asset !== record.token) {
       return new Error(`burnTx:${record.ckbTxHash} assetAddress:${record.token} != ${ckbBurn.asset}`);
     }
-    if (ckbBurn.amount !== record.amount) {
-      return new Error(`burnTx:${record.ckbTxHash} amount:${record.amount} != ${ckbBurn.amount}`);
+    if (!BigNumber.from(ckbBurn.amount).eq(record.amount)) {
+      return new Error(`burnTx amount:${BigNumber.from(ckbBurn.amount).toString()} != ${record.amount}`);
     }
     if (ckbBurn.recipientAddress !== record.recipient) {
       return new Error(

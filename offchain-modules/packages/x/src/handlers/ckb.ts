@@ -68,9 +68,6 @@ export class CkbHandler {
   }
 
   async onCkbBurnConfirmed(confirmedCkbBurns: ICkbBurn[]) {
-    if (this.role !== 'collector') {
-      return;
-    }
     for (const burn of confirmedCkbBurns) {
       logger.info(`CkbHandler onCkbBurnConfirmed burnRecord:${JSON.stringify(burn, undefined, 2)}`);
       switch (burn.chain) {
