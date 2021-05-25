@@ -14,10 +14,7 @@ import { Amount, Script } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import nconf from 'nconf';
 import TronWeb from 'tronweb';
-import { createConnection } from 'typeorm';
 import { waitUntilCommitted } from './util';
-
-// import { multisigLockScript } from '@force-bridge/ckb/tx-helper/multisig/multisig_helper';
 
 const PRI_KEY = '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
@@ -118,7 +115,6 @@ async function main() {
 
   const getBalance = async (assetName) => {
     const account = new Account(PRI_KEY);
-    // const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
     const multisigLockScript = getMultisigLock(ForceBridgeCore.config.ckb.multisigScript);
     const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>{
       codeHash: multisigLockScript.code_hash,
