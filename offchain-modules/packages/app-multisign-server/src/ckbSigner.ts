@@ -131,7 +131,10 @@ async function verifyMintTx(pubKey: string, rawData: string, payload: ckbCollect
       //those chains doesn't verify now
       continue;
     }
-    const records = mintRecordsMap.get(mintRecord.chain);
+    let records = mintRecordsMap.get(mintRecord.chain);
+    if (!records) {
+      records = [];
+    }
     records.push(mintRecord);
     mintRecordsMap.set(mintRecord.chain, records);
 
@@ -175,7 +178,7 @@ async function verifyEthMintRecords(records: mintRecord[]): Promise<Error> {
     if (record.amount != ethLock.amount) {
       return new Error(`ethLockTxHash:${record.id} amount:${record.amount} != ${ethLock.amount}`);
     }
-    if (record.asset != ethLock.amount) {
+    if (record.asset != ethLock.token) {
       return new Error(`ethLockTxHash:${record.id} asset:${record.asset} != ${ethLock.token}`);
     }
   }

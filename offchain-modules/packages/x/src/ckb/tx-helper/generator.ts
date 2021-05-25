@@ -106,7 +106,8 @@ export class CkbTxGenerator {
     txSkeleton = txSkeleton.update('outputs', (outputs) => {
       return outputs.push(...bridgeOutputs);
     });
-    const needCapacity = bridgeCellCapacity * BigInt(scripts.length);
+    //TODO fix fee calculate
+    const needCapacity = bridgeCellCapacity * BigInt(scripts.length) + bridgeCellCapacity;
     if (needCapacity !== 0n) {
       txSkeleton = await common.injectCapacity(txSkeleton, [fromAddress], needCapacity);
     }
@@ -182,7 +183,8 @@ export class CkbTxGenerator {
         });
       });
     }
-    const needCapacity = sudtCellCapacity * BigInt(records.length);
+    //TODO fix fee calculate
+    const needCapacity = sudtCellCapacity * BigInt(records.length) + sudtCellCapacity;
     if (needCapacity !== 0n) {
       txSkeleton = await common.injectCapacity(txSkeleton, [fromAddress], needCapacity);
     }

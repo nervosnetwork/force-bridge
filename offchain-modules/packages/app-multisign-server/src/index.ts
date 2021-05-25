@@ -3,7 +3,7 @@ import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { startHandlers } from '@force-bridge/x/dist/handlers';
 import { collectSignaturesParams } from '@force-bridge/x/dist/multisig/multisig-mgr';
 import { getDBConnection } from '@force-bridge/x/dist/utils';
-import { logger } from '@force-bridge/x/dist/utils/logger';
+import { initLog, logger } from '@force-bridge/x/dist/utils/logger';
 import bodyParser from 'body-parser';
 import express from 'express';
 import { JSONRPCServer } from 'json-rpc-2.0';
@@ -12,18 +12,25 @@ import nconf from 'nconf';
 import { signCkbTx } from './ckbSigner';
 import { signEthTx } from './ethSigner';
 import { SigServer } from './sigServer';
+
 const apiPath = '/force-bridge/sign-server/api/v1';
+const defaultLogFile = './log/force-bridge-sigsvr.log';
 
 async function main() {
   const args = minimist(process.argv.slice(2));
   const configPath = process.env.CONFIG_PATH || './config.json';
   nconf.env().file({ file: configPath });
   const cfg: Config = nconf.get('forceBridge');
+  if (!cfg.common.log.logFile) {
+    cfg.common.log.logFile = defaultLogFile;
+  }
+  initLog(cfg.common.log);
+  cfg.common.role = 'watcher';
   await new ForceBridgeCore().init(cfg);
-  const conn = await getDBConnection();
 
   //start chain handlers
   startHandlers();
+  const conn = await getDBConnection();
   new SigServer(conn);
 
   const server = new JSONRPCServer();
@@ -59,7 +66,7 @@ async function main() {
     port = args.port;
   }
   app.listen(port);
-  logger.debug(`rpc server handler started on ${port}  🚀`);
+  logger.info(`rpc server handler started on ${port}  🚀`);
 }
 
 main();

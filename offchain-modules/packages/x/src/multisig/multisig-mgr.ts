@@ -62,7 +62,11 @@ export class MultiSigMgr {
         );
       } catch (e) {
         logger.error(
-          `MultiSigMgr collectSignatures rawData:${params.rawData} sigServer:${svrHost}, error:${e.message}`,
+          `MultiSigMgr collectSignatures rawData:${params.rawData} payload:${JSON.stringify(
+            params.payload,
+            null,
+            2,
+          )} sigServer:${svrHost}, error:${e.message}`,
         );
       }
       if (successSigSvr.length === this.threshold) {

@@ -9,6 +9,7 @@ import { EosHandler } from '../handlers/eos';
 import { EthHandler } from '../handlers/eth';
 import { TronHandler } from '../handlers/tron';
 import { getDBConnection, parsePrivateKey } from '../utils';
+import { logger } from '../utils/logger';
 import { BTCChain } from '../xchain/btc';
 import { EthChain } from '../xchain/eth';
 
@@ -16,6 +17,9 @@ export async function startHandlers() {
   if (ForceBridgeCore.config.common.role === undefined) {
     ForceBridgeCore.config.common.role = 'watcher';
   }
+
+  logger.info(`startHandlers role:${ForceBridgeCore.config.common.role}`);
+
   const role = ForceBridgeCore.config.common.role;
   const isCollector = ForceBridgeCore.config.common.role === 'collector';
 
