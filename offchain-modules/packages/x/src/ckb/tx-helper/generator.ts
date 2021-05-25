@@ -173,7 +173,6 @@ export class CkbTxGenerator {
     });
 
     const fee = 100000n;
-    // TODO reuse bridgeFeeCell
     const needSupplyCap = sudtCellCapacity * BigInt(records.length + bridgeFeeCells.length) + fee;
     const supplyCapCells = await this.collector.getCellsByLockscriptAndCapacity(
       userLockscript,
