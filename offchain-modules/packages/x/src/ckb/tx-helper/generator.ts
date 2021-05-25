@@ -1,13 +1,13 @@
 import { Script as LumosScript } from '@ckb-lumos/base';
 import { Address, Amount, Script } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
-import { IndexerCollector } from '../../ckb/tx-helper/collector';
-import { SerializeRecipientCellData } from '../../ckb/tx-helper/generated/eth_recipient_cell';
-import { ScriptType } from '../../ckb/tx-helper/indexer';
 import { ForceBridgeCore } from '../../core';
 import { bigintToSudtAmount, fromHexString, stringToUint8Array, toHexString } from '../../utils';
 import { logger } from '../../utils/logger';
 import { Asset } from '../model/asset';
+import { IndexerCollector } from './collector';
+import { SerializeRecipientCellData } from './generated/eth_recipient_cell';
+import { ScriptType } from './indexer';
 
 export interface MintAssetRecord {
   asset: Asset;
