@@ -57,7 +57,7 @@ export class CkbHandler {
             {
               ckbTxHash: burn.ckbTxHash,
               asset: burn.asset,
-              amount: burn.amount,
+              amount: new Amount(burn.amount, 0).sub(new Amount(burn.bridgeFee, 0)).toString(0),
               chain: burn.chain,
               recipientAddress: burn.recipientAddress,
             },
@@ -68,7 +68,7 @@ export class CkbHandler {
             {
               ckbTxHash: burn.ckbTxHash,
               asset: burn.asset,
-              amount: burn.amount,
+              amount: new Amount(burn.amount, 0).sub(new Amount(burn.bridgeFee, 0)).toString(0),
               recipientAddress: burn.recipientAddress,
             },
           ]);
@@ -78,7 +78,7 @@ export class CkbHandler {
             {
               ckbTxHash: burn.ckbTxHash,
               asset: burn.asset,
-              amount: burn.amount,
+              amount: new Amount(burn.amount, 0).sub(new Amount(burn.bridgeFee, 0)).toString(0),
               recipientAddress: burn.recipientAddress,
             },
           ]);
@@ -89,7 +89,7 @@ export class CkbHandler {
               ckbTxHash: burn.ckbTxHash,
               asset: burn.asset,
               assetType: getAssetTypeByAsset(burn.asset),
-              amount: burn.amount,
+              amount: new Amount(burn.amount, 0).sub(new Amount(burn.bridgeFee, 0)).toString(0),
               recipientAddress: burn.recipientAddress,
             },
           ]);
@@ -212,17 +212,20 @@ export class CkbHandler {
         case ChainType.BTC:
         case ChainType.TRON:
         case ChainType.ETH:
-        case ChainType.EOS:
+        case ChainType.EOS: {
+          const asset = uint8ArrayToString(new Uint8Array(v.cellData.getAsset().raw()));
           burn = {
             senderAddress: v.senderAddress,
             ckbTxHash: k,
-            asset: uint8ArrayToString(new Uint8Array(v.cellData.getAsset().raw())),
+            asset: asset,
             chain,
             amount: Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.cellData.getAmount().raw()))}`).toString(0),
+            bridgeFee: new EthAsset(asset).getBridgeFee('out'),
             recipientAddress: uint8ArrayToString(new Uint8Array(v.cellData.getRecipientAddress().raw())),
             blockNumber: latestHeight,
           };
           break;
+        }
       }
       ckbBurns.push(burn);
       burnTxHashes.push(k);
@@ -358,7 +361,6 @@ export class CkbHandler {
       try {
         mintRecords.map((r, i) => {
           r.status = 'pending';
-          r.bridgeFee = records[i].bridgeFee.toString(0);
         });
         await this.db.updateCkbMint(mintRecords);
         const rawTx = await generator.mint(await account.getLockscript(), records);
@@ -402,7 +404,6 @@ export class CkbHandler {
           asset,
           recipient: new Address(r.recipientLockscript, AddressType.ckb),
           amount: new Amount(r.amount, 0),
-          bridgeFee: new Amount(asset.getBridgeFee('in'), 0),
         };
       }
       case ChainType.ETH: {
@@ -411,7 +412,6 @@ export class CkbHandler {
           asset,
           recipient: new Address(r.recipientLockscript, AddressType.ckb),
           amount: new Amount(r.amount, 0),
-          bridgeFee: new Amount(asset.getBridgeFee('in'), 0),
         };
       }
       case ChainType.TRON: {
@@ -419,7 +419,6 @@ export class CkbHandler {
         return {
           asset,
           amount: new Amount(r.amount, 0),
-          bridgeFee: new Amount(asset.getBridgeFee('in'), 0),
           recipient: new Address(r.recipientLockscript, AddressType.ckb),
         };
       }
@@ -428,7 +427,6 @@ export class CkbHandler {
         return {
           asset,
           amount: new Amount(r.amount, 0),
-          bridgeFee: new Amount(asset.getBridgeFee('in'), 0),
           recipient: new Address(r.recipientLockscript, AddressType.ckb),
         };
       }

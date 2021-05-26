@@ -19,6 +19,9 @@ export class CkbBurn {
   @Column()
   amount: string;
 
+  @Column({ default: '0' })
+  bridgeFee: string;
+
   @Column()
   recipientAddress: string;
 
@@ -39,6 +42,7 @@ export class CkbBurn {
     ckbTxHash: string;
     recipientAddress: string;
     amount: string;
+    bridgeFee: string;
     asset: string;
     chain: number;
     blockNumber: number;
@@ -49,6 +53,7 @@ export class CkbBurn {
     record.chain = data.chain;
     record.asset = data.asset;
     record.amount = data.amount;
+    record.bridgeFee = data.bridgeFee;
     record.recipientAddress = data.recipientAddress;
     record.blockNumber = data.blockNumber;
     record.senderAddress = data.senderAddress;

@@ -93,11 +93,13 @@ async function main() {
     assert(ethLockRecord.sender === wallet.address);
     assert(ethLockRecord.token === ETH_ADDRESS);
     assert(ethLockRecord.amount === amount.toString());
+    assert(ethLockRecord.bridgeFee === bridgeFee.in);
     logger.info('ethLockRecords recipient', ethLockRecord.recipient);
     logger.info('ethLockRecords', `0x${toHexString(recipientLockscript)}`);
     logger.info('expect recipient', `${uint8ArrayToString(recipientLockscript)}`);
     assert(ethLockRecord.recipient === `${uint8ArrayToString(recipientLockscript)}`);
 
+    const mintAmount = new Amount(ethLockRecord.amount, 0).sub(new Amount(ethLockRecord.bridgeFee, 0)).toString(0);
     const ckbMintRecords = await conn.manager.find(CkbMint, {
       where: {
         id: txHash,
@@ -110,20 +112,15 @@ async function main() {
     assert(ethLockRecord.sudtExtraData === sudtExtraData);
     assert(ckbMintRecord.status === 'success');
     assert(ckbMintRecord.asset === ETH_ADDRESS);
-    assert(ckbMintRecord.amount === amount.toString());
-    assert(ckbMintRecord.bridgeFee === bridgeFee.in);
+    assert(ckbMintRecord.amount === mintAmount);
     assert(ckbMintRecord.recipientLockscript === `${uint8ArrayToString(recipientLockscript)}`);
 
     // check sudt balance.
-    const recievedBridgeFee = await getSudtBalance(RELAY_PRI_KEY);
     const recipientBalance = await getSudtBalance(RECIPIENT_PRI_KEY);
 
     if (!sendBurn) {
-      logger.info('bridge fee sudt balance on chain:', recievedBridgeFee);
-      logger.info('expect bridge fee balance:', new Amount(ckbMintRecord.bridgeFee, 0));
-      assert(recievedBridgeFee.eq(new Amount(ckbMintRecord.bridgeFee, 0)));
       logger.info('recipient sudt balance on chain:', recipientBalance);
-      const expectBalance = new Amount(amount.toString(), 0).sub(recievedBridgeFee);
+      const expectBalance = new Amount(mintAmount, 0);
       logger.info('expect recipient balance:', expectBalance);
       assert(recipientBalance.eq(expectBalance));
     }
@@ -147,9 +144,7 @@ async function main() {
       await waitUntilCommitted(ckb, burnTxHash, 60);
       sendBurn = true;
     }
-    const expectBalanceAfterBurn = new Amount(ckbMintRecord.amount, 0)
-      .sub(new Amount(burnAmount.toString(), 0))
-      .sub(new Amount(ckbMintRecord.bridgeFee, 0));
+    const expectBalanceAfterBurn = new Amount(ckbMintRecord.amount, 0).sub(new Amount(burnAmount.toString(), 0));
     logger.info('expect recipient balance after burn:', expectBalanceAfterBurn);
     logger.info('recipient onchain balance after burn:', recipientBalance);
     assert(recipientBalance.eq(expectBalanceAfterBurn));
@@ -165,10 +160,10 @@ async function main() {
     assert(ethUnlockRecord.status === 'success');
     const unlockReceipt = await provider.getTransactionReceipt(ethUnlockRecord.ethTxHash);
     logger.info('unlockReceipt', unlockReceipt);
-    assert(unlockReceipt.logs.length === 2);
+    assert(unlockReceipt.logs.length === 1);
 
     const recipientParsedLog = iface.parseLog(unlockReceipt.logs[0]);
-    const expectRecipientUnlockAmount = new Amount(ethUnlockRecord.amount, 0).sub(new Amount(bridgeFee.out, 0));
+    const expectRecipientUnlockAmount = new Amount(burnAmount.toString(), 0).sub(new Amount(bridgeFee.out, 0));
     logger.info('recipient parsedLog', recipientParsedLog);
     assert(recipientParsedLog.args.token === ethUnlockRecord.asset);
     logger.info('db unlock amount', ethUnlockRecord.amount);
@@ -178,13 +173,6 @@ async function main() {
     logger.info('db unlock recipient', ethUnlockRecord.recipientAddress);
     logger.info('parsedLog recipient', recipientParsedLog.args.recipient);
     assert(ethUnlockRecord.recipientAddress === recipientParsedLog.args.recipient);
-
-    const bridgeFeeParsedLog = iface.parseLog(unlockReceipt.logs[1]);
-    logger.info('db bridge fee', ethUnlockRecord.bridgeFee);
-    logger.info('parsedLog bridge fee', bridgeFeeParsedLog.args.receivedAmount.toString());
-    assert(ethUnlockRecord.bridgeFee === bridgeFeeParsedLog.args.receivedAmount.toString());
-    logger.info('parsedLog bridge fee recipient', bridgeFeeParsedLog.args.recipient);
-    assert(wallet.address === bridgeFeeParsedLog.args.recipient);
   };
 
   // try 100 times and wait for 3 seconds every time.

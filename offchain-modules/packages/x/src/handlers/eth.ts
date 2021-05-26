@@ -134,7 +134,7 @@ export class EthHandler {
       return {
         id: lockRecord.txHash,
         chain: ChainType.ETH,
-        amount: lockRecord.amount,
+        amount: new Amount(lockRecord.amount, 0).sub(new Amount(lockRecord.bridgeFee, 0)).toString(0),
         asset: lockRecord.token,
         recipientLockscript: lockRecord.recipient,
         sudtExtraData: lockRecord.sudtExtraData,
@@ -167,6 +167,7 @@ export class EthHandler {
         {
           txHash: log.transactionHash,
           amount: amount,
+          bridgeFee: asset.getBridgeFee('in'),
           token: parsedLog.args.token,
           recipient: uint8ArrayToString(fromHexString(parsedLog.args.recipientLockscript)),
           sudtExtraData: parsedLog.args.sudtExtraData,
@@ -222,7 +223,6 @@ export class EthHandler {
         // write db first, avoid send tx success and fail to write db
         records.map((r) => {
           r.status = 'pending';
-          r.bridgeFee = new EthAsset(r.asset).getBridgeFee('out');
         });
         await this.db.saveEthUnlock(records);
         const txRes = await this.ethChain.sendUnlockTxs(records);

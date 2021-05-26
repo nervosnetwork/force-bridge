@@ -20,9 +20,6 @@ export class EthUnlock {
   @Column({ nullable: true })
   ethTxHash: string;
 
-  @Column({ default: '0' })
-  bridgeFee: string;
-
   @Column({ default: 'todo' })
   status: EthUnlockStatus;
 

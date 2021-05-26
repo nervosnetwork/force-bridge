@@ -18,6 +18,7 @@ test('ckb db works', async (t) => {
   // save db
   const data = {
     amount: '0x1',
+    bridgeFee: '0x0',
     asset: '0x00000000000000000000',
     chain: 0,
     ckbTxHash: '0x12',

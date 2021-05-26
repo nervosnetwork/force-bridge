@@ -34,9 +34,6 @@ export class CkbMint {
   @Column({ nullable: true })
   mintHash: string;
 
-  @Column({ default: '0' })
-  bridgeFee: string;
-
   @Column({ type: 'text', nullable: true })
   message: string;
 

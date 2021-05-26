@@ -18,6 +18,9 @@ export class EthLock {
   @Column()
   amount: string;
 
+  @Column({ default: '0' })
+  bridgeFee: string;
+
   @Index()
   @Column()
   recipient: string;

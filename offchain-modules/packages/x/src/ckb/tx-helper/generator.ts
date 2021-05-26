@@ -12,7 +12,6 @@ import { ScriptType } from './indexer';
 export interface MintAssetRecord {
   asset: Asset;
   amount: Amount;
-  bridgeFee: Amount;
   recipient: Address;
 }
 
@@ -71,8 +70,6 @@ export class CkbTxGenerator {
     const outputsData = new Array(0);
     const sudtCellCapacity = 300n * 10n ** 8n;
     const assets = new Array(0);
-    const bridgeFeeCells = new Array(0);
-    const reusedBridgeFeeCells = new Array(0);
     for (const record of records) {
       if (record.amount.eq(Amount.ZERO)) {
         continue;
@@ -95,14 +92,10 @@ export class CkbTxGenerator {
         capacity: `0x${sudtCellCapacity.toString(16)}`,
       };
       outputs.push(outputSudtCell);
-      const bridgeFee = record.bridgeFee;
-      const mintAmount = record.amount.sub(bridgeFee);
-      outputsData.push(mintAmount.toUInt128LE());
+      outputsData.push(record.amount.toUInt128LE());
 
       const assetIndex = assets.indexOf(record.asset.toBridgeLockscriptArgs());
       if (assetIndex != -1) {
-        const bridgeFeeCell = bridgeFeeCells[assetIndex];
-        bridgeFeeCell.amount = bridgeFeeCell.amount.add(bridgeFee);
         continue;
       }
       assets.push(record.asset.toBridgeLockscriptArgs());
@@ -127,58 +120,15 @@ export class CkbTxGenerator {
       outputs.push(outputBridgeCell);
       outputsData.push('0x');
       bridgeCells.push(bridgeCell);
-
-      const reuseBridgeFeeCellSearchKey = {
-        script: userLockscript.serializeJson() as LumosScript,
-        script_type: ScriptType.lock,
-        filter: {
-          script: new Script(
-            ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
-            sudtArgs,
-            ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
-          ).serializeJson() as LumosScript,
-        },
-      };
-      const reuseBridgeFeeCells = await this.collector.collectSudtByAmount(
-        reuseBridgeFeeCellSearchKey,
-        new Amount('0', 0),
-      );
-      if (reuseBridgeFeeCells.length !== 0) {
-        reusedBridgeFeeCells.push(reuseBridgeFeeCells[0]);
-      }
-
-      const bridgeFeeCell = {
-        lock: userLockscript,
-        type: {
-          codeHash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
-          hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
-          args: sudtArgs,
-        },
-        capacity: `0x${sudtCellCapacity.toString(16)}`,
-        amount: bridgeFee,
-      };
-      bridgeFeeCells.push(bridgeFeeCell);
     }
 
-    bridgeFeeCells.forEach((cell) => {
-      outputs.push({ lock: cell.lock, type: cell.type, capacity: cell.capacity });
-      const reusedBridgeFeeCell = reusedBridgeFeeCells.filter((reusedCell) => reusedCell.type.args === cell.type.args);
-      if (0 === reusedBridgeFeeCell.length) {
-        outputsData.push(cell.amount.toUInt128LE());
-      } else {
-        const reusedBridgeFeeAmount = Amount.fromUInt128LE(reusedBridgeFeeCell[0].data);
-        const bridgeFeeAmount = cell.amount.add(reusedBridgeFeeAmount);
-        outputsData.push(bridgeFeeAmount.toUInt128LE());
-      }
-    });
-
     const fee = 100000n;
-    const needSupplyCap = sudtCellCapacity * BigInt(records.length + bridgeFeeCells.length) + fee;
+    const needSupplyCap = sudtCellCapacity * BigInt(records.length) + fee;
     const supplyCapCells = await this.collector.getCellsByLockscriptAndCapacity(
       userLockscript,
       new Amount(`0x${needSupplyCap.toString(16)}`, 0),
     );
-    const inputCells = supplyCapCells.concat(bridgeCells).concat(reusedBridgeFeeCells);
+    const inputCells = supplyCapCells.concat(bridgeCells);
     const inputs = inputCells.map((cell) => {
       return { previousOutput: cell.outPoint, since: '0x0' };
     });

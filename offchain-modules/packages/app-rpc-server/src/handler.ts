@@ -451,7 +451,7 @@ function transferDbRecordToResponse(
         toAsset: {
           network: 'Nervos',
           ident: getTokenShadowIdent(XChainNetwork, record.asset),
-          amount: new Amount(record.mint_amount, 0).sub(new Amount(record.bridge_fee, 0)).toString(0),
+          amount: record.mint_amount,
         },
         sender: record.sender,
         recipient: record.recipient,
@@ -472,7 +472,7 @@ function transferDbRecordToResponse(
         toAsset: {
           network: XChainNetwork,
           ident: record.asset,
-          amount: new Amount(record.unlock_amount, 0).sub(new Amount(record.bridge_fee, 0)).toString(0),
+          amount: record.unlock_amount,
         },
         sender: record.sender,
         recipient: record.recipient,
