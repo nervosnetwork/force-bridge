@@ -14,6 +14,10 @@
         "0x193c96316c6cada898f067004aa07a5d48fcecdb1aa158784f2e8868a4db7ce8",
         "0x57c246bcb73e5d3409a903c94d46b3b118fdcfb81c5e51d3b0df72e883623fa7"
       ],
+      "multiSignHosts": [
+        "http://localhost:8090/force-bridge/sign-server/api/v1",
+        "http://localhost:8091/force-bridge/sign-server/api/v1"
+      ],
       "multiSignThreshold": 2,
       "contractAddress": "0x8326e1d621Cd32752920ed2A44B49bB1a96c7391",
       "confirmNumber": 1,
@@ -57,7 +61,26 @@
     "ckb": {
       "ckbRpcUrl": "http://127.0.0.1:8114",
       "ckbIndexerUrl": "http://127.0.0.1:8116",
-      "privateKey": "0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe",
+      "multisigScript": {
+          "R": 0,
+          "M": 2,
+          "publicKeyHashes": [
+            "0x40dcec2ef1ffc2340ea13ff4dd9671d2f9787e95",
+            "0xc8328aabcd9b9e8e64fbc566c4385c3bdeb219d7",
+            "0x470dcdc5e44064909650113a274b3b36aecb6dc7",
+            "0xd9a188cc1985a7d4a31f141f4ebb61f241aec182",
+            "0xebf9befcd8396e88cab8fcb920ab149231658f4b"
+          ]
+      },
+      "keys": [
+       "0xd00c06bfd800d27397002dca6fb0993d5ba6399b4238b2f29ee9deb97593d2bc",
+       "0x63d86723e08f0f813a36ce6aa123bb2289d90680ae1e99d4de8cdb334553f24d"
+      ],
+      "hosts": [
+        "http://127.0.0.1:8090/force-bridge/sign-server/api/v1",
+        "http://127.0.0.1:8091/force-bridge/sign-server/api/v1"
+      ],
+      "fromPrivateKey": "0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe",
       "ownerLockHash": "0x49beb8c4c29d06e05452b5d9ea8e86ffd4ea2b614498ba1a0c47890a0ad4f550",
       "deps": {
         "bridgeLock": {

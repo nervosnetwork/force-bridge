@@ -1,13 +1,17 @@
-import { Script as LumosScript } from '@ckb-lumos/base';
+import { Cell, Script as LumosScript } from '@ckb-lumos/base';
+import { common } from '@ckb-lumos/common-scripts';
+import { TransactionSkeleton, TransactionSkeletonType } from '@ckb-lumos/helpers';
+import { CellCollector, Indexer } from '@ckb-lumos/indexer';
 import { Address, Amount, Script } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import { IndexerCollector } from '../../ckb/tx-helper/collector';
 import { SerializeRecipientCellData } from '../../ckb/tx-helper/generated/eth_recipient_cell';
 import { ScriptType } from '../../ckb/tx-helper/indexer';
 import { ForceBridgeCore } from '../../core';
-import { bigintToSudtAmount, fromHexString, stringToUint8Array, toHexString } from '../../utils';
+import { asyncSleep, bigintToSudtAmount, fromHexString, stringToUint8Array, toHexString } from '../../utils';
 import { logger } from '../../utils/logger';
 import { Asset } from '../model/asset';
+import { getFromAddr, getMultisigLock } from './multisig/multisig_helper';
 
 export interface MintAssetRecord {
   asset: Asset;
@@ -18,58 +22,120 @@ export interface MintAssetRecord {
 export class CkbTxGenerator {
   constructor(private ckb: CKB, private collector: IndexerCollector) {}
 
-  async createBridgeCell(
-    fromLockscript: Script,
-    bridgeLockscripts: any[],
-  ): Promise<CKBComponents.RawTransactionToSign> {
-    logger.debug('createBredgeCell:', bridgeLockscripts);
-    const bridgeCellCapacity = 200n * 10n ** 8n;
-    const outputsData = [];
-    const outputBridgeCells = bridgeLockscripts.map((s) => {
-      outputsData.push('0x');
-      return {
-        lock: s,
-        capacity: `0x${bridgeCellCapacity.toString(16)}`,
-      };
+  sudtDep = {
+    out_point: {
+      tx_hash: ForceBridgeCore.config.ckb.deps.sudtType.cellDep.outPoint.txHash,
+      index: ForceBridgeCore.config.ckb.deps.sudtType.cellDep.outPoint.index,
+    },
+    dep_type: ForceBridgeCore.config.ckb.deps.sudtType.cellDep.depType,
+  };
+
+  bridgeLockDep = {
+    out_point: {
+      tx_hash: ForceBridgeCore.config.ckb.deps.bridgeLock.cellDep.outPoint.txHash,
+      index: ForceBridgeCore.config.ckb.deps.bridgeLock.cellDep.outPoint.index,
+    },
+    dep_type: ForceBridgeCore.config.ckb.deps.bridgeLock.cellDep.depType,
+  };
+
+  async fetchMultisigCell(indexer: Indexer, maxTimes: number): Promise<Cell> {
+    const cellCollector = new CellCollector(indexer, {
+      type: ForceBridgeCore.config.ckb.multisigType,
     });
-    let outputs = new Array(0);
-    outputs = outputs.concat(outputBridgeCells);
-    const fee = 100000n;
-    const needSupplyCap = bridgeCellCapacity * BigInt(bridgeLockscripts.length) + fee;
-    const supplyCapCells = await this.collector.getCellsByLockscriptAndCapacity(
-      fromLockscript,
-      new Amount(`0x${needSupplyCap.toString(16)}`, 0),
-    );
-    const inputs = supplyCapCells.map((cell) => {
-      return { previousOutput: cell.outPoint, since: '0x0' };
-    });
-    this.handleChangeCell(supplyCapCells, outputs, outputsData, fromLockscript, fee);
-    const { secp256k1Dep } = await this.ckb.loadDeps();
-    const rawTx = {
-      version: '0x0',
-      cellDeps: [
-        {
-          outPoint: secp256k1Dep.outPoint,
-          depType: secp256k1Dep.depType,
-        },
-      ],
-      headerDeps: [],
-      inputs,
-      outputs,
-      witnesses: [{ lock: '', inputType: '', outputType: '' }],
-      outputsData,
-    };
-    logger.debug('createBridgeCell rawTx:', rawTx);
-    return rawTx as CKBComponents.RawTransactionToSign;
+    let index = 0;
+    while (true) {
+      if (index > maxTimes) {
+        throw new Error('failed to fetch multisig cell.');
+      }
+      for await (const cell of cellCollector.collect()) {
+        if (cell != undefined) {
+          return cell;
+        }
+      }
+      logger.debug('try to fetch multisig cell: ', index++);
+      await asyncSleep(1000);
+    }
   }
 
-  async mint(userLockscript: Script, records: MintAssetRecord[]): Promise<CKBComponents.RawTransactionToSign> {
-    logger.debug('start to mint records: ', records);
-    const bridgeCells = new Array(0);
-    const outputs = new Array(0);
-    const outputsData = new Array(0);
+  async fetchBridgeCell(bridgeLock: LumosScript, indexer: Indexer, maxTimes: number): Promise<Cell> {
+    const cellCollector = new CellCollector(indexer, {
+      lock: bridgeLock,
+    });
+    let index = 0;
+    while (true) {
+      if (index > maxTimes) {
+        throw new Error('failed to fetch bridge cell.');
+      }
+      for await (const cell of cellCollector.collect()) {
+        if (cell != undefined) {
+          return cell;
+        }
+      }
+      logger.debug('try to fetch bridge cell: ', index++);
+      await asyncSleep(1000);
+    }
+  }
+
+  async createBridgeCell(scripts: Script[], indexer: Indexer): Promise<TransactionSkeletonType> {
+    const fromAddress = getFromAddr();
+    let txSkeleton = TransactionSkeleton({ cellProvider: indexer });
+    const multisig_cell = await this.fetchMultisigCell(indexer, 60);
+    txSkeleton = await common.setupInputCell(txSkeleton, multisig_cell, ForceBridgeCore.config.ckb.multisigScript);
+    const bridgeCellCapacity = 200n * 10n ** 8n;
+    const bridgeOutputs = scripts.map((script) => {
+      return <Cell>{
+        cell_output: {
+          capacity: `0x${bridgeCellCapacity.toString(16)}`,
+          lock: {
+            code_hash: script.codeHash,
+            hash_type: script.hashType,
+            args: script.args,
+          },
+        },
+        data: '0x',
+      };
+    });
+    logger.debug('bridgeOutputs:', JSON.stringify(bridgeOutputs, null, 2));
+    txSkeleton = txSkeleton.update('outputs', (outputs) => {
+      return outputs.push(...bridgeOutputs);
+    });
+    const needCapacity = bridgeCellCapacity * BigInt(scripts.length);
+    if (needCapacity !== 0n) {
+      txSkeleton = await common.injectCapacity(txSkeleton, [fromAddress], needCapacity);
+    }
+    const feeRate = BigInt(1000);
+    txSkeleton = await common.payFeeByFeeRate(txSkeleton, [fromAddress], feeRate);
+    txSkeleton = common.prepareSigningEntries(txSkeleton);
+    return txSkeleton;
+  }
+
+  async mint(records: MintAssetRecord[], indexer: Indexer): Promise<TransactionSkeletonType> {
+    const fromAddress = getFromAddr();
+    let txSkeleton = TransactionSkeleton({ cellProvider: indexer });
+    const multisigCell = await this.fetchMultisigCell(indexer, 60);
+    txSkeleton = await common.setupInputCell(txSkeleton, multisigCell, ForceBridgeCore.config.ckb.multisigScript);
+    txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
+      return cellDeps.push(this.sudtDep);
+    });
+    txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
+      return cellDeps.push(this.bridgeLockDep);
+    });
+
+    txSkeleton = await this.buildSudtOutput(txSkeleton, records);
+    txSkeleton = await this.buildBridgeCellOutput(txSkeleton, records, indexer);
+
+    const feeRate = BigInt(1000);
+    txSkeleton = await common.payFeeByFeeRate(txSkeleton, [fromAddress], feeRate);
+    txSkeleton = common.prepareSigningEntries(txSkeleton);
+    return txSkeleton;
+  }
+
+  async buildSudtOutput(
+    txSkeleton: TransactionSkeletonType,
+    records: MintAssetRecord[],
+  ): Promise<TransactionSkeletonType> {
+    const fromAddress = getFromAddr();
     const sudtCellCapacity = 300n * 10n ** 8n;
-    const assets = new Array(0);
     for (const record of records) {
       if (record.amount.eq(Amount.ZERO)) {
         continue;
@@ -80,88 +146,83 @@ export class CkbTxGenerator {
         hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
         args: record.asset.toBridgeLockscriptArgs(),
       };
-
       const sudtArgs = this.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
-      const outputSudtCell = {
-        lock: recipientLockscript,
-        type: {
-          codeHash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
-          hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
-          args: sudtArgs,
+      const outputSudtCell = <Cell>{
+        cell_output: {
+          capacity: `0x${sudtCellCapacity.toString(16)}`,
+          lock: {
+            code_hash: recipientLockscript.codeHash,
+            hash_type: recipientLockscript.hashType,
+            args: recipientLockscript.args,
+          },
+          type: {
+            code_hash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
+            hash_type: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
+            args: sudtArgs,
+          },
         },
-        capacity: `0x${sudtCellCapacity.toString(16)}`,
+        data: record.amount.toUInt128LE(),
       };
-      outputs.push(outputSudtCell);
-      outputsData.push(record.amount.toUInt128LE());
+      txSkeleton = txSkeleton.update('outputs', (outputs) => {
+        return outputs.push(outputSudtCell);
+      });
+    }
+    for (let i = 1; i <= records.length; i++) {
+      txSkeleton = txSkeleton.update('fixedEntries', (fixedEntries) => {
+        return fixedEntries.push({
+          field: 'outputs',
+          index: i,
+        });
+      });
+    }
+    const needCapacity = sudtCellCapacity * BigInt(records.length);
+    if (needCapacity !== 0n) {
+      txSkeleton = await common.injectCapacity(txSkeleton, [fromAddress], needCapacity);
+    }
+    return txSkeleton;
+  }
 
+  async buildBridgeCellOutput(
+    txSkeleton: TransactionSkeletonType,
+    records: MintAssetRecord[],
+    indexer: Indexer,
+  ): Promise<TransactionSkeletonType> {
+    const assets = new Array(0);
+    for (const record of records) {
+      const bridgeCellLockscript = {
+        codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
+        hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
+        args: record.asset.toBridgeLockscriptArgs(),
+      };
       if (assets.indexOf(record.asset.toBridgeLockscriptArgs()) != -1) {
         continue;
       }
       assets.push(record.asset.toBridgeLockscriptArgs());
-
-      const searchKey = {
-        script: new Script(
-          bridgeCellLockscript.codeHash,
-          bridgeCellLockscript.args,
-          bridgeCellLockscript.hashType,
-        ).serializeJson() as LumosScript,
-        script_type: ScriptType.lock,
+      const bridge_cell = await this.fetchBridgeCell(
+        {
+          code_hash: bridgeCellLockscript.codeHash,
+          hash_type: bridgeCellLockscript.hashType,
+          args: bridgeCellLockscript.args,
+        },
+        indexer,
+        5,
+      );
+      txSkeleton = txSkeleton.update('inputs', (inputs) => {
+        return inputs.push(bridge_cell);
+      });
+      const outputBridgeCell = <Cell>{
+        cell_output: {
+          capacity: bridge_cell.cell_output.capacity,
+          lock: bridge_cell.cell_output.lock,
+          type: bridge_cell.cell_output.type,
+        },
+        data: '0x',
       };
-      const cells = await this.collector.indexer.getCells(searchKey);
-      if (cells.length == 0) {
-        throw new Error('failed to generate mint tx. the live cell is not found!');
-      }
-      const bridgeCell = cells[0];
-      const outputBridgeCell = {
-        lock: bridgeCellLockscript,
-        capacity: bridgeCell.capacity,
-      };
-      outputs.push(outputBridgeCell);
-      outputsData.push('0x');
-      bridgeCells.push(bridgeCell);
+      txSkeleton = txSkeleton.update('outputs', (outputs) => {
+        return outputs.push(outputBridgeCell);
+      });
     }
-
-    const fee = 100000n;
-    const needSupplyCap = sudtCellCapacity * BigInt(records.length) + fee;
-    const supplyCapCells = await this.collector.getCellsByLockscriptAndCapacity(
-      userLockscript,
-      new Amount(`0x${needSupplyCap.toString(16)}`, 0),
-    );
-    const inputCells = supplyCapCells.concat(bridgeCells);
-    const inputs = inputCells.map((cell) => {
-      return { previousOutput: cell.outPoint, since: '0x0' };
-    });
-    this.handleChangeCell(inputCells, outputs, outputsData, userLockscript, fee);
-
-    const { secp256k1Dep } = await this.ckb.loadDeps();
-    const cellDeps = [
-      {
-        outPoint: secp256k1Dep.outPoint,
-        depType: secp256k1Dep.depType,
-      },
-      // sudt dep
-      {
-        outPoint: ForceBridgeCore.config.ckb.deps.sudtType.cellDep.outPoint,
-        depType: ForceBridgeCore.config.ckb.deps.sudtType.cellDep.depType,
-      },
-      // bridge lockscript dep
-      {
-        outPoint: ForceBridgeCore.config.ckb.deps.bridgeLock.cellDep.outPoint,
-        depType: ForceBridgeCore.config.ckb.deps.bridgeLock.cellDep.depType,
-      },
-    ];
-
-    const rawTx = {
-      version: '0x0',
-      cellDeps,
-      headerDeps: [],
-      inputs,
-      outputs,
-      witnesses: [{ lock: '', inputType: '', outputType: '' }],
-      outputsData,
-    };
-    logger.debug('generate mint rawTx:', rawTx);
-    return rawTx as CKBComponents.RawTransactionToSign;
+    return txSkeleton;
   }
 
   /*
@@ -182,6 +243,7 @@ export class CkbTxGenerator {
     amount: Amount,
     bridgeFee?: Amount,
   ): Promise<CKBComponents.RawTransactionToSign> {
+    const multisigLockScript = getMultisigLock(ForceBridgeCore.config.ckb.multisigScript);
     if (amount.eq(Amount.ZERO)) {
       throw new Error('amount should larger then zero!');
     }
@@ -208,7 +270,11 @@ export class CkbTxGenerator {
     }
     logger.debug('burn sudtCells: ', sudtCells);
     let inputCells = sudtCells;
-    const ownerLockHash = ForceBridgeCore.config.ckb.ownerLockHash;
+    const ownerLockHash = this.ckb.utils.scriptToHash(<CKBComponents.Script>{
+      codeHash: multisigLockScript.code_hash,
+      hashType: multisigLockScript.hash_type,
+      args: multisigLockScript.args,
+    });
 
     const recipientAddr = fromHexString(toHexString(stringToUint8Array(recipientAddress))).buffer;
 
@@ -305,7 +371,6 @@ export class CkbTxGenerator {
         depType: ForceBridgeCore.config.ckb.deps.recipientType.cellDep.depType,
       },
     ];
-
     const rawTx = {
       version: '0x0',
       cellDeps,

@@ -4,6 +4,7 @@ import { ChainType, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
 import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
+import { getMultisigLock } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { Config, TronConfig } from '@force-bridge/x/dist/config';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { CkbMint, TronLock, TronUnlock } from '@force-bridge/x/dist/db/model';
@@ -115,7 +116,12 @@ async function main() {
 
   const getBalance = async (assetName) => {
     const account = new Account(PRI_KEY);
-    const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
+    const multisigLockScript = getMultisigLock(ForceBridgeCore.config.ckb.multisigScript);
+    const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>{
+      codeHash: multisigLockScript.code_hash,
+      hashType: multisigLockScript.hash_type,
+      args: multisigLockScript.args,
+    });
     const asset = new TronAsset(assetName, ownLockHash);
     const bridgeCellLockscript = {
       codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
@@ -182,7 +188,12 @@ async function main() {
     const burnAmount = 1;
     if (!sendBurn) {
       const account = new Account(PRI_KEY);
-      const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
+      const multisigLockScript = getMultisigLock(ForceBridgeCore.config.ckb.multisigScript);
+      const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>{
+        codeHash: multisigLockScript.code_hash,
+        hashType: multisigLockScript.hash_type,
+        args: multisigLockScript.args,
+      });
       const generator = new CkbTxGenerator(ckb, new IndexerCollector(indexer));
       const burnTx = await generator.burn(
         await account.getLockscript(),

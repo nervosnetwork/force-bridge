@@ -8,12 +8,15 @@ import { Config } from './config';
 export class ForceBridgeCore {
   static config: Config;
   static ckb: CKB;
-  static indexer: CkbIndexer;
+  // static indexer: Indexer;
+  static ckbIndexer: CkbIndexer;
 
   async init(config: Config): Promise<ForceBridgeCore> {
     ForceBridgeCore.config = config;
     ForceBridgeCore.ckb = new CKB(config.ckb.ckbRpcUrl);
-    ForceBridgeCore.indexer = new CkbIndexer(config.ckb.ckbRpcUrl, config.ckb.ckbIndexerUrl);
+    ForceBridgeCore.ckbIndexer = new CkbIndexer(config.ckb.ckbRpcUrl, config.ckb.ckbIndexerUrl);
+    // ForceBridgeCore.indexer = new Indexer(config.ckb.ckbRpcUrl, './lumos_db');
+    // ForceBridgeCore.indexer.startForever();
     return this;
   }
 }

@@ -24,7 +24,7 @@ export async function startHandlers() {
   const ckbDb = new CkbDb(conn);
   const kvDb = new KVDb(conn);
   if (isCollector) {
-    ForceBridgeCore.config.ckb.privateKey = parsePrivateKey(ForceBridgeCore.config.ckb.privateKey);
+    ForceBridgeCore.config.ckb.fromPrivateKey = parsePrivateKey(ForceBridgeCore.config.ckb.fromPrivateKey);
   }
   const ckbHandler = new CkbHandler(ckbDb, kvDb, role);
   ckbHandler.start();

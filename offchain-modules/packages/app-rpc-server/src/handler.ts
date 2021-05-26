@@ -172,7 +172,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
       args: fromLockscript.args,
       hash_type: fromLockscript.hashType,
     });
-    const ckbTxGenerator = new CkbTxGenerator(ForceBridgeCore.ckb, new IndexerCollector(ForceBridgeCore.indexer));
+    const ckbTxGenerator = new CkbTxGenerator(ForceBridgeCore.ckb, new IndexerCollector(ForceBridgeCore.ckbIndexer));
     const burnTx = await ckbTxGenerator.burn(script, payload.recipient, asset, new Amount(amount, 0));
     return {
       network: 'Nervos',
@@ -433,7 +433,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
           hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
           args: value.assetIdent,
         };
-        const collector = new IndexerCollector(ForceBridgeCore.indexer);
+        const collector = new IndexerCollector(ForceBridgeCore.ckbIndexer);
         const sudt_amount = await collector.getSUDTBalance(
           new Script(sudtType.codeHash, sudtType.args, sudtType.hashType),
           new Script(userScript.codeHash, userScript.args, userScript.hashType as HashType),
