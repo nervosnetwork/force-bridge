@@ -8,7 +8,7 @@ import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
 import { getMultisigLock } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { Config, EthConfig } from '@force-bridge/x/dist/config';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
-import { CkbDb, EthDb } from '@force-bridge/x/dist/db';
+import { EthDb } from '@force-bridge/x/dist/db/eth';
 import { CkbMint, EthLock, EthUnlock } from '@force-bridge/x/dist/db/model';
 import {
   asyncSleep,
@@ -21,6 +21,7 @@ import {
 import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
 import { ETH_ADDRESS } from '@force-bridge/x/dist/xchain/eth';
 import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
+import { EthReconcilerBuilder, ForceBridgeContract } from '@force-bridge/xchain-eth';
 import { Amount, Script } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import { ethers } from 'ethers';
@@ -56,7 +57,7 @@ async function main() {
   await new ForceBridgeCore().init(conf);
   const provider = new ethers.providers.JsonRpcProvider(config.rpcUrl);
   const bridgeContractAddr = config.contractAddress;
-  const bridge = new ethers.Contract(bridgeContractAddr, abi, provider);
+  const bridge = new ethers.Contract(bridgeContractAddr, abi, provider) as ForceBridgeContract;
   const wallet = new ethers.Wallet(ETH_PRI_KEY, provider);
   const bridgeWithSigner = bridge.connect(wallet);
   const iface = new ethers.utils.Interface(abi);
@@ -196,7 +197,16 @@ async function main() {
     logger.info('db unlock recipient', ethUnlockRecord.recipientAddress);
     logger.info('parsedLog recipient', recipientParsedLog.args.recipient);
     assert(ethUnlockRecord.recipientAddress === recipientParsedLog.args.recipient);
-  };
+
+    const builder = new EthReconcilerBuilder(provider, bridge, new EthDb(conn));
+    const reconciliation = await builder
+      .buildLockReconciler(wallet.address, '0x0000000000000000000000000000000000000000')
+      .fetchReconciliation();
+
+    logger.info('all locked', reconciliation.from);
+    logger.info('all minted', reconciliation.to);
+
+    assert(reconciliation.checkBalanced(), 'the amount of lock and mint should be balanced');  };
 
   // try 100 times and wait for 3 seconds every time.
   for (let i = 0; i < 100; i++) {

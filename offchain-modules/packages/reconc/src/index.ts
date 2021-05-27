@@ -4,15 +4,19 @@ type ID = string;
 // non decimals number formatted string
 type Amount = string;
 
+// export interface Identifiable {
+//   identity(): string;
+// }
+
 // resources on xchain can be mapped to nervos.
 // `Universal` is used to represent a certain resource on XChain, which can be an account or an asset
-export interface Universal {
-  network: ID; // xchain network
-
-  identityNervos(): ID;
-
-  identityXChain(): ID; // xchain resource id
-}
+// export interface Universal {
+//   network: ID; // xchain network
+//
+//   identityNervos(): ID;
+//
+//   identityXChain(): ID; // xchain resource id
+// }
 
 export type FromRecord = {
   amount: Amount;
@@ -20,7 +24,7 @@ export type FromRecord = {
 };
 
 export type ToRecord = FromRecord & {
-  recipient: Universal;
+  recipient: ID;
   fee?: Amount;
 };
 
@@ -41,8 +45,8 @@ export class Reconciliation {
 }
 
 export interface Reconciler {
-  readonly account: Universal;
-  readonly asset: Universal;
+  readonly account: ID;
+  readonly asset: ID;
 
-  fetchRecords(): Promise<Reconciliation>;
+  fetchReconciliation(): Promise<Reconciliation>;
 }

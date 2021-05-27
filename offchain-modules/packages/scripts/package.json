@@ -9,6 +9,7 @@
     "test": "yarn run build"
   },
   "dependencies": {
-    "@force-bridge/x": "*"
+    "@force-bridge/x": "*",
+    "@force-bridge/xchain-eth": "*"
   }
 }
