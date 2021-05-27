@@ -4,7 +4,8 @@
       "log": {
         "level": "info"
       },
-      "role":"collector"
+      "network": "testnet",
+      "role": "collector"
     },
     "eth": {
       "rpcUrl": "http://127.0.0.1:8545",
@@ -109,7 +110,6 @@
         "startBlockHeight": 1
     },
     "ckb": {
-      "network": "Testnet",
       "ckbRpcUrl": "http://127.0.0.1:8114",
       "ckbIndexerUrl": "http://127.0.0.1:8116",
       "multisigScript": {

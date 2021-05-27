@@ -9,9 +9,9 @@ export class Account {
   public address: string;
 
   static scriptToAddress(script: CKBComponents.Script): string {
-    const network = ForceBridgeCore.config.ckb.network;
+    const network = ForceBridgeCore.config.common.network;
     if (script.codeHash === utils.systemScripts.SECP256K1_BLAKE160.codeHash) {
-      if (network === 'Mainnet')
+      if (network === 'mainnet')
         return utils.bech32Address(script.args, {
           prefix: AddressPrefix.Mainnet,
           type: utils.AddressType.HashIdx,
@@ -23,7 +23,7 @@ export class Account {
         codeHashOrCodeHashIndex: '0x00',
       });
     } else {
-      if (network === 'Mainnet')
+      if (network === 'mainnet')
         return utils.bech32Address(script.args, {
           prefix: AddressPrefix.Mainnet,
           type: script.hashType === 'type' ? utils.AddressType.TypeCodeHash : utils.AddressType.DataCodeHash,

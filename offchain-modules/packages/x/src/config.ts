@@ -30,7 +30,6 @@ export interface MultisigItem {
 }
 
 export interface CkbConfig {
-  network: 'Mainnet' | 'Testnet';
   ckbRpcUrl: string;
   ckbIndexerUrl: string;
   fromPrivateKey: string;
@@ -113,6 +112,7 @@ export interface logConfig {
 export interface commonConfig {
   role: forceBridgeRole;
   log: logConfig;
+  network: 'mainnet' | 'testnet';
 }
 export interface lumosDBConfig {
   host: string;
