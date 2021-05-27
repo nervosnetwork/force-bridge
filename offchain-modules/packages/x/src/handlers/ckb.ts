@@ -558,10 +558,10 @@ export async function isBurnTx(tx: Transaction, cellData: RecipientCellData): Pr
   }
 
   if (
-      !asset.inWhiteList() ||
-      Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(cellData.getAmount().raw()))}`).lt(
-          new Amount(asset.getMinimalAmount(), 0),
-      )
+    !asset.inWhiteList() ||
+    Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(cellData.getAmount().raw()))}`).lt(
+      new Amount(asset.getMinimalAmount(), 0),
+    )
   )
     return false;
 

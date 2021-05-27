@@ -10,6 +10,7 @@ import {
   mintRecord,
 } from '@force-bridge/x/dist/multisig/multisig-mgr';
 import { Address, AddressType, Amount } from '@lay2/pw-core';
+import { BigNumber } from 'ethers';
 import minimist from 'minimist';
 import { SigServer } from './sigServer';
 
@@ -175,14 +176,29 @@ async function verifyEthMintRecords(records: mintRecord[]): Promise<Error> {
         `ethLockTxHash:${record.id} recipientLockscript:${record.recipientLockscript} != ${ethLock.recipient}`,
       );
     }
-    if (record.amount != ethLock.amount) {
-      return new Error(`ethLockTxHash:${record.id} amount:${record.amount} != ${ethLock.amount}`);
-    }
     if (record.asset != ethLock.token) {
       return new Error(`ethLockTxHash:${record.id} asset:${record.asset} != ${ethLock.token}`);
     }
+    const asset = new EthAsset(record.asset);
+    if (!asset.inWhiteList()) {
+      return new Error(`asset not in white list: assetAddress:${record.asset}`);
+    }
+    if (BigNumber.from(ethLock.amount).lt(BigNumber.from(asset.getMinimalAmount()))) {
+      return new Error(`lock amount less than minimal: burn amount ${ethLock.amount}`);
+    }
+    if (verifyEthBridgeFee(asset, record.amount, ethLock.amount)) {
+      return new Error(
+        `invalid bridge fee: ethLockTxHash:${record.id}, lock amount:${ethLock.amount}, mint amount:${record.amount}`,
+      );
+    }
   }
   return undefined;
+}
+
+function verifyEthBridgeFee(asset: EthAsset, mintAmount: string, lockAmount: string): boolean {
+  const bridgeFee = BigNumber.from(lockAmount).sub(BigNumber.from(mintAmount));
+  const expectedBridgeFee = BigNumber.from(asset.getBridgeFee('in'));
+  return bridgeFee.gte(expectedBridgeFee.div(4)) && bridgeFee.lte(expectedBridgeFee.mul(4));
 }
 
 async function verifyEthMintTx(mintRecord: mintRecord, output: Cell): Promise<Error> {

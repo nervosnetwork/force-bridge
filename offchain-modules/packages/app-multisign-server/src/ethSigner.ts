@@ -1,4 +1,4 @@
-import { ChainType } from '@force-bridge/x/dist/ckb/model/asset';
+import { ChainType, EthAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { ICkbBurn } from '@force-bridge/x/dist/db/model';
 import { collectSignaturesParams, ethCollectSignaturesPayload } from '@force-bridge/x/dist/multisig/multisig-mgr';
@@ -145,8 +145,19 @@ async function verifyUnlockRecord(unlockRecords: EthUnlockRecord[]): Promise<Err
     if (ckbBurn.asset !== record.token) {
       return new Error(`burnTx:${record.ckbTxHash} assetAddress:${record.token} != ${ckbBurn.asset}`);
     }
-    if (!BigNumber.from(ckbBurn.amount).eq(record.amount)) {
-      return new Error(`burnTx amount:${BigNumber.from(ckbBurn.amount).toString()} != ${record.amount}`);
+    const asset = new EthAsset(ckbBurn.asset);
+    if (!asset.inWhiteList()) {
+      return new Error(`asset not in white list: assetAddress:${record.token}`);
+    }
+    if (BigNumber.from(ckbBurn.amount).lt(BigNumber.from(asset.getMinimalAmount()))) {
+      return new Error(`burn amount less than minimal: burn amount ${ckbBurn.amount}`);
+    }
+    if (verifyEthBridgeFee(asset, record.amount.toString(), ckbBurn.amount)) {
+      return new Error(
+        `invalid bridge fee: burnTx amount:${BigNumber.from(ckbBurn.amount).toString()}, unlock amount:${
+          record.amount
+        }`,
+      );
     }
     if (ckbBurn.recipientAddress !== record.recipient) {
       return new Error(
@@ -155,6 +166,12 @@ async function verifyUnlockRecord(unlockRecords: EthUnlockRecord[]): Promise<Err
     }
   }
   return null;
+}
+
+function verifyEthBridgeFee(asset: EthAsset, unlockAmount: string, burnAmount: string): boolean {
+  const bridgeFee = BigNumber.from(burnAmount).sub(BigNumber.from(unlockAmount));
+  const expectedBridgeFee = BigNumber.from(asset.getBridgeFee('out'));
+  return bridgeFee.gte(expectedBridgeFee.div(4)) && bridgeFee.lte(expectedBridgeFee.mul(4));
 }
 
 function equalsUnlockRecord(a, b: EthUnlockRecord[]): boolean {
