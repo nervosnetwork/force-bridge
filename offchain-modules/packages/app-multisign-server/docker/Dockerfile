@@ -4,8 +4,8 @@ RUN mkdir -p /usr/app
 WORKDIR /usr/app
 RUN npm install --global lerna
 RUN npm install -g ts-node
-RUN git clone https://github.com/fpChan/force-bridge.git
-RUN cd force-bridge && git checkout docker-multisign-server && cd offchain-modules && yarn && yarn run build
+RUN git clone https://github.com/nervosnetwork/force-bridge.git
+RUN cd force-bridge && git checkout main && cd offchain-modules && yarn && yarn run build
 
 #COPY /usr/config.json /usr/app/force-bridge/offchain-modules/config.json
 EXPOSE 8080
