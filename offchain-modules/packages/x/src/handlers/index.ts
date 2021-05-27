@@ -1,4 +1,4 @@
-import { createConnection } from 'typeorm';
+import { Connection, createConnection, getConnectionManager, getConnectionOptions } from 'typeorm';
 import { ForceBridgeCore } from '../core';
 import { CkbDb, EthDb, KVDb, TronDb } from '../db';
 import { BtcDb } from '../db/btc';
@@ -8,7 +8,8 @@ import { CkbHandler } from '../handlers/ckb';
 import { EosHandler } from '../handlers/eos';
 import { EthHandler } from '../handlers/eth';
 import { TronHandler } from '../handlers/tron';
-import { parsePrivateKey } from '../utils';
+import { getDBConnection, parsePrivateKey } from '../utils';
+import { logger } from '../utils/logger';
 import { BTCChain } from '../xchain/btc';
 import { EthChain } from '../xchain/eth';
 
@@ -16,15 +17,18 @@ export async function startHandlers() {
   if (ForceBridgeCore.config.common.role === undefined) {
     ForceBridgeCore.config.common.role = 'watcher';
   }
+
+  logger.info(`startHandlers role:${ForceBridgeCore.config.common.role}`);
+
   const role = ForceBridgeCore.config.common.role;
   const isCollector = ForceBridgeCore.config.common.role === 'collector';
 
   // init db and start handlers
-  const conn = await createConnection();
+  const conn = await getDBConnection();
   const ckbDb = new CkbDb(conn);
   const kvDb = new KVDb(conn);
   if (isCollector) {
-    ForceBridgeCore.config.ckb.privateKey = parsePrivateKey(ForceBridgeCore.config.ckb.privateKey);
+    ForceBridgeCore.config.ckb.fromPrivateKey = parsePrivateKey(ForceBridgeCore.config.ckb.fromPrivateKey);
   }
   const ckbHandler = new CkbHandler(ckbDb, kvDb, role);
   ckbHandler.start();

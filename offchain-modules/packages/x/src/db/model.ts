@@ -1,12 +1,13 @@
 import { getRepository } from 'typeorm';
 import { ChainType } from '../ckb/model/asset';
+import { SigType } from '../multisig/multisig-mgr';
 import { BtcLock } from './entity/BtcLock';
 import { BtcUnlock } from './entity/BtcUnlock';
 import { CkbBurn } from './entity/CkbBurn';
 import { CkbMint, dbTxStatus } from './entity/CkbMint';
 import { EosLock } from './entity/EosLock';
 import { EosUnlock } from './entity/EosUnlock';
-import { EthLock } from './entity/EthLock';
+import { EthLock, txConfirmStatus } from './entity/EthLock';
 import { EthUnlock } from './entity/EthUnlock';
 import { TronLock } from './entity/TronLock';
 import { TronUnlock } from './entity/TronUnlock';
@@ -23,6 +24,20 @@ export { CkbMint } from './entity/CkbMint';
 export { CkbBurn } from './entity/CkbBurn';
 export { TronLock } from './entity/TronLock';
 export { TronUnlock } from './entity/TronUnlock';
+
+export interface ISigned {
+  sigType: SigType;
+  chain: number;
+  amount: string;
+  asset: string;
+  receiver: string;
+  refTxHash: string;
+  signature: string;
+  rawData: string;
+  nonce?: number;
+  txHash?: string;
+  pubKey: string;
+}
 
 export interface ICkbMint {
   id: string;
@@ -54,6 +69,7 @@ export interface ICkbBurn {
   bridgeFee: string;
   recipientAddress: string;
   blockNumber: number;
+  confirmStatus: txConfirmStatus;
 }
 
 export interface IEthUnlock {

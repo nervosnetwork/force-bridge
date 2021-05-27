@@ -4,13 +4,14 @@ import { BtcAsset, ChainType } from '@force-bridge/x/dist/ckb/model/asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
 import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
+import { getMultisigLock } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { Config } from '@force-bridge/x/dist/config';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { BtcDb } from '@force-bridge/x/dist/db/btc';
 import { BtcLock } from '@force-bridge/x/dist/db/entity/BtcLock';
 import { BtcUnlock } from '@force-bridge/x/dist/db/entity/BtcUnlock';
 import { CkbMint } from '@force-bridge/x/dist/db/entity/CkbMint';
-import { asyncSleep } from '@force-bridge/x/dist/utils';
+import { asyncSleep, getDBConnection } from '@force-bridge/x/dist/utils';
 import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
 import { BTCChain, getBtcMainnetFee } from '@force-bridge/x/dist/xchain/btc';
 
@@ -21,6 +22,7 @@ import nconf from 'nconf';
 import { RPCClient } from 'rpc-bitcoin';
 import { createConnection } from 'typeorm';
 import { waitFnCompleted, waitUntilCommitted } from './util';
+
 // const CKB = require('@nervosnetwork/ckb-sdk-core').default;
 
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
@@ -32,7 +34,7 @@ const ckb = new CKB(CKB_URL);
 async function main() {
   logger.debug('start btc test lock and unlock');
 
-  const conn = await createConnection();
+  const conn = await getDBConnection();
   const btcDb = new BtcDb(conn);
 
   const configPath = process.env.CONFIG_PATH || './config.json';
@@ -43,9 +45,7 @@ async function main() {
 
   // init bridge force core
   await new ForceBridgeCore().init(config);
-
-  logger.debug(`config: ${config}`);
-  const PRI_KEY = ForceBridgeCore.config.ckb.privateKey;
+  const PRI_KEY = ForceBridgeCore.config.ckb.fromPrivateKey;
   const client = new RPCClient(config.btc.clientParams);
   const btcChain = new BTCChain();
 
@@ -128,7 +128,12 @@ async function main() {
 
   // check sudt balance.
   const account = new Account(PRI_KEY);
-  const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
+  const multisigLockScript = getMultisigLock(ForceBridgeCore.config.ckb.multisigScript);
+  const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>{
+    codeHash: multisigLockScript.code_hash,
+    hashType: multisigLockScript.hash_type,
+    args: multisigLockScript.args,
+  });
   const asset = new BtcAsset('btc', ownLockHash);
   const bridgeCellLockscript = {
     codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
@@ -157,8 +162,6 @@ async function main() {
   );
 
   const burnAmount = new Amount('100000', 0);
-  // const account = new Account(PRI_KEY);
-  // const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>await account.getLockscript());
   const generator = new CkbTxGenerator(ckb, new IndexerCollector(indexer));
   const burnTx = await generator.burn(
     await account.getLockscript(),

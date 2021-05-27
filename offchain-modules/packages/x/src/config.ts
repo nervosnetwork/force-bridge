@@ -17,11 +17,27 @@ export interface ConfigItem {
   };
 }
 
+export interface ScriptItem {
+  code_hash: string;
+  hash_type: HashType;
+  args: string;
+}
+
+export interface MultisigItem {
+  R: number;
+  M: number;
+  publicKeyHashes: string[];
+}
+
 export interface CkbConfig {
   network: 'Mainnet' | 'Testnet';
   ckbRpcUrl: string;
   ckbIndexerUrl: string;
-  privateKey: string;
+  fromPrivateKey: string;
+  keys: string[];
+  hosts: string[];
+  multisigScript: MultisigItem;
+  multisigType: ScriptItem;
   ownerLockHash: string;
   deps: {
     bridgeLock: ConfigItem;
@@ -37,6 +53,7 @@ export interface EthConfig {
   contractAddress: string;
   privateKey: string;
   multiSignKeys: string[];
+  multiSignHosts: string[];
   multiSignThreshold: number;
   confirmNumber: number;
   startBlockHeight: number;
@@ -97,6 +114,13 @@ export interface commonConfig {
   role: forceBridgeRole;
   log: logConfig;
 }
+export interface lumosDBConfig {
+  host: string;
+  database: string;
+  port: number;
+  user: string;
+  password: string;
+}
 
 export interface WhiteListEthAsset {
   address: string;
@@ -116,4 +140,5 @@ export interface Config {
   tron?: TronConfig;
   btc?: BtcConfig;
   rpc?: rpcConfig;
+  lumosDBConfig?: lumosDBConfig;
 }

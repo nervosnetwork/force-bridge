@@ -1,10 +1,12 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
+// todo: remove lumos indexer dep, use collector in packages/ckb/tx-helper/collector
 import { promises as fs } from 'fs';
 import path from 'path';
 import { Asset, BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
 import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
+import { generateTypeIDScript } from '@force-bridge/x/dist/ckb/tx-helper/multisig/typeid';
 import { asyncSleep as sleep, blake2b } from '@force-bridge/x/dist/utils';
 import { OutPoint, Script } from '@lay2/pw-core';
 import RawTransactionParams from '@nervosnetwork/ckb-sdk-core';
@@ -17,10 +19,10 @@ const configPath = './config.json';
 nconf.env().file({ file: configPath });
 const CKB_URL = nconf.get('forceBridge:ckb:ckbRpcUrl');
 const CKB_IndexerURL = nconf.get('forceBridge:ckb:ckbIndexerUrl');
-const PRI_KEY = nconf.get('forceBridge:ckb:privateKey');
+const PRI_KEY = nconf.get('forceBridge:ckb:fromPrivateKey');
 const ckb = new RawTransactionParams(CKB_URL);
 const ckbIndexer = new CkbIndexer(CKB_URL, CKB_IndexerURL);
-const generator = new CkbTxGenerator(ckb, new IndexerCollector(ckbIndexer));
+// const generator = new CkbTxGenerator(ckb, new IndexerCollector(ckbIndexer));
 const PUB_KEY = ckb.utils.privateKeyToPublicKey(PRI_KEY);
 const ARGS = `0x${ckb.utils.blake160(PUB_KEY, 'hex')}`;
 const ADDRESS = ckb.utils.pubkeyToAddress(PUB_KEY);
@@ -89,29 +91,30 @@ function getPreDeployedAssets() {
   ];
 }
 
-async function createBridgeCell(assets: Asset[]) {
-  const { secp256k1Dep } = await ckb.loadDeps();
-
-  const lockscript = Script.fromRPC({
-    code_hash: secp256k1Dep.codeHash,
-    args: ARGS,
-    hash_type: secp256k1Dep.hashType,
-  });
-
-  const bridgeLockScripts = [];
-  for (const asset of assets) {
-    bridgeLockScripts.push({
-      codeHash: nconf.get('forceBridge:ckb:deps:bridgeLock:script:codeHash'),
-      hashType: 'data',
-      args: asset.toBridgeLockscriptArgs(),
-    });
-  }
-  const rawTx = await generator.createBridgeCell(lockscript, bridgeLockScripts);
-  const signedTx = ckb.signTransaction(PRI_KEY)(rawTx);
-  const tx_hash = await ckb.rpc.sendTransaction(signedTx);
-  const txStatus = await waitUntilCommitted(tx_hash);
-  console.log('pre deploy assets tx status', txStatus);
-}
+// async function createBridgeCell(assets: Asset[]) {
+//   const { secp256k1Dep } = await ckb.loadDeps();
+//
+//   const lockscript = Script.fromRPC({
+//     code_hash: secp256k1Dep.codeHash,
+//     args: ARGS,
+//     hash_type: secp256k1Dep.hashType,
+//   });
+//   const indexer = new Indexer(ForceBridgeCore.config.ckb.ckbRpcUrl, 'deploy_lumos/');
+//   indexer.startForever();
+//   let bridgeLockScripts = [];
+//   for (const asset of assets) {
+//     bridgeLockScripts.push({
+//       codeHash: nconf.get('forceBridge:ckb:deps:bridgeLock:script:codeHash'),
+//       hashType: 'data',
+//       args: asset.toBridgeLockscriptArgs(),
+//     });
+//   }
+//   const rawTx = await generator.createBridgeCell(bridgeLockScripts, indexer);
+//   const signedTx = ckb.signTransaction(PRI_KEY)(rawTx);
+//   const tx_hash = await ckb.rpc.sendTransaction(signedTx);
+//   const txStatus = await waitUntilCommitted(tx_hash);
+//   console.log('pre deploy assets tx status', txStatus);
+// }
 
 const deploy = async () => {
   const lockscriptBin = await fs.readFile(PATH_BRIDGE_LOCKSCRIPT);
@@ -143,7 +146,7 @@ const deploy = async () => {
   const rawTx = ckb.generateRawTransaction({
     fromAddress: ADDRESS,
     toAddress: ADDRESS,
-    capacity: (contractBinLength + 100n) * 10n ** 8n,
+    capacity: (contractBinLength + 200n) * 10n ** 8n,
     fee: 10000000n,
     safeMode: true,
     cells: emptyCells,
@@ -151,14 +154,14 @@ const deploy = async () => {
     deps: secp256k1Dep,
   });
   // add sudt
-  const sudtCodeCellCapacity = (BigInt(sudtBin.length) + 100n) * 10n ** 8n;
+  const sudtCodeCellCapacity = (BigInt(sudtBin.length) + 200n) * 10n ** 8n;
   rawTx.outputs.push({
     ...rawTx.outputs[0],
     capacity: `0x${sudtCodeCellCapacity.toString(16)}`,
   });
   rawTx.outputsData.push(utils.bytesToHex(sudtBin));
   // add recipient typescript
-  const recipientTypescriptCodeCellCapacity = (BigInt(recipientTypescriptBin.length) + 100n) * 10n ** 8n;
+  const recipientTypescriptCodeCellCapacity = (BigInt(recipientTypescriptBin.length) + 200n) * 10n ** 8n;
   rawTx.outputs.push({
     ...rawTx.outputs[0],
     capacity: `0x${recipientTypescriptCodeCellCapacity.toString(16)}`,
@@ -182,7 +185,25 @@ const deploy = async () => {
   // modify change cell
   const changeCellCap = BigInt(rawTx.outputs[1].capacity) - sudtCodeCellCapacity - recipientTypescriptCodeCellCapacity;
   rawTx.outputs[1].capacity = `0x${changeCellCap.toString(16)}`;
-  // console.dir({ rawTx }, { depth: null });
+  const firstInput = {
+    previous_output: {
+      tx_hash: rawTx.inputs[0].previousOutput.txHash,
+      index: rawTx.inputs[0].previousOutput.index,
+    },
+    since: '0x0',
+  };
+
+  for (let i = 0; i < rawTx.outputs.length; i++) {
+    if (i != 1) {
+      const typeIDScript = generateTypeIDScript(firstInput, `0x${i}`);
+      rawTx.outputs[i].type = {
+        codeHash: typeIDScript.code_hash,
+        hashType: typeIDScript.hash_type,
+        args: typeIDScript.args,
+      };
+    }
+  }
+  console.dir({ rawTx }, { depth: null });
 
   // return
   const signedTx = ckb.signTransaction(PRI_KEY)(rawTx);
@@ -284,9 +305,9 @@ const main = async () => {
   await setStartTime();
   await setOwnerLockHash();
 
-  const assets = getPreDeployedAssets();
+  // const assets = getPreDeployedAssets();
   await ckbIndexer.waitUntilSync();
-  await createBridgeCell(assets);
+  // await createBridgeCell(assets);
 
   await setXChainStartTime();
 

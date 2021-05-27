@@ -127,9 +127,6 @@ export class EthHandler {
     logger.info(`EhtHandler confirmEthLocks updateLockConfirmStatus txHashes:${confirmedTxHashes.join(', ')}`);
     await this.db.updateLockConfirmStatus(confirmedTxHashes);
 
-    if (this.role !== 'collector') {
-      return;
-    }
     const mintRecords = confirmedLocks.map((lockRecord) => {
       return {
         id: lockRecord.txHash,
@@ -203,12 +200,12 @@ export class EthHandler {
     // todo: get and handle pending and error records
     while (true) {
       await asyncSleep(15000);
-      logger.debug('EthHandler watchLockEvents get new unlock events and send tx');
+      logger.debug('EthHandler watchUnlockEvents get new unlock events and send tx');
       const records = await this.getUnlockRecords('todo');
       if (records.length === 0) {
         continue;
       }
-      logger.info('EthHandler watchLockEvents unlock records', records);
+      logger.info('EthHandler watchUnlockEvents unlock records', records);
 
       const unlockTxHashes = records
         .map((unlockRecord) => {
@@ -216,7 +213,7 @@ export class EthHandler {
         })
         .join(', ');
       logger.info(
-        `EthHandler watchLockEvents start process unlock Record, ckbTxHashes:${unlockTxHashes} num:${records.length}`,
+        `EthHandler watchUnlockEvents start process unlock Record, ckbTxHashes:${unlockTxHashes} num:${records.length}`,
       );
 
       try {
@@ -233,7 +230,7 @@ export class EthHandler {
         await this.db.saveEthUnlock(records);
         logger.debug('sendUnlockTxs res', txRes);
         const receipt = await txRes.wait();
-        logger.info(`EthHandler watchLockEvents sendUnlockTxs receipt:${JSON.stringify(receipt.logs, null, 2)}`);
+        logger.info(`EthHandler watchUnlockEvents sendUnlockTxs receipt:${JSON.stringify(receipt.logs, null, 2)}`);
         if (receipt.status === 1) {
           records.map((r) => {
             r.status = 'success';
@@ -243,17 +240,18 @@ export class EthHandler {
             r.status = 'error';
             r.message = 'unlock tx failed';
           });
-          logger.error('EthHandler watchLockEvents unlock execute failed:', receipt);
+          logger.error('EthHandler watchUnlockEvents unlock execute failed:', receipt);
         }
         await this.db.saveEthUnlock(records);
-        logger.info('EthHandler watchLockEvents process unlock Record completed');
+        logger.info('EthHandler watchUnlockEvents process unlock Record completed');
       } catch (e) {
         records.map((r) => {
           r.status = 'error';
           r.message = e.message;
         });
         await this.db.saveEthUnlock(records);
-        logger.error(`EthHandler watchLockEvents error:${e.toString()}`);
+
+        logger.error(`EthHandler watchUnlockEvents error:${e.toString()}, ${e.message}`);
       }
     }
   }
