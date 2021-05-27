@@ -1,17 +1,18 @@
 import { Cell } from '@ckb-lumos/base';
 import { key } from '@ckb-lumos/hd';
 import { BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
+import { getOwnLockHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
+import { EthLock } from '@force-bridge/x/dist/db/entity/EthLock';
 import {
   ckbCollectSignaturesPayload,
   collectSignaturesParams,
   mintRecord,
 } from '@force-bridge/x/dist/multisig/multisig-mgr';
-import { fromHexString, uint8ArrayToString } from '@force-bridge/x/dist/utils';
-import { lockTopic } from '@force-bridge/x/dist/xchain/eth';
 import { Address, AddressType, Amount } from '@lay2/pw-core';
 import minimist from 'minimist';
 import { SigServer } from './sigServer';
+
 async function verifyCreateCellTx(rawData: string, payload: ckbCollectSignaturesPayload): Promise<Error> {
   const txSkeleton = payload.txSkeleton;
   const sigData = txSkeleton.signingEntries[1].message;
@@ -20,7 +21,7 @@ async function verifyCreateCellTx(rawData: string, payload: ckbCollectSignatures
   }
 
   const createAssets = payload.createAssets;
-  const ownLockHash = SigServer.getOwnLockHash();
+  const ownLockHash = getOwnLockHash(ForceBridgeCore.config.ckb.multisigScript);
   const bridgeCells = [];
   txSkeleton.outputs.forEach((output) => {
     if (!output.cell_output.lock) {
@@ -78,7 +79,21 @@ async function verifyCreateCellTx(rawData: string, payload: ckbCollectSignatures
   return undefined;
 }
 
-async function verifyMintTx(rawData: string, payload: ckbCollectSignaturesPayload): Promise<Error> {
+async function verifyDuplicateMintTx(pubKey: string, mintRecords: mintRecord[]): Promise<Error> {
+  const mintTxHashes = mintRecords.map((mintRecord) => {
+    return mintRecord.id;
+  });
+  const signedTxHashes = await SigServer.signedDb.getDistinctSignedTxByRefTxHashes(pubKey, mintTxHashes);
+  if (signedTxHashes.length === 0) {
+    // return new Error(`refTxHashes:${mintTxHashes.join(',')} had already signed`);
+    return null;
+  }
+
+  //TODO check whether signedTx failed
+  return new Error(`duplicate mint tx in ${mintTxHashes.join(',')}`);
+}
+
+async function verifyMintTx(pubKey: string, rawData: string, payload: ckbCollectSignaturesPayload): Promise<Error> {
   const txSkeleton = payload.txSkeleton;
   const sigData = txSkeleton.signingEntries[1].message;
   if (rawData !== sigData) {
@@ -86,14 +101,10 @@ async function verifyMintTx(rawData: string, payload: ckbCollectSignaturesPayloa
   }
   const mintRecords = payload.mintRecords;
 
-  // const mintTxHashes = mintRecords.map((mintRecord) => {
-  //   return mintRecord.id;
-  // });
-
-  // const signedTxs = await signedDb.getSignedByRefTxHashes(mintTxHashes);
-  // if (signedTxs.length != 0) {
-  //   return new Error(`refTxHashes:${mintTxHashes.join(',')} had already signed`);
-  // }
+  let err = await verifyDuplicateMintTx(pubKey, mintRecords);
+  if (err) {
+    return err;
+  }
 
   const mintCells = [];
   txSkeleton.outputs.forEach((output) => {
@@ -109,7 +120,7 @@ async function verifyMintTx(rawData: string, payload: ckbCollectSignaturesPayloa
     return new Error(`mint recode length:${mintRecords.length} doesn't match with:${mintCells.length}`);
   }
 
-  let err: Error;
+  const mintRecordsMap = new Map<number, mintRecord[]>();
   for (let i = 0; i < mintRecords.length; i++) {
     const mintRecord = mintRecords[i];
     if (
@@ -120,55 +131,62 @@ async function verifyMintTx(rawData: string, payload: ckbCollectSignaturesPayloa
       //those chains doesn't verify now
       continue;
     }
-    err = await verifyEthMintRecord(mintRecord);
-    if (err) {
-      return err;
+    let records = mintRecordsMap.get(mintRecord.chain);
+    if (!records) {
+      records = [];
     }
+    records.push(mintRecord);
+    mintRecordsMap.set(mintRecord.chain, records);
+
     const output = mintCells[i];
     err = await verifyEthMintTx(mintRecord, output);
     if (err) {
       return err;
     }
   }
+
+  err = await verifyEthMintRecords(mintRecordsMap.get(ChainType.ETH));
+  if (err) {
+    return err;
+  }
   return undefined;
 }
 
-async function verifyEthMintRecord(record: mintRecord): Promise<Error> {
-  let success = false;
-  const txReceipt = await SigServer.ethProvider.getTransactionReceipt(record.id);
-  for (const log of txReceipt.logs) {
-    if (log.address !== ForceBridgeCore.config.eth.contractAddress) {
-      continue;
+async function verifyEthMintRecords(records: mintRecord[]): Promise<Error> {
+  const mintTxHashes = records.map((record) => {
+    return record.id;
+  });
+  const ethLocks = await SigServer.ethDb.getEthLocksByTxHashes(mintTxHashes);
+  const ethLockMap = new Map<string, EthLock>();
+  ethLocks.forEach((record) => {
+    return ethLockMap.set(record.txHash, record);
+  });
+
+  for (const record of records) {
+    const ethLock = ethLockMap.get(record.id);
+    if (!ethLock) {
+      return new Error(`cannot found eth lock tx by txHash:${record.id}`);
     }
-    const parsedLog = SigServer.ethInterface.parseLog(log);
-    if (parsedLog.topic !== lockTopic) {
-      continue;
+    if (ethLock.confirmStatus !== 'confirmed') {
+      return new Error(`ethLockTx:${ethLock.txHash} doesn't confirmed`);
     }
-    const amount = parsedLog.args.lockedAmount.toString();
-    if (amount !== record.amount) {
-      return Promise.reject(new Error(`mint amount:${record.amount} doesn't match with ${amount}`));
-    }
-    const asset = parsedLog.args.token;
-    if (asset !== record.asset) {
-      return Promise.reject(new Error(`mint asset:${record.asset} doesn't match with ${asset}`));
-    }
-    const recipientLockscript = uint8ArrayToString(fromHexString(parsedLog.args.recipientLockscript));
-    if (recipientLockscript !== record.recipientLockscript) {
-      return Promise.reject(
-        new Error(`mint asset:${record.recipientLockscript} doesn't match with ${recipientLockscript}`),
+    if (record.recipientLockscript != ethLock.recipient) {
+      return new Error(
+        `ethLockTxHash:${record.id} recipientLockscript:${record.recipientLockscript} != ${ethLock.recipient}`,
       );
     }
-    success = true;
-    break;
-  }
-  if (!success) {
-    return Promise.reject(new Error(`cannot found validate log`));
+    if (record.amount != ethLock.amount) {
+      return new Error(`ethLockTxHash:${record.id} amount:${record.amount} != ${ethLock.amount}`);
+    }
+    if (record.asset != ethLock.token) {
+      return new Error(`ethLockTxHash:${record.id} asset:${record.asset} != ${ethLock.token}`);
+    }
   }
   return undefined;
 }
 
 async function verifyEthMintTx(mintRecord: mintRecord, output: Cell): Promise<Error> {
-  const ownLockHash = SigServer.getOwnLockHash();
+  const ownLockHash = getOwnLockHash(ForceBridgeCore.config.ckb.multisigScript);
   const recipient = new Address(mintRecord.recipientLockscript, AddressType.ckb);
   const amount = new Amount(mintRecord.amount, 0);
   const asset = new EthAsset(mintRecord.asset, ownLockHash);
@@ -214,12 +232,17 @@ async function verifyEthMintTx(mintRecord: mintRecord, output: Cell): Promise<Er
 }
 
 export async function signCkbTx(params: collectSignaturesParams): Promise<string> {
+  const args = minimist(process.argv.slice(2));
+  const index = args.index;
+  const privKey = ForceBridgeCore.config.ckb.keys[index];
+  const pubKey = ForceBridgeCore.ckb.utils.privateKeyToPublicKey(privKey);
+
   const payload = params.payload as ckbCollectSignaturesPayload;
   const txSkeleton = payload.txSkeleton;
   let err: Error;
   switch (payload.sigType) {
     case 'mint':
-      err = await verifyMintTx(params.rawData, payload);
+      err = await verifyMintTx(pubKey, params.rawData, payload);
       if (err) {
         return Promise.reject(err);
       }
@@ -234,27 +257,26 @@ export async function signCkbTx(params: collectSignaturesParams): Promise<string
       return Promise.reject(new Error(`invalid sigType:${payload.sigType}`));
   }
 
-  const args = minimist(process.argv.slice(2));
-  const index = args.index;
-  const privKey = ForceBridgeCore.config.ckb.keys[index];
   const message = txSkeleton.signingEntries[1].message;
   const sig = key.signRecoverable(message, privKey).slice(2);
 
-  // if (payload.sigType === 'mint'){
-  //   await signedDb.createSigned(
-  //       payload.mintRecords.map((mintRecord) => {
-  //         return {
-  //           sigType: '',
-  //           chain: mintRecord.chain,
-  //           amount: mintRecord.amount,
-  //           asset: mintRecord.asset,
-  //           refTxHash: mintRecord.id,
-  //           txHash: '',
-  //           signature: sig,
-  //           rawData: params.rawData
-  //         };
-  //       }),
-  //   );
-  // }
+  if (payload.sigType === 'mint') {
+    await SigServer.signedDb.createSigned(
+      payload.mintRecords.map((mintRecord) => {
+        return {
+          sigType: 'mint',
+          chain: mintRecord.chain,
+          amount: mintRecord.amount,
+          receiver: mintRecord.recipientLockscript,
+          asset: mintRecord.asset,
+          refTxHash: mintRecord.id,
+          txHash: params.rawData,
+          pubKey: pubKey,
+          rawData: params.rawData,
+          signature: sig,
+        };
+      }),
+    );
+  }
   return sig;
 }

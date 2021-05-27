@@ -1,37 +1,25 @@
-import { getMultisigLock } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
-import { Config } from '@force-bridge/x/dist/config';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
+import { CkbDb, EthDb } from '@force-bridge/x/dist/db';
 import { SignedDb } from '@force-bridge/x/dist/db/signed';
 import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
 import { ethers } from 'ethers';
-import { Connection, createConnection } from 'typeorm';
+import { Connection } from 'typeorm';
 
 export class SigServer {
-  // static config: SigServerConfig;
-  // static ckb: typeof CKB;
   static ethProvider: ethers.providers.JsonRpcProvider;
   static ethInterface: ethers.utils.Interface;
   static ownLockHash: string;
+  static conn: Connection;
   static signedDb: SignedDb;
+  static ckbDb: CkbDb;
+  static ethDb: EthDb;
 
-  constructor(config: Config, conn: Connection) {
-    // SigServer.config = cfg;
-    // SigServer.ckb = new CKB(cfg.ckb.ckbRpcUrl);
-    SigServer.ethProvider = new ethers.providers.JsonRpcProvider(config.eth.rpcUrl);
+  constructor(conn: Connection) {
+    SigServer.ethProvider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
     SigServer.ethInterface = new ethers.utils.Interface(abi);
-    // SigServer.signedDb = new SignedDb(conn);
-  }
-
-  static getOwnLockHash() {
-    if (SigServer.ownLockHash) {
-      return SigServer.ownLockHash;
-    }
-    const multisigLockScript = getMultisigLock(ForceBridgeCore.config.ckb.multisigScript);
-    SigServer.ownLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>{
-      codeHash: multisigLockScript.code_hash,
-      hashType: multisigLockScript.hash_type,
-      args: multisigLockScript.args,
-    });
-    return SigServer.ownLockHash;
+    SigServer.conn = conn;
+    SigServer.signedDb = new SignedDb(conn);
+    SigServer.ckbDb = new CkbDb(conn);
+    SigServer.ethDb = new EthDb(conn);
   }
 }

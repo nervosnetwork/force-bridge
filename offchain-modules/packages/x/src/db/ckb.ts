@@ -1,5 +1,5 @@
 // invoke in ckb handler
-import { Connection, DeleteResult, UpdateResult } from 'typeorm';
+import { Connection, DeleteResult, In, UpdateResult } from 'typeorm';
 import { ForceBridgeCore } from '../core';
 import { dbTxStatus } from './entity/CkbMint';
 import {
@@ -128,5 +128,13 @@ export class CkbDb {
       .set({ confirmStatus: 'confirmed' })
       .where('ckb_tx_hash in (:txHashes)', { txHashes: txHashes })
       .execute();
+  }
+
+  async getCkbBurnByTxHashes(ckbTxHashes: string[]): Promise<ICkbBurn[]> {
+    return this.connection.getRepository(CkbBurn).find({
+      where: {
+        ckbTxHash: In(ckbTxHashes),
+      },
+    });
   }
 }

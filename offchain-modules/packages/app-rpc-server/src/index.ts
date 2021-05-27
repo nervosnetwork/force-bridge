@@ -1,6 +1,7 @@
 import { rpcConfig, Config } from '@force-bridge/x/dist/config';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { startHandlers } from '@force-bridge/x/dist/handlers';
+import { getDBConnection } from '@force-bridge/x/dist/utils';
 import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
 import bodyParser from 'body-parser';
 import cors from 'cors';
@@ -32,7 +33,7 @@ async function main() {
 
   const server = new JSONRPCServer();
 
-  const conn = await createConnection();
+  const conn = await getDBConnection();
   const forceBridgeRpc = new ForceBridgeAPIV1Handler(conn);
   // First parameter is a method name.
   // Second parameter is a method itself.

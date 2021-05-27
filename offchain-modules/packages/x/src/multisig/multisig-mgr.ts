@@ -10,7 +10,7 @@ export interface ethCollectSignaturesPayload {
   nonce: number;
 }
 
-export type ckbSigType = 'mint' | 'create_cell';
+export type SigType = 'mint' | 'create_cell' | 'unlock';
 
 export interface mintRecord {
   id: string;
@@ -26,7 +26,7 @@ export interface createAsset {
 }
 
 export interface ckbCollectSignaturesPayload {
-  sigType: ckbSigType;
+  sigType: SigType;
   mintRecords?: mintRecord[];
   createAssets?: createAsset[];
   txSkeleton: TransactionSkeletonType;
@@ -35,7 +35,7 @@ export interface ckbCollectSignaturesPayload {
 export interface collectSignaturesParams {
   rawData: string;
   payload: ethCollectSignaturesPayload | ckbCollectSignaturesPayload;
-  failedTxHash?: string;
+  lastFailedTxHash?: string;
 }
 
 export class MultiSigMgr {
@@ -62,7 +62,11 @@ export class MultiSigMgr {
         );
       } catch (e) {
         logger.error(
-          `MultiSigMgr collectSignatures rawData:${params.rawData} sigServer:${svrHost}, error:${e.message}`,
+          `MultiSigMgr collectSignatures rawData:${params.rawData} payload:${JSON.stringify(
+            params.payload,
+            null,
+            2,
+          )} sigServer:${svrHost}, error:${e.message}`,
         );
       }
       if (successSigSvr.length === this.threshold) {

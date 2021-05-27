@@ -1,14 +1,21 @@
 import { Cell, Script as LumosScript } from '@ckb-lumos/base';
 import { common } from '@ckb-lumos/common-scripts';
 import { TransactionSkeleton, TransactionSkeletonType } from '@ckb-lumos/helpers';
-import { CellCollector, Indexer } from '@ckb-lumos/indexer';
+import { CellCollector, Indexer } from '@ckb-lumos/sql-indexer';
 import { Address, Amount, Script } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import { IndexerCollector } from '../../ckb/tx-helper/collector';
 import { SerializeRecipientCellData } from '../../ckb/tx-helper/generated/eth_recipient_cell';
 import { ScriptType } from '../../ckb/tx-helper/indexer';
 import { ForceBridgeCore } from '../../core';
-import { asyncSleep, bigintToSudtAmount, fromHexString, stringToUint8Array, toHexString } from '../../utils';
+import {
+  asyncSleep,
+  bigintToSudtAmount,
+  fromHexString,
+  getLumosIndexKnex,
+  stringToUint8Array,
+  toHexString,
+} from '../../utils';
 import { logger } from '../../utils/logger';
 import { Asset } from '../model/asset';
 import { getFromAddr, getMultisigLock } from './multisig/multisig_helper';
@@ -39,7 +46,7 @@ export class CkbTxGenerator {
   };
 
   async fetchMultisigCell(indexer: Indexer, maxTimes: number): Promise<Cell> {
-    const cellCollector = new CellCollector(indexer, {
+    const cellCollector = new CellCollector(getLumosIndexKnex(), {
       type: ForceBridgeCore.config.ckb.multisigType,
     });
     let index = 0;
@@ -58,7 +65,7 @@ export class CkbTxGenerator {
   }
 
   async fetchBridgeCell(bridgeLock: LumosScript, indexer: Indexer, maxTimes: number): Promise<Cell> {
-    const cellCollector = new CellCollector(indexer, {
+    const cellCollector = new CellCollector(getLumosIndexKnex(), {
       lock: bridgeLock,
     });
     let index = 0;
@@ -99,7 +106,8 @@ export class CkbTxGenerator {
     txSkeleton = txSkeleton.update('outputs', (outputs) => {
       return outputs.push(...bridgeOutputs);
     });
-    const needCapacity = bridgeCellCapacity * BigInt(scripts.length);
+    //TODO fix fee calculate
+    const needCapacity = bridgeCellCapacity * BigInt(scripts.length) + bridgeCellCapacity;
     if (needCapacity !== 0n) {
       txSkeleton = await common.injectCapacity(txSkeleton, [fromAddress], needCapacity);
     }
@@ -175,7 +183,8 @@ export class CkbTxGenerator {
         });
       });
     }
-    const needCapacity = sudtCellCapacity * BigInt(records.length);
+    //TODO fix fee calculate
+    const needCapacity = sudtCellCapacity * BigInt(records.length) + sudtCellCapacity;
     if (needCapacity !== 0n) {
       txSkeleton = await common.injectCapacity(txSkeleton, [fromAddress], needCapacity);
     }

@@ -1,19 +1,18 @@
 // const path = require('path');
 // const os = require('os');
 import { promises as fs } from 'fs';
-import { CellCollector, Indexer } from '@ckb-lumos/indexer';
+import { CellCollector, Indexer } from '@ckb-lumos/sql-indexer';
+import { getLumosIndexKnex } from '@force-bridge/x/dist/utils';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import * as utils from '@nervosnetwork/ckb-sdk-utils';
+import Knex from 'knex';
 import nconf from 'nconf';
-
 const configPath = './config.json';
-const LUMOS_DB = './lumos_db';
 // const LUMOS_DB = path.join(os.tmpdir(), 'lumos_db')
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
-
+nconf.get('forceBridge:ckb:fromPrivateKey');
+const indexer = new Indexer(CKB_URL, getLumosIndexKnex());
 const ckb = new CKB(CKB_URL);
-const indexer = new Indexer(CKB_URL, LUMOS_DB);
-indexer.startForever();
 
 // private key for demo, don't expose it in production
 const PRI_KEY = process.env.PRI_KEY || '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
@@ -235,7 +234,7 @@ const mint = async () => {
     witnesses: [{ lock: '', inputType: '', outputType: '' }],
     outputsData: [bigintToSudtAmount(100), '0x', '0x'],
   };
-  const signedTx = ckb.signTransaction(PRI_KEY)((rawTx as unknown) as CKBComponents.RawTransaction);
+  const signedTx = ckb.signTransaction(PRI_KEY)(rawTx as unknown as CKBComponents.RawTransaction);
   console.dir({ signedTx }, { depth: null });
   const mintTxHash = await ckb.rpc.sendTransaction(signedTx);
   console.log(`Mint Transaction has been sent with tx hash ${mintTxHash}`);
@@ -305,7 +304,7 @@ const burn = async (sudtCell) => {
     outputsData: [bigintToSudtAmount(99), bigintToSudtAmount(1)],
   };
   console.dir({ rawTx }, { depth: null });
-  const signedTx = ckb.signTransaction(PRI_KEY)((rawTx as unknown) as CKBComponents.RawTransaction);
+  const signedTx = ckb.signTransaction(PRI_KEY)(rawTx as unknown as CKBComponents.RawTransaction);
   console.dir({ signedTx }, { depth: null });
   const burnTxHash = await ckb.rpc.sendTransaction(signedTx);
   console.log(`Burn Transaction has been sent with tx hash ${burnTxHash}`);

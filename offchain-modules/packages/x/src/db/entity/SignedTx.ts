@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
 
 @Entity()
 export class SignedTx {
@@ -18,13 +18,27 @@ export class SignedTx {
   asset: string;
 
   @Column()
+  receiver: string;
+
+  @Index()
+  @Column({ nullable: true })
+  txHash: string;
+
+  @Column({ nullable: true })
+  nonce: number;
+
+  @Index()
+  @Column()
   refTxHash: string;
 
   @Column()
-  txHash: string;
+  pubKey: string;
 
   @Column()
-  singerPubkey: string;
+  rawData: string;
+
+  @Column()
+  signature: string;
 
   @CreateDateColumn()
   createdAt: string;

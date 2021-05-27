@@ -16,6 +16,7 @@ import {
   stringToUint8Array,
   toHexString,
   uint8ArrayToString,
+  getDBConnection,
 } from '@force-bridge/x/dist/utils';
 import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
 import { ETH_ADDRESS } from '@force-bridge/x/dist/xchain/eth';
@@ -26,17 +27,17 @@ import { ethers } from 'ethers';
 import nconf from 'nconf';
 import { createConnection } from 'typeorm';
 import { waitUntilCommitted } from './util';
-
-// const { Indexer, CellCollector } = require('@ckb-lumos/indexer');
+// const { Indexer, CellCollector } = require('@ckb-lumos/sql-indexer');
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
 const CKB_INDEXER_URL = process.env.CKB_INDEXER_URL || 'http://127.0.0.1:8116';
 // const LUMOS_DB = './lumos_db';
 const indexer = new CkbIndexer(CKB_URL, CKB_INDEXER_URL);
 const collector = new IndexerCollector(indexer);
+
 const ckb = new CKB(CKB_URL);
 
 async function main() {
-  const conn = await createConnection();
+  const conn = await getDBConnection();
   const PRI_KEY = process.env.PRI_KEY || '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
 
   const configPath = process.env.CONFIG_PATH || './config.json';

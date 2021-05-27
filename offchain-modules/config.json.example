@@ -146,6 +146,13 @@
         "preflightContinue": false,
         "optionsSuccessStatus": 200
       }
+    },
+    "lumosDBConfig":{
+       "port": 13306,
+       "host": "localhost",
+       "database": "lumos-indexer",
+       "user": "root",
+       "password": "root"
     }
   }
 }

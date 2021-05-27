@@ -14,18 +14,27 @@ export class SignedDb {
     await this.signedRepository.save(dbRecords);
   }
 
-  async getSignedByRefTxHashes(refTxHashes: string[]): Promise<SignedTx[]> {
+  async getSignedByRefTxHashes(pubKey: string, refTxHashes: string[]): Promise<SignedTx[]> {
     return this.signedRepository
-      .createQueryBuilder('s')
-      .where(`refTxHash in (${refTxHashes.join(',')})`)
+      .createQueryBuilder()
+      .where('pub_key = :pubKey and ref_tx_hash in (:refTxHashes)', { pubKey: pubKey, refTxHashes: refTxHashes })
+      .orderBy('nonce', 'DESC')
       .getMany();
   }
-  async getSignedByPubkeyAndMsgHash(pubkey: string, refTxHashes: string[]): Promise<SignedTx[]> {
-    return this.signedRepository.find({
-      where: {
-        refTxHash: In([refTxHashes]),
-        singerPubkey: pubkey,
-      },
-    });
+
+  async getMaxNonceByRefTxHashes(pubKey: string, refTxHashes: string[]): Promise<any | undefined> {
+    return this.signedRepository
+      .createQueryBuilder()
+      .select('max(nonce) as nonce')
+      .where('pub_key = :pubKey and ref_tx_hash in (:refTxHashes)', { pubKey: pubKey, refTxHashes: refTxHashes })
+      .getRawOne();
+  }
+
+  async getDistinctSignedTxByRefTxHashes(pubKey: string, refTxHashes: string[]): Promise<string[] | undefined> {
+    return this.signedRepository
+      .createQueryBuilder()
+      .select('distinct(tx_hash)')
+      .where('pub_key = :pubKey and ref_tx_hash in (:refTxHashes)', { pubKey: pubKey, refTxHashes: refTxHashes })
+      .getRawMany();
   }
 }

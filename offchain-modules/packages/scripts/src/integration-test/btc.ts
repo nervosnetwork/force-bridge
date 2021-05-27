@@ -11,7 +11,7 @@ import { BtcDb } from '@force-bridge/x/dist/db/btc';
 import { BtcLock } from '@force-bridge/x/dist/db/entity/BtcLock';
 import { BtcUnlock } from '@force-bridge/x/dist/db/entity/BtcUnlock';
 import { CkbMint } from '@force-bridge/x/dist/db/entity/CkbMint';
-import { asyncSleep } from '@force-bridge/x/dist/utils';
+import { asyncSleep, getDBConnection } from '@force-bridge/x/dist/utils';
 import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
 import { BTCChain, getBtcMainnetFee } from '@force-bridge/x/dist/xchain/btc';
 
@@ -22,6 +22,7 @@ import nconf from 'nconf';
 import { RPCClient } from 'rpc-bitcoin';
 import { createConnection } from 'typeorm';
 import { waitFnCompleted, waitUntilCommitted } from './util';
+
 // const CKB = require('@nervosnetwork/ckb-sdk-core').default;
 
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
@@ -33,7 +34,7 @@ const ckb = new CKB(CKB_URL);
 async function main() {
   logger.debug('start btc test lock and unlock');
 
-  const conn = await createConnection();
+  const conn = await getDBConnection();
   const btcDb = new BtcDb(conn);
 
   const configPath = process.env.CONFIG_PATH || './config.json';
