@@ -15,8 +15,8 @@
         "0x57c246bcb73e5d3409a903c94d46b3b118fdcfb81c5e51d3b0df72e883623fa7"
       ],
       "multiSignHosts": [
-        "http://localhost:8090/force-bridge/sign-server/api/v1",
-        "http://localhost:8091/force-bridge/sign-server/api/v1"
+        "http://127.0.0.1:8090/force-bridge/sign-server/api/v1",
+        "http://127.0.0.1:8091/force-bridge/sign-server/api/v1"
       ],
       "multiSignThreshold": 2,
       "contractAddress": "0x8326e1d621Cd32752920ed2A44B49bB1a96c7391",
