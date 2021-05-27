@@ -186,7 +186,7 @@ async function verifyEthMintRecords(records: mintRecord[]): Promise<Error> {
     if (BigNumber.from(ethLock.amount).lt(BigNumber.from(asset.getMinimalAmount()))) {
       return new Error(`lock amount less than minimal: burn amount ${ethLock.amount}`);
     }
-    if (verifyEthBridgeFee(asset, record.amount, ethLock.amount)) {
+    if (!verifyEthBridgeFee(asset, record.amount, ethLock.amount)) {
       return new Error(
         `invalid bridge fee: ethLockTxHash:${record.id}, lock amount:${ethLock.amount}, mint amount:${record.amount}`,
       );

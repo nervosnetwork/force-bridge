@@ -152,7 +152,7 @@ async function verifyUnlockRecord(unlockRecords: EthUnlockRecord[]): Promise<Err
     if (BigNumber.from(ckbBurn.amount).lt(BigNumber.from(asset.getMinimalAmount()))) {
       return new Error(`burn amount less than minimal: burn amount ${ckbBurn.amount}`);
     }
-    if (verifyEthBridgeFee(asset, record.amount.toString(), ckbBurn.amount)) {
+    if (!verifyEthBridgeFee(asset, record.amount.toString(), ckbBurn.amount)) {
       return new Error(
         `invalid bridge fee: burnTx amount:${BigNumber.from(ckbBurn.amount).toString()}, unlock amount:${
           record.amount
