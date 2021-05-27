@@ -1,0 +1,27 @@
+version: '3.3'
+services:
+  sign-server1:
+    build:
+      context: .
+      args:
+        PRIVKEY_INDEX: 0
+    volumes:
+      - type: bind
+        source: ../../../config.json
+        target: /usr/app/force-bridge/offchain-modules/config.json
+    ports:
+      - '8090:8080'
+    restart: on-failure
+
+  sign-server2:
+    build:
+      context: .
+      args:
+        PRIVKEY_INDEX: 1
+    volumes:
+      - type: bind
+        source: ../../../config.json
+        target: /usr/app/force-bridge/offchain-modules/config.json
+    ports:
+      - '8091:8080'
+    restart: on-failure

@@ -25,4 +25,5 @@ deploy-eth-contracts:
 
 clean-dev-env: stop-docker
 
-
+start-multisig-server-docker:
+	cd  offchain-modules/packages/app-multisign-server/docker && docker-compose up -d
