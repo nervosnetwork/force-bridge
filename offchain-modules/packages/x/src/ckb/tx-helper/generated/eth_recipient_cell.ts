@@ -152,13 +152,6 @@ export class RecipientCellData {
     const offset_end = this.view.getUint32(start + 4, true);
     return new Uint128(this.view.buffer.slice(offset, offset_end), { validate: false });
   }
-
-  getFee() {
-    const start = 32;
-    const offset = this.view.getUint32(start, true);
-    const offset_end = this.view.byteLength;
-    return new Uint128(this.view.buffer.slice(offset, offset_end), { validate: false });
-  }
 }
 
 export function SerializeRecipientCellData(value) {
@@ -174,7 +167,6 @@ export function SerializeRecipientCellData(value) {
   buffers.push(bridgeLockHashTypeView.buffer);
   buffers.push(SerializeByte32(value.owner_lock_hash));
   buffers.push(SerializeUint128(value.amount));
-  buffers.push(SerializeUint128(value.fee));
   return serializeTable(buffers);
 }
 
