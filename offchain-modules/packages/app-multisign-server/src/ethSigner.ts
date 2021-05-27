@@ -152,7 +152,7 @@ async function verifyUnlockRecord(unlockRecords: EthUnlockRecord[]): Promise<Err
     if (BigNumber.from(ckbBurn.amount).lt(BigNumber.from(asset.getMinimalAmount()))) {
       return new Error(`burn amount less than minimal: burn amount ${ckbBurn.amount}`);
     }
-    if (!verifyEthBridgeFee(asset, record.amount.toString(), ckbBurn.amount)) {
+    if (!verifyEthBridgeFee(asset, record.amount, ckbBurn.amount)) {
       return new Error(
         `invalid bridge fee: burnTx amount:${BigNumber.from(ckbBurn.amount).toString()}, unlock amount:${
           record.amount
@@ -168,8 +168,8 @@ async function verifyUnlockRecord(unlockRecords: EthUnlockRecord[]): Promise<Err
   return null;
 }
 
-function verifyEthBridgeFee(asset: EthAsset, unlockAmount: string, burnAmount: string): boolean {
-  const bridgeFee = BigNumber.from(burnAmount).sub(BigNumber.from(unlockAmount));
+function verifyEthBridgeFee(asset: EthAsset, unlockAmount: BigNumber, burnAmount: string): boolean {
+  const bridgeFee = BigNumber.from(burnAmount).sub(unlockAmount);
   const expectedBridgeFee = BigNumber.from(asset.getBridgeFee('out'));
   return bridgeFee.gte(expectedBridgeFee.div(4)) && bridgeFee.lte(expectedBridgeFee.mul(4));
 }
