@@ -16,7 +16,6 @@ import { getFromAddr, getMultisigAddr, getMultisigLock } from './multisig_helper
 import { generateTypeIDScript } from './typeid';
 
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
-init();
 const LumosDBHost = process.env.LumosDBHost || 'localhost';
 const LumosDBName = process.env.LumosDBName || 'lumos-indexer';
 const LumosDBPort = process.env.LumosDBPort || '13306';
