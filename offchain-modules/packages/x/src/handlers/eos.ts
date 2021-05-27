@@ -404,7 +404,17 @@ export class EosHandler {
         const newRecords = new Array<EosUnlock>();
         for (const pendingRecord of pendingRecords) {
           const txRes = await this.chain.getTransaction(pendingRecord.eosTxHash);
-          // TODO handle txRes error
+          // fixme: there is type error here, can not compile, should check again.
+          if ('error' in txRes) {
+            // const {
+            //   error: { code, name, what },
+            // } = txRes;
+            pendingRecord.status = 'error';
+            // pendingRecord.message = `rpcError ${code}-${name}:${what}`;
+            pendingRecord.message = `rpcError: ${txRes}`;
+            newRecords.push(pendingRecord);
+            continue;
+          }
           if (txRes.trx.receipt.status !== 'executed') {
             pendingRecord.status = 'error';
             pendingRecord.message = `invalid transaction result status:${txRes.trx.receipt.status}`;
