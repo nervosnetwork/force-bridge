@@ -1,5 +1,5 @@
 FROM node:14
-ARG PRIVKEY_INDEX
+ENV PRIVKEY_INDEX=0
 RUN mkdir -p /usr/app
 WORKDIR /usr/app
 RUN npm install --global lerna
