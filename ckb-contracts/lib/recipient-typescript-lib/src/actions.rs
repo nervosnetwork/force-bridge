@@ -45,13 +45,6 @@ pub fn verify_burn_token<T: Adapter>(data_loader: T, data: RecipientDataView) {
             input_sudt_num, output_sudt_num, data.amount
         )
     }
-
-    if data.fee >= data.amount {
-        panic!(
-            "fee is too much, fee {:?}, burned {:?}",
-            data.fee, data.amount
-        )
-    }
 }
 
 fn calc_xchain_bridge_lock_hash(

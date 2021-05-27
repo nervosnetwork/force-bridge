@@ -20,17 +20,6 @@ fn test_tx_when_burned_amount_not_match_data_amount() {
     case_runner::run_test(case);
 }
 
-#[test]
-fn test_tx_when_fee_bigger_than_burned_amount() {
-    let mut case = get_correct_case();
-    #[allow(irrefutable_let_patterns)]
-    if let CustomCell::RecipientCustomCell(script) = &mut case.script_cells.outputs[0] {
-        script.data.fee = 100;
-        case.expect_return_error_info = "fee is too much".to_string();
-        case_runner::run_test(case);
-    };
-}
-
 fn get_correct_case() -> TestCase {
     let data = Loader::default().load_binary("bridge-lockscript");
     let data_hash = CellOutput::calc_data_hash(&data);
@@ -57,7 +46,6 @@ fn get_correct_case() -> TestCase {
                     bridge_lock_hash_type: 0,
                     owner_lock_hash: [0u8; 32],
                     amount: 100,
-                    fee: 10,
                 },
                 index: 0,
             })],

@@ -8,5 +8,4 @@ table RecipientCellData {
     bridge_lock_hash_type: byte,
     owner_lock_hash: Byte32,
     amount: Uint128,
-    fee: Uint128,
 }

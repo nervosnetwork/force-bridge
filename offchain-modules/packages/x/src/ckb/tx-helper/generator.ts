@@ -242,7 +242,6 @@ export class CkbTxGenerator {
     bridge_lock_code_hash: Byte32,
     owner_lock_hash: Byte32,
     amount: Uint128,
-    fee: Uint128,
   }
    */
   async burn(
@@ -250,7 +249,6 @@ export class CkbTxGenerator {
     recipientAddress: string,
     asset: Asset,
     amount: Amount,
-    bridgeFee?: Amount,
   ): Promise<CKBComponents.RawTransactionToSign> {
     const multisigLockScript = getMultisigLock(ForceBridgeCore.config.ckb.multisigScript);
     if (amount.eq(Amount.ZERO)) {
@@ -307,7 +305,6 @@ export class CkbTxGenerator {
       bridge_lock_code_hash: fromHexString(ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash).buffer,
       bridge_lock_hash_type: hashType,
       owner_lock_hash: fromHexString(ownerLockHash).buffer,
-      fee: new Uint8Array(16).buffer,
     };
 
     const recipientCellData = `0x${toHexString(new Uint8Array(SerializeRecipientCellData(params)))}`;
