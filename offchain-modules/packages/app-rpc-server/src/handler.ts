@@ -344,7 +344,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
           decimals: asset.decimal,
           name: asset.name,
           symbol: asset.symbol,
-          logoURL: asset.logoURL,
+          logoURI: asset.logoURI,
           shadow: { network: 'Nervos', ident: getTokenShadowIdent('Ethereum', asset.address) },
         },
       };
@@ -357,7 +357,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
           decimals: asset.info.decimals,
           name: 'ck' + asset.info.name,
           symbol: 'ck' + asset.info.name,
-          logoURL: asset.info.logoURL,
+          logoURI: asset.info.logoURI,
           shadow: { network: 'Ethereum', ident: asset.ident },
         },
       };

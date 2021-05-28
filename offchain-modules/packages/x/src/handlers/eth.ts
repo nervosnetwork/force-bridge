@@ -202,7 +202,8 @@ export class EthHandler {
       await asyncSleep(15000);
       logger.debug('EthHandler watchUnlockEvents get new unlock events and send tx');
       const records = await this.getUnlockRecords('todo');
-      if (records.length === 0) {
+      if (records.length === 0 || this.waitForBatch(records)) {
+        logger.info('wait for batch');
         continue;
       }
       logger.info('EthHandler watchUnlockEvents unlock records', records);
@@ -254,6 +255,19 @@ export class EthHandler {
         logger.error(`EthHandler watchUnlockEvents error:${e.toString()}, ${e.message}`);
       }
     }
+  }
+
+  waitForBatch(records: EthUnlock[]): boolean {
+    if (ForceBridgeCore.config.common.network === 'testnet') return false;
+    const now = new Date();
+    const maxWaitTime = ForceBridgeCore.config.eth.batchUnlock.maxWaitTime;
+    if (
+      records.find((record) => {
+        return new Date(record.createdAt).getMilliseconds() + maxWaitTime <= now.getMilliseconds();
+      })
+    )
+      return false;
+    return records.length < ForceBridgeCore.config.eth.batchUnlock.batchNumber;
   }
 
   async start() {
