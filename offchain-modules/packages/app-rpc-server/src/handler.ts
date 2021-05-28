@@ -11,6 +11,7 @@ import { logger } from '@force-bridge/x/dist/utils/logger';
 import { IBalance } from '@force-bridge/x/dist/xchain/btc';
 import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
 import { Amount, HashType, Script } from '@lay2/pw-core';
+import { BigNumber } from 'bignumber.js';
 import bitcore from 'bitcore-lib';
 import { ethers } from 'ethers';
 import { RPCClient } from 'rpc-bitcoin';
@@ -237,8 +238,13 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
       case 'Ethereum': {
         const asset = new EthAsset(payload.xchainAssetIdent);
         const minimalAmount = asset.getMinimalAmount();
+        const assetInfo = ForceBridgeCore.config.eth.assetWhiteList.find(
+          (asset) => asset.address === payload.xchainAssetIdent,
+        );
+        if (!assetInfo) throw new Error('invalid asset');
+        const humanizeMinimalAmount = new BigNumber(minimalAmount).times(10 ** -assetInfo.decimal).toString();
         if (new Amount(payload.amount, 0).lt(new Amount(minimalAmount, 0)))
-          throw new Error(`minimal bridge amount is ${minimalAmount}`);
+          throw new Error(`minimal bridge amount is ${humanizeMinimalAmount} ${assetInfo.symbol}`);
         const bridgeFee = asset.getBridgeFee('in');
         return {
           fee: {
@@ -260,8 +266,13 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
       case 'Ethereum': {
         const asset = new EthAsset(payload.xchainAssetIdent);
         const minimalAmount = asset.getMinimalAmount();
+        const assetInfo = ForceBridgeCore.config.eth.assetWhiteList.find(
+          (asset) => asset.address === payload.xchainAssetIdent,
+        );
+        if (!assetInfo) throw new Error('invalid asset');
+        const humanizeMinimalAmount = new BigNumber(minimalAmount).times(10 ** -assetInfo.decimal).toString();
         if (new Amount(payload.amount, 0).lt(new Amount(minimalAmount, 0)))
-          throw new Error(`minimal bridge amount is ${minimalAmount}`);
+          throw new Error(`minimal bridge amount is ${humanizeMinimalAmount} ck${assetInfo.symbol}`);
         const bridgeFee = asset.getBridgeFee('out');
         return {
           fee: {
