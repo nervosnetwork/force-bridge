@@ -18,12 +18,13 @@ test('ckb db works', async (t) => {
   // save db
   const data = {
     amount: '0x1',
+    bridgeFee: '0x0',
     asset: '0x00000000000000000000',
     chain: 0,
     ckbTxHash: '0x12',
     recipientAddress: '',
     blockNumber: 100,
-    senderLockHash: '0x12',
+    senderAddress: '0x12',
   };
   const ckbBurn = new CkbBurn().from(data);
   await manager.save(ckbBurn);

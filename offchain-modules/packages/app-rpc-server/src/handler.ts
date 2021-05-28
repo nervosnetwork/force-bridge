@@ -11,6 +11,7 @@ import { logger } from '@force-bridge/x/dist/utils/logger';
 import { IBalance } from '@force-bridge/x/dist/xchain/btc';
 import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
 import { Amount, HashType, Script } from '@lay2/pw-core';
+import { BigNumber } from 'bignumber.js';
 import bitcore from 'bitcore-lib';
 import { ethers } from 'ethers';
 import { RPCClient } from 'rpc-bitcoin';
@@ -24,6 +25,10 @@ import {
   GetBalancePayload,
   GetBalanceResponse,
   GetBridgeTransactionSummariesPayload,
+  GetBridgeInNervosBridgeFeePayload,
+  GetBridgeOutNervosBridgeFeePayload,
+  GetBridgeInNervosBridgeFeeResponse,
+  GetBridgeOutNervosBridgeFeeResponse,
   TransactionSummary,
   TransactionSummaryWithStatus,
   XChainNetWork,
@@ -226,6 +231,62 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     }
   }
 
+  async getBridgeInNervosBridgeFee(
+    payload: GetBridgeInNervosBridgeFeePayload,
+  ): Promise<GetBridgeInNervosBridgeFeeResponse> {
+    switch (payload.network) {
+      case 'Ethereum': {
+        const asset = new EthAsset(payload.xchainAssetIdent);
+        const minimalAmount = asset.getMinimalAmount();
+        const assetInfo = ForceBridgeCore.config.eth.assetWhiteList.find(
+          (asset) => asset.address === payload.xchainAssetIdent,
+        );
+        if (!assetInfo) throw new Error('invalid asset');
+        const humanizeMinimalAmount = new BigNumber(minimalAmount).times(10 ** -assetInfo.decimal).toString();
+        if (new Amount(payload.amount, 0).lt(new Amount(minimalAmount, 0)))
+          throw new Error(`minimal bridge amount is ${humanizeMinimalAmount} ${assetInfo.symbol}`);
+        const bridgeFee = asset.getBridgeFee('in');
+        return {
+          fee: {
+            network: 'Nervos',
+            ident: getTokenShadowIdent('Ethereum', payload.xchainAssetIdent),
+            amount: bridgeFee,
+          },
+        };
+      }
+      default:
+        throw new Error('invalid bridge chain type');
+    }
+  }
+
+  async getBridgeOutNervosBridgeFee(
+    payload: GetBridgeOutNervosBridgeFeePayload,
+  ): Promise<GetBridgeOutNervosBridgeFeeResponse> {
+    switch (payload.network) {
+      case 'Ethereum': {
+        const asset = new EthAsset(payload.xchainAssetIdent);
+        const minimalAmount = asset.getMinimalAmount();
+        const assetInfo = ForceBridgeCore.config.eth.assetWhiteList.find(
+          (asset) => asset.address === payload.xchainAssetIdent,
+        );
+        if (!assetInfo) throw new Error('invalid asset');
+        const humanizeMinimalAmount = new BigNumber(minimalAmount).times(10 ** -assetInfo.decimal).toString();
+        if (new Amount(payload.amount, 0).lt(new Amount(minimalAmount, 0)))
+          throw new Error(`minimal bridge amount is ${humanizeMinimalAmount} ck${assetInfo.symbol}`);
+        const bridgeFee = asset.getBridgeFee('out');
+        return {
+          fee: {
+            network: 'Ethereum',
+            ident: payload.xchainAssetIdent,
+            amount: bridgeFee,
+          },
+        };
+      }
+      default:
+        throw new Error('invalid bridge chain type');
+    }
+  }
+
   async getBridgeTransactionSummaries(
     payload: GetBridgeTransactionSummariesPayload<XChainNetWork>,
   ): Promise<TransactionSummaryWithStatus[]> {
@@ -266,10 +327,8 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         break;
       case 'Nervos':
         {
-          const ckbLockScript = ForceBridgeCore.ckb.utils.addressToScript(userAddress);
-          const ckbLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>ckbLockScript);
           lockRecords = await dbHandler.getLockRecordsByCkbAddress(userAddress, assetName);
-          unlockRecords = await dbHandler.getUnlockRecordsByCkbAddress(ckbLockHash, assetName);
+          unlockRecords = await dbHandler.getUnlockRecordsByCkbAddress(userAddress, assetName);
         }
         break;
       default:
@@ -287,107 +346,34 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     return result;
   }
   async getAssetList(payload): Promise<any> {
-    const eth_address = '0x0000000000000000000000000000000000000000';
-    const dai_address = '0x7Af456bf0065aADAB2E6BEc6DaD3731899550b84';
-    const usdt_address = '0x74a3dbd5831f45CD0F3002Bb87a59B7C15b1B5E6';
-    const usdc_address = '0x265566D4365d80152515E800ca39424300374A83';
-
-    const eth_ident = getTokenShadowIdent('Ethereum', eth_address);
-    const dai_ident = getTokenShadowIdent('Ethereum', dai_address);
-    const usdt_ident = getTokenShadowIdent('Ethereum', usdt_address);
-    const usdc_ident = getTokenShadowIdent('Ethereum', usdc_address);
-
-    const info = [
-      {
+    const whiteListAssets = ForceBridgeCore.config.eth.assetWhiteList;
+    const assetList = whiteListAssets.map((asset) => {
+      return {
         network: 'Ethereum',
-        ident: eth_address,
+        ident: asset.address,
         info: {
-          decimals: 18,
-          name: 'ETH',
-          symbol: 'ETH',
-          logoURI: 'https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=002',
-          shadow: { network: 'Nervos', ident: eth_ident },
+          decimals: asset.decimal,
+          name: asset.name,
+          symbol: asset.symbol,
+          logoURI: asset.logoURI,
+          shadow: { network: 'Nervos', ident: getTokenShadowIdent('Ethereum', asset.address) },
         },
-      },
-      {
+      };
+    });
+    const shadowAssetList = assetList.map((asset) => {
+      return {
         network: 'Nervos',
-        ident: eth_ident,
+        ident: asset.info.shadow.ident,
         info: {
-          decimals: 18,
-          name: 'CKETH',
-          symbol: 'CKETH',
-          logoURI: 'https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=002',
-          shadow: { network: 'Ethereum', ident: eth_address },
+          decimals: asset.info.decimals,
+          name: 'ck' + asset.info.name,
+          symbol: 'ck' + asset.info.name,
+          logoURI: asset.info.logoURI,
+          shadow: { network: 'Ethereum', ident: asset.ident },
         },
-      },
-      {
-        network: 'Ethereum',
-        ident: dai_address,
-        info: {
-          decimals: 18,
-          name: 'DAI',
-          symbol: 'DAI',
-          logoURI: 'https://cryptologos.cc/logos/single-collateral-dai-sai-logo.svg?v=002',
-          shadow: { network: 'Nervos', ident: dai_ident },
-        },
-      },
-      {
-        network: 'Nervos',
-        ident: dai_ident,
-        info: {
-          decimals: 18,
-          name: 'CKDAI',
-          symbol: 'CKDAI',
-          logoURI: 'https://cryptologos.cc/logos/single-collateral-dai-sai-logo.svg?v=002',
-          shadow: { network: 'Ethereum', ident: dai_address },
-        },
-      },
-      {
-        network: 'Ethereum',
-        ident: usdt_address,
-        info: {
-          decimals: 6,
-          name: 'USDT',
-          symbol: 'USDT',
-          logoURI: 'https://cryptologos.cc/logos/tether-usdt-logo.svg?v=002',
-          shadow: { network: 'Nervos', ident: usdt_ident },
-        },
-      },
-      {
-        network: 'Nervos',
-        ident: usdt_ident,
-        info: {
-          decimals: 6,
-          name: 'CKUSDT',
-          symbol: 'CKUSDT',
-          logoURI: 'https://cryptologos.cc/logos/tether-usdt-logo.svg?v=002',
-          shadow: { network: 'Ethereum', ident: usdt_address },
-        },
-      },
-      {
-        network: 'Ethereum',
-        ident: usdc_address,
-        info: {
-          decimals: 6,
-          name: 'USDC',
-          symbol: 'USDC',
-          logoURI: 'https://cryptologos.cc/logos/usd-coin-usdc-logo.svg?v=002',
-          shadow: { network: 'Nervos', ident: usdc_ident },
-        },
-      },
-      {
-        network: 'Nervos',
-        ident: usdc_ident,
-        info: {
-          decimals: 6,
-          name: 'CKUSDC',
-          symbol: 'CKUSDC',
-          logoURI: 'https://cryptologos.cc/logos/usd-coin-usdc-logo.svg?v=002',
-          shadow: { network: 'Ethereum', ident: usdc_address },
-        },
-      },
-    ];
-    return info;
+      };
+    });
+    return assetList.concat(shadowAssetList);
   }
   async getBalance(payload: GetBalancePayload): Promise<GetBalanceResponse> {
     const balanceFutures = [];
@@ -478,6 +464,8 @@ function transferDbRecordToResponse(
           ident: getTokenShadowIdent(XChainNetwork, record.asset),
           amount: record.mint_amount,
         },
+        sender: record.sender,
+        recipient: record.recipient,
         fromTransaction: { txId: record.lock_hash, timestamp: record.lock_time },
       },
     };
@@ -497,6 +485,8 @@ function transferDbRecordToResponse(
           ident: record.asset,
           amount: record.unlock_amount,
         },
+        sender: record.sender,
+        recipient: record.recipient,
         fromTransaction: { txId: record.burn_hash, timestamp: record.burn_time },
       },
     };

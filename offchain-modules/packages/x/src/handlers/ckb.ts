@@ -76,7 +76,7 @@ export class CkbHandler {
             {
               ckbTxHash: burn.ckbTxHash,
               asset: burn.asset,
-              amount: burn.amount,
+              amount: new Amount(burn.amount, 0).sub(new Amount(burn.bridgeFee, 0)).toString(0),
               chain: burn.chain,
               recipientAddress: burn.recipientAddress,
             },
@@ -87,7 +87,7 @@ export class CkbHandler {
             {
               ckbTxHash: burn.ckbTxHash,
               asset: burn.asset,
-              amount: burn.amount,
+              amount: new Amount(burn.amount, 0).sub(new Amount(burn.bridgeFee, 0)).toString(0),
               recipientAddress: burn.recipientAddress,
             },
           ]);
@@ -97,7 +97,7 @@ export class CkbHandler {
             {
               ckbTxHash: burn.ckbTxHash,
               asset: burn.asset,
-              amount: burn.amount,
+              amount: new Amount(burn.amount, 0).sub(new Amount(burn.bridgeFee, 0)).toString(0),
               recipientAddress: burn.recipientAddress,
             },
           ]);
@@ -108,7 +108,7 @@ export class CkbHandler {
               ckbTxHash: burn.ckbTxHash,
               asset: burn.asset,
               assetType: getAssetTypeByAsset(burn.asset),
-              amount: burn.amount,
+              amount: new Amount(burn.amount, 0).sub(new Amount(burn.bridgeFee, 0)).toString(0),
               recipientAddress: burn.recipientAddress,
             },
           ]);
@@ -192,18 +192,18 @@ export class CkbHandler {
         const burnPreviousTx: TransactionWithStatus = await this.ckb.rpc.getTransaction(
           tx.inputs[0].previousOutput.txHash,
         );
-        const senderLockHash = this.ckb.utils.scriptToHash(
+        const senderAddress = Account.scriptToAddress(
           burnPreviousTx.transaction.outputs[Number(tx.inputs[0].previousOutput.index)].lock,
         );
         const data: BurnDbData = {
-          senderLockScriptHash: senderLockHash,
+          senderAddress: senderAddress,
           cellData: cellData,
         };
         burnTxs.set(tx.hash, data);
         logger.info(
           `CkbHandler watchBurnEvents receive burnedTx, ckbTxHash:${
             tx.hash
-          } senderLockHash:${senderLockHash} cellData:${JSON.stringify(cellData, null, 2)}`,
+          } senderAddress:${senderAddress} cellData:${JSON.stringify(cellData, null, 2)}`,
         );
       }
     }
@@ -231,18 +231,21 @@ export class CkbHandler {
         case ChainType.BTC:
         case ChainType.TRON:
         case ChainType.ETH:
-        case ChainType.EOS:
+        case ChainType.EOS: {
+          const asset = uint8ArrayToString(new Uint8Array(v.cellData.getAsset().raw()));
           burn = {
-            senderLockHash: v.senderLockScriptHash,
+            senderAddress: v.senderAddress,
             ckbTxHash: k,
-            asset: uint8ArrayToString(new Uint8Array(v.cellData.getAsset().raw())),
+            asset: asset,
             chain,
             amount: Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.cellData.getAmount().raw()))}`).toString(0),
+            bridgeFee: new EthAsset(asset).getBridgeFee('out'),
             recipientAddress: uint8ArrayToString(new Uint8Array(v.cellData.getRecipientAddress().raw())),
             blockNumber: latestHeight,
             confirmStatus: 'unconfirmed',
           };
           break;
+        }
       }
       ckbBurns.push(burn);
       burnTxHashes.push(k);
@@ -554,6 +557,14 @@ export async function isBurnTx(tx: Transaction, cellData: RecipientCellData): Pr
       return false;
   }
 
+  if (
+    !asset.inWhiteList() ||
+    Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(cellData.getAmount().raw()))}`).lt(
+      new Amount(asset.getMinimalAmount(), 0),
+    )
+  )
+    return false;
+
   // verify tx input: sudt cell.
   const preHash = tx.inputs[0].previousOutput.txHash;
   const txPrevious = await ForceBridgeCore.ckb.rpc.getTransaction(preHash);
@@ -588,5 +599,5 @@ export async function isBurnTx(tx: Transaction, cellData: RecipientCellData): Pr
 
 type BurnDbData = {
   cellData: RecipientCellData;
-  senderLockScriptHash: string;
+  senderAddress: string;
 };

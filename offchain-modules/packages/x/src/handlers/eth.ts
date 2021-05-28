@@ -1,5 +1,6 @@
+import { Amount } from '@lay2/pw-core';
 import { ethers } from 'ethers';
-import { ChainType } from '../ckb/model/asset';
+import { ChainType, EthAsset } from '../ckb/model/asset';
 import { forceBridgeRole } from '../config';
 import { ForceBridgeCore } from '../core';
 import { EthDb, KVDb } from '../db';
@@ -130,7 +131,7 @@ export class EthHandler {
       return {
         id: lockRecord.txHash,
         chain: ChainType.ETH,
-        amount: lockRecord.amount,
+        amount: new Amount(lockRecord.amount, 0).sub(new Amount(lockRecord.bridgeFee, 0)).toString(0),
         asset: lockRecord.token,
         recipientLockscript: lockRecord.recipient,
         sudtExtraData: lockRecord.sudtExtraData,
@@ -156,13 +157,14 @@ export class EthHandler {
       );
       logger.debug('EthHandler watchLockEvents eth lockEvtLog:', { log, parsedLog });
       const amount = parsedLog.args.lockedAmount.toString();
-      if (amount === '0') {
-        return;
-      }
+      const asset = new EthAsset(parsedLog.args.token);
+      if (!asset.inWhiteList() || new Amount(amount, 0).lt(new Amount(asset.getMinimalAmount(), 0))) return;
+
       await this.db.createEthLock([
         {
           txHash: log.transactionHash,
           amount: amount,
+          bridgeFee: asset.getBridgeFee('in'),
           token: parsedLog.args.token,
           recipient: uint8ArrayToString(fromHexString(parsedLog.args.recipientLockscript)),
           sudtExtraData: parsedLog.args.sudtExtraData,
@@ -200,7 +202,8 @@ export class EthHandler {
       await asyncSleep(15000);
       logger.debug('EthHandler watchUnlockEvents get new unlock events and send tx');
       const records = await this.getUnlockRecords('todo');
-      if (records.length === 0) {
+      if (records.length === 0 || this.waitForBatch(records)) {
+        logger.info('wait for batch');
         continue;
       }
       logger.info('EthHandler watchUnlockEvents unlock records', records);
@@ -252,6 +255,19 @@ export class EthHandler {
         logger.error(`EthHandler watchUnlockEvents error:${e.toString()}, ${e.message}`);
       }
     }
+  }
+
+  waitForBatch(records: EthUnlock[]): boolean {
+    if (ForceBridgeCore.config.common.network === 'testnet') return false;
+    const now = new Date();
+    const maxWaitTime = ForceBridgeCore.config.eth.batchUnlock.maxWaitTime;
+    if (
+      records.find((record) => {
+        return new Date(record.createdAt).getMilliseconds() + maxWaitTime <= now.getMilliseconds();
+      })
+    )
+      return false;
+    return records.length < ForceBridgeCore.config.eth.batchUnlock.batchNumber;
   }
 
   async start() {

@@ -35,10 +35,13 @@ const indexer = new CkbIndexer(CKB_URL, CKB_INDEXER_URL);
 const collector = new IndexerCollector(indexer);
 
 const ckb = new CKB(CKB_URL);
+const RELAY_PRI_KEY = process.env.PRI_KEY || '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
 
 async function main() {
   const conn = await getDBConnection();
-  const PRI_KEY = process.env.PRI_KEY || '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
+  // ckb account to recieve ckETH and send burn tx
+  const RECIPIENT_PRI_KEY = '0xd00c06bfd800d27397002dca6fb0993d5ba6399b4238b2f29ee9deb97593d2bc';
+  const RECIPIENT_ADDR = 'ckt1qyqvsv5240xeh85wvnau2eky8pwrhh4jr8ts8vyj37';
 
   const configPath = process.env.CONFIG_PATH || './config.json';
   nconf.env().file({ file: configPath });
@@ -57,8 +60,11 @@ async function main() {
   const bridgeWithSigner = bridge.connect(wallet);
   const iface = new ethers.utils.Interface(abi);
 
+  const bridgeFee = ForceBridgeCore.config.eth.assetWhiteList.filter((asset) => asset.symbol === 'ETH')[0].bridgeFee;
+  logger.info('bridge fee', bridgeFee);
+
   // lock eth
-  const recipientLockscript = stringToUint8Array('ckt1qyqyph8v9mclls35p6snlaxajeca97tc062sa5gahk');
+  const recipientLockscript = stringToUint8Array(RECIPIENT_ADDR);
   logger.info('recipientLockscript', toHexString(recipientLockscript));
   const sudtExtraData = '0x01';
   const amount = ethers.utils.parseEther('0.1');
@@ -89,10 +95,13 @@ async function main() {
     assert(ethLockRecord.sender === wallet.address);
     assert(ethLockRecord.token === ETH_ADDRESS);
     assert(ethLockRecord.amount === amount.toString());
-    logger.info('ethLockRecords', ethLockRecord.recipient);
+    assert(ethLockRecord.bridgeFee === bridgeFee.in);
+    logger.info('ethLockRecords recipient', ethLockRecord.recipient);
     logger.info('ethLockRecords', `0x${toHexString(recipientLockscript)}`);
+    logger.info('expect recipient', `${uint8ArrayToString(recipientLockscript)}`);
     assert(ethLockRecord.recipient === `${uint8ArrayToString(recipientLockscript)}`);
 
+    const mintAmount = new Amount(ethLockRecord.amount, 0).sub(new Amount(ethLockRecord.bridgeFee, 0)).toString(0);
     const ckbMintRecords = await conn.manager.find(CkbMint, {
       where: {
         id: txHash,
@@ -105,11 +114,11 @@ async function main() {
     assert(ethLockRecord.sudtExtraData === sudtExtraData);
     assert(ckbMintRecord.status === 'success');
     assert(ckbMintRecord.asset === ETH_ADDRESS);
-    assert(ckbMintRecord.amount === amount.toString());
+    assert(ckbMintRecord.amount === mintAmount);
     assert(ckbMintRecord.recipientLockscript === `${uint8ArrayToString(recipientLockscript)}`);
 
     // check sudt balance.
-    const account = new Account(PRI_KEY);
+    const account = new Account(RECIPIENT_PRI_KEY);
     const multisigLockScript = getMultisigLock(ForceBridgeCore.config.ckb.multisigScript);
     const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>{
       codeHash: multisigLockScript.code_hash,
@@ -128,39 +137,39 @@ async function main() {
       hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
       args: sudtArgs,
     };
-    const balance = await collector.getSUDTBalance(
+    const recipientBalance = await collector.getSUDTBalance(
       new Script(sudtType.codeHash, sudtType.args, sudtType.hashType),
       await account.getLockscript(),
     );
 
     if (!sendBurn) {
-      logger.info('sudt balance:', balance);
-      logger.info('expect balance:', new Amount(amount.toString(), 0));
-      assert(balance.eq(new Amount(amount.toString(), 0)));
+      logger.info('recipient sudt balance on chain:', recipientBalance);
+      const expectBalance = new Amount(mintAmount, 0);
+      logger.info('expect recipient balance:', expectBalance);
+      assert(recipientBalance.eq(expectBalance));
     }
 
     // send burn tx
     const burnAmount = ethers.utils.parseEther('0.01');
     if (!sendBurn) {
-      const account = new Account(PRI_KEY);
       const generator = new CkbTxGenerator(ckb, new IndexerCollector(indexer));
       const burnTx = await generator.burn(
-        await account.getLockscript(),
+        await new Account(RECIPIENT_PRI_KEY).getLockscript(),
         recipientAddress,
         new EthAsset('0x0000000000000000000000000000000000000000', ownLockHash),
         // Amount.fromUInt128LE('0x01'),
         new Amount(burnAmount.toString(), 0),
       );
-      const signedTx = ckb.signTransaction(PRI_KEY)(burnTx);
+      const signedTx = ckb.signTransaction(RECIPIENT_PRI_KEY)(burnTx);
       burnTxHash = await ckb.rpc.sendTransaction(signedTx);
       console.log(`burn Transaction has been sent with tx hash ${burnTxHash}`);
       await waitUntilCommitted(ckb, burnTxHash, 60);
       sendBurn = true;
     }
-    const expectBalance = new Amount(amount.toString(), 0).sub(new Amount(burnAmount.toString(), 0));
-    logger.info('sudt balance:', balance);
-    logger.info('expect balance:', expectBalance);
-    assert(balance.eq(expectBalance));
+    const expectBalanceAfterBurn = new Amount(ckbMintRecord.amount, 0).sub(new Amount(burnAmount.toString(), 0));
+    logger.info('expect recipient balance after burn:', expectBalanceAfterBurn);
+    logger.info('recipient onchain balance after burn:', recipientBalance);
+    assert(recipientBalance.eq(expectBalanceAfterBurn));
 
     // check unlock record send
     const ethUnlockRecords = await conn.manager.find(EthUnlock, {
@@ -174,15 +183,18 @@ async function main() {
     const unlockReceipt = await provider.getTransactionReceipt(ethUnlockRecord.ethTxHash);
     logger.info('unlockReceipt', unlockReceipt);
     assert(unlockReceipt.logs.length === 1);
-    const parsedLog = iface.parseLog(unlockReceipt.logs[0]);
-    logger.info('parsedLog', parsedLog);
-    assert(parsedLog.args.token === ethUnlockRecord.asset);
-    logger.info('parsedLog amount', ethUnlockRecord.amount);
-    logger.info('parsedLog amount', parsedLog.args.receivedAmount.toString());
-    assert(ethUnlockRecord.amount === parsedLog.args.receivedAmount.toString());
-    logger.info('parsedLog recipient', ethUnlockRecord.recipientAddress);
-    logger.info('parsedLog recipient', parsedLog.args.recipient);
-    assert(ethUnlockRecord.recipientAddress === parsedLog.args.recipient);
+
+    const recipientParsedLog = iface.parseLog(unlockReceipt.logs[0]);
+    const expectRecipientUnlockAmount = new Amount(burnAmount.toString(), 0).sub(new Amount(bridgeFee.out, 0));
+    logger.info('recipient parsedLog', recipientParsedLog);
+    assert(recipientParsedLog.args.token === ethUnlockRecord.asset);
+    logger.info('db unlock amount', ethUnlockRecord.amount);
+    logger.info('parsedLog recipient amount', recipientParsedLog.args.receivedAmount.toString());
+    logger.info('expect recipient amount', expectRecipientUnlockAmount.toString(0));
+    assert(expectRecipientUnlockAmount.toString(0) === recipientParsedLog.args.receivedAmount.toString());
+    logger.info('db unlock recipient', ethUnlockRecord.recipientAddress);
+    logger.info('parsedLog recipient', recipientParsedLog.args.recipient);
+    assert(ethUnlockRecord.recipientAddress === recipientParsedLog.args.recipient);
   };
 
   // try 100 times and wait for 3 seconds every time.

@@ -56,6 +56,8 @@ export interface EthConfig {
   multiSignThreshold: number;
   confirmNumber: number;
   startBlockHeight: number;
+  batchUnlock: { batchNumber: number; maxWaitTime: number };
+  assetWhiteList: WhiteListEthAsset[];
 }
 
 export interface EosConfig {
@@ -111,6 +113,7 @@ export interface logConfig {
 export interface commonConfig {
   role: forceBridgeRole;
   log: logConfig;
+  network: 'mainnet' | 'testnet';
 }
 export interface lumosDBConfig {
   host: string;
@@ -118,6 +121,16 @@ export interface lumosDBConfig {
   port: number;
   user: string;
   password: string;
+}
+
+export interface WhiteListEthAsset {
+  address: string;
+  name: string;
+  symbol: string;
+  logoURI: string;
+  decimal: number;
+  minimalBridgeAmount: string;
+  bridgeFee: { in: string; out: string };
 }
 
 export interface Config {

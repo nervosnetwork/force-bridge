@@ -15,7 +15,6 @@ use molecule::prelude::{Builder, Entity};
 struct TestParams {
     input_sudt_amount: u128,
     output_sudt_amount: u128,
-    fee: u128,
     amount: u128,
     recipient_address: String,
     chain: u8,
@@ -41,7 +40,6 @@ fn get_correct_params() -> TestParams {
     TestParams {
         input_sudt_amount: 100,
         output_sudt_amount: 90,
-        fee: 1,
         amount: 10,
         recipient_address,
         chain,
@@ -64,7 +62,6 @@ fn generate_correct_mock(test_params: TestParams) -> MockDataLoader {
         bridge_lock_hash_type: test_params.bridge_lock_hash_type,
         owner_lock_hash: test_params.owner_lock_hash,
         amount: test_params.amount,
-        fee: test_params.fee,
     };
 
     let input_sudt_amount = test_params.input_sudt_amount;
@@ -134,19 +131,6 @@ fn test_wrong_when_input_less_than_output() {
 fn test_wrong_when_burned_amount_not_equal_data_amount() {
     let mut test_params = get_correct_params();
     test_params.output_sudt_amount = 80;
-
-    let mock = generate_correct_mock(test_params);
-
-    let adapter = ChainAdapter { chain: mock };
-
-    _verify(adapter);
-}
-
-#[test]
-#[should_panic(expected = "fee is too much")]
-fn test_wrong_when_fee_is_too_much() {
-    let mut test_params = get_correct_params();
-    test_params.fee = 11;
 
     let mock = generate_correct_mock(test_params);
 

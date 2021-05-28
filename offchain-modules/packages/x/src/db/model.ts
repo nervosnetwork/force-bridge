@@ -53,6 +53,7 @@ export interface IEthLock {
   sender: string;
   token: string;
   amount: string;
+  bridgeFee: string;
   recipient: string;
   sudtExtraData?: string;
   blockNumber: number;
@@ -60,11 +61,12 @@ export interface IEthLock {
 }
 
 export interface ICkbBurn {
-  senderLockHash: string;
+  senderAddress: string;
   ckbTxHash: string;
   chain: number;
   asset: string;
   amount: string;
+  bridgeFee: string;
   recipientAddress: string;
   blockNumber: number;
   confirmStatus: txConfirmStatus;
@@ -206,7 +208,7 @@ export interface UnlockRecord {
 
 export interface IQuery {
   getLockRecordsByCkbAddress(ckbRecipientAddr: string, XChainAsset: string): Promise<LockRecord[]>;
-  getUnlockRecordsByCkbAddress(ckbLockScriptHash: string, XChainAsset: string): Promise<UnlockRecord[]>;
+  getUnlockRecordsByCkbAddress(ckbAddress: string, XChainAsset: string): Promise<UnlockRecord[]>;
   getLockRecordsByXChainAddress(XChainSender: string, XChainAsset: string): Promise<LockRecord[]>;
   getUnlockRecordsByXChainAddress(XChainRecipientAddr: string, XChainAsset: string): Promise<UnlockRecord[]>;
 }

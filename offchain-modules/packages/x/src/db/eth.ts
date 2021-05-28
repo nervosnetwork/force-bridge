@@ -99,18 +99,18 @@ export class EthDb implements IQuery {
       .getRawMany();
   }
 
-  async getUnlockRecordsByCkbAddress(ckbLockScriptHash: string, XChainAsset: string): Promise<UnlockRecord[]> {
+  async getUnlockRecordsByCkbAddress(ckbAddress: string, XChainAsset: string): Promise<UnlockRecord[]> {
     return await this.connection
       .getRepository(CkbBurn)
       .createQueryBuilder('ckb')
       .innerJoinAndSelect('eth_unlock', 'eth', 'eth.ckb_tx_hash = ckb.ckb_tx_hash')
-      .where('ckb.sender_lock_hash = :sender_lock_hash AND ckb.asset = :asset', {
-        sender_lock_hash: ckbLockScriptHash,
+      .where('ckb.sender_address = :sender_address AND ckb.asset = :asset', {
+        sender_address: ckbAddress,
         asset: XChainAsset,
       })
       .select(
         `
-        ckb.sender_lock_hash as sender, 
+        ckb.sender_address as sender, 
         ckb.recipient_address as recipient , 
         ckb.amount as burn_amount, 
         eth.amount as unlock_amount,
@@ -163,7 +163,7 @@ export class EthDb implements IQuery {
       })
       .select(
         `
-        ckb.sender_lock_hash as sender, 
+        ckb.sender_address as sender, 
         ckb.recipient_address as recipient , 
         ckb.amount as burn_amount, 
         eth.amount as unlock_amount,

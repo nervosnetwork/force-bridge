@@ -11,13 +11,16 @@ export class CkbBurn {
 
   @Index()
   @Column()
-  senderLockHash: string;
+  senderAddress: string;
 
   @Column()
   asset: string;
 
   @Column()
   amount: string;
+
+  @Column({ default: '0' })
+  bridgeFee: string;
 
   @Column()
   recipientAddress: string;
@@ -39,19 +42,21 @@ export class CkbBurn {
     ckbTxHash: string;
     recipientAddress: string;
     amount: string;
+    bridgeFee: string;
     asset: string;
     chain: number;
     blockNumber: number;
-    senderLockHash: string;
+    senderAddress: string;
   }) {
     const record = new CkbBurn();
     record.ckbTxHash = data.ckbTxHash;
     record.chain = data.chain;
     record.asset = data.asset;
     record.amount = data.amount;
+    record.bridgeFee = data.bridgeFee;
     record.recipientAddress = data.recipientAddress;
     record.blockNumber = data.blockNumber;
-    record.senderLockHash = data.senderLockHash;
+    record.senderAddress = data.senderAddress;
     return record;
   }
 }

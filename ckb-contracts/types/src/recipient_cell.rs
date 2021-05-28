@@ -19,7 +19,6 @@ pub struct RecipientDataView {
     pub bridge_lock_hash_type: u8,
     pub owner_lock_hash: [u8; 32],
     pub amount: u128,
-    pub fee: u128,
 }
 
 impl RecipientDataView {
@@ -43,10 +42,6 @@ impl RecipientDataView {
         amount.copy_from_slice(data_reader.amount().raw_data());
         let amount: u128 = u128::from_le_bytes(amount);
 
-        let mut fee = [0u8; 16];
-        fee.copy_from_slice(data_reader.fee().raw_data());
-        let fee: u128 = u128::from_le_bytes(fee);
-
         Ok(RecipientDataView {
             recipient_address,
             chain,
@@ -55,7 +50,6 @@ impl RecipientDataView {
             bridge_lock_hash_type,
             owner_lock_hash,
             amount,
-            fee,
         })
     }
 
@@ -78,7 +72,6 @@ impl RecipientDataView {
             )
             .bridge_lock_hash_type(self.bridge_lock_hash_type.into())
             .amount(self.amount.into())
-            .fee(self.fee.into())
             .build();
         Ok(mol_obj.as_bytes())
     }
@@ -98,7 +91,6 @@ mod tests {
             bridge_lock_hash_type: 0,
             owner_lock_hash: [2u8; 32],
             amount: 100,
-            fee: 100,
         };
         let mol_data = eth_recipient_data.as_molecule_data().unwrap();
         let new_eth_recipient_data = RecipientDataView::new(mol_data.as_ref()).unwrap();
@@ -122,6 +114,5 @@ mod tests {
             new_eth_recipient_data.owner_lock_hash
         );
         assert_eq!(eth_recipient_data.amount, new_eth_recipient_data.amount);
-        assert_eq!(eth_recipient_data.fee, new_eth_recipient_data.fee);
     }
 }
