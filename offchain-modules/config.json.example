@@ -10,15 +10,28 @@
     "eth": {
       "rpcUrl": "http://127.0.0.1:8545",
       "privateKey": "privkeys/eth",
-      "multiSignKeys": [
-        "0x859bd720921bb5e60e3133ca11d534edebae38e7c1cd97214f310b4ce400155b",
-        "0x193c96316c6cada898f067004aa07a5d48fcecdb1aa158784f2e8868a4db7ce8",
-        "0x57c246bcb73e5d3409a903c94d46b3b118fdcfb81c5e51d3b0df72e883623fa7"
+      "multiSignAddresses":[
+         "0xB026351cD0c62aC89e488A840b7205730E8476bd",
+         "0x27EE444d5D96094EACecC00194b7026Eb4fD979c",
+         "0x0C2207536768EcFFeB11744AdbCC90428a0EE83B"
       ],
-      "multiSignHosts": [
-        "http://localhost:8090/force-bridge/sign-server/api/v1",
-        "http://localhost:8091/force-bridge/sign-server/api/v1"
-      ],
+      "multiSignKeys": [{
+        "address":"0xB026351cD0c62aC89e488A840b7205730E8476bd",
+        "privKey":"privkeys/eth-multisig-1"
+      },{
+        "address":"0x27EE444d5D96094EACecC00194b7026Eb4fD979c",
+        "privKey":"privkeys/eth-multisig-2"
+      },{
+        "address":"0x0C2207536768EcFFeB11744AdbCC90428a0EE83B",
+        "privKey":"privkeys/eth-multisig-3"
+      }],
+      "multiSignHosts": [{
+         "address":"0xB026351cD0c62aC89e488A840b7205730E8476bd",
+         "host":"http://localhost:8090/force-bridge/sign-server/api/v1"
+      },{
+         "address":"0x27EE444d5D96094EACecC00194b7026Eb4fD979c",
+         "host":"http://localhost:8091/force-bridge/sign-server/api/v1"
+      }],
       "multiSignThreshold": 2,
       "contractAddress": "0x8326e1d621Cd32752920ed2A44B49bB1a96c7391",
       "confirmNumber": 1,
@@ -127,15 +140,21 @@
             "0xebf9befcd8396e88cab8fcb920ab149231658f4b"
           ]
       },
-      "keys": [
-       "0xd00c06bfd800d27397002dca6fb0993d5ba6399b4238b2f29ee9deb97593d2bc",
-       "0x63d86723e08f0f813a36ce6aa123bb2289d90680ae1e99d4de8cdb334553f24d"
-      ],
-      "hosts": [
-        "http://127.0.0.1:8090/force-bridge/sign-server/api/v1",
-        "http://127.0.0.1:8091/force-bridge/sign-server/api/v1"
-      ],
-      "fromPrivateKey": "0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe",
+      "multiSignKeys":[{
+         "address":"ckt1qyqvsv5240xeh85wvnau2eky8pwrhh4jr8ts8vyj37",
+         "privKey":"privkeys/ckb-multisig-1"
+      },{
+         "address":"ckt1qyqywrwdchjyqeysjegpzw38fvandtktdhrs0zaxl4",
+         "privKey":"privkeys/ckb-multisig-2"
+      }],
+      "multiSignHosts":[{
+        "address":"ckt1qyqvsv5240xeh85wvnau2eky8pwrhh4jr8ts8vyj37",
+        "host":"http://127.0.0.1:8090/force-bridge/sign-server/api/v1"
+      },{
+        "address":"ckt1qyqywrwdchjyqeysjegpzw38fvandtktdhrs0zaxl4",
+        "host":"http://127.0.0.1:8091/force-bridge/sign-server/api/v1"
+      }],
+      "fromPrivateKey": "privkeys/ckb",
       "ownerLockHash": "0x49beb8c4c29d06e05452b5d9ea8e86ffd4ea2b614498ba1a0c47890a0ad4f550",
       "deps": {
         "bridgeLock": {

@@ -12,6 +12,7 @@ import nconf from 'nconf';
 import { signCkbTx } from './ckbSigner';
 import { signEthTx } from './ethSigner';
 import { SigServer } from './sigServer';
+import { loadKeys } from './utils';
 
 const apiPath = '/force-bridge/sign-server/api/v1';
 const defaultLogFile = './log/force-bridge-sigsvr.log';
@@ -27,7 +28,8 @@ async function main() {
   initLog(cfg.common.log);
   cfg.common.role = 'watcher';
   await new ForceBridgeCore().init(cfg);
-
+  //load multi-sig keys
+  loadKeys();
   //start chain handlers
   startHandlers();
   const conn = await getDBConnection();

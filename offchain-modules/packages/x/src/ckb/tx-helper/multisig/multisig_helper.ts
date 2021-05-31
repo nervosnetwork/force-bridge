@@ -6,6 +6,7 @@ import { generateAddress } from '@ckb-lumos/helpers';
 // import { MultisigItem } from '../config';
 import { MultisigItem } from '../../../config';
 import { ForceBridgeCore } from '../../../core';
+import { parsePrivateKey } from '../../../utils';
 import { init } from './init_config';
 
 init();
@@ -44,7 +45,7 @@ export function getMultisigAddr(multisigScript: MultisigItem): string {
 }
 
 export function getFromAddr(): string {
-  const fromPrivateKey = ForceBridgeCore.config.ckb.fromPrivateKey;
+  const fromPrivateKey = parsePrivateKey(ForceBridgeCore.config.ckb.fromPrivateKey);
   const fromBlake160 = key.publicKeyToBlake160(key.privateToPublic(fromPrivateKey as HexString));
   const fromLockScript = {
     code_hash: secpTemplate.CODE_HASH,

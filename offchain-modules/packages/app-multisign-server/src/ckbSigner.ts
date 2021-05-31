@@ -248,9 +248,10 @@ async function verifyEthMintTx(mintRecord: mintRecord, output: Cell): Promise<Er
 }
 
 export async function signCkbTx(params: collectSignaturesParams): Promise<string> {
-  const args = minimist(process.argv.slice(2));
-  const index = args.index;
-  const privKey = ForceBridgeCore.config.ckb.keys[index];
+  const privKey = SigServer.getKey('ckb', params.requestAddress);
+  if (privKey === undefined) {
+    return Promise.reject(new Error(`cannot found key by address:${params.requestAddress}`));
+  }
   const pubKey = ForceBridgeCore.ckb.utils.privateKeyToPublicKey(privKey);
 
   const payload = params.payload as ckbCollectSignaturesPayload;

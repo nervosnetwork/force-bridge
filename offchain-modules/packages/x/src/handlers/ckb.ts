@@ -9,7 +9,7 @@ import { getOwnLockHash } from '../ckb/tx-helper/multisig/multisig_helper';
 import { forceBridgeRole } from '../config';
 import { ForceBridgeCore } from '../core';
 import { CkbDb } from '../db';
-import { CkbBurn, CkbMint, ICkbBurn } from '../db/model';
+import { CkbMint, ICkbBurn } from '../db/model';
 import { asyncSleep, fromHexString, toHexString, uint8ArrayToString } from '../utils';
 import { logger } from '../utils/logger';
 import { getAssetTypeByAsset } from '../xchain/tron/utils';
@@ -40,7 +40,7 @@ export class CkbHandler {
     this.transactionManager = new TransactionManager(this.ckbIndexer);
     this.multisigMgr = new MultiSigMgr(
       'CKB',
-      ForceBridgeCore.config.ckb.hosts,
+      ForceBridgeCore.config.ckb.multiSignHosts,
       ForceBridgeCore.config.ckb.multisigScript.M,
     );
   }

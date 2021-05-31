@@ -1,4 +1,5 @@
 import { TransactionSkeletonType } from '@ckb-lumos/helpers';
+import { MultiSignHost } from '../config';
 import { logger } from '../utils/logger';
 import { EthUnlockRecord } from '../xchain/eth';
 import { httpRequest } from './client';
@@ -34,44 +35,54 @@ export interface ckbCollectSignaturesPayload {
 
 export interface collectSignaturesParams {
   rawData: string;
+  requestAddress?: string;
   payload: ethCollectSignaturesPayload | ckbCollectSignaturesPayload;
   lastFailedTxHash?: string;
 }
 
 export class MultiSigMgr {
   private chainType: string;
-  private sigServerHosts: string[];
+  private sigServerHosts: MultiSignHost[];
   private threshold: number;
-  constructor(chainType: string, sigServerHosts: string[], threshold: number) {
+  constructor(chainType: string, sigServerHosts: MultiSignHost[], threshold: number) {
     this.chainType = chainType;
     this.sigServerHosts = sigServerHosts;
     this.threshold = threshold;
   }
 
   public async collectSignatures(params: collectSignaturesParams): Promise<string[]> {
-    logger.info(`collectSignatures rawData:${params.rawData} payload:${JSON.stringify(params.payload, null, 2)}`);
+    logger.info(
+      `collectSignatures chain:${this.chainType} rawData:${params.rawData} payload:${JSON.stringify(
+        params.payload,
+        null,
+        2,
+      )}`,
+    );
     const successSigSvr = [];
     const sigs = [];
     for (const svrHost of this.sigServerHosts) {
       try {
-        const sig = await this.requestSig(svrHost, params);
+        params.requestAddress = svrHost.address;
+        const sig = await this.requestSig(svrHost.host, params);
         sigs.push(sig);
-        successSigSvr.push(svrHost);
+        successSigSvr.push(svrHost.host);
         logger.info(
-          `MultiSigMgr collectSignatures rawData:${params.rawData} sigServer:${svrHost} sig:${sig.toString()}`,
+          `MultiSigMgr collectSignatures chain:${this.chainType} address:${svrHost.address} rawData:${
+            params.rawData
+          } sigServer:${svrHost.host} sig:${sig.toString()}`,
         );
       } catch (e) {
         logger.error(
-          `MultiSigMgr collectSignatures rawData:${params.rawData} payload:${JSON.stringify(
-            params.payload,
-            null,
-            2,
-          )} sigServer:${svrHost}, error:${e.message}`,
+          `MultiSigMgr collectSignatures chain:${this.chainType} address:${svrHost.address} rawData:${
+            params.rawData
+          } payload:${JSON.stringify(params.payload, null, 2)} sigServer:${svrHost.host}, error:${e.message}`,
         );
       }
       if (successSigSvr.length === this.threshold) {
         logger.info(
-          `MultiSigMgr collectSignatures success, rawData:${params.rawData} sigServers:${successSigSvr.join(',')}`,
+          `MultiSigMgr collectSignatures success, chain:${this.chainType} address:${svrHost.address} rawData:${
+            params.rawData
+          } sigServers:${successSigSvr.join(',')}`,
         );
         break;
       }

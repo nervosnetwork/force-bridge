@@ -40,8 +40,8 @@
     "deploy": "ts-node-dev ./packages/scripts/src/deploy_ckb.ts",
     "prepare": "cd .. && husky install offchain-modules/.husky",
     "init-multisig": "ts-node ./packages/x/src/ckb/tx-helper/multisig/deploy.ts",
-    "sign-server1": "ts-node ./packages/app-multisign-server/src/index.ts --port 8090 --index 0",
-    "sign-server2": "ts-node ./packages/app-multisign-server/src/index.ts --port 8091 --index 1"
+    "sign-server1": "ts-node ./packages/app-multisign-server/src/index.ts --port 8090",
+    "sign-server2": "ts-node ./packages/app-multisign-server/src/index.ts --port 8091"
   },
   "author": "",
   "license": "MIT",

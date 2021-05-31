@@ -26,7 +26,6 @@ export class EthChain {
   protected readonly iface: ethers.utils.Interface;
   protected readonly bridge: ethers.Contract;
   protected readonly wallet: ethers.Wallet;
-  protected readonly multiSignKeys: string[];
   protected readonly multisigMgr: MultiSigMgr;
 
   constructor(role: forceBridgeRole) {
@@ -41,7 +40,6 @@ export class EthChain {
       this.wallet = new ethers.Wallet(config.privateKey, this.provider);
       logger.debug('address', this.wallet.address);
       this.bridge = new ethers.Contract(this.bridgeContractAddr, abi, this.provider).connect(this.wallet);
-      this.multiSignKeys = config.multiSignKeys;
       this.multisigMgr = new MultiSigMgr('ETH', this.config.multiSignHosts, this.config.multiSignThreshold);
     }
   }

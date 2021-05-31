@@ -8,7 +8,7 @@ import CKB from '@nervosnetwork/ckb-sdk-core';
 import nconf from 'nconf';
 import { Config } from '../../../config';
 import { ForceBridgeCore } from '../../../core';
-import { asyncSleep as sleep } from '../../../utils';
+import { asyncSleep as sleep, parsePrivateKey } from '../../../utils';
 import { CkbIndexer } from '../indexer';
 import { init } from './init_config';
 import { getFromAddr, getMultisigAddr, getMultisigLock } from './multisig_helper';
@@ -41,7 +41,7 @@ function getDataOutputCapacity() {
 }
 
 async function deploy() {
-  const fromPrivateKey = ForceBridgeCore.config.ckb.fromPrivateKey;
+  const fromPrivateKey = parsePrivateKey(ForceBridgeCore.config.ckb.fromPrivateKey);
   const fromAddress = getFromAddr();
   const multisigLockScript = getMultisigLock(ForceBridgeCore.config.ckb.multisigScript);
   const multisigAddress = getMultisigAddr(ForceBridgeCore.config.ckb.multisigScript);

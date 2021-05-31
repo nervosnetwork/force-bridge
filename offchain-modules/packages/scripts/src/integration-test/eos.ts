@@ -11,7 +11,7 @@ import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { CkbMint } from '@force-bridge/x/dist/db/entity/CkbMint';
 import { EosLock, getEosLockId } from '@force-bridge/x/dist/db/entity/EosLock';
 import { EosUnlock } from '@force-bridge/x/dist/db/entity/EosUnlock';
-import { getDBConnection } from '@force-bridge/x/dist/utils';
+import { getDBConnection, parsePrivateKey } from '@force-bridge/x/dist/utils';
 import { initLog, logger } from '@force-bridge/x/dist/utils/logger';
 import { EosChain } from '@force-bridge/x/dist/xchain/eos/eosChain';
 import { Amount, Script } from '@lay2/pw-core';
@@ -40,7 +40,7 @@ async function main() {
   await new ForceBridgeCore().init(conf);
 
   const rpcUrl = config.rpcUrl;
-  const PRI_KEY = ForceBridgeCore.config.ckb.fromPrivateKey;
+  const PRI_KEY = parsePrivateKey(ForceBridgeCore.config.ckb.fromPrivateKey);
   const lockAccount = 'alice';
   const lockAccountPri = ['5KQG4541B1FtDC11gu3NrErWniqTaPHBpmikSztnX8m36sK5px5'];
   const chain = new EosChain(rpcUrl, new JsSignatureProvider(lockAccountPri));
