@@ -116,9 +116,7 @@ export class EthChain {
         2,
       )}`,
     );
-    return this.bridge.unlock(params, nonce, signatures, {
-      gasLimit: 120000,
-    });
+    return this.bridge.unlock(params, nonce, signatures);
   }
 
   private async signUnlockRecords(

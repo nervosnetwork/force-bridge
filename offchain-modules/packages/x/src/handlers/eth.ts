@@ -77,9 +77,14 @@ export class EthHandler {
   }
 
   async watchNewBlock() {
-    await this.ethChain.watchNewBlock(this.lastHandledBlockHeight, async (newBlock: ethers.providers.Block) => {
-      await this.onBlock(newBlock);
-    });
+    try {
+      await this.ethChain.watchNewBlock(this.lastHandledBlockHeight, async (newBlock: ethers.providers.Block) => {
+        await this.onBlock(newBlock);
+      });
+    } catch (e) {
+      logger.error(`EthHandler watchNewBlock error:${e.toString()}`);
+      throw e;
+    }
   }
 
   async onBlock(block: ethers.providers.Block) {
@@ -111,6 +116,7 @@ export class EthHandler {
       logger.error(
         `EthHandler onBlock error, blockHeight:${block.number} blockHash:${block.hash} error:${e.toString()}`,
       );
+      throw e;
     }
   }
 
@@ -176,15 +182,21 @@ export class EthHandler {
       logger.info(`EthHandler watchLockEvents save EthLock successful for eth tx ${log.transactionHash}.`);
     } catch (e) {
       logger.error(`EthHandler watchLockEvents error: ${e}`);
-      await asyncSleep(3000);
+      // await asyncSleep(3000);
+      throw e;
     }
   }
 
   // listen ETH chain and handle the new lock events
   async watchLockEvents() {
-    await this.ethChain.watchLockEvents(this.lastHandledBlockHeight, async (log, parsedLog) => {
-      await this.onLogs(log, parsedLog);
-    });
+    try {
+      await this.ethChain.watchLockEvents(this.lastHandledBlockHeight, async (log, parsedLog) => {
+        await this.onLogs(log, parsedLog);
+      });
+    } catch (e) {
+      logger.error(`EthHandler watchLockEvents error: ${e}`);
+      throw e;
+    }
   }
 
   async getUnlockRecords(status: EthUnlockStatus): Promise<EthUnlock[]> {
