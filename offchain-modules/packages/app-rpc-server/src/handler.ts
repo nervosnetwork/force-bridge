@@ -1,6 +1,7 @@
 import { Asset, BtcAsset, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
+import { getOwnLockHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { EthDb, TronDb } from '@force-bridge/x/dist/db';
 import { BtcDb } from '@force-bridge/x/dist/db/btc';
@@ -152,7 +153,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
   ): Promise<API.GenerateTransactionResponse<T>> {
     logger.info('generateBridgeOutNervosTransaction ', payload);
     const fromLockscript = ForceBridgeCore.ckb.utils.addressToScript(payload.sender);
-    const ownLockHash = ForceBridgeCore.config.ckb.ownerLockHash;
+    const ownLockHash = getOwnLockHash(ForceBridgeCore.config.ckb.multisigScript);
 
     const network = payload.network;
     const assetName = payload.asset;
@@ -519,7 +520,7 @@ function transferDbRecordToResponse(
 }
 
 function getTokenShadowIdent(XChainNetwork: XChainNetWork, XChainToken: string): string {
-  const ownLockHash = ForceBridgeCore.config.ckb.ownerLockHash;
+  const ownLockHash = getOwnLockHash(ForceBridgeCore.config.ckb.multisigScript);
   let asset: Asset;
   switch (XChainNetwork) {
     case 'Bitcoin':

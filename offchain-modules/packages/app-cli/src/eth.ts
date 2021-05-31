@@ -2,6 +2,7 @@ import { Account } from '@force-bridge/x/dist/ckb/model/accounts';
 import { EthAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
+import { getOwnLockHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
 import { Amount } from '@lay2/pw-core';
@@ -106,7 +107,7 @@ async function doUnlock(
   const burnTx = await generator.burn(
     await account.getLockscript(),
     recipientAddress,
-    new EthAsset(token, ForceBridgeCore.config.ckb.ownerLockHash),
+    new EthAsset(token, getOwnLockHash(ForceBridgeCore.config.ckb.multisigScript)),
     new Amount(ethers.utils.parseEther(amount).toString(), 0),
   );
 
@@ -132,7 +133,7 @@ async function doBalanceOf(opts: { address: boolean; asset?: boolean; origin?: b
     return;
   }
 
-  const asset = new EthAsset(token, ForceBridgeCore.config.ckb.ownerLockHash);
+  const asset = new EthAsset(token, getOwnLockHash(ForceBridgeCore.config.ckb.multisigScript));
   const balance = await getSudtBalance(address, asset);
   console.log(`BalanceOf address:${address} on ckb is ${formatEther(balance.toString(0))}`);
 }
