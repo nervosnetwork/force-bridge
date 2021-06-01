@@ -1,6 +1,7 @@
 {
   "name": "@force-bridge/scripts",
   "main": "dist",
+  "version": "0.0.1",
   "scripts": {
     "build": "yarn run clean && yarn run compile",
     "clean": "rimraf -rf ./dist",

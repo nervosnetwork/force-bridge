@@ -1,6 +1,7 @@
 {
   "name": "@force-bridge/cli",
   "main": "dist",
+  "version": "0.0.1",
   "bin": {
     "forcecli": ".dist/index.js"
   },
