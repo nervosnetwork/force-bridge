@@ -10,6 +10,6 @@
     "test": "yarn run build"
   },
   "dependencies": {
-    "@force-bridge/x": "*"
+    "@force-bridge/x": "^0.0.1"
   }
 }
