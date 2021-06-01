@@ -13,11 +13,11 @@ import { EthDb } from '@force-bridge/x/dist/db/eth';
 import { CkbMint, EthLock, EthUnlock } from '@force-bridge/x/dist/db/model';
 import {
   asyncSleep,
+  getDBConnection,
   parsePrivateKey,
   stringToUint8Array,
   toHexString,
   uint8ArrayToString,
-  getDBConnection,
 } from '@force-bridge/x/dist/utils';
 import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
 import { ETH_ADDRESS } from '@force-bridge/x/dist/xchain/eth';
@@ -27,7 +27,6 @@ import { Amount, Script } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import { ethers } from 'ethers';
 import nconf from 'nconf';
-import { createConnection } from 'typeorm';
 import { waitUntilCommitted } from './util';
 // const { Indexer, CellCollector } = require('@ckb-lumos/sql-indexer');
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';

@@ -104,7 +104,8 @@ export class EthDb implements IQuery {
         ckb.updated_at as mint_time, 
         ckb.status as status,
         ckb.asset as asset,
-        ckb.message as message 
+        ckb.message as message,
+        eth.bridge_fee as bridge_fee
       `,
       )
       .orderBy('ckb.updated_at', 'DESC')
@@ -133,7 +134,8 @@ export class EthDb implements IQuery {
         ckb.confirm_status as burn_confirm_status,
         eth.status as status,
         ckb.asset as asset,
-        eth.message as message 
+        eth.message as message,
+        ckb.bridge_fee as bridge_fee
       `,
       )
       .orderBy('ckb.updated_at', 'DESC')
@@ -158,7 +160,8 @@ export class EthDb implements IQuery {
         ckb.updated_at as mint_time, 
         ckb.status as status,
         ckb.asset as asset,
-        ckb.message as message 
+        ckb.message as message,
+        eth.bridge_fee as bridge_fee
       `,
       )
       .orderBy('ckb.updated_at', 'DESC')
@@ -187,7 +190,8 @@ export class EthDb implements IQuery {
         ckb.confirm_status as burn_confirm_status,
         eth.status as status,
         ckb.asset as asset,
-        eth.message as message 
+        eth.message as message,
+        ckb.bridge_fee as bridge_fee
       `,
       )
       .orderBy('ckb.updated_at', 'DESC')

@@ -191,6 +191,7 @@ export interface LockRecord {
   status: dbTxStatus;
   asset: string;
   message: string;
+  bridge_fee: string;
 }
 
 export interface UnlockRecord {
@@ -206,6 +207,7 @@ export interface UnlockRecord {
   status: dbTxStatus;
   asset: string;
   message: string;
+  bridge_fee: string;
 }
 
 export interface IQuery {

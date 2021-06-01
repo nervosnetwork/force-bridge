@@ -40,7 +40,7 @@ export class EthLockReconciler implements Reconciler {
       amount: record.mint_amount,
       recipient: record.recipient,
       // TODO
-      fee: '0',
+      fee: record.bridge_fee,
     }));
   }
 
@@ -84,28 +84,28 @@ export class EthUnlockReconciler implements Reconciler {
       filter: { script: await getRecipientTypeScript() },
     };
 
-    const indexerTx2FromRecord = () => (
-      txs$: Observable<Indexer.IndexerIterableResult<Indexer.GetTransactionsResult>>,
-    ): Observable<FromRecord> => {
-      return txs$.pipe(
-        mergeMap((txs) => txs.objects.filter((indexerTx) => indexerTx.io_type === 'output')),
-        mergeMap((tx) => this.ckbRpc.getTransaction(tx.tx_hash), CKB_GET_TRANSACTION_CONCURRENCY),
-        map((tx) => {
-          const recipientCellData = new RecipientCellData(fromHexString(tx.transaction.outputsData[0]).buffer);
-          return { recipientCellData, txId: tx.transaction.hash };
-        }),
-        filter((tx) => {
-          const assetBuffer = tx.recipientCellData.getAsset().raw();
-          const assetAddress = uint8ArrayToString(new Uint8Array(assetBuffer));
-          return this.asset.toLowerCase() === assetAddress.toLowerCase();
-        }),
-        map((item) => {
-          const u128leBuf = new Uint8Array(item.recipientCellData.getAmount().raw());
-          const amount = BigInt('0x' + Buffer.from(u128leBuf).reverse().toString('hex')).toString();
-          return { txId: item.txId, amount };
-        }),
-      );
-    };
+    const indexerTx2FromRecord =
+      () =>
+      (txs$: Observable<Indexer.IndexerIterableResult<Indexer.GetTransactionsResult>>): Observable<FromRecord> => {
+        return txs$.pipe(
+          mergeMap((txs) => txs.objects.filter((indexerTx) => indexerTx.io_type === 'output')),
+          mergeMap((tx) => this.ckbRpc.getTransaction(tx.tx_hash), CKB_GET_TRANSACTION_CONCURRENCY),
+          map((tx) => {
+            const recipientCellData = new RecipientCellData(fromHexString(tx.transaction.outputsData[0]).buffer);
+            return { recipientCellData, txId: tx.transaction.hash };
+          }),
+          filter((tx) => {
+            const assetBuffer = tx.recipientCellData.getAsset().raw();
+            const assetAddress = uint8ArrayToString(new Uint8Array(assetBuffer));
+            return this.asset.toLowerCase() === assetAddress.toLowerCase();
+          }),
+          map((item) => {
+            const u128leBuf = new Uint8Array(item.recipientCellData.getAmount().raw());
+            const amount = BigInt('0x' + Buffer.from(u128leBuf).reverse().toString('hex')).toString();
+            return { txId: item.txId, amount };
+          }),
+        );
+      };
 
     return firstValueFrom(
       from(this.ckbIndexer.get_transactions({ searchKey })).pipe(
@@ -118,18 +118,12 @@ export class EthUnlockReconciler implements Reconciler {
   }
 
   async getToRecordsByLocalState(): Promise<ToRecord[]> {
-    const script = ForceBridgeCore.ckb.utils.addressToScript(this.account);
-
-    const records = await this.ethDb.getUnlockRecordsByCkbAddress(
-      ForceBridgeCore.ckb.utils.scriptToHash(script),
-      this.asset,
-    );
+    const records = await this.ethDb.getUnlockRecordsByCkbAddress(this.account, this.asset);
     return records.map((record) => ({
       txId: record.unlock_hash,
       amount: record.unlock_amount,
       recipient: record.recipient,
-      // TODO
-      fee: '0',
+      fee: record.bridge_fee,
     }));
   }
 
