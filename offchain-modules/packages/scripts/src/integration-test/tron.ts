@@ -194,7 +194,7 @@ async function main() {
         hashType: multisigLockScript.hash_type,
         args: multisigLockScript.args,
       });
-      const generator = new CkbTxGenerator(ckb, new IndexerCollector(indexer));
+      const generator = new CkbTxGenerator(ckb, indexer);
       const burnTx = await generator.burn(
         await account.getLockscript(),
         recipientAddress,

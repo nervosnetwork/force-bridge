@@ -152,7 +152,7 @@ async function main() {
     // send burn tx
     const burnAmount = ethers.utils.parseEther('0.01');
     if (!sendBurn) {
-      const generator = new CkbTxGenerator(ckb, new IndexerCollector(indexer));
+      const generator = new CkbTxGenerator(ckb, indexer);
       const burnTx = await generator.burn(
         await new Account(RECIPIENT_PRI_KEY).getLockscript(),
         recipientAddress,

@@ -306,7 +306,7 @@ const main = async () => {
   await setOwnerLockHash();
 
   // const assets = getPreDeployedAssets();
-  await ckbIndexer.waitUntilSync();
+  await ckbIndexer.waitForSync();
   // await createBridgeCell(assets);
 
   await setXChainStartTime();
