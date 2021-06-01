@@ -1,23 +1,16 @@
-import { Cell, Script as LumosScript } from '@ckb-lumos/base';
+import { Cell, Script as LumosScript, Indexer } from '@ckb-lumos/base';
 import { common } from '@ckb-lumos/common-scripts';
 import { TransactionSkeleton, TransactionSkeletonType } from '@ckb-lumos/helpers';
-import { CellCollector, Indexer } from '@ckb-lumos/sql-indexer';
+
 import { Address, Amount, Script } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
-import { IndexerCollector } from '../../ckb/tx-helper/collector';
-import { SerializeRecipientCellData } from '../../ckb/tx-helper/generated/eth_recipient_cell';
-import { ScriptType } from '../../ckb/tx-helper/indexer';
 import { ForceBridgeCore } from '../../core';
-import {
-  asyncSleep,
-  bigintToSudtAmount,
-  fromHexString,
-  getLumosIndexKnex,
-  stringToUint8Array,
-  toHexString,
-} from '../../utils';
+import { asyncSleep, bigintToSudtAmount, fromHexString, stringToUint8Array, toHexString } from '../../utils';
 import { logger } from '../../utils/logger';
 import { Asset } from '../model/asset';
+import { IndexerCollector } from './collector';
+import { SerializeRecipientCellData } from './generated/eth_recipient_cell';
+import { CkbIndexer, ScriptType } from './indexer';
 import { getFromAddr, getMultisigLock } from './multisig/multisig_helper';
 
 export interface MintAssetRecord {
@@ -27,7 +20,11 @@ export interface MintAssetRecord {
 }
 
 export class CkbTxGenerator {
-  constructor(private ckb: CKB, private collector: IndexerCollector) {}
+  private collector: IndexerCollector;
+
+  constructor(private ckb: CKB, private ckbIndexer: CkbIndexer) {
+    this.collector = new IndexerCollector(ckbIndexer);
+  }
 
   sudtDep = {
     out_point: {
@@ -46,7 +43,7 @@ export class CkbTxGenerator {
   };
 
   async fetchMultisigCell(indexer: Indexer, maxTimes: number): Promise<Cell> {
-    const cellCollector = new CellCollector(getLumosIndexKnex(), {
+    const cellCollector = this.ckbIndexer.collector({
       type: ForceBridgeCore.config.ckb.multisigType,
     });
     let index = 0;
@@ -65,7 +62,7 @@ export class CkbTxGenerator {
   }
 
   async fetchBridgeCell(bridgeLock: LumosScript, indexer: Indexer, maxTimes: number): Promise<Cell> {
-    const cellCollector = new CellCollector(getLumosIndexKnex(), {
+    const cellCollector = this.ckbIndexer.collector({
       lock: bridgeLock,
     });
     let index = 0;

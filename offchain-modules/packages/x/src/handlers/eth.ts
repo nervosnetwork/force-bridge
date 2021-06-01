@@ -109,7 +109,9 @@ export class EthHandler {
       logger.info(`EthHandler onBlock blockHeight:${block.number} blockHash:${block.hash}`);
     } catch (e) {
       logger.error(
-        `EthHandler onBlock error, blockHeight:${block.number} blockHash:${block.hash} error:${e.toString()}`,
+        `EthHandler onBlock error, blockHeight:${block.number} blockHash:${block.hash} error:${e.toString()}, stack: ${
+          e.stack
+        }`,
       );
     }
   }

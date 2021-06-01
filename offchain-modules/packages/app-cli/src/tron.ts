@@ -86,7 +86,7 @@ async function doUnlock(
   const privateKey = options.get('privateKey');
 
   const account = new Account(privateKey);
-  const generator = new CkbTxGenerator(ForceBridgeCore.ckb, new IndexerCollector(ForceBridgeCore.ckbIndexer));
+  const generator = new CkbTxGenerator(ForceBridgeCore.ckb, ForceBridgeCore.ckbIndexer);
   const burnTx = await generator.burn(
     await account.getLockscript(),
     recipientAddress,
