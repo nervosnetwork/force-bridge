@@ -52,8 +52,23 @@ export class EthHandler {
     if (this.lastHandledBlockHeight === currentBlockHeight) {
       return;
     }
-    const confirmNumber = ForceBridgeCore.config.eth.confirmNumber;
+
     const getLogBatchSize = 100;
+    const confirmNumber = ForceBridgeCore.config.eth.confirmNumber;
+    const nextBlock = await this.ethChain.getBlock(this.lastHandledBlockHeight + 1);
+    if (this.isForked(confirmNumber, nextBlock)) {
+      logger.warn(
+        `EthHandler init nextBlock blockHeight:${nextBlock.number} parentHash:${
+          nextBlock.parentHash
+        } != lastHandledBlockHash:${this.lastHandledBlockHash} fork occur removeUnconfirmedLock events from:${
+          nextBlock.number - confirmNumber
+        }`,
+      );
+      const confirmedBlockHeight = nextBlock.number - confirmNumber;
+      const confirmedBlock = await this.ethChain.getBlock(currentBlockHeight);
+      await this.db.removeUnconfirmedLocks(confirmedBlockHeight);
+      await this.setLastHandledBlock(currentBlockHeight, confirmedBlock.hash);
+    }
 
     for (;;) {
       const endBlockNumber =
@@ -83,16 +98,20 @@ export class EthHandler {
     });
   }
 
+  isForked(confirmNumber: number, block: ethers.providers.Block): boolean {
+    return (
+        confirmNumber !== 0 &&
+        this.lastHandledBlockHeight === block.number - 1 &&
+        this.lastHandledBlockHash !== '' &&
+        block.parentHash !== this.lastHandledBlockHash
+    );
+  }
+
   async onBlock(block: ethers.providers.Block) {
     for (let i = 1; i <= MAX_RETRY_TIMES; i++) {
       try {
         const confirmNumber = ForceBridgeCore.config.eth.confirmNumber;
-        if (
-          confirmNumber !== 0 &&
-          this.lastHandledBlockHeight === block.number - 1 &&
-          this.lastHandledBlockHash !== '' &&
-          block.parentHash !== this.lastHandledBlockHash
-        ) {
+        if (this.isForked(confirmNumber, block)) {
           logger.warn(
             `EthHandler onBlock blockHeight:${block.number} parentHash:${block.parentHash} != lastHandledBlockHash:${
               this.lastHandledBlockHash
