@@ -13,8 +13,10 @@
     "patch-typechain": "node scripts/patch-typechain.js"
   },
   "dependencies": {
+    "@force-bridge/ckb-indexer-client": "*",
     "@force-bridge/reconc": "*",
-    "@force-bridge/x": "*"
+    "@force-bridge/x": "*",
+    "rxjs": "^7.1.0"
   },
   "devDependencies": {
     "@typechain/ethers-v5": "^7.0.0",
