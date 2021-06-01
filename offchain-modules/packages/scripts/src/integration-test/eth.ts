@@ -1,4 +1,5 @@
 import assert from 'assert';
+import { CKBIndexerClient } from '@force-bridge/ckb-indexer-client';
 import { Account } from '@force-bridge/x/dist/ckb/model/accounts';
 import { ChainType, EthAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
@@ -184,15 +185,30 @@ async function main() {
     logger.info('parsedLog recipient', parsedLog.args.recipient);
     assert(ethUnlockRecord.recipientAddress === parsedLog.args.recipient);
 
-    const builder = new EthReconcilerBuilder(provider, bridge, new EthDb(conn));
-    const reconciliation = await builder
+    const builder = new EthReconcilerBuilder(
+      provider,
+      bridge,
+      new EthDb(conn),
+      new CKBIndexerClient(CKB_INDEXER_URL),
+      ckb.rpc,
+    );
+    const lockReconc = await builder
       .buildLockReconciler(wallet.address, '0x0000000000000000000000000000000000000000')
       .fetchReconciliation();
 
-    logger.info('all locked', reconciliation.from);
-    logger.info('all minted', reconciliation.to);
+    logger.info('all locked', lockReconc.from);
+    logger.info('all minted', lockReconc.to);
 
-    assert(reconciliation.checkBalanced(), 'the amount of lock and mint should be balanced');
+    assert(lockReconc.checkBalanced(), 'the amount of lock and mint should be balanced');
+
+    const unlockReconc = await builder
+      .buildUnlockReconciler(uint8ArrayToString(recipientLockscript), '0x0000000000000000000000000000000000000000')
+      .fetchReconciliation();
+
+    logger.info('all burned', unlockReconc.from);
+    logger.info('all unlocked', unlockReconc.to);
+
+    assert(unlockReconc.checkBalanced(), 'the amount of burn and unlock should be balanced');
   };
 
   // try 100 times and wait for 3 seconds every time.
