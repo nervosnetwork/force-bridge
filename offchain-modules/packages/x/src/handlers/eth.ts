@@ -10,6 +10,7 @@ import { asyncSleep, fromHexString, uint8ArrayToString } from '../utils';
 import { logger } from '../utils/logger';
 import { EthChain } from '../xchain/eth';
 
+const MAX_RETRY_TIMES = 10;
 const lastHandleEthBlockKey = 'lastHandleEthBlock';
 
 export class EthHandler {
@@ -77,13 +78,17 @@ export class EthHandler {
   }
 
   async watchNewBlock() {
-    try {
-      await this.ethChain.watchNewBlock(this.lastHandledBlockHeight, async (newBlock: ethers.providers.Block) => {
-        await this.onBlock(newBlock);
-      });
-    } catch (e) {
-      logger.error(`EthHandler watchNewBlock error:${e.toString()}`);
-      throw e;
+    for (let i = 0; i <= MAX_RETRY_TIMES; i++) {
+      try {
+        await this.ethChain.watchNewBlock(this.lastHandledBlockHeight, async (newBlock: ethers.providers.Block) => {
+          await this.onBlock(newBlock);
+        });
+      } catch (e) {
+        logger.error(`EthHandler watchNewBlock error:${e.toString()}`);
+        if (i == MAX_RETRY_TIMES) {
+          throw e;
+        }
+      }
     }
   }
 
@@ -189,13 +194,17 @@ export class EthHandler {
 
   // listen ETH chain and handle the new lock events
   async watchLockEvents() {
-    try {
-      await this.ethChain.watchLockEvents(this.lastHandledBlockHeight, async (log, parsedLog) => {
-        await this.onLogs(log, parsedLog);
-      });
-    } catch (e) {
-      logger.error(`EthHandler watchLockEvents error: ${e}`);
-      throw e;
+    for (let i = 0; i <= MAX_RETRY_TIMES; i++) {
+      try {
+        await this.ethChain.watchLockEvents(this.lastHandledBlockHeight, async (log, parsedLog) => {
+          await this.onLogs(log, parsedLog);
+        });
+      } catch (e) {
+        logger.error(`EthHandler watchLockEvents error: ${e}`);
+        if (i == MAX_RETRY_TIMES) {
+          throw e;
+        }
+      }
     }
   }
 
