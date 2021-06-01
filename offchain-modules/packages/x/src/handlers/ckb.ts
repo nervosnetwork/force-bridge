@@ -164,13 +164,21 @@ export class CkbHandler {
       return;
     }
 
-    const unconfirmedTxs = await this.db.getUnconfirmedCkbBurnToConfirm(confirmedBlockHeight);
+    const unconfirmedTxs = await this.db.getUnconfirmedBurn();
     if (unconfirmedTxs.length !== 0) {
-      const confirmedTxHashes = unconfirmedTxs.map((burn) => {
+      const updateConfirmNumberRecords = unconfirmedTxs
+        .filter((record) => record.blockNumber > confirmedBlockHeight)
+        .map((record) => {
+          return { txHash: record.ckbTxHash, confirmedNumber: blockNumber - record.blockNumber };
+        });
+      await this.db.updateBurnConfirmNumber(updateConfirmNumberRecords);
+
+      const confirmedRecords = unconfirmedTxs.filter((record) => record.blockNumber <= confirmedBlockHeight);
+      const confirmedTxHashes = confirmedRecords.map((burn) => {
         return burn.ckbTxHash;
       });
       await this.db.updateCkbBurnConfirmStatus(confirmedTxHashes);
-      await this.onCkbBurnConfirmed(unconfirmedTxs);
+      await this.onCkbBurnConfirmed(confirmedRecords);
       logger.info(
         `CkbHandler onBlock updateCkbBurnConfirmStatus height:${blockNumber} ckbTxHashes:${confirmedTxHashes}`,
       );
@@ -242,7 +250,7 @@ export class CkbHandler {
             bridgeFee: new EthAsset(asset).getBridgeFee('out'),
             recipientAddress: uint8ArrayToString(new Uint8Array(v.cellData.getRecipientAddress().raw())),
             blockNumber: latestHeight,
-            confirmStatus: 'unconfirmed',
+            confirmStatus: 0,
           };
           break;
         }

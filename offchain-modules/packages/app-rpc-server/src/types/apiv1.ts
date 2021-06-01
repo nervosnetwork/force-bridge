@@ -15,7 +15,7 @@ export type TransactionSummary = {
     toAsset: RequiredAsset<'amount'>;
     sender: string;
     recipient: string;
-    fromTransaction: TransactionIdent & { timestamp: Timestamp };
+    fromTransaction: TransactionIdent & { timestamp: Timestamp } & { confirmStatus: number | 'confirmed' };
     toTransaction?: TransactionIdent & { timestamp?: Timestamp };
   };
 };

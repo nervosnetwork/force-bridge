@@ -108,14 +108,12 @@ export class CkbDb {
       .execute();
   }
 
-  async getUnconfirmedCkbBurnToConfirm(confirmedBlockHeight: number, limit = 100): Promise<CkbBurn[]> {
+  async getUnconfirmedBurn(limit = 1000): Promise<CkbBurn[]> {
     return this.connection
       .getRepository(CkbBurn)
       .createQueryBuilder()
       .select()
-      .where('block_number <= :confirmedHeight And confirm_status = "unconfirmed"', {
-        confirmedHeight: confirmedBlockHeight,
-      })
+      .where('confirm_status != "confirmed"')
       .limit(limit)
       .getMany();
   }
@@ -128,6 +126,21 @@ export class CkbDb {
       .set({ confirmStatus: 'confirmed' })
       .where('ckb_tx_hash in (:txHashes)', { txHashes: txHashes })
       .execute();
+  }
+
+  async updateBurnConfirmNumber(records: { txHash: string; confirmedNumber: number }[]): Promise<UpdateResult[]> {
+    let updataResults;
+    for (const record of records) {
+      const result = await this.connection
+        .getRepository(CkbBurn)
+        .createQueryBuilder()
+        .update()
+        .set({ confirmStatus: record.confirmedNumber })
+        .where('tx_hash = :txHash', { txHash: record.txHash })
+        .execute();
+      updataResults.push(result);
+    }
+    return updataResults;
   }
 
   async getCkbBurnByTxHashes(ckbTxHashes: string[]): Promise<ICkbBurn[]> {

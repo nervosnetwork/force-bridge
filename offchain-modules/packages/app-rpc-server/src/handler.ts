@@ -467,7 +467,11 @@ function transferDbRecordToResponse(
         },
         sender: record.sender,
         recipient: record.recipient,
-        fromTransaction: { txId: record.lock_hash, timestamp: record.lock_time },
+        fromTransaction: {
+          txId: record.lock_hash,
+          timestamp: record.lock_time,
+          confirmStatus: record.lock_confirm_status,
+        },
       },
     };
     if (record.mint_hash) {
@@ -488,7 +492,11 @@ function transferDbRecordToResponse(
         },
         sender: record.sender,
         recipient: record.recipient,
-        fromTransaction: { txId: record.burn_hash, timestamp: record.burn_time },
+        fromTransaction: {
+          txId: record.burn_hash,
+          timestamp: record.burn_time,
+          confirmStatus: record.burn_confirm_status,
+        },
       },
     };
     if (record.unlock_hash) {

@@ -116,18 +116,26 @@ export class EthHandler {
 
   async confirmEthLocks(currentBlockHeight: number, confirmNumber: number) {
     const confirmedBlockHeight = currentBlockHeight - confirmNumber;
-    const confirmedLocks = await this.db.getUnconfirmedLocksToConfirm(confirmedBlockHeight);
-    if (confirmedLocks.length === 0) {
+    const unConfirmedLocks = await this.db.getUnconfirmedLocks();
+    if (unConfirmedLocks.length === 0) {
       return;
     }
-    const confirmedTxHashes = confirmedLocks.map((lock) => {
+
+    const updateConfirmNumberRecords = unConfirmedLocks
+      .filter((record) => record.blockNumber > confirmedBlockHeight)
+      .map((record) => {
+        return { txHash: record.txHash, confirmedNumber: currentBlockHeight - record.blockNumber };
+      });
+    await this.db.updateLockConfirmNumber(updateConfirmNumberRecords);
+
+    const confirmedRecords = unConfirmedLocks.filter((record) => record.blockNumber <= confirmedBlockHeight);
+    const confirmedTxHashes = confirmedRecords.map((lock) => {
       return lock.txHash;
     });
-
     logger.info(`EhtHandler confirmEthLocks updateLockConfirmStatus txHashes:${confirmedTxHashes.join(', ')}`);
     await this.db.updateLockConfirmStatus(confirmedTxHashes);
 
-    const mintRecords = confirmedLocks.map((lockRecord) => {
+    const mintRecords = confirmedRecords.map((lockRecord) => {
       return {
         id: lockRecord.txHash,
         chain: ChainType.ETH,
