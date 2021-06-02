@@ -109,6 +109,7 @@ export class EthHandler {
         await this.confirmEthLocks(block.number, confirmNumber);
         await this.setLastHandledBlock(block.number, block.hash);
         logger.info(`EthHandler onBlock blockHeight:${block.number} blockHash:${block.hash}`);
+        break;
       } catch (e) {
         logger.error(
           `EthHandler onBlock error, blockHeight:${block.number} blockHash:${block.hash} error:${e.toString()}`,
