@@ -103,7 +103,7 @@ async function doUnlock(
   const amount = options.get('amount');
 
   const account = new Account(privateKey);
-  const generator = new CkbTxGenerator(ForceBridgeCore.ckb, new IndexerCollector(ForceBridgeCore.ckbIndexer));
+  const generator = new CkbTxGenerator(ForceBridgeCore.ckb, ForceBridgeCore.ckbIndexer);
   const burnAmount = new Amount(Unit.fromBTC(amount).toSatoshis(), 0);
   const burnTx = await generator.burn(
     await account.getLockscript(),

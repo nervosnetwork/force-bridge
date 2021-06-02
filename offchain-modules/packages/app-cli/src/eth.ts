@@ -103,7 +103,7 @@ async function doUnlock(
   const token = !options.get('asset') ? ETH_ASSET : options.get('asset');
 
   const account = new Account(privateKey);
-  const generator = new CkbTxGenerator(ForceBridgeCore.ckb, new IndexerCollector(ForceBridgeCore.ckbIndexer));
+  const generator = new CkbTxGenerator(ForceBridgeCore.ckb, ForceBridgeCore.ckbIndexer);
   const burnTx = await generator.burn(
     await account.getLockscript(),
     recipientAddress,
