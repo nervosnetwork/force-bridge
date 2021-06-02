@@ -60,11 +60,21 @@ export class EthChain {
   }
 
   async watchNewBlock(startHeight: number, handleBlockFunc) {
+    let block: ethers.providers.Block;
     for (let height = startHeight + 1; ; ) {
-      const block = await this.provider.getBlock(height);
-      if (!block) {
-        await asyncSleep(5 * 1000);
-        continue;
+      while (true) {
+        try {
+          block = await this.provider.getBlock(height);
+          if (!block) {
+            //wait for new block
+            await asyncSleep(5 * 1000);
+          } else {
+            break;
+          }
+        } catch (e) {
+          logger.error(`Eth watchNewBlock blockHeight:${height} error:${e.message}`);
+          await asyncSleep(3 * 1000);
+        }
       }
       await handleBlockFunc(block);
       height++;
