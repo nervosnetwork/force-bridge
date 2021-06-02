@@ -7,7 +7,7 @@
     "packages/*"
   ],
   "scripts": {
-    "start": "ts-node ./packages/app-relayer/src/index.ts",
+    "start": "CONFIG_PATH=./packages/scripts/src/integration-test/config/collector.json ts-node ./packages/app-relayer/src/index.ts",
     "rpc": "ts-node ./packages/app-rpc-server/src/index.ts",
     "rpc-test": "ts-node ./packages/scripts/src/integration-test/rpc.ts",
     "demo": "ts-node-dev ./packages/scripts/src/demo.ts",
@@ -22,7 +22,7 @@
     "check:prettier": "prettier -c .",
     "check:eslint": "yarn eslint --format=pretty 'packages/*/src/**/*.ts'",
     "clean": "rimraf lumos_db indexer-data dist force-bridge.sqlite",
-    "eth-test": "ts-node ./packages/scripts/src/integration-test/eth.ts",
+    "eth-test": "CONFIG_PATH=./packages/scripts/src/integration-test/config/watcher.json ts-node ./packages/scripts/src/integration-test/eth.ts",
     "eos-test": "ts-node ./packages/scripts/src/integration-test/eos.ts",
     "tron-test": "ts-node ./packages/scripts/src/integration-test/tron.ts",
     "xchain-test": "run-s prepare-xchain-test eth-test",
@@ -30,7 +30,8 @@
     "btc-test": "ts-node ./packages/scripts/src/integration-test/btc.ts",
     "integration-test": "run-p -r start sign-server1 sign-server2 xchain-test",
     "prepare-ckb": "run-s clean build",
-    "ci-flow": "run-s deploy init-multisig prepare-xchain-test integration-test",
+    "ci-flow": "run-s deploy init-multisig prepare-xchain-test ci-config integration-test",
+    "ci-config": "ts-node ./packages/scripts/src/integration-test/config/index.ts",
     "ci": "run-s prepare-ckb ci-flow",
     "test:unit": "nyc --silent ava",
     "cov": "run-s build test:unit",
@@ -40,8 +41,8 @@
     "deploy": "ts-node-dev ./packages/scripts/src/deploy_ckb.ts",
     "prepare": "cd .. && husky install offchain-modules/.husky",
     "init-multisig": "ts-node ./packages/x/src/ckb/tx-helper/multisig/deploy.ts",
-    "sign-server1": "ts-node ./packages/app-multisign-server/src/index.ts --port 8090",
-    "sign-server2": "ts-node ./packages/app-multisign-server/src/index.ts --port 8091"
+    "sign-server1": "CONFIG_PATH=./packages/scripts/src/integration-test/config/verifier1.json ts-node ./packages/app-multisign-server/src/index.ts --port 8090",
+    "sign-server2": "CONFIG_PATH=./packages/scripts/src/integration-test/config/verifier2.json ts-node ./packages/app-multisign-server/src/index.ts --port 8091"
   },
   "author": "",
   "license": "MIT",

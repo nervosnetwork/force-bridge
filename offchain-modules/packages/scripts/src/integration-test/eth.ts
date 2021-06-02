@@ -36,6 +36,7 @@ const collector = new IndexerCollector(indexer);
 
 const ckb = new CKB(CKB_URL);
 const RELAY_PRI_KEY = process.env.PRI_KEY || '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
+const ETH_PRI_KEY = process.env.ETH_PRI_KEY || '0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed37a';
 
 async function main() {
   const conn = await getDBConnection();
@@ -56,7 +57,7 @@ async function main() {
   const provider = new ethers.providers.JsonRpcProvider(config.rpcUrl);
   const bridgeContractAddr = config.contractAddress;
   const bridge = new ethers.Contract(bridgeContractAddr, abi, provider);
-  const wallet = new ethers.Wallet(parsePrivateKey(config.privateKey), provider);
+  const wallet = new ethers.Wallet(ETH_PRI_KEY, provider);
   const bridgeWithSigner = bridge.connect(wallet);
   const iface = new ethers.utils.Interface(abi);
 
