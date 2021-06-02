@@ -70,22 +70,3 @@ export async function getDBConnection(): Promise<Connection> {
   }
   return conn;
 }
-export function getLumosIndexKnex(): Knex {
-  const configPath = './config.json';
-  nconf.env().file({ file: configPath });
-  const LumosDBHost = nconf.get('forceBridge:lumosDBConfig:host');
-  const LumosDBName = nconf.get('forceBridge:lumosDBConfig:database');
-  const LumosDBPort = nconf.get('forceBridge:lumosDBConfig:port');
-  const LumosDBUser = nconf.get('forceBridge:lumosDBConfig:user');
-  const LumosDBPassword = nconf.get('forceBridge:lumosDBConfig:password');
-  return Knex({
-    client: 'mysql2',
-    connection: {
-      host: LumosDBHost,
-      database: LumosDBName,
-      user: LumosDBUser,
-      password: LumosDBPassword,
-      port: LumosDBPort,
-    },
-  });
-}

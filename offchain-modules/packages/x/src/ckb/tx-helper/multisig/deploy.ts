@@ -3,38 +3,23 @@ import { common } from '@ckb-lumos/common-scripts';
 import { key } from '@ckb-lumos/hd';
 import { TransactionSkeleton, sealTransaction, parseAddress, minimalCellCapacity } from '@ckb-lumos/helpers';
 import { RPC } from '@ckb-lumos/rpc';
-import { Indexer } from '@ckb-lumos/sql-indexer';
 import TransactionManager from '@ckb-lumos/transaction-manager';
 import CKB from '@nervosnetwork/ckb-sdk-core';
-import Knex from 'knex';
 import nconf from 'nconf';
 import { Config } from '../../../config';
 import { ForceBridgeCore } from '../../../core';
 import { asyncSleep as sleep } from '../../../utils';
+import { CkbIndexer } from '../indexer';
 import { init } from './init_config';
 import { getFromAddr, getMultisigAddr, getMultisigLock } from './multisig_helper';
 import { generateTypeIDScript } from './typeid';
 
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
-const LumosDBHost = process.env.LumosDBHost || 'localhost';
-const LumosDBName = process.env.LumosDBName || 'lumos-indexer';
-const LumosDBPort = process.env.LumosDBPort || '13306';
-const LumosDBUser = process.env.LumosDBUser || 'root';
-const LumosDBPassword = process.env.LumosDBPassword || 'root';
+const CKB_INDEXER_URL = process.env.CKB_INDEXER_URL || 'http://127.0.0.1:8116';
 init();
-const knex = Knex({
-  client: 'mysql2',
-  connection: {
-    host: LumosDBHost,
-    database: LumosDBName,
-    user: LumosDBUser,
-    password: LumosDBPassword,
-    port: Number(LumosDBPort),
-  },
-});
 const acpData = '0x';
 const ckb = new CKB(CKB_URL);
-const indexer = new Indexer(CKB_URL, knex);
+const indexer = new CkbIndexer(CKB_URL, CKB_INDEXER_URL);
 const transactionManager = new TransactionManager(indexer);
 
 function getDataOutputCapacity() {

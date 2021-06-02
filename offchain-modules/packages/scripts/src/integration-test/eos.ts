@@ -152,7 +152,7 @@ async function main() {
 
   // send burn tx
   const burnAmount = new Amount('0.0001', 4);
-  const generator = new CkbTxGenerator(ckb, new IndexerCollector(indexer));
+  const generator = new CkbTxGenerator(ckb, indexer);
   const burnTx = await generator.burn(
     await account.getLockscript(),
     lockAccount,

@@ -115,13 +115,6 @@ export interface commonConfig {
   log: logConfig;
   network: 'mainnet' | 'testnet';
 }
-export interface lumosDBConfig {
-  host: string;
-  database: string;
-  port: number;
-  user: string;
-  password: string;
-}
 
 export interface WhiteListEthAsset {
   address: string;
@@ -141,5 +134,4 @@ export interface Config {
   tron?: TronConfig;
   btc?: BtcConfig;
   rpc?: rpcConfig;
-  lumosDBConfig?: lumosDBConfig;
 }
