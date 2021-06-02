@@ -4,11 +4,9 @@ type HexNum = string;
 type IOType = 'input' | 'output';
 type Bytes32 = string;
 
-export type JSONRPCResponse<T> = {
-  jsonrpc: string;
-  id: HexNum;
-  result: T;
-};
+type SucceedJSONRPCResponse<T> = { jsonrpc: string; id: HexNum; result: T };
+type FailedJSONRPCResponse = { jsonrpc: string; id: HexNum; error: { message: string; code: number } };
+export type JSONRPCResponse<T> = SucceedJSONRPCResponse<T> | FailedJSONRPCResponse;
 
 export type GetTransactionsResult = {
   block_number: HexNum;
@@ -58,6 +56,11 @@ export class CKBIndexerClient {
     const config = { headers: { 'content-type': 'application/json' } };
 
     const res: AxiosResponse<JSONRPCResponse<Res>> = await this.agent.post('', data, config);
+
+    if ('error' in res.data) {
+      throw new Error('[indexer-rpc]:' + res.data.error.message);
+    }
+
     return res.data.result;
   }
 
