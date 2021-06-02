@@ -11,27 +11,12 @@
       "rpcUrl": "http://127.0.0.1:8545",
       "privateKey": "privkeys/eth",
       "multiSignAddresses":[
-         "0xB026351cD0c62aC89e488A840b7205730E8476bd",
-         "0x27EE444d5D96094EACecC00194b7026Eb4fD979c",
-         "0x0C2207536768EcFFeB11744AdbCC90428a0EE83B"
+        "0xB026351cD0c62aC89e488A840b7205730E8476bd",
+        "0x27EE444d5D96094EACecC00194b7026Eb4fD979c",
+        "0x0C2207536768EcFFeB11744AdbCC90428a0EE83B"
       ],
-      "multiSignKeys": [{
-        "address":"0xB026351cD0c62aC89e488A840b7205730E8476bd",
-        "privKey":"privkeys/eth-multisig-1"
-      },{
-        "address":"0x27EE444d5D96094EACecC00194b7026Eb4fD979c",
-        "privKey":"privkeys/eth-multisig-2"
-      },{
-        "address":"0x0C2207536768EcFFeB11744AdbCC90428a0EE83B",
-        "privKey":"privkeys/eth-multisig-3"
-      }],
-      "multiSignHosts": [{
-         "address":"0xB026351cD0c62aC89e488A840b7205730E8476bd",
-         "host":"http://localhost:8090/force-bridge/sign-server/api/v1"
-      },{
-         "address":"0x27EE444d5D96094EACecC00194b7026Eb4fD979c",
-         "host":"http://localhost:8091/force-bridge/sign-server/api/v1"
-      }],
+      "multiSignKeys": [],
+      "multiSignHosts": [],
       "multiSignThreshold": 2,
       "contractAddress": "0x8326e1d621Cd32752920ed2A44B49bB1a96c7391",
       "confirmNumber": 1,
@@ -140,20 +125,8 @@
             "0xebf9befcd8396e88cab8fcb920ab149231658f4b"
           ]
       },
-      "multiSignKeys":[{
-         "address":"ckt1qyqvsv5240xeh85wvnau2eky8pwrhh4jr8ts8vyj37",
-         "privKey":"privkeys/ckb-multisig-1"
-      },{
-         "address":"ckt1qyqywrwdchjyqeysjegpzw38fvandtktdhrs0zaxl4",
-         "privKey":"privkeys/ckb-multisig-2"
-      }],
-      "multiSignHosts":[{
-        "address":"ckt1qyqvsv5240xeh85wvnau2eky8pwrhh4jr8ts8vyj37",
-        "host":"http://127.0.0.1:8090/force-bridge/sign-server/api/v1"
-      },{
-        "address":"ckt1qyqywrwdchjyqeysjegpzw38fvandtktdhrs0zaxl4",
-        "host":"http://127.0.0.1:8091/force-bridge/sign-server/api/v1"
-      }],
+      "multiSignKeys":[],
+      "multiSignHosts":[],
       "fromPrivateKey": "privkeys/ckb",
       "ownerLockHash": "0x49beb8c4c29d06e05452b5d9ea8e86ffd4ea2b614498ba1a0c47890a0ad4f550",
       "deps": {
