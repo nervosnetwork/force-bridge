@@ -1,6 +1,13 @@
 {
-  "version": "0.0.0",
-  "workspaces": ["packages/*"],
+  "version": "0.0.2",
+  "workspaces": [
+    "packages/*"
+  ],
   "npmClient": "yarn",
-  "useWorkspaces": true
+  "useWorkspaces": true,
+  "command": {
+    "publish": {
+      "registry": "http://localhost:4873"
+    }
+  }
 }

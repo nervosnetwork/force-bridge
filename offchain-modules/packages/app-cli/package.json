@@ -1,8 +1,9 @@
 {
   "name": "@force-bridge/cli",
   "main": "dist",
+  "version": "0.0.2",
   "bin": {
-    "forcecli": ".dist/index.js"
+    "forcecli": "./dist/index.js"
   },
   "scripts": {
     "build": "yarn run clean && yarn run compile",
@@ -12,6 +13,6 @@
     "test": "yarn run build"
   },
   "dependencies": {
-    "@force-bridge/x": "*"
+    "@force-bridge/x": "^0.0.2"
   }
 }
