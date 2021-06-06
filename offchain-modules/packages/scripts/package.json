@@ -13,5 +13,5 @@
     "@force-bridge/x": "*",
     "@force-bridge/xchain-eth": "*"
   },
-  "version": "0.0.2"
+  "version": "0.0.10"
 }

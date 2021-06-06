@@ -1,8 +1,6 @@
 import fs from 'fs';
 import * as utils from '@nervosnetwork/ckb-sdk-utils';
-import Knex from 'knex';
 import * as lodash from 'lodash';
-import nconf from 'nconf';
 import { Connection, createConnection, getConnectionManager, getConnectionOptions } from 'typeorm';
 import { logger } from './logger';
 

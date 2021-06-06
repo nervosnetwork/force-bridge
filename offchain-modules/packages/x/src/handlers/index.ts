@@ -8,12 +8,12 @@ import { CkbHandler } from '../handlers/ckb';
 import { EosHandler } from '../handlers/eos';
 import { EthHandler } from '../handlers/eth';
 import { TronHandler } from '../handlers/tron';
-import { getDBConnection, parsePrivateKey } from '../utils';
+import { parsePrivateKey } from '../utils';
 import { logger } from '../utils/logger';
 import { BTCChain } from '../xchain/btc';
 import { EthChain } from '../xchain/eth';
 
-export async function startHandlers() {
+export async function startHandlers(conn: Connection) {
   if (ForceBridgeCore.config.common.role === undefined) {
     ForceBridgeCore.config.common.role = 'watcher';
   }
@@ -24,7 +24,6 @@ export async function startHandlers() {
   const isCollector = ForceBridgeCore.config.common.role === 'collector';
 
   // init db and start handlers
-  const conn = await getDBConnection();
   const ckbDb = new CkbDb(conn);
   const kvDb = new KVDb(conn);
   if (isCollector) {

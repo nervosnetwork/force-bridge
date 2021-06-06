@@ -1,7 +1,6 @@
 {
-  "name": "@force-bridge/rpc-server",
+  "name": "@force-bridge/app-rpc-server",
   "main": "dist",
-  "private": true,
   "scripts": {
     "build": "yarn run clean && yarn run compile",
     "clean": "rimraf -rf ./dist",
@@ -10,7 +9,7 @@
     "test": "yarn run build"
   },
   "dependencies": {
-    "@force-bridge/x": "^0.0.2"
+    "@force-bridge/x": "^0.0.10"
   },
-  "version": "0.0.2"
+  "version": "0.0.10"
 }
