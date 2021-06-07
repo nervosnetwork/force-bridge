@@ -73,6 +73,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     let tx;
     switch (network) {
       case 'Ethereum': {
+        checkETHAmount(payload.asset.ident, payload.asset.amount);
         const provider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
         const bridgeContractAddr = ForceBridgeCore.config.eth.contractAddress;
         const bridge = new ethers.Contract(bridgeContractAddr, abi, provider);
@@ -136,15 +137,9 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         // TODO: add other chains
         Promise.reject(new Error('invalid chain type'));
     }
-    const bridgeFee = {
-      network: network,
-      ident: payload.asset.ident,
-      amount: '1',
-    };
     return {
       network: network,
       rawTransaction: tx,
-      bridgeFee: bridgeFee,
     };
   }
 
@@ -157,10 +152,13 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
 
     const network = payload.network;
     const assetName = payload.asset;
+    const amount = payload.amount;
 
     let asset;
     switch (network) {
       case 'Ethereum':
+        checkETHAmount(assetName, amount);
+
         asset = new EthAsset(assetName, ownLockHash);
         break;
       case 'Tron':
@@ -170,8 +168,6 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         //TODO: add other chains
         Promise.reject(new Error('invalid chain type'));
     }
-
-    const amount = payload.amount;
 
     const script = Script.fromRPC({
       code_hash: fromLockscript.codeHash,
@@ -183,7 +179,6 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     return {
       network: 'Nervos',
       rawTransaction: burnTx,
-      bridgeFee: { network: 'Nervos', ident: 'ckb', amount: '0' },
     };
   }
 
@@ -237,15 +232,9 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
   ): Promise<GetBridgeInNervosBridgeFeeResponse> {
     switch (payload.network) {
       case 'Ethereum': {
+        checkETHAmount(payload.xchainAssetIdent, payload.amount);
+
         const asset = new EthAsset(payload.xchainAssetIdent);
-        const minimalAmount = asset.getMinimalAmount();
-        const assetInfo = ForceBridgeCore.config.eth.assetWhiteList.find(
-          (asset) => asset.address === payload.xchainAssetIdent,
-        );
-        if (!assetInfo) throw new Error('invalid asset');
-        const humanizeMinimalAmount = new BigNumber(minimalAmount).times(10 ** -assetInfo.decimal).toString();
-        if (new Amount(payload.amount, 0).lt(new Amount(minimalAmount, 0)))
-          throw new Error(`minimal bridge amount is ${humanizeMinimalAmount} ${assetInfo.symbol}`);
         const bridgeFee = asset.getBridgeFee('in');
         return {
           fee: {
@@ -265,15 +254,9 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
   ): Promise<GetBridgeOutNervosBridgeFeeResponse> {
     switch (payload.network) {
       case 'Ethereum': {
+        checkETHAmount(payload.xchainAssetIdent, payload.amount);
+
         const asset = new EthAsset(payload.xchainAssetIdent);
-        const minimalAmount = asset.getMinimalAmount();
-        const assetInfo = ForceBridgeCore.config.eth.assetWhiteList.find(
-          (asset) => asset.address === payload.xchainAssetIdent,
-        );
-        if (!assetInfo) throw new Error('invalid asset');
-        const humanizeMinimalAmount = new BigNumber(minimalAmount).times(10 ** -assetInfo.decimal).toString();
-        if (new Amount(payload.amount, 0).lt(new Amount(minimalAmount, 0)))
-          throw new Error(`minimal bridge amount is ${humanizeMinimalAmount} ck${assetInfo.symbol}`);
         const bridgeFee = asset.getBridgeFee('out');
         return {
           fee: {
@@ -555,4 +538,14 @@ function getTokenShadowIdent(XChainNetwork: XChainNetWork, XChainToken: string):
     args: asset.toBridgeLockscriptArgs(),
   };
   return ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
+}
+
+function checkETHAmount(assetIdent, amount) {
+  const asset = new EthAsset(assetIdent);
+  const minimalAmount = asset.getMinimalAmount();
+  const assetInfo = ForceBridgeCore.config.eth.assetWhiteList.find((asset) => asset.address === assetIdent);
+  if (!assetInfo) throw new Error('invalid asset');
+  const humanizeMinimalAmount = new BigNumber(minimalAmount).times(10 ** -assetInfo.decimal).toString();
+  if (new Amount(amount, 0).lt(new Amount(minimalAmount, 0)))
+    throw new Error(`minimal bridge amount is ${humanizeMinimalAmount} ${assetInfo.symbol}`);
 }
