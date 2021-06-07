@@ -49,7 +49,6 @@ export type GenerateTransactionResponse<N extends NetworkTypes> = {
   network: string;
   // TODO
   rawTransaction: N['RawTransaction'];
-  bridgeFee: RequiredAsset<'amount'>;
 };
 
 export type SignedTransactionPayload<N extends NetworkBase> = {

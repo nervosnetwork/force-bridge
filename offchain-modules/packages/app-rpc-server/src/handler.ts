@@ -136,15 +136,9 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         // TODO: add other chains
         Promise.reject(new Error('invalid chain type'));
     }
-    const bridgeFee = {
-      network: network,
-      ident: payload.asset.ident,
-      amount: '1',
-    };
     return {
       network: network,
       rawTransaction: tx,
-      bridgeFee: bridgeFee,
     };
   }
 
@@ -183,7 +177,6 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     return {
       network: 'Nervos',
       rawTransaction: burnTx,
-      bridgeFee: { network: 'Nervos', ident: 'ckb', amount: '0' },
     };
   }
 
