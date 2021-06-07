@@ -29,7 +29,7 @@ export class CkbBurn {
   @Column()
   blockNumber: number;
 
-  @Column({ default: 'unconfirmed' })
+  @Column({ default: 0 })
   confirmNumber: number;
 
   @Column({ default: 'unconfirmed' })
