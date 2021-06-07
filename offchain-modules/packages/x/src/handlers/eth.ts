@@ -100,10 +100,10 @@ export class EthHandler {
 
   isForked(confirmNumber: number, block: ethers.providers.Block): boolean {
     return (
-        confirmNumber !== 0 &&
-        this.lastHandledBlockHeight === block.number - 1 &&
-        this.lastHandledBlockHash !== '' &&
-        block.parentHash !== this.lastHandledBlockHash
+      confirmNumber !== 0 &&
+      this.lastHandledBlockHeight === block.number - 1 &&
+      this.lastHandledBlockHash !== '' &&
+      block.parentHash !== this.lastHandledBlockHash
     );
   }
 
