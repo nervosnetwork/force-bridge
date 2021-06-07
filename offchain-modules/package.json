@@ -7,7 +7,7 @@
     "packages/*"
   ],
   "scripts": {
-    "start": "CONFIG_PATH=./packages/scripts/src/integration-test/config/collector.json ts-node ./packages/app-relayer/src/index.ts",
+    "start": "ts-node ./packages/app-relayer/src/index.ts",
     "rpc": "ts-node ./packages/app-rpc-server/src/index.ts",
     "rpc-test": "ts-node ./packages/scripts/src/integration-test/rpc.ts",
     "demo": "ts-node-dev ./packages/scripts/src/demo.ts",
@@ -28,11 +28,12 @@
     "xchain-test": "run-s prepare-xchain-test eth-test",
     "prepare-xchain-test": "sleep 5",
     "btc-test": "ts-node ./packages/scripts/src/integration-test/btc.ts",
-    "integration-test": "run-p -r start sign-server1 sign-server2 xchain-test",
+    "integration-test": "run-p -r relayer-test sign-server1 sign-server2 xchain-test",
     "prepare-ckb": "run-s clean build",
     "ci-flow": "run-s deploy init-multisig prepare-xchain-test ci-config integration-test",
     "ci-config": "ts-node ./packages/scripts/src/integration-test/config/index.ts",
     "ci": "run-s prepare-ckb ci-flow",
+    "relayer-test": "CONFIG_PATH=./packages/scripts/src/integration-test/config/collector.json ts-node ./packages/app-relayer/src/index.ts",
     "test:unit": "nyc --silent ava",
     "cov": "run-s build test:unit",
     "cov:html": "nyc report --reporter=html",
