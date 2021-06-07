@@ -129,7 +129,7 @@ export class CkbDb {
   }
 
   async updateBurnConfirmNumber(records: { txHash: string; confirmedNumber: number }[]): Promise<UpdateResult[]> {
-    let updataResults;
+    const updataResults = new Array(0);
     for (const record of records) {
       const result = await this.connection
         .getRepository(CkbBurn)
