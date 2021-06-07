@@ -2,7 +2,7 @@ import { Config } from '@force-bridge/x/dist/config';
 import nconf from 'nconf';
 
 const firstCkbMultiSigAddr = 'ckt1qyqvsv5240xeh85wvnau2eky8pwrhh4jr8ts8vyj37';
-const firstCkbMultiSigServerHost = 'http://127.0.0.1:3090';
+const firstCkbMultiSigServerHost = 'http://127.0.0.1:8090';
 const secondCkbMultiSigAddr = 'ckt1qyqywrwdchjyqeysjegpzw38fvandtktdhrs0zaxl4';
 const secondCkbMultiSigServerHost = 'http://127.0.0.1:8091';
 
