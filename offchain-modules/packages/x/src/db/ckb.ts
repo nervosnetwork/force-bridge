@@ -136,7 +136,7 @@ export class CkbDb {
         .createQueryBuilder()
         .update()
         .set({ confirmNumber: record.confirmedNumber })
-        .where('tx_hash = :txHash', { txHash: record.txHash })
+        .where('ckb_tx_hash = :txHash', { txHash: record.txHash })
         .execute();
       updataResults.push(result);
     }
