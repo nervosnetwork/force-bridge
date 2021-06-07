@@ -453,6 +453,7 @@ function transferDbRecordToResponse(
 ): TransactionSummaryWithStatus {
   let bridgeTxRecord: TransactionSummary;
   if ('lock_hash' in record) {
+    const confirmStatus = record.lock_confirm_status === 'confirmed' ? 'confirmed' : record.lock_confirm_number;
     bridgeTxRecord = {
       txSummary: {
         fromAsset: {
@@ -470,7 +471,7 @@ function transferDbRecordToResponse(
         fromTransaction: {
           txId: record.lock_hash,
           timestamp: record.lock_time,
-          confirmStatus: record.lock_confirm_status,
+          confirmStatus: confirmStatus,
         },
       },
     };
@@ -478,6 +479,7 @@ function transferDbRecordToResponse(
       bridgeTxRecord.txSummary.toTransaction = { txId: record.mint_hash, timestamp: record.mint_time };
     }
   } else if ('burn_hash' in record) {
+    const confirmStatus = record.burn_confirm_status === 'confirmed' ? 'confirmed' : record.burn_confirm_number;
     bridgeTxRecord = {
       txSummary: {
         fromAsset: {
@@ -495,7 +497,7 @@ function transferDbRecordToResponse(
         fromTransaction: {
           txId: record.burn_hash,
           timestamp: record.burn_time,
-          confirmStatus: record.burn_confirm_status,
+          confirmStatus: confirmStatus,
         },
       },
     };

@@ -186,6 +186,7 @@ export interface LockRecord {
   lock_hash: string;
   mint_hash: string;
   lock_time: number;
+  lock_confirm_number: number;
   lock_confirm_status: TxConfirmStatus;
   mint_time: number;
   status: dbTxStatus;
@@ -201,6 +202,7 @@ export interface UnlockRecord {
   burn_hash: string;
   unlock_hash: string;
   burn_time: number;
+  burn_confirm_number: number;
   burn_confirm_status: TxConfirmStatus;
   unlock_time: number;
   status: dbTxStatus;
