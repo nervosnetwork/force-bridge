@@ -1,5 +1,5 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryColumn, UpdateDateColumn } from 'typeorm';
-import { txConfirmStatus } from './EthLock';
+import { TxConfirmStatus } from './EthLock';
 
 @Entity()
 export class CkbBurn {
@@ -29,8 +29,8 @@ export class CkbBurn {
   @Column()
   blockNumber: number;
 
-  @Column({ default: 'unconfirmed' })
-  confirmStatus: txConfirmStatus;
+  @Column({ default: 0 })
+  confirmStatus: TxConfirmStatus;
 
   @CreateDateColumn()
   createdAt: string;

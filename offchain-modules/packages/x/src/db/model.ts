@@ -7,7 +7,7 @@ import { CkbBurn } from './entity/CkbBurn';
 import { CkbMint, dbTxStatus } from './entity/CkbMint';
 import { EosLock } from './entity/EosLock';
 import { EosUnlock } from './entity/EosUnlock';
-import { EthLock, txConfirmStatus } from './entity/EthLock';
+import { EthLock, TxConfirmStatus } from './entity/EthLock';
 import { EthUnlock } from './entity/EthUnlock';
 import { TronLock } from './entity/TronLock';
 import { TronUnlock } from './entity/TronUnlock';
@@ -15,7 +15,7 @@ import { TronUnlock } from './entity/TronUnlock';
 // export { EthUnlock, EthLock, BtcLock, BtcUnlock, EosLock, EosUnlock, CkbMint, CkbBurn, TronLock, TronUnlock };
 
 export { EthUnlock } from './entity/EthUnlock';
-export { EthLock } from './entity/EthLock';
+export { EthLock, TxConfirmStatus } from './entity/EthLock';
 export { BtcLock } from './entity/BtcLock';
 export { BtcUnlock } from './entity/BtcUnlock';
 export { EosLock } from './entity/EosLock';
@@ -69,7 +69,7 @@ export interface ICkbBurn {
   bridgeFee: string;
   recipientAddress: string;
   blockNumber: number;
-  confirmStatus: txConfirmStatus;
+  confirmStatus: TxConfirmStatus;
 }
 
 export interface IEthUnlock {
@@ -186,6 +186,7 @@ export interface LockRecord {
   lock_hash: string;
   mint_hash: string;
   lock_time: number;
+  lock_confirm_status: TxConfirmStatus;
   mint_time: number;
   status: dbTxStatus;
   asset: string;
@@ -200,6 +201,7 @@ export interface UnlockRecord {
   burn_hash: string;
   unlock_hash: string;
   burn_time: number;
+  burn_confirm_status: TxConfirmStatus;
   unlock_time: number;
   status: dbTxStatus;
   asset: string;

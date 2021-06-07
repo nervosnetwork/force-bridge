@@ -42,13 +42,11 @@ export class EthDb implements IQuery {
       .execute();
   }
 
-  async getUnconfirmedLocksToConfirm(confirmedBlockHeight: number, limit = 100): Promise<EthLock[]> {
+  async getUnconfirmedLocks(limit = 1000): Promise<EthLock[]> {
     return this.ethLockRepository
       .createQueryBuilder()
       .select()
-      .where('block_number <= :confirmedHeight And confirm_status = "unconfirmed"', {
-        confirmedHeight: confirmedBlockHeight,
-      })
+      .where('confirm_status != "confirmed"')
       .limit(limit)
       .getMany();
   }
@@ -62,6 +60,20 @@ export class EthDb implements IQuery {
       .execute();
   }
 
+  async updateLockConfirmNumber(records: { txHash: string; confirmedNumber: number }[]): Promise<UpdateResult[]> {
+    let updataResults;
+    for (const record of records) {
+      const result = await this.ethLockRepository
+        .createQueryBuilder()
+        .update()
+        .set({ confirmStatus: record.confirmedNumber })
+        .where('tx_hash = :txHash', { txHash: record.txHash })
+        .execute();
+      updataResults.push(result);
+    }
+    return updataResults;
+  }
+
   async getEthUnlockRecordsToUnlock(status: EthUnlockStatus, take = 100): Promise<EthUnlock[]> {
     return this.ethUnlockRepository.find({
       where: {
@@ -72,11 +84,10 @@ export class EthDb implements IQuery {
   }
 
   async getLockRecordsByCkbAddress(ckbRecipientAddr: string, XChainAsset: string): Promise<LockRecord[]> {
-    return await this.connection
-      .getRepository(CkbMint)
-      .createQueryBuilder('ckb')
-      .innerJoinAndSelect('eth_lock', 'eth', 'eth.tx_hash = ckb.id')
-      .where('ckb.recipient_lockscript = :recipient AND ckb.asset = :asset', {
+    return await this.ethLockRepository
+      .createQueryBuilder('eth')
+      .leftJoinAndSelect('ckb_mint', 'ckb', 'eth.tx_hash = ckb.id')
+      .where('eth.recipient = :recipient AND eth.token = :asset', {
         recipient: ckbRecipientAddr,
         asset: XChainAsset,
       })
@@ -89,6 +100,7 @@ export class EthDb implements IQuery {
         eth.tx_hash as lock_hash,
         ckb.mint_hash as mint_hash,
         eth.updated_at as lock_time, 
+        eth.confirm_status as lock_confirm_status,
         ckb.updated_at as mint_time, 
         ckb.status as status,
         ckb.asset as asset,
@@ -103,7 +115,7 @@ export class EthDb implements IQuery {
     return await this.connection
       .getRepository(CkbBurn)
       .createQueryBuilder('ckb')
-      .innerJoinAndSelect('eth_unlock', 'eth', 'eth.ckb_tx_hash = ckb.ckb_tx_hash')
+      .leftJoinAndSelect('eth_unlock', 'eth', 'eth.ckb_tx_hash = ckb.ckb_tx_hash')
       .where('ckb.sender_address = :sender_address AND ckb.asset = :asset', {
         sender_address: ckbAddress,
         asset: XChainAsset,
@@ -118,6 +130,7 @@ export class EthDb implements IQuery {
         eth.eth_tx_hash as unlock_hash,
         eth.updated_at as unlock_time, 
         ckb.updated_at as burn_time, 
+        ckb.confirm_status as burn_confirm_status,
         eth.status as status,
         ckb.asset as asset,
         eth.message as message 
@@ -128,11 +141,10 @@ export class EthDb implements IQuery {
   }
 
   async getLockRecordsByXChainAddress(XChainSender: string, XChainAsset: string): Promise<LockRecord[]> {
-    return await this.connection
-      .getRepository(CkbMint)
-      .createQueryBuilder('ckb')
-      .innerJoinAndSelect('eth_lock', 'eth', 'eth.tx_hash = ckb.id')
-      .where('eth.sender = :sender AND ckb.asset = :asset', { sender: XChainSender, asset: XChainAsset })
+    return await this.ethLockRepository
+      .createQueryBuilder('eth')
+      .leftJoinAndSelect('ckb_mint', 'ckb', 'eth.tx_hash = ckb.id')
+      .where('eth.sender = :sender AND eth.token = :asset', { sender: XChainSender, asset: XChainAsset })
       .select(
         `
         eth.sender as sender, 
@@ -142,6 +154,7 @@ export class EthDb implements IQuery {
         eth.tx_hash as lock_hash,
         ckb.mint_hash as mint_hash,
         eth.updated_at as lock_time, 
+        eth.confirm_status as lock_confirm_status,
         ckb.updated_at as mint_time, 
         ckb.status as status,
         ckb.asset as asset,
@@ -156,7 +169,7 @@ export class EthDb implements IQuery {
     return await this.connection
       .getRepository(CkbBurn)
       .createQueryBuilder('ckb')
-      .innerJoinAndSelect('eth_unlock', 'eth', 'eth.ckb_tx_hash = ckb.ckb_tx_hash')
+      .leftJoinAndSelect('eth_unlock', 'eth', 'eth.ckb_tx_hash = ckb.ckb_tx_hash')
       .where('ckb.recipient_address = :recipient_address AND ckb.asset = :asset', {
         recipient_address: XChainRecipientAddr,
         asset: XChainAsset,
@@ -171,6 +184,7 @@ export class EthDb implements IQuery {
         eth.eth_tx_hash as unlock_hash,
         eth.updated_at as unlock_time, 
         ckb.updated_at as burn_time, 
+        ckb.confirm_status as burn_confirm_status,
         eth.status as status,
         ckb.asset as asset,
         eth.message as message 
