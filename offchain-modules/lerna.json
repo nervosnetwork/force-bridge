@@ -1,6 +1,8 @@
 {
-  "version": "0.0.10",
-  "workspaces": ["packages/*"],
+  "version": "0.0.15",
+  "workspaces": [
+    "packages/*"
+  ],
   "npmClient": "yarn",
   "useWorkspaces": true,
   "command": {

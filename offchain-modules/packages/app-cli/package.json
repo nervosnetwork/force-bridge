@@ -1,7 +1,7 @@
 {
   "name": "@force-bridge/cli",
   "main": "dist",
-  "version": "0.0.10",
+  "version": "0.0.15",
   "bin": {
     "forcecli": "./dist/index.js"
   },
@@ -13,9 +13,9 @@
     "test": "yarn run build"
   },
   "dependencies": {
-    "@force-bridge/app-multisign-server": "*",
-    "@force-bridge/app-relayer": "*",
-    "@force-bridge/app-rpc-server": "*",
-    "@force-bridge/x": "*"
+    "@force-bridge/app-multisign-server": "^0.0.15",
+    "@force-bridge/app-relayer": "^0.0.15",
+    "@force-bridge/app-rpc-server": "^0.0.15",
+    "@force-bridge/x": "^0.0.15"
   }
 }

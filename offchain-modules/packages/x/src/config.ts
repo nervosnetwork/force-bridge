@@ -121,10 +121,25 @@ export interface logConfig {
   logFile: string;
 }
 
+export type ormDBType = 'mysql' | 'mariadb';
+
+export interface ormConfig {
+  type: ormDBType;
+  host: string;
+  port: number;
+  username: string;
+  password: string;
+  database: string;
+  timezone: string;
+  synchronize: boolean;
+  logging: boolean;
+}
+
 export interface commonConfig {
   role: forceBridgeRole;
   log: logConfig;
   network: 'mainnet' | 'testnet';
+  orm: ormConfig;
 }
 
 export interface WhiteListEthAsset {

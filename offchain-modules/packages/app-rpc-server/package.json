@@ -9,7 +9,7 @@
     "test": "yarn run build"
   },
   "dependencies": {
-    "@force-bridge/x": "^0.0.10"
+    "@force-bridge/x": "^0.0.15"
   },
-  "version": "0.0.10"
+  "version": "0.0.15"
 }
