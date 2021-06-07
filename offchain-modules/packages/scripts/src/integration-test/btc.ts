@@ -11,7 +11,7 @@ import { BtcDb } from '@force-bridge/x/dist/db/btc';
 import { BtcLock } from '@force-bridge/x/dist/db/entity/BtcLock';
 import { BtcUnlock } from '@force-bridge/x/dist/db/entity/BtcUnlock';
 import { CkbMint } from '@force-bridge/x/dist/db/entity/CkbMint';
-import { asyncSleep, getDBConnection } from '@force-bridge/x/dist/utils';
+import { asyncSleep, getDBConnection, parsePrivateKey } from '@force-bridge/x/dist/utils';
 import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
 import { BTCChain, getBtcMainnetFee } from '@force-bridge/x/dist/xchain/btc';
 
@@ -45,7 +45,7 @@ async function main() {
 
   // init bridge force core
   await new ForceBridgeCore().init(config);
-  const PRI_KEY = ForceBridgeCore.config.ckb.fromPrivateKey;
+  const PRI_KEY = parsePrivateKey(ForceBridgeCore.config.ckb.fromPrivateKey);
   const client = new RPCClient(config.btc.clientParams);
   const btcChain = new BTCChain();
 

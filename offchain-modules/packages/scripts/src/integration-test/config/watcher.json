@@ -1,0 +1,135 @@
+{
+  "forceBridge": {
+    "common": {
+      "log": {
+        "level": "info"
+      },
+      "network": "testnet",
+      "role": "watcher"
+    },
+    "eth": {
+      "rpcUrl": "http://127.0.0.1:8545",
+      "contractAddress": "0x8326e1d621Cd32752920ed2A44B49bB1a96c7391",
+      "confirmNumber": 1,
+      "startBlockHeight": 1,
+      "batchUnlock": {
+        "batchNumber": 100,
+        "maxWaitTime": 86400000
+      },
+      "assetWhiteList": [
+        {
+          "address": "0x0000000000000000000000000000000000000000",
+          "name": "ETH",
+          "symbol": "ETH",
+          "decimal": 18,
+          "logoURI": "https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=002",
+          "minimalBridgeAmount": "1000000000000000",
+          "bridgeFee": {
+            "in": "1000000000000",
+            "out": "2000000000000"
+          }
+        },
+        {
+          "address": "0x7Af456bf0065aADAB2E6BEc6DaD3731899550b84",
+          "name": "DAI",
+          "symbol": "DAI",
+          "decimal": 18,
+          "logoURI": "https://cryptologos.cc/logos/single-collateral-dai-sai-logo.svg?v=002",
+          "minimalBridgeAmount": "1000000000000000",
+          "bridgeFee": {
+            "in": "1000000000000",
+            "out": "2000000000000"
+          }
+        },
+        {
+          "address": "0x74a3dbd5831f45CD0F3002Bb87a59B7C15b1B5E6",
+          "name": "USDT",
+          "symbol": "USDT",
+          "decimal": 6,
+          "logoURI": "https://cryptologos.cc/logos/tether-usdt-logo.svg?v=002",
+          "minimalBridgeAmount": "1000",
+          "bridgeFee": {
+            "in": "10",
+            "out": "20"
+          }
+        },
+        {
+          "address": "0x265566D4365d80152515E800ca39424300374A83",
+          "name": "USDC",
+          "symbol": "USDC",
+          "decimal": 6,
+          "logoURI": "https://cryptologos.cc/logos/usd-coin-usdc-logo.svg?v=002",
+          "minimalBridgeAmount": "1000",
+          "bridgeFee": {
+            "in": "10",
+            "out": "20"
+          }
+        }
+      ]
+    },
+    "ckb": {
+      "ckbRpcUrl": "http://127.0.0.1:8114",
+      "ckbIndexerUrl": "http://127.0.0.1:8116",
+      "ownerLockHash": "0x49beb8c4c29d06e05452b5d9ea8e86ffd4ea2b614498ba1a0c47890a0ad4f550",
+      "deps": {
+        "bridgeLock": {
+          "cellDep": {
+            "depType": "code",
+            "outPoint": {
+              "txHash": "0xcd5926a2c61d561cb04c2911985fa4a2b08956d1c22379bf4cf1d1934b218dca",
+              "index": "0x0"
+            }
+          },
+          "script": {
+            "codeHash": "0x8aa08e1154cbd2cb7dbb63f2a8b2f14c1fc7ec622f234e4ae6be37d757a4d106",
+            "hashType": "data"
+          }
+        },
+        "sudtType": {
+          "cellDep": {
+            "depType": "code",
+            "outPoint": {
+              "txHash": "0xcd5926a2c61d561cb04c2911985fa4a2b08956d1c22379bf4cf1d1934b218dca",
+              "index": "0x2"
+            }
+          },
+          "script": {
+            "codeHash": "0xe1e354d6d643ad42724d40967e334984534e0367405c5ae42a9d7d63d77df419",
+            "hashType": "data"
+          }
+        },
+        "recipientType": {
+          "cellDep": {
+            "depType": "code",
+            "outPoint": {
+              "txHash": "0xcd5926a2c61d561cb04c2911985fa4a2b08956d1c22379bf4cf1d1934b218dca",
+              "index": "0x3"
+            }
+          },
+          "script": {
+            "codeHash": "0x4097943baa281ee2a4afa152df0f3b1d2de21294fbf55201f1abb1358f725a12",
+            "hashType": "data"
+          }
+        }
+      },
+      "startBlockHeight": 0,
+      "confirmNumber": 1,
+      "multisigType": {
+        "code_hash": "0x00000000000000000000000000000000000000000000000000545950455f4944",
+        "hash_type": "type",
+        "args": "0x065287690b11131bbf06536a0d892fd177ab6a2734d17c15de138ea5c562035f"
+      },
+      "multisigScript": {
+        "R": 0,
+        "M": 2,
+        "publicKeyHashes": [
+          "0x40dcec2ef1ffc2340ea13ff4dd9671d2f9787e95",
+          "0xc8328aabcd9b9e8e64fbc566c4385c3bdeb219d7",
+          "0x470dcdc5e44064909650113a274b3b36aecb6dc7",
+          "0xd9a188cc1985a7d4a31f141f4ebb61f241aec182",
+          "0xebf9befcd8396e88cab8fcb920ab149231658f4b"
+        ]
+      }
+    }
+  }
+}

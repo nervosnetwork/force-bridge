@@ -29,12 +29,22 @@ export interface MultisigItem {
   publicKeyHashes: string[];
 }
 
+export class MultiSignHost {
+  address: string;
+  host: string;
+}
+
+export class MultiSignKey {
+  privKey: string;
+  address: string;
+}
+
 export interface CkbConfig {
   ckbRpcUrl: string;
   ckbIndexerUrl: string;
   fromPrivateKey: string;
-  keys: string[];
-  hosts: string[];
+  multiSignKeys: MultiSignKey[];
+  multiSignHosts: MultiSignHost[];
   multisigScript: MultisigItem;
   multisigType: ScriptItem;
   ownerLockHash: string;
@@ -51,8 +61,9 @@ export interface EthConfig {
   rpcUrl: string;
   contractAddress: string;
   privateKey: string;
-  multiSignKeys: string[];
-  multiSignHosts: string[];
+  multiSignKeys: MultiSignKey[];
+  multiSignAddresses: string[];
+  multiSignHosts: MultiSignHost[];
   multiSignThreshold: number;
   confirmNumber: number;
   startBlockHeight: number;

@@ -12,10 +12,7 @@ async function main() {
     process.env.CONFIG_PATH || '../offchain-modules/config.json';
   nconf.env().file({ file: configPath });
 
-  const multiSignKeys = nconf.get('forceBridge:eth:multiSignKeys');
-  const wallets = multiSignKeys.map(key => new ethers.Wallet(key));
-  const validators = wallets.map(wallet => wallet.address);
-
+  const validators = nconf.get('forceBridge:eth:multiSignAddresses');
   const multiSignThreshold = nconf.get('forceBridge:eth:multiSignThreshold');
   const ForceBridge = await ethers.getContractFactory('ForceBridge');
   const bridge = await ForceBridge.deploy(validators, multiSignThreshold);

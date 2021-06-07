@@ -37,9 +37,6 @@ export async function startHandlers() {
   if (ForceBridgeCore.config.eth !== undefined) {
     if (isCollector) {
       ForceBridgeCore.config.eth.privateKey = parsePrivateKey(ForceBridgeCore.config.eth.privateKey);
-      ForceBridgeCore.config.eth.multiSignKeys = ForceBridgeCore.config.eth.multiSignKeys.map((pk) =>
-        parsePrivateKey(pk),
-      );
     }
     const ethDb = new EthDb(conn);
     const ethChain = new EthChain(role);

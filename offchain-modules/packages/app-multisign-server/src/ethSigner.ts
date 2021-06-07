@@ -87,9 +87,12 @@ async function verifyEthTx(pubKey: string, params: collectSignaturesParams): Pro
 export async function signEthTx(params: collectSignaturesParams): Promise<string> {
   logger.info('signEthTx params: ', JSON.stringify(params, undefined, 2));
 
-  const args = minimist(process.argv.slice(2));
-  const index = args.index;
-  const privKey = ForceBridgeCore.config.eth.multiSignKeys[index];
+  const privKey = SigServer.getKey('eth', params.requestAddress);
+  if (privKey === undefined) {
+    return Promise.reject(new Error(`cannot found key by address:${params.requestAddress}`));
+  }
+
+  // const privKey = ForceBridgeCore.config.eth.multiSignKeys[index];
   const pubKey = privateKeyToPublicKey(privKey);
   const payload = params.payload as ethCollectSignaturesPayload;
 

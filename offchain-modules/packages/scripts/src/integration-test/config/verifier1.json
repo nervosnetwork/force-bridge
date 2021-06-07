@@ -5,19 +5,21 @@
         "level": "info"
       },
       "network": "testnet",
-      "role": "collector"
+      "role": "watcher"
     },
     "eth": {
       "rpcUrl": "http://127.0.0.1:8545",
-      "privateKey": "privkeys/eth",
-      "multiSignAddresses":[
+      "multiSignAddresses": [
         "0xB026351cD0c62aC89e488A840b7205730E8476bd",
         "0x27EE444d5D96094EACecC00194b7026Eb4fD979c",
         "0x0C2207536768EcFFeB11744AdbCC90428a0EE83B"
       ],
-      "multiSignKeys": [],
-      "multiSignHosts": [],
-      "multiSignThreshold": 2,
+      "multiSignKeys": [
+        {
+          "address": "0xB026351cD0c62aC89e488A840b7205730E8476bd",
+          "privKey": "privkeys/eth-multisig-1"
+        }
+      ],
       "contractAddress": "0x8326e1d621Cd32752920ed2A44B49bB1a96c7391",
       "confirmNumber": 1,
       "startBlockHeight": 1,
@@ -76,65 +78,33 @@
         }
       ]
     },
-    "eos": {
-      "rpcUrl": "http://127.0.0.1:8888",
-      "chainId": "6ec2642bbcdc429f0994e98f5b8e8d677c04f0e17c4a48a6821523bf7412e60f",
-      "bridgerAccount": "forcebridge1",
-      "bridgerAccountPermission": "active",
-      "publicKeys": [
-        "EOS4z7R4woUWaU2srBqqJFcj7TLnig4X8LHnq7wvJkkNcM1dKnF4X",
-        "EOS6DdTKJaPCkuePnRh55qE875hQUdt5yH47v9838cLAnYVUZtVBF"
-      ],
-      "privateKeys": [
-        "5KQG4541B1FtDC11gu3NrErWniqTaPHBpmikSztnX8m36sK5px5",
-        "5KjR55Q7UJpRnUx8zBdNaUC4P2573BsNLJaMR9o9wrJryYYXWU2",
-        "5JWwbQDZ5UHHX5bayx7ZXJ25xvqvuPLWF1MFyEGpspkxqRvetUk"
-      ],
-      "latestGlobalActionSeq": -1,
-      "onlyWatchIrreversibleBlock": false
-    },
-    "btc": {
-        "clientParams": {
-            "url": "http://127.0.0.1",
-            "user": "test",
-            "pass": "test",
-            "port": 18443,
-            "timeout": 10000
-        },
-        "privateKeys": [
-            "0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed370",
-            "0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed371",
-            "0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed372",
-            "0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed373"
-        ],
-        "lockAddress": "2N1VV17PQAQbNNicsoQhyUbiLciJwYLadfW",
-        "confirmNumber": 2,
-        "startBlockHeight": 1
-    },
     "ckb": {
       "ckbRpcUrl": "http://127.0.0.1:8114",
       "ckbIndexerUrl": "http://127.0.0.1:8116",
       "multisigScript": {
-          "R": 0,
-          "M": 2,
-          "publicKeyHashes": [
-            "0x40dcec2ef1ffc2340ea13ff4dd9671d2f9787e95",
-            "0xc8328aabcd9b9e8e64fbc566c4385c3bdeb219d7",
-            "0x470dcdc5e44064909650113a274b3b36aecb6dc7",
-            "0xd9a188cc1985a7d4a31f141f4ebb61f241aec182",
-            "0xebf9befcd8396e88cab8fcb920ab149231658f4b"
-          ]
+        "R": 0,
+        "M": 2,
+        "publicKeyHashes": [
+          "0x40dcec2ef1ffc2340ea13ff4dd9671d2f9787e95",
+          "0xc8328aabcd9b9e8e64fbc566c4385c3bdeb219d7",
+          "0x470dcdc5e44064909650113a274b3b36aecb6dc7",
+          "0xd9a188cc1985a7d4a31f141f4ebb61f241aec182",
+          "0xebf9befcd8396e88cab8fcb920ab149231658f4b"
+        ]
       },
-      "multiSignKeys":[],
-      "multiSignHosts":[],
-      "fromPrivateKey": "privkeys/ckb",
+      "multiSignKeys": [
+        {
+          "address": "ckt1qyqvsv5240xeh85wvnau2eky8pwrhh4jr8ts8vyj37",
+          "privKey": "privkeys/ckb-multisig-1"
+        }
+      ],
       "ownerLockHash": "0x49beb8c4c29d06e05452b5d9ea8e86ffd4ea2b614498ba1a0c47890a0ad4f550",
       "deps": {
         "bridgeLock": {
           "cellDep": {
             "depType": "code",
             "outPoint": {
-              "txHash": "0xbbcbb5355d4604731027358c7baf25e5d9b3d20ddce4308cd835794aa5c409e4",
+              "txHash": "0xcd5926a2c61d561cb04c2911985fa4a2b08956d1c22379bf4cf1d1934b218dca",
               "index": "0x0"
             }
           },
@@ -147,7 +117,7 @@
           "cellDep": {
             "depType": "code",
             "outPoint": {
-              "txHash": "0xbbcbb5355d4604731027358c7baf25e5d9b3d20ddce4308cd835794aa5c409e4",
+              "txHash": "0xcd5926a2c61d561cb04c2911985fa4a2b08956d1c22379bf4cf1d1934b218dca",
               "index": "0x2"
             }
           },
@@ -160,38 +130,22 @@
           "cellDep": {
             "depType": "code",
             "outPoint": {
-              "txHash": "0xbbcbb5355d4604731027358c7baf25e5d9b3d20ddce4308cd835794aa5c409e4",
+              "txHash": "0xcd5926a2c61d561cb04c2911985fa4a2b08956d1c22379bf4cf1d1934b218dca",
               "index": "0x3"
             }
           },
           "script": {
-            "codeHash": "0xccfc7603253b4d495d09fb6813d0ad2504a12b650e8640878234552e9cd503ee",
+            "codeHash": "0x4097943baa281ee2a4afa152df0f3b1d2de21294fbf55201f1abb1358f725a12",
             "hashType": "data"
           }
         }
       },
-      "startBlockHeight": 1,
-      "confirmNumber": 1
-    },
-    "tron": {
-      "tronGridUrl": "https://api.shasta.trongrid.io",
-      "committee": {
-        "address": "TX3MGfWT5aGv81vTSdZtr6hbHxhMVh1FFM",
-        "permissionId": 2,
-        "keys": [
-          "CA2B646CFF30E9CE13864F61CEF5F7C40E8720FA8310B00228F61D14EB761061",
-          "EE782FE170F680D6CAB340ECA5ED2F6E05B0B9809082CF745207E87734211C72"
-        ]
-      },
-      "feeLimit": 10000000
-    },
-    "rpc": {
-      "port":8080,
-      "corsOptions": {
-        "origin": "*",
-        "methods": "GET,HEAD,PUT,PATCH,POST,DELETE",
-        "preflightContinue": false,
-        "optionsSuccessStatus": 200
+      "startBlockHeight": 0,
+      "confirmNumber": 1,
+      "multisigType": {
+        "code_hash": "0x00000000000000000000000000000000000000000000000000545950455f4944",
+        "hash_type": "type",
+        "args": "0x065287690b11131bbf06536a0d892fd177ab6a2734d17c15de138ea5c562035f"
       }
     }
   }
