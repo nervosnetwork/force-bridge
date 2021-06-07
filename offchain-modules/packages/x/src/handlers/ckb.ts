@@ -243,7 +243,7 @@ export class CkbHandler {
             bridgeFee: new EthAsset(asset).getBridgeFee('out'),
             recipientAddress: uint8ArrayToString(new Uint8Array(v.cellData.getRecipientAddress().raw())),
             blockNumber: latestHeight,
-            confirmStatus: 0,
+            confirmStatus: 'unconfirmed',
           };
           break;
         }

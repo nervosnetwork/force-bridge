@@ -30,6 +30,9 @@ export class CkbBurn {
   blockNumber: number;
 
   @Column({ default: 0 })
+  confirmNumber: number;
+
+  @Column({ default: 'unconfirmed' })
   confirmStatus: TxConfirmStatus;
 
   @CreateDateColumn()

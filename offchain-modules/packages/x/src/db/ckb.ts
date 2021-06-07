@@ -113,7 +113,7 @@ export class CkbDb {
       .getRepository(CkbBurn)
       .createQueryBuilder()
       .select()
-      .where('confirm_status != "confirmed"')
+      .where('confirm_status = "unconfirmed"')
       .limit(limit)
       .getMany();
   }
@@ -135,7 +135,7 @@ export class CkbDb {
         .getRepository(CkbBurn)
         .createQueryBuilder()
         .update()
-        .set({ confirmStatus: record.confirmedNumber })
+        .set({ confirmNumber: record.confirmedNumber })
         .where('tx_hash = :txHash', { txHash: record.txHash })
         .execute();
       updataResults.push(result);

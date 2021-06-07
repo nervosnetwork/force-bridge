@@ -46,7 +46,7 @@ export class EthDb implements IQuery {
     return this.ethLockRepository
       .createQueryBuilder()
       .select()
-      .where('confirm_status != "confirmed"')
+      .where('confirm_status = "unconfirmed"')
       .limit(limit)
       .getMany();
   }
@@ -66,7 +66,7 @@ export class EthDb implements IQuery {
       const result = await this.ethLockRepository
         .createQueryBuilder()
         .update()
-        .set({ confirmStatus: record.confirmedNumber })
+        .set({ confirmNumber: record.confirmedNumber })
         .where('tx_hash = :txHash', { txHash: record.txHash })
         .execute();
       updataResults.push(result);
@@ -100,6 +100,7 @@ export class EthDb implements IQuery {
         eth.tx_hash as lock_hash,
         ckb.mint_hash as mint_hash,
         eth.updated_at as lock_time, 
+        eth.confirm_number as lock_confirm_number,
         eth.confirm_status as lock_confirm_status,
         ckb.updated_at as mint_time, 
         ckb.status as status,
@@ -130,6 +131,7 @@ export class EthDb implements IQuery {
         eth.eth_tx_hash as unlock_hash,
         eth.updated_at as unlock_time, 
         ckb.updated_at as burn_time, 
+        ckb.confirm_number as burn_confirm_number,
         ckb.confirm_status as burn_confirm_status,
         eth.status as status,
         ckb.asset as asset,
@@ -154,6 +156,7 @@ export class EthDb implements IQuery {
         eth.tx_hash as lock_hash,
         ckb.mint_hash as mint_hash,
         eth.updated_at as lock_time, 
+        eth.confirm_number as lock_confirm_number,
         eth.confirm_status as lock_confirm_status,
         ckb.updated_at as mint_time, 
         ckb.status as status,
@@ -184,6 +187,7 @@ export class EthDb implements IQuery {
         eth.eth_tx_hash as unlock_hash,
         eth.updated_at as unlock_time, 
         ckb.updated_at as burn_time, 
+        ckb.confirm_number as burn_confirm_number,
         ckb.confirm_status as burn_confirm_status,
         eth.status as status,
         ckb.asset as asset,
