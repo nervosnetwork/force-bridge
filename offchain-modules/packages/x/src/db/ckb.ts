@@ -129,14 +129,14 @@ export class CkbDb {
   }
 
   async updateBurnConfirmNumber(records: { txHash: string; confirmedNumber: number }[]): Promise<UpdateResult[]> {
-    let updataResults;
+    const updataResults = new Array(0);
     for (const record of records) {
       const result = await this.connection
         .getRepository(CkbBurn)
         .createQueryBuilder()
         .update()
         .set({ confirmNumber: record.confirmedNumber })
-        .where('tx_hash = :txHash', { txHash: record.txHash })
+        .where('ckb_tx_hash = :txHash', { txHash: record.txHash })
         .execute();
       updataResults.push(result);
     }

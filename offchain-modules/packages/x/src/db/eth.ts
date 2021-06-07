@@ -61,7 +61,7 @@ export class EthDb implements IQuery {
   }
 
   async updateLockConfirmNumber(records: { txHash: string; confirmedNumber: number }[]): Promise<UpdateResult[]> {
-    let updataResults;
+    const updataResults = new Array(0);
     for (const record of records) {
       const result = await this.ethLockRepository
         .createQueryBuilder()
