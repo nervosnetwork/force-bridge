@@ -10,6 +10,7 @@ import { asyncSleep, fromHexString, uint8ArrayToString } from '../utils';
 import { logger } from '../utils/logger';
 import { EthChain } from '../xchain/eth';
 
+const MAX_RETRY_TIMES = 3;
 const lastHandleEthBlockKey = 'lastHandleEthBlock';
 
 export class EthHandler {
@@ -83,36 +84,41 @@ export class EthHandler {
   }
 
   async onBlock(block: ethers.providers.Block) {
-    try {
-      const confirmNumber = ForceBridgeCore.config.eth.confirmNumber;
-      if (
-        confirmNumber !== 0 &&
-        this.lastHandledBlockHeight === block.number - 1 &&
-        this.lastHandledBlockHash !== '' &&
-        block.parentHash !== this.lastHandledBlockHash
-      ) {
-        logger.warn(
-          `EthHandler onBlock blockHeight:${block.number} parentHash:${block.parentHash} != lastHandledBlockHash:${
-            this.lastHandledBlockHash
-          } fork occur removeUnconfirmedLock events from:${block.number - confirmNumber}`,
-        );
-        const confirmedBlockHeight = block.number - confirmNumber;
-        await this.db.removeUnconfirmedLocks(confirmedBlockHeight);
-        const logs = await this.ethChain.getLogs(confirmedBlockHeight + 1, block.number);
-        for (const log of logs) {
-          await this.onLogs(log.log, log.parsedLog);
+    for (let i = 1; i <= MAX_RETRY_TIMES; i++) {
+      try {
+        const confirmNumber = ForceBridgeCore.config.eth.confirmNumber;
+        if (
+          confirmNumber !== 0 &&
+          this.lastHandledBlockHeight === block.number - 1 &&
+          this.lastHandledBlockHash !== '' &&
+          block.parentHash !== this.lastHandledBlockHash
+        ) {
+          logger.warn(
+            `EthHandler onBlock blockHeight:${block.number} parentHash:${block.parentHash} != lastHandledBlockHash:${
+              this.lastHandledBlockHash
+            } fork occur removeUnconfirmedLock events from:${block.number - confirmNumber}`,
+          );
+          const confirmedBlockHeight = block.number - confirmNumber;
+          await this.db.removeUnconfirmedLocks(confirmedBlockHeight);
+          const logs = await this.ethChain.getLogs(confirmedBlockHeight + 1, block.number);
+          for (const log of logs) {
+            await this.onLogs(log.log, log.parsedLog);
+          }
         }
-      }
 
-      await this.confirmEthLocks(block.number, confirmNumber);
-      await this.setLastHandledBlock(block.number, block.hash);
-      logger.info(`EthHandler onBlock blockHeight:${block.number} blockHash:${block.hash}`);
-    } catch (e) {
-      logger.error(
-        `EthHandler onBlock error, blockHeight:${block.number} blockHash:${block.hash} error:${e.toString()}, stack: ${
-          e.stack
-        }`,
-      );
+        await this.confirmEthLocks(block.number, confirmNumber);
+        await this.setLastHandledBlock(block.number, block.hash);
+        logger.info(`EthHandler onBlock blockHeight:${block.number} blockHash:${block.hash}`);
+        break;
+      } catch (e) {
+        logger.error(
+          `EthHandler onBlock error, blockHeight:${block.number} blockHash:${block.hash} error:${e.toString()}`,
+        );
+        if (i == MAX_RETRY_TIMES) {
+          throw e;
+        }
+        await asyncSleep(3000);
+      }
     }
   }
 
@@ -149,36 +155,41 @@ export class EthHandler {
   }
 
   async onLogs(log, parsedLog) {
-    try {
-      logger.info(
-        `EthHandler watchLockEvents receiveLog blockHeight:${log.blockNumber} blockHash:${log.blockHash} txHash:${
-          log.transactionHash
-        } amount:${parsedLog.args.lockedAmount.toString()} asset:${parsedLog.args.token} recipientLockscript:${
-          parsedLog.args.recipientLockscript
-        } sudtExtraData:${parsedLog.args.sudtExtraData} sender:${parsedLog.args.sender}`,
-      );
-      logger.debug('EthHandler watchLockEvents eth lockEvtLog:', { log, parsedLog });
-      const amount = parsedLog.args.lockedAmount.toString();
-      const asset = new EthAsset(parsedLog.args.token);
-      if (!asset.inWhiteList() || new Amount(amount, 0).lt(new Amount(asset.getMinimalAmount(), 0))) return;
+    for (let i = 1; i <= MAX_RETRY_TIMES; i++) {
+      try {
+        logger.info(
+          `EthHandler watchLockEvents receiveLog blockHeight:${log.blockNumber} blockHash:${log.blockHash} txHash:${
+            log.transactionHash
+          } amount:${parsedLog.args.lockedAmount.toString()} asset:${parsedLog.args.token} recipientLockscript:${
+            parsedLog.args.recipientLockscript
+          } sudtExtraData:${parsedLog.args.sudtExtraData} sender:${parsedLog.args.sender}`,
+        );
+        logger.debug('EthHandler watchLockEvents eth lockEvtLog:', { log, parsedLog });
+        const amount = parsedLog.args.lockedAmount.toString();
+        const asset = new EthAsset(parsedLog.args.token);
+        if (!asset.inWhiteList() || new Amount(amount, 0).lt(new Amount(asset.getMinimalAmount(), 0))) return;
 
-      await this.db.createEthLock([
-        {
-          txHash: log.transactionHash,
-          amount: amount,
-          bridgeFee: asset.getBridgeFee('in'),
-          token: parsedLog.args.token,
-          recipient: uint8ArrayToString(fromHexString(parsedLog.args.recipientLockscript)),
-          sudtExtraData: parsedLog.args.sudtExtraData,
-          blockNumber: log.blockNumber,
-          blockHash: log.blockHash,
-          sender: parsedLog.args.sender,
-        },
-      ]);
-      logger.info(`EthHandler watchLockEvents save EthLock successful for eth tx ${log.transactionHash}.`);
-    } catch (e) {
-      logger.error(`EthHandler watchLockEvents error: ${e}`);
-      await asyncSleep(3000);
+        await this.db.createEthLock([
+          {
+            txHash: log.transactionHash,
+            amount: amount,
+            bridgeFee: asset.getBridgeFee('in'),
+            token: parsedLog.args.token,
+            recipient: uint8ArrayToString(fromHexString(parsedLog.args.recipientLockscript)),
+            sudtExtraData: parsedLog.args.sudtExtraData,
+            blockNumber: log.blockNumber,
+            blockHash: log.blockHash,
+            sender: parsedLog.args.sender,
+          },
+        ]);
+        logger.info(`EthHandler watchLockEvents save EthLock successful for eth tx ${log.transactionHash}.`);
+      } catch (e) {
+        logger.error(`EthHandler watchLockEvents error: ${e}`);
+        if (i == MAX_RETRY_TIMES) {
+          throw e;
+        }
+        await asyncSleep(3000);
+      }
     }
   }
 
