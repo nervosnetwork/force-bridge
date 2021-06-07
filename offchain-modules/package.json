@@ -7,7 +7,7 @@
     "packages/*"
   ],
   "scripts": {
-    "start": "CONFIG_PATH=./packages/scripts/src/integration-test/config/collector.json ts-node ./packages/app-relayer/src/index.ts",
+    "start": "ts-node ./packages/app-relayer/src/index.ts",
     "rpc": "ts-node ./packages/app-rpc-server/src/index.ts",
     "rpc-test": "ts-node ./packages/scripts/src/integration-test/rpc.ts",
     "demo": "ts-node-dev ./packages/scripts/src/demo.ts",
