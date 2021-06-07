@@ -1,0 +1,25 @@
+{
+  "name": "@force-bridge/xchain-eth",
+  "version": "0.0.0",
+  "main": "dist",
+  "scripts": {
+    "build": "yarn run clean && yarn run compile",
+    "clean": "rimraf -rf ./dist",
+    "compile": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "yarn run build",
+    "test": "yarn run build",
+    "codegen": "typechain --target=ethers-v5 --out-dir src/generated/contract ../x/src/xchain/eth/abi/ForceBridge.json",
+    "postinstall": "npm run codegen && npm run patch-typechain",
+    "patch-typechain": "node scripts/patch-typechain.js"
+  },
+  "dependencies": {
+    "@force-bridge/ckb-indexer-client": "*",
+    "@force-bridge/reconc": "*",
+    "@force-bridge/x": "*",
+    "rxjs": "^7.1.0"
+  },
+  "devDependencies": {
+    "@typechain/ethers-v5": "^7.0.0",
+    "typechain": "^5.0.0"
+  }
+}

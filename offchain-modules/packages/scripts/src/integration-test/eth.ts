@@ -1,4 +1,5 @@
 import assert from 'assert';
+import { CKBIndexerClient } from '@force-bridge/ckb-indexer-client';
 import { Account } from '@force-bridge/x/dist/ckb/model/accounts';
 import { ChainType, EthAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
@@ -8,24 +9,24 @@ import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
 import { getMultisigLock } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { Config, EthConfig } from '@force-bridge/x/dist/config';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
-import { CkbDb, EthDb } from '@force-bridge/x/dist/db';
+import { EthDb } from '@force-bridge/x/dist/db/eth';
 import { CkbMint, EthLock, EthUnlock } from '@force-bridge/x/dist/db/model';
 import {
   asyncSleep,
+  getDBConnection,
   parsePrivateKey,
   stringToUint8Array,
   toHexString,
   uint8ArrayToString,
-  getDBConnection,
 } from '@force-bridge/x/dist/utils';
 import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
 import { ETH_ADDRESS } from '@force-bridge/x/dist/xchain/eth';
 import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
+import { EthReconcilerBuilder, ForceBridgeContract } from '@force-bridge/xchain-eth';
 import { Amount, Script } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import { ethers } from 'ethers';
 import nconf from 'nconf';
-import { createConnection } from 'typeorm';
 import { waitUntilCommitted } from './util';
 // const { Indexer, CellCollector } = require('@ckb-lumos/sql-indexer');
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
@@ -56,7 +57,7 @@ async function main() {
   await new ForceBridgeCore().init(conf);
   const provider = new ethers.providers.JsonRpcProvider(config.rpcUrl);
   const bridgeContractAddr = config.contractAddress;
-  const bridge = new ethers.Contract(bridgeContractAddr, abi, provider);
+  const bridge = new ethers.Contract(bridgeContractAddr, abi, provider) as ForceBridgeContract;
   const wallet = new ethers.Wallet(ETH_PRI_KEY, provider);
   const bridgeWithSigner = bridge.connect(wallet);
   const iface = new ethers.utils.Interface(abi);
@@ -196,6 +197,31 @@ async function main() {
     logger.info('db unlock recipient', ethUnlockRecord.recipientAddress);
     logger.info('parsedLog recipient', recipientParsedLog.args.recipient);
     assert(ethUnlockRecord.recipientAddress === recipientParsedLog.args.recipient);
+
+    const builder = new EthReconcilerBuilder(
+      provider,
+      bridge,
+      new EthDb(conn),
+      new CKBIndexerClient(CKB_INDEXER_URL),
+      ckb.rpc,
+    );
+    const lockReconc = await builder
+      .buildLockReconciler(wallet.address, '0x0000000000000000000000000000000000000000')
+      .fetchReconciliation();
+
+    logger.info('all locked', lockReconc.from);
+    logger.info('all minted', lockReconc.to);
+
+    assert(lockReconc.checkBalanced(), 'the amount of lock and mint should be balanced');
+
+    const unlockReconc = await builder
+      .buildUnlockReconciler(uint8ArrayToString(recipientLockscript), '0x0000000000000000000000000000000000000000')
+      .fetchReconciliation();
+
+    logger.info('all burned', unlockReconc.from);
+    logger.info('all unlocked', unlockReconc.to);
+
+    assert(unlockReconc.checkBalanced(), 'the amount of burn and unlock should be balanced');
   };
 
   // try 100 times and wait for 3 seconds every time.

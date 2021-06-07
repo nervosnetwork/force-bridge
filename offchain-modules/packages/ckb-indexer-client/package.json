@@ -1,5 +1,6 @@
 {
-  "name": "@force-bridge/scripts",
+  "name": "@force-bridge/ckb-indexer-client",
+  "version": "0.0.0",
   "main": "dist",
   "scripts": {
     "build": "yarn run clean && yarn run compile",
@@ -9,7 +10,6 @@
     "test": "yarn run build"
   },
   "dependencies": {
-    "@force-bridge/x": "*",
-    "@force-bridge/xchain-eth": "*"
+    "axios": "^0.21.1"
   }
 }
