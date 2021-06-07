@@ -104,7 +104,7 @@ export class CkbDb {
       .getRepository(CkbBurn)
       .createQueryBuilder()
       .delete()
-      .where('block_number > :blockNumber', { blockNumber: confirmedBlockHeight })
+      .where('block_number > :blockNumber And confirm_status = "unconfirmed"', { blockNumber: confirmedBlockHeight })
       .execute();
   }
 
