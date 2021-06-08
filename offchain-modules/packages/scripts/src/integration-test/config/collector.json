@@ -5,7 +5,18 @@
         "level": "info"
       },
       "network": "testnet",
-      "role": "collector"
+      "role": "collector",
+      "orm": {
+        "type": "mysql",
+        "host": "localhost",
+        "port": 3306,
+        "username": "root",
+        "password": "root",
+        "database": "forcebridge",
+        "timezone": "Z",
+        "synchronize": true,
+        "logging": false
+      }
     },
     "eth": {
       "rpcUrl": "http://127.0.0.1:8545",
@@ -18,17 +29,17 @@
       "multiSignHosts": [
         {
           "address": "0xB026351cD0c62aC89e488A840b7205730E8476bd",
-          "host": "http://localhost:8090/force-bridge/sign-server/api/v1"
+          "host": "http://127.0.0.1:8090/force-bridge/sign-server/api/v1"
         },
         {
           "address": "0x27EE444d5D96094EACecC00194b7026Eb4fD979c",
-          "host": "http://localhost:8091/force-bridge/sign-server/api/v1"
+          "host": "http://127.0.0.1:8091/force-bridge/sign-server/api/v1"
         }
       ],
       "multiSignThreshold": 2,
       "contractAddress": "0x8326e1d621Cd32752920ed2A44B49bB1a96c7391",
       "confirmNumber": 1,
-      "startBlockHeight": 1,
+      "startBlockHeight": 5,
       "batchUnlock": {
         "batchNumber": 100,
         "maxWaitTime": 86400000

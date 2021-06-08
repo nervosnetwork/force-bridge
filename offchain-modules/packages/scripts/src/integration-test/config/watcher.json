@@ -5,13 +5,24 @@
         "level": "info"
       },
       "network": "testnet",
-      "role": "watcher"
+      "role": "watcher",
+      "orm": {
+        "type": "mysql",
+        "host": "localhost",
+        "port": 3306,
+        "username": "root",
+        "password": "root",
+        "database": "forcebridge",
+        "timezone": "Z",
+        "synchronize": true,
+        "logging": false
+      }
     },
     "eth": {
       "rpcUrl": "http://127.0.0.1:8545",
       "contractAddress": "0x8326e1d621Cd32752920ed2A44B49bB1a96c7391",
       "confirmNumber": 1,
-      "startBlockHeight": 1,
+      "startBlockHeight": 5,
       "batchUnlock": {
         "batchNumber": 100,
         "maxWaitTime": 86400000
