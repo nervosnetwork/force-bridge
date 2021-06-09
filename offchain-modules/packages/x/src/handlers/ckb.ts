@@ -1,5 +1,11 @@
 import { Script as LumosScript } from '@ckb-lumos/base';
+import { serializeMultisigScript } from '@ckb-lumos/common-scripts/lib/secp256k1_blake160_multisig';
+import { key } from '@ckb-lumos/hd';
+import { sealTransaction } from '@ckb-lumos/helpers';
+import { RPC } from '@ckb-lumos/rpc';
+import TransactionManager from '@ckb-lumos/transaction-manager';
 import { Address, AddressType, Amount, HashType, Script } from '@lay2/pw-core';
+import CKB from '@nervosnetwork/ckb-sdk-core';
 import { Account } from '../ckb/model/accounts';
 import { Asset, BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '../ckb/model/asset';
 import { RecipientCellData } from '../ckb/tx-helper/generated/eth_recipient_cell';
@@ -10,19 +16,14 @@ import { forceBridgeRole } from '../config';
 import { ForceBridgeCore } from '../core';
 import { CkbDb } from '../db';
 import { CkbMint, ICkbBurn } from '../db/model';
+import { asserts, nonNullable } from '../errors';
+import { createAsset, MultiSigMgr } from '../multisig/multisig-mgr';
 import { asyncSleep, fromHexString, toHexString, uint8ArrayToString } from '../utils';
 import { logger } from '../utils/logger';
 import { getAssetTypeByAsset } from '../xchain/tron/utils';
 import Transaction = CKBComponents.Transaction;
 import TransactionWithStatus = CKBComponents.TransactionWithStatus;
 import Block = CKBComponents.Block;
-import { serializeMultisigScript } from '@ckb-lumos/common-scripts/lib/secp256k1_blake160_multisig';
-import { sealTransaction } from '@ckb-lumos/helpers';
-import { key } from '@ckb-lumos/hd';
-import TransactionManager from '@ckb-lumos/transaction-manager';
-import { RPC } from '@ckb-lumos/rpc';
-import { MultiSigMgr } from '../multisig/multisig-mgr';
-import CKB from '@nervosnetwork/ckb-sdk-core';
 
 const lastHandleCkbBlockKey = 'lastHandleCkbBlock';
 
@@ -36,6 +37,7 @@ export class CkbHandler {
   private multisigMgr: MultiSigMgr;
   private lastHandledBlockHeight: number;
   private lastHandledBlockHash: string;
+
   constructor(private db: CkbDb, private kvDb, private role: forceBridgeRole) {
     this.transactionManager = new TransactionManager(this.ckbIndexer);
     this.multisigMgr = new MultiSigMgr(
@@ -190,11 +192,10 @@ export class CkbHandler {
         continue;
       }
       if (await isBurnTx(tx, cellData)) {
-        const burnPreviousTx: TransactionWithStatus = await this.ckb.rpc.getTransaction(
-          tx.inputs[0].previousOutput.txHash,
-        );
+        const previousOutput = nonNullable(tx.inputs[0].previousOutput);
+        const burnPreviousTx: TransactionWithStatus = await this.ckb.rpc.getTransaction(previousOutput.txHash);
         const senderAddress = Account.scriptToAddress(
-          burnPreviousTx.transaction.outputs[Number(tx.inputs[0].previousOutput.index)].lock,
+          burnPreviousTx.transaction.outputs[Number(previousOutput.index)].lock,
         );
         const data: BurnDbData = {
           senderAddress: senderAddress,
@@ -223,11 +224,11 @@ export class CkbHandler {
     if (burnTxs.size === 0) {
       return;
     }
-    const burnTxHashes = [];
-    const ckbBurns = [];
+    const burnTxHashes: string[] = [];
+    const ckbBurns: ICkbBurn[] = [];
     burnTxs.forEach((v: BurnDbData, k: string) => {
       const chain = v.cellData.getChain();
-      let burn: ICkbBurn;
+      let burn: ICkbBurn | undefined;
       switch (chain) {
         case ChainType.BTC:
         case ChainType.TRON:
@@ -248,6 +249,9 @@ export class CkbHandler {
           break;
         }
       }
+
+      asserts(burn);
+
       ckbBurns.push(burn);
       burnTxHashes.push(k);
     });
@@ -267,12 +271,13 @@ export class CkbHandler {
     }
     const committeeLockHash = getOwnLockHash(ForceBridgeCore.config.ckb.multisigScript);
     // verify tx input: committee cell.
-    const preHash = tx.inputs[0].previousOutput.txHash;
+    const previousOutput = nonNullable(tx.inputs[0].previousOutput);
+    const preHash = previousOutput.txHash;
     const txPrevious = await this.ckb.rpc.getTransaction(preHash);
     if (txPrevious == null) {
       return false;
     }
-    const firstInputLock = txPrevious.transaction.outputs[Number(tx.inputs[0].previousOutput.index)].lock;
+    const firstInputLock = txPrevious.transaction.outputs[Number(previousOutput.index)].lock;
     const firstInputLockHash = this.ckb.utils.scriptToHash(<CKBComponents.Script>firstInputLock);
 
     logger.info(
@@ -281,7 +286,7 @@ export class CkbHandler {
     return firstInputLockHash === committeeLockHash;
   }
 
-  async handleMintRecords(): Promise<never> {
+  async handleMintRecords(): Promise<void> {
     if (this.role !== 'collector') {
       return;
     }
@@ -323,13 +328,13 @@ export class CkbHandler {
         const txSkeleton = await generator.mint(records, this.ckbIndexer);
         logger.info(`mint tx txSkeleton ${JSON.stringify(txSkeleton, null, 2)}`);
         const content0 = key.signRecoverable(
-          txSkeleton.get('signingEntries').get(0).message,
+          txSkeleton.get('signingEntries').get(0)!.message,
           ForceBridgeCore.config.ckb.fromPrivateKey,
         );
         let content1 = serializeMultisigScript(ForceBridgeCore.config.ckb.multisigScript);
 
         const sigs = await this.multisigMgr.collectSignatures({
-          rawData: txSkeleton.get('signingEntries').get(1).message,
+          rawData: txSkeleton.get('signingEntries').get(1)!.message,
           payload: {
             sigType: 'mint',
             mintRecords: mintRecords.map((r) => {
@@ -410,8 +415,8 @@ export class CkbHandler {
   }
 
   async filterNewTokens(records: MintAssetRecord[]): Promise<MintAssetRecord[]> {
-    const newTokens = [];
-    const assets = [];
+    const newTokens: MintAssetRecord[] = [];
+    const assets: string[] = [];
     for (const record of records) {
       if (assets.indexOf(record.asset.toBridgeLockscriptArgs()) != -1) {
         continue;
@@ -442,7 +447,7 @@ export class CkbHandler {
   }
 
   async createBridgeCell(newTokens: MintAssetRecord[], generator: CkbTxGenerator) {
-    const assets = [];
+    const assets: createAsset[] = [];
     const scripts = newTokens.map((r) => {
       assets.push({
         chain: r.asset.chainType,
@@ -456,11 +461,11 @@ export class CkbHandler {
     });
 
     const txSkeleton = await generator.createBridgeCell(scripts, this.ckbIndexer);
-    const message0 = txSkeleton.get('signingEntries').get(0).message;
+    const message0 = txSkeleton.get('signingEntries').get(0)!.message;
     const content0 = key.signRecoverable(message0, ForceBridgeCore.config.ckb.fromPrivateKey);
     let content1 = serializeMultisigScript(ForceBridgeCore.config.ckb.multisigScript);
     const sigs = await this.multisigMgr.collectSignatures({
-      rawData: txSkeleton.get('signingEntries').get(1).message,
+      rawData: txSkeleton.get('signingEntries').get(1)!.message,
       payload: {
         sigType: 'create_cell',
         createAssets: assets,
@@ -530,6 +535,7 @@ export class CkbHandler {
     logger.info('ckb handler started 🚀');
   }
 }
+
 export async function isBurnTx(tx: Transaction, cellData: RecipientCellData): Promise<boolean> {
   if (tx.outputs.length < 1) {
     return false;
@@ -567,12 +573,14 @@ export async function isBurnTx(tx: Transaction, cellData: RecipientCellData): Pr
     return false;
 
   // verify tx input: sudt cell.
-  const preHash = tx.inputs[0].previousOutput.txHash;
+  const previousOutput = nonNullable(tx.inputs[0].previousOutput);
+
+  const preHash = previousOutput.txHash;
   const txPrevious = await ForceBridgeCore.ckb.rpc.getTransaction(preHash);
   if (txPrevious == null) {
     return false;
   }
-  const sudtType = txPrevious.transaction.outputs[Number(tx.inputs[0].previousOutput.index)].type;
+  const sudtType = txPrevious.transaction.outputs[Number(previousOutput.index)].type;
   const bridgeCellLockscript = {
     codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
     hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
@@ -591,7 +599,7 @@ export async function isBurnTx(tx: Transaction, cellData: RecipientCellData): Pr
   }
 
   // verify tx output recipientLockscript: recipient cell.
-  const recipientScript = tx.outputs[0].type;
+  const recipientScript = nonNullable(tx.outputs[0].type);
   const expect = ForceBridgeCore.config.ckb.deps.recipientType.script;
   logger.debug('recipientScript:', recipientScript);
   logger.debug('expect:', expect);

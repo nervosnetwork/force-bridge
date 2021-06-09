@@ -339,13 +339,16 @@ export class EosHandler {
         logger.error('Eos empty bridger account private keys');
         return;
       }
-      const signatures = [];
+      const signatures: string[] = [];
       for (const pubKey of this.config.publicKeys) {
         const signedTx = await this.signatureProvider.sign({
           chainId: this.config.chainId,
           requiredKeys: [pubKey],
           serializedTransaction: unlockTx.serializedTransaction,
           serializedContextFreeData: unlockTx.serializedContextFreeData,
+          // TODO: why abis null here?
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore
           abis: null,
         });
         signatures.push(signedTx.signatures[0]);
@@ -361,7 +364,8 @@ export class EosHandler {
           `EosHandler pushSignedTransaction ckbTxHash:${record.ckbTxHash} receiver:${record.recipientAddress} eosTxhash:${record.eosTxHash} amount:${record.amount} asset:${record.asset}`,
         );
         if (!this.config.onlyWatchIrreversibleBlock) {
-          const txStatus = txRes.processed.receipt.status;
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          const txStatus = txRes.processed.receipt!.status;
           if (txStatus === 'executed') {
             record.status = 'success';
           } else {

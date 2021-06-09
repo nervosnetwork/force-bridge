@@ -15,7 +15,7 @@ async function verifyDuplicateEthTx(
   pubKey: string,
   payload: ethCollectSignaturesPayload,
   lastFailedTxHash?: string,
-): Promise<Error> {
+): Promise<Error | null> {
   const refTxHashes = payload.unlockRecords.map((record) => {
     return record.ckbTxHash;
   });
@@ -52,9 +52,11 @@ async function verifyDuplicateEthTx(
   if (!equalsUnlockRecord(unlockResults, payload.unlockRecords)) {
     return new Error(`payload doesn't match with lastFailedTx:${lastFailedTxHash}`);
   }
+
+  return null;
 }
 
-async function verifyEthTx(pubKey: string, params: collectSignaturesParams): Promise<Error> {
+async function verifyEthTx(pubKey: string, params: collectSignaturesParams): Promise<Error | undefined> {
   if (!('domainSeparator' in params.payload)) {
     return Promise.reject(`the type of payload params is wrong`);
   }
@@ -87,7 +89,8 @@ async function verifyEthTx(pubKey: string, params: collectSignaturesParams): Pro
 export async function signEthTx(params: collectSignaturesParams): Promise<string> {
   logger.info('signEthTx params: ', JSON.stringify(params, undefined, 2));
 
-  const privKey = SigServer.getKey('eth', params.requestAddress);
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const privKey = SigServer.getKey('eth', params.requestAddress!);
   if (privKey === undefined) {
     return Promise.reject(new Error(`cannot found key by address:${params.requestAddress}`));
   }
@@ -126,7 +129,7 @@ export async function signEthTx(params: collectSignaturesParams): Promise<string
   return signature;
 }
 
-async function verifyUnlockRecord(unlockRecords: EthUnlockRecord[]): Promise<Error> {
+async function verifyUnlockRecord(unlockRecords: EthUnlockRecord[]): Promise<Error | null> {
   const ckbBurnTxHashes = unlockRecords.map((record) => {
     return record.ckbTxHash;
   });

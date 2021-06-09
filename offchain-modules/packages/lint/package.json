@@ -1,0 +1,16 @@
+{
+  "name": "@force-bridge/lint",
+  "version": "0.0.0",
+  "main": "dist",
+  "private": true,
+  "scripts": {
+    "build": "yarn run clean && yarn run compile",
+    "clean": "rimraf -rf ./dist",
+    "compile": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "yarn run build",
+    "test": "yarn run build"
+  },
+  "peerDependencies": {
+    "typescript": "^4.x"
+  }
+}

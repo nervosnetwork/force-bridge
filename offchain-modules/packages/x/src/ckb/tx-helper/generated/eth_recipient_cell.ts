@@ -18,7 +18,7 @@ function assertArrayBuffer(reader) {
   return reader;
 }
 
-function verifyAndExtractOffsets(view, expectedFieldCount, compatible) {
+function verifyAndExtractOffsets(view: DataView, expectedFieldCount, compatible) {
   if (view.byteLength < 4) {
     dataLengthError(view.byteLength, '>4');
   }
@@ -43,7 +43,7 @@ function verifyAndExtractOffsets(view, expectedFieldCount, compatible) {
   if (requiredByteLength < firstOffset) {
     throw new Error(`First offset is larger than byte length: ${firstOffset}`);
   }
-  const offsets = [];
+  const offsets: number[] = [];
   for (let i = 0; i < itemCount; i++) {
     const start = 4 + i * 4;
     offsets.push(view.getUint32(start, true));
@@ -60,7 +60,7 @@ function verifyAndExtractOffsets(view, expectedFieldCount, compatible) {
 function serializeTable(buffers) {
   const itemCount = buffers.length;
   let totalSize = 4 * (itemCount + 1);
-  const offsets = [];
+  const offsets: number[] = [];
 
   for (let i = 0; i < itemCount; i++) {
     offsets.push(totalSize);
@@ -154,8 +154,8 @@ export class RecipientCellData {
   }
 }
 
-export function SerializeRecipientCellData(value) {
-  const buffers = [];
+export function SerializeRecipientCellData(value): ArrayBuffer {
+  const buffers: ArrayBufferLike[] = [];
   buffers.push(SerializeBytes(value.recipient_address));
   const chainView = new DataView(new ArrayBuffer(1));
   chainView.setUint8(0, value.chain);
