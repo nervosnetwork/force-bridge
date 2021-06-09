@@ -79,8 +79,6 @@
     "@ckb-lumos/config-manager": "^0.16.0",
     "@ckb-lumos/hd": "^0.16.0",
     "@ckb-lumos/helpers": "^0.16.0",
-    "@ckb-lumos/rpc": "0.16.0",
-    "@ckb-lumos/sql-indexer": "^0.16.0",
     "@ckb-lumos/transaction-manager": "^0.16.0",
     "@lay2/pw-core": "^0.3.22",
     "@nervosnetwork/ckb-sdk-core": "^0.39.0",
