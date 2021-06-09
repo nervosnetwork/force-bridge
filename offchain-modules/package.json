@@ -14,7 +14,7 @@
     "build": "lerna run build",
     "test": "ava",
     "lint": "run-p check:prettier check:eslint",
-    "lint-staged": "npm run build && eslint --fix $(git diff --cached --staged --name-only --relative | grep -E \"(.ts$)\")",
+    "lint-staged": "npm run build && eslint --fix $(git diff --name-only --diff-filter=ACMRT --relative | grep -E \"(.ts$)\")",
     "fix": "run-p fix:prettier fix:eslint",
     "fix:eslint": "eslint --fix --format=pretty 'packages/*/src/**/*.ts'",
     "fix:prettier": "prettier --write .",
