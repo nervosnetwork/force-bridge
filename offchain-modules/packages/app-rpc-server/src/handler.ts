@@ -492,6 +492,7 @@ function transferDbRecordToResponse(
   }
   let txSummaryWithStatus: TransactionSummaryWithStatus;
   switch (record.status) {
+    case null:
     case 'todo':
     case 'pending':
       txSummaryWithStatus = { txSummary: bridgeTxRecord.txSummary, status: BridgeTransactionStatus.Pending };
