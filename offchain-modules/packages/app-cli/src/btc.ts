@@ -1,3 +1,4 @@
+import { nonNullable } from '@force-bridge/x';
 import { Account } from '@force-bridge/x/dist/ckb/model/accounts';
 import { BtcAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
@@ -59,11 +60,11 @@ async function doLock(
   const options = parseOptions(opts, command);
   const privateKey = options.get('privateKey');
   const amount = options.get('amount');
-  const userAddr = options.get('userAddr');
+  const userAddr = nonNullable(options.get('userAddr'));
   const recipient = options.get('recipient');
   const extra = options.get('extra');
   const feeRate = options.get('feeRate');
-  const memo = extra === undefined ? recipient : `${recipient},${extra}`;
+  const memo = nonNullable(extra === undefined ? recipient : `${recipient},${extra}`);
   const feeRateData = await getBtcMainnetFee();
   const txFeeRate = feeRate === undefined ? feeRateData.fastestFee : Number(feeRate);
 
@@ -98,8 +99,8 @@ async function doUnlock(
   command: commander.Command,
 ) {
   const options = parseOptions(opts, command);
-  const recipientAddress = options.get('recipient');
-  const privateKey = options.get('privateKey');
+  const recipientAddress = nonNullable(options.get('recipient'));
+  const privateKey = nonNullable(options.get('privateKey'));
   const amount = options.get('amount');
 
   const account = new Account(privateKey);
@@ -124,7 +125,7 @@ async function doUnlock(
 
 async function doBalanceOf(opts: { address: boolean; origin?: boolean }, command: commander.Command) {
   const options = parseOptions(opts, command);
-  const address = options.get('address');
+  const address = nonNullable(options.get('address'));
 
   if (opts.origin) {
     const rpcClient = new RPCClient(ForceBridgeCore.config.btc.clientParams);

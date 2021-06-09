@@ -1,5 +1,6 @@
 import { promises as fs } from 'fs';
 import { CellCollector, Indexer } from '@ckb-lumos/sql-indexer';
+import { asserts } from '@force-bridge/x';
 import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import * as utils from '@nervosnetwork/ckb-sdk-utils';
@@ -31,6 +32,7 @@ const deploy = async () => {
   const contractBinLength = BigInt(lockscriptBin.length);
   console.log({ contractBinLength });
   const { secp256k1Dep } = await ckb.loadDeps();
+  asserts(secp256k1Dep);
   console.log('secp256k1Dep', JSON.stringify(secp256k1Dep, null, 2));
   const lock = { ...secp256k1Dep, args: ARGS };
   nconf.set('userLockscript', lock);
@@ -178,6 +180,7 @@ const mint = async () => {
   console.dir({ inputs, inputCap }, { depth: null });
   const { secp256k1Dep } = await ckb.loadDeps();
   console.dir({ secp256k1Dep }, { depth: null });
+  asserts(secp256k1Dep);
   const sudtCellCapacity = 300n * 10n ** 8n;
   const bridgeCellCapacity = 100n * 10n ** 8n;
   const fee = 100000n;
@@ -253,6 +256,8 @@ const burn = async (sudtCell) => {
   };
   const { secp256k1Dep } = await ckb.loadDeps();
   console.dir({ secp256k1Dep }, { depth: null });
+  asserts(secp256k1Dep);
+
   const fee = 100000n;
   const sudtCellCapacity = (300n * 10n ** 8n - fee) / 2n;
   const rawTx = {

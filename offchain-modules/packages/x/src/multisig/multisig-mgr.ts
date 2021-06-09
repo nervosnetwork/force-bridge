@@ -1,5 +1,6 @@
 import { TransactionSkeletonType } from '@ckb-lumos/helpers';
 import { MultiSignHost } from '../config';
+import { asserts } from '../errors';
 import { logger } from '../utils/logger';
 import { EthUnlockRecord } from '../xchain/eth';
 import { httpRequest } from './client';
@@ -58,8 +59,8 @@ export class MultiSigMgr {
         2,
       )}`,
     );
-    const successSigSvr = [];
-    const sigs = [];
+    const successSigSvr: string[] = [];
+    const sigs: string[] = [];
     for (const svrHost of this.sigServerHosts) {
       try {
         params.requestAddress = svrHost.address;

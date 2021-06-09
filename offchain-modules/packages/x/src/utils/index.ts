@@ -4,6 +4,7 @@ import Knex from 'knex';
 import * as lodash from 'lodash';
 import nconf from 'nconf';
 import { Connection, createConnection, getConnectionManager, getConnectionOptions } from 'typeorm';
+import { asserts, nonNullable } from '../errors';
 import { logger } from './logger';
 
 export function asyncSleep(ms = 0): Promise<void> {
@@ -22,8 +23,10 @@ export const bigintToSudtAmount = (n: bigint): string => {
   return `0x${Buffer.from(n.toString(16).padStart(32, '0'), 'hex').reverse().toString('hex')}`;
 };
 
-export const fromHexString = (hexString: string): Uint8Array =>
-  new Uint8Array(hexString.match(/[\da-f]{2}/gi).map((byte) => parseInt(byte, 16)));
+export const fromHexString = (hexString: string): Uint8Array => {
+  const matched = nonNullable(hexString.match(/[\da-f]{2}/gi));
+  return new Uint8Array(matched.map((byte) => parseInt(byte, 16)));
+};
 
 export const toHexString = (bytes: Uint8Array): string =>
   bytes.reduce((str, byte) => str + byte.toString(16).padStart(2, '0'), '');
@@ -37,7 +40,7 @@ export function uint8ArrayToString(data: Uint8Array): string {
 }
 
 export function stringToUint8Array(str: string): Uint8Array {
-  const arr = [];
+  const arr: number[] = [];
   for (let i = 0, j = str.length; i < j; ++i) {
     arr.push(str.charCodeAt(i));
   }

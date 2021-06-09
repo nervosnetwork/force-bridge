@@ -140,9 +140,9 @@ export interface WhiteListEthAsset {
 export interface Config {
   common: commonConfig;
   ckb: CkbConfig;
-  eth?: EthConfig;
-  eos?: EosConfig;
-  tron?: TronConfig;
-  btc?: BtcConfig;
-  rpc?: rpcConfig;
+  eth: EthConfig;
+  eos: EosConfig;
+  tron: TronConfig;
+  btc: BtcConfig;
+  rpc: rpcConfig;
 }

@@ -1,3 +1,4 @@
+import { nonNullable } from '@force-bridge/x';
 import { Account } from '@force-bridge/x/dist/ckb/model/accounts';
 import { EosAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
@@ -47,12 +48,12 @@ async function doLock(
   command: commander.Command,
 ) {
   const options = parseOptions(opts, command);
-  const account = options.get('account');
-  const privateKey = options.get('privateKey');
-  const amount = options.get('amount');
+  const account = nonNullable(options.get('account'));
+  const privateKey = nonNullable(options.get('privateKey'));
+  const amount = nonNullable(options.get('amount'));
   const recipient = options.get('recipient');
   const extra = options.get('extra');
-  const memo = extra === undefined ? recipient : `${recipient},${extra}`;
+  const memo = nonNullable(extra === undefined ? recipient : `${recipient},${extra}`);
   const assetAmount = EosAssetAmount.assetAmountFromQuantity(amount);
   if (!assetAmount.Asset) {
     assetAmount.Asset = 'EOS';
@@ -97,9 +98,9 @@ async function doUnlock(
   command: commander.Command,
 ) {
   const options = parseOptions(opts, command);
-  const recipientAddress = options.get('recipient');
-  const amount = options.get('amount');
-  const privateKey = options.get('privateKey');
+  const recipientAddress = nonNullable(options.get('recipient'));
+  const amount = nonNullable(options.get('amount'));
+  const privateKey = nonNullable(options.get('privateKey'));
   const assetAmount = EosAssetAmount.assetAmountFromQuantity(amount);
   if (!assetAmount.Asset) {
     assetAmount.Asset = 'EOS';
@@ -136,8 +137,11 @@ async function doBalanceOf(
     console.log('account or address are required');
     return;
   }
-  const token = !options.get('asset') ? 'EOS' : options.get('asset');
+  const token = nonNullable(!options.get('asset') ? 'EOS' : options.get('asset'));
 
+  // TODO why private key here?
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
   const chain = createEosChain(ForceBridgeCore.config.eos.rpcUrl, null);
   if (account) {
     const balance = await chain.getCurrencyBalance(account, token);
@@ -157,5 +161,6 @@ function createEosChain(rpcUrl: string, privateKeys: string): EosChain {
   if (privateKeys) {
     signatureProvider = new JsSignatureProvider(privateKeys.split(','));
   }
-  return new EosChain(rpcUrl, signatureProvider);
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  return new EosChain(rpcUrl, signatureProvider!);
 }
