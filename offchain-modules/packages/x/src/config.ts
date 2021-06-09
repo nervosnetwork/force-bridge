@@ -121,7 +121,7 @@ export interface logConfig {
   logFile: string;
 }
 
-export type ormDBType = 'mysql' | 'mariadb';
+export type ormDBType = 'mysql';
 
 export interface ormConfig {
   type: ormDBType;
