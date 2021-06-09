@@ -53,7 +53,7 @@ async function deploy() {
   const firstOutput = txSkeleton.get('outputs').get(0)!;
   firstOutput.data = acpData;
   const firstInput = {
-    previous_output: txSkeleton.get('inputs').get(0)?.out_point,
+    previous_output: txSkeleton.get('inputs').get(0)!.out_point,
     since: '0x0',
   };
   const typeIDScript = generateTypeIDScript(firstInput, '0x0');
