@@ -1,6 +1,6 @@
 {
   "name": "@force-bridge/x",
-  "version": "0.0.15",
+  "version": "0.0.0",
   "description": "",
   "main": "./dist/index.js",
   "scripts": {
