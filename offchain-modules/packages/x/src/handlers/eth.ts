@@ -153,12 +153,18 @@ export class EthHandler {
       .map((record) => {
         return { txHash: record.txHash, confirmedNumber: currentBlockHeight - record.blockNumber };
       });
-    await this.db.updateLockConfirmNumber(updateConfirmNumberRecords);
+    if (updateConfirmNumberRecords.length !== 0) {
+      await this.db.updateLockConfirmNumber(updateConfirmNumberRecords);
+    }
 
     const confirmedRecords = unConfirmedLocks.filter((record) => record.blockNumber <= confirmedBlockHeight);
     const confirmedTxHashes = confirmedRecords.map((lock) => {
       return lock.txHash;
     });
+    if (confirmedRecords.length === 0) {
+      return;
+    }
+
     logger.info(`EhtHandler confirmEthLocks updateLockConfirmStatus txHashes:${confirmedTxHashes.join(', ')}`);
     await this.db.updateLockConfirmStatus(confirmedTxHashes);
 

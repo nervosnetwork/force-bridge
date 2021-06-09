@@ -1,5 +1,5 @@
 {
-  "name": "@force-bridge/relayer",
+  "name": "@force-bridge/app-relayer",
   "main": "dist",
   "scripts": {
     "build": "yarn run clean && yarn run compile",
@@ -10,5 +10,6 @@
   },
   "dependencies": {
     "@force-bridge/x": "*"
-  }
+  },
+  "version": "0.0.0"
 }

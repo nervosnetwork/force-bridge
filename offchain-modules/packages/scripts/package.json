@@ -1,6 +1,7 @@
 {
   "name": "@force-bridge/scripts",
   "main": "dist",
+  "private": true,
   "scripts": {
     "build": "yarn run clean && yarn run compile",
     "clean": "rimraf -rf ./dist",
@@ -10,6 +11,9 @@
   },
   "dependencies": {
     "@force-bridge/x": "*",
-    "@force-bridge/xchain-eth": "*"
-  }
+    "@force-bridge/xchain-eth": "*",
+    "@force-bridge/ckb-indexer-client": "*",
+    "@force-bridge/reconc": "*"
+  },
+  "version": "0.0.0"
 }

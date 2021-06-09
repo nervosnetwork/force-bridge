@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 import commander from 'commander';
-import { btcCmd } from './btc';
-import { eosCmd } from './eos';
 import { ethCmd } from './eth';
-import { tronCmd } from './tron';
+import { relayerCmd } from './relayer';
+import { rpcCmd } from './rpc';
+import { sigCmd } from './sigServer';
 import { initConfig } from './utils';
 
 export const program = commander.program;
@@ -17,9 +17,10 @@ async function main() {
     .version(version)
     .description('forcecli is command line tool to lock & unlock asset to force bridge')
     .addCommand(ethCmd)
-    .addCommand(eosCmd)
-    .addCommand(tronCmd)
-    .addCommand(btcCmd);
+    .addCommand(relayerCmd)
+    .addCommand(rpcCmd)
+    .addCommand(sigCmd);
+
   await program.parseAsync(process.argv);
 }
 

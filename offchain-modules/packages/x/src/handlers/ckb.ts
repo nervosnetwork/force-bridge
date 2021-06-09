@@ -166,17 +166,22 @@ export class CkbHandler {
         .map((record) => {
           return { txHash: record.ckbTxHash, confirmedNumber: blockNumber - record.blockNumber };
         });
-      await this.db.updateBurnConfirmNumber(updateConfirmNumberRecords);
+      if (updateConfirmNumberRecords.length !== 0) {
+        await this.db.updateBurnConfirmNumber(updateConfirmNumberRecords);
+      }
 
       const confirmedRecords = unconfirmedTxs.filter((record) => record.blockNumber <= confirmedBlockHeight);
       const confirmedTxHashes = confirmedRecords.map((burn) => {
         return burn.ckbTxHash;
       });
-      await this.db.updateCkbBurnConfirmStatus(confirmedTxHashes);
-      await this.onCkbBurnConfirmed(confirmedRecords);
-      logger.info(
-        `CkbHandler onBlock updateCkbBurnConfirmStatus height:${blockNumber} ckbTxHashes:${confirmedTxHashes}`,
-      );
+
+      if (confirmedRecords.length !== 0) {
+        await this.db.updateCkbBurnConfirmStatus(confirmedTxHashes);
+        await this.onCkbBurnConfirmed(confirmedRecords);
+        logger.info(
+          `CkbHandler onBlock updateCkbBurnConfirmStatus height:${blockNumber} ckbTxHashes:${confirmedTxHashes}`,
+        );
+      }
     }
 
     const burnTxs = new Map();

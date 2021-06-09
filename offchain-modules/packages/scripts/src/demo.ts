@@ -1,5 +1,5 @@
 import { promises as fs } from 'fs';
-import { CellCollector, Indexer } from '@ckb-lumos/sql-indexer';
+import { IndexerCollector as CellCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { asserts } from '@force-bridge/x';
 import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
 import CKB from '@nervosnetwork/ckb-sdk-core';

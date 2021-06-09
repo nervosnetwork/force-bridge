@@ -40,21 +40,23 @@ const RELAY_PRI_KEY = process.env.PRI_KEY || '0xa800c82df5461756ae99b5c6677d019c
 const ETH_PRI_KEY = process.env.ETH_PRI_KEY || '0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed37a';
 
 async function main() {
-  const conn = await getDBConnection();
   // ckb account to recieve ckETH and send burn tx
   const RECIPIENT_PRI_KEY = '0xd00c06bfd800d27397002dca6fb0993d5ba6399b4238b2f29ee9deb97593d2bc';
   const RECIPIENT_ADDR = 'ckt1qyqvsv5240xeh85wvnau2eky8pwrhh4jr8ts8vyj37';
 
   const configPath = process.env.CONFIG_PATH || './config.json';
   nconf.env().file({ file: configPath });
-  const config: EthConfig = nconf.get('forceBridge:eth');
   const conf: Config = nconf.get('forceBridge');
+  const config: EthConfig = conf.eth;
   conf.common.log.logFile = './log/eth-ci.log';
   initLog(conf.common.log);
 
-  logger.debug('config', config);
+  logger.info('config', config);
+
   // init bridge force core
   await new ForceBridgeCore().init(conf);
+  const conn = await getDBConnection();
+
   const provider = new ethers.providers.JsonRpcProvider(config.rpcUrl);
   const bridgeContractAddr = config.contractAddress;
   const bridge = new ethers.Contract(bridgeContractAddr, abi, provider) as ForceBridgeContract;
