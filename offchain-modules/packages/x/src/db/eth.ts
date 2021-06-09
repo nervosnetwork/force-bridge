@@ -56,7 +56,7 @@ export class EthDb implements IQuery {
       .createQueryBuilder()
       .update()
       .set({ confirmStatus: 'confirmed' })
-      .where('tx_hash in (:txHashes)', { txHashes: txHashes })
+      .where({ txHash: In(txHashes) })
       .execute();
   }
 
@@ -94,7 +94,7 @@ export class EthDb implements IQuery {
       .select(
         `
         eth.sender as sender, 
-        ckb.recipient_lockscript as recipient, 
+        eth.recipient as recipient, 
         eth.amount as lock_amount,
         ckb.amount as mint_amount,
         eth.tx_hash as lock_hash,
@@ -104,7 +104,7 @@ export class EthDb implements IQuery {
         eth.confirm_status as lock_confirm_status,
         ckb.updated_at as mint_time, 
         ckb.status as status,
-        ckb.asset as asset,
+        eth.token as asset,
         ckb.message as message,
         eth.bridge_fee as bridge_fee
       `,
@@ -152,7 +152,7 @@ export class EthDb implements IQuery {
       .select(
         `
         eth.sender as sender, 
-        ckb.recipient_lockscript as recipient, 
+        eth.recipient as recipient, 
         eth.amount as lock_amount,
         ckb.amount as mint_amount,
         eth.tx_hash as lock_hash,
@@ -162,7 +162,7 @@ export class EthDb implements IQuery {
         eth.confirm_status as lock_confirm_status,
         ckb.updated_at as mint_time, 
         ckb.status as status,
-        ckb.asset as asset,
+        eth.token as asset,
         ckb.message as message,
         eth.bridge_fee as bridge_fee
       `,

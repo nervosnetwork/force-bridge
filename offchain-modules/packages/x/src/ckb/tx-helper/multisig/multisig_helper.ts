@@ -1,22 +1,23 @@
 import { HexString } from '@ckb-lumos/base';
-import { serializeMultisigScript, multisigArgs } from '@ckb-lumos/common-scripts/lib/from_info';
+import { multisigArgs, serializeMultisigScript } from '@ckb-lumos/common-scripts/lib/from_info';
 import { getConfig } from '@ckb-lumos/config-manager';
 import { key } from '@ckb-lumos/hd';
 import { generateAddress } from '@ckb-lumos/helpers';
 // import { MultisigItem } from '../config';
 import { MultisigItem } from '../../../config';
 import { ForceBridgeCore } from '../../../core';
+import { nonNullable } from '../../../errors';
 import { parsePrivateKey } from '../../../utils';
 import { init } from './init_config';
 
 init();
 const config = getConfig();
-const multisigTemplate = config.SCRIPTS.SECP256K1_BLAKE160_MULTISIG;
+const multisigTemplate = nonNullable(config.SCRIPTS.SECP256K1_BLAKE160_MULTISIG);
 if (!multisigTemplate) {
   throw new Error('Multisig script template missing!');
 }
 
-const secpTemplate = getConfig().SCRIPTS.SECP256K1_BLAKE160;
+const secpTemplate = nonNullable(getConfig().SCRIPTS.SECP256K1_BLAKE160);
 
 export function getMultisigLock(multisigScript: MultisigItem) {
   const serializedMultisigScript = serializeMultisigScript(multisigScript);

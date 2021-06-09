@@ -1,16 +1,16 @@
 import {
-  Script as LumosScript,
-  Indexer,
   CellCollector,
-  Tip,
-  QueryOptions,
   CellCollectorResults,
-  HashType,
   Hexadecimal,
+  Indexer,
+  QueryOptions,
+  Script as LumosScript,
+  Tip,
 } from '@ckb-lumos/base';
 import { RPC } from '@ckb-lumos/rpc';
 import { OutPoint, Script } from '@lay2/pw-core';
 import axios from 'axios';
+import { nonNullable } from '../../errors';
 import { asyncSleep } from '../../utils';
 import { logger } from '../../utils/logger';
 
@@ -255,11 +255,11 @@ $ echo '{
       cursor = res.last_cursor;
       logger.debug('liveCells', liveCells[liveCells.length - 1]);
       for (const cell of liveCells) {
-        const indexCell = {
+        const indexCell: IndexerCell = {
           capacity: cell.output.capacity,
-          lock: Script.fromRPC(cell.output.lock),
-          type: Script.fromRPC(cell.output.type),
-          outPoint: OutPoint.fromRPC(cell.out_point),
+          lock: Script.fromRPC(cell.output.lock)!,
+          type: Script.fromRPC(cell.output.type)!,
+          outPoint: OutPoint.fromRPC(cell.out_point)!,
           data: cell.output_data,
         };
         const { stop, push } = terminator(index, indexCell);

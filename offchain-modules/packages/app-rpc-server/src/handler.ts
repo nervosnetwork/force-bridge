@@ -19,17 +19,17 @@ import { RPCClient } from 'rpc-bitcoin';
 import { Connection } from 'typeorm';
 import Web3 from 'web3';
 import { AbiItem } from 'web3-utils';
-import { API, AssetType, NetworkBase, NetworkTypes } from './types';
+import { API, AssetType, NetworkBase, NetworkTypes, RequiredAsset } from './types';
 import {
   BalancePayload,
   BridgeTransactionStatus,
   GetBalancePayload,
   GetBalanceResponse,
-  GetBridgeTransactionSummariesPayload,
   GetBridgeInNervosBridgeFeePayload,
-  GetBridgeOutNervosBridgeFeePayload,
   GetBridgeInNervosBridgeFeeResponse,
+  GetBridgeOutNervosBridgeFeePayload,
   GetBridgeOutNervosBridgeFeeResponse,
+  GetBridgeTransactionSummariesPayload,
   TransactionSummary,
   TransactionSummaryWithStatus,
   XChainNetWork,
@@ -57,6 +57,7 @@ const minERC20ABI = [
 export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
   connection: Connection;
   web3: Web3;
+
   constructor(conn: Connection) {
     this.connection = conn;
     this.web3 = new Web3(ForceBridgeCore.config.eth.rpcUrl);
@@ -175,7 +176,8 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
       hash_type: fromLockscript.hashType,
     });
     const ckbTxGenerator = new CkbTxGenerator(ForceBridgeCore.ckb, ForceBridgeCore.ckbIndexer);
-    const burnTx = await ckbTxGenerator.burn(script, payload.recipient, asset, new Amount(amount, 0));
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const burnTx = await ckbTxGenerator.burn(script!, payload.recipient, asset, new Amount(amount, 0));
     return {
       network: 'Nervos',
       rawTransaction: burnTx,
@@ -239,7 +241,8 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         return {
           fee: {
             network: 'Nervos',
-            ident: getTokenShadowIdent('Ethereum', payload.xchainAssetIdent),
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            ident: getTokenShadowIdent('Ethereum', payload.xchainAssetIdent)!,
             amount: bridgeFee,
           },
         };
@@ -329,7 +332,8 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     // Todo: add paging
     return result;
   }
-  async getAssetList(payload): Promise<any> {
+
+  async getAssetList(payload): Promise<RequiredAsset<'info'>[]> {
     const whiteListAssets = ForceBridgeCore.config.eth.assetWhiteList;
     const assetList = whiteListAssets.map((asset) => {
       return {
@@ -343,7 +347,8 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
           shadow: { network: 'Nervos', ident: getTokenShadowIdent('Ethereum', asset.address) },
         },
       };
-    });
+    }) as RequiredAsset<'info'>[];
+
     const shadowAssetList = assetList.map((asset) => {
       return {
         network: 'Nervos',
@@ -357,16 +362,19 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         },
       };
     });
+
     return assetList.concat(shadowAssetList);
   }
+
   async getBalance(payload: GetBalancePayload): Promise<GetBalanceResponse> {
-    const balanceFutures = [];
+    const balanceFutures: Promise<AssetType>[] = [];
     for (const value of payload) {
       const assetFut = this.getAccountBalance(value);
       balanceFutures.push(assetFut);
     }
-    return await Promise.all(balanceFutures);
+    return (await Promise.all(balanceFutures)) as unknown as Promise<GetBalanceResponse>;
   }
+
   async getAccountBalance(value: BalancePayload): Promise<AssetType> {
     let balance: string;
     switch (value.network) {
@@ -425,7 +433,8 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     return {
       network: value.network,
       ident: value.assetIdent,
-      amount: balance,
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      amount: balance!,
     };
   }
 }
@@ -446,8 +455,9 @@ function transferDbRecordToResponse(
         },
         toAsset: {
           network: 'Nervos',
-          ident: getTokenShadowIdent(XChainNetwork, record.asset),
-          amount: record.mint_amount,
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          ident: getTokenShadowIdent(XChainNetwork, record.asset)!,
+          amount: new Amount(record.lock_amount, 0).sub(new Amount(record.bridge_fee, 0)).toString(0),
         },
         sender: record.sender,
         recipient: record.recipient,
@@ -467,13 +477,14 @@ function transferDbRecordToResponse(
       txSummary: {
         fromAsset: {
           network: 'Nervos',
-          ident: getTokenShadowIdent(XChainNetwork, record.asset),
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          ident: getTokenShadowIdent(XChainNetwork, record.asset)!,
           amount: record.burn_amount,
         },
         toAsset: {
           network: XChainNetwork,
           ident: record.asset,
-          amount: record.unlock_amount,
+          amount: new Amount(record.burn_amount, 0).sub(new Amount(record.bridge_fee, 0)).toString(0),
         },
         sender: record.sender,
         recipient: record.recipient,
@@ -492,6 +503,7 @@ function transferDbRecordToResponse(
   }
   let txSummaryWithStatus: TransactionSummaryWithStatus;
   switch (record.status) {
+    case null:
     case 'todo':
     case 'pending':
       txSummaryWithStatus = { txSummary: bridgeTxRecord.txSummary, status: BridgeTransactionStatus.Pending };
@@ -512,7 +524,7 @@ function transferDbRecordToResponse(
   return txSummaryWithStatus;
 }
 
-function getTokenShadowIdent(XChainNetwork: XChainNetWork, XChainToken: string): string {
+function getTokenShadowIdent(XChainNetwork: XChainNetWork, XChainToken: string): string | undefined {
   const ownLockHash = getOwnLockHash(ForceBridgeCore.config.ckb.multisigScript);
   let asset: Asset;
   switch (XChainNetwork) {

@@ -5,6 +5,7 @@ import { TransactionSkeleton, TransactionSkeletonType } from '@ckb-lumos/helpers
 import { Address, Amount, Script } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import { ForceBridgeCore } from '../../core';
+import { asserts } from '../../errors';
 import { asyncSleep, bigintToSudtAmount, fromHexString, stringToUint8Array, toHexString } from '../../utils';
 import { logger } from '../../utils/logger';
 import { Asset } from '../model/asset';
@@ -358,6 +359,9 @@ export class CkbTxGenerator {
     });
 
     const { secp256k1Dep } = await this.ckb.loadDeps();
+
+    asserts(secp256k1Dep);
+
     const cellDeps = [
       {
         outPoint: secp256k1Dep.outPoint,

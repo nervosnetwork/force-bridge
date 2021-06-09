@@ -2,6 +2,7 @@ import { Script } from '@lay2/pw-core';
 import * as utils from '@nervosnetwork/ckb-sdk-utils';
 import { AddressPrefix } from '@nervosnetwork/ckb-sdk-utils';
 import { ForceBridgeCore } from '../../core';
+import { asserts } from '../../errors';
 
 export class Account {
   public publicKey: string;
@@ -45,12 +46,19 @@ export class Account {
   async getLockscript(): Promise<Script> {
     if (this.lockscript === undefined) {
       const { secp256k1Dep } = await ForceBridgeCore.ckb.loadDeps();
+
+      asserts(secp256k1Dep);
+
       const args = `0x${ForceBridgeCore.ckb.utils.blake160(this.publicKey, 'hex')}`;
-      this.lockscript = Script.fromRPC({
+      const lockScript = Script.fromRPC({
         code_hash: secp256k1Dep.codeHash,
         args,
         hash_type: secp256k1Dep.hashType,
       });
+
+      asserts(lockScript);
+
+      this.lockscript = lockScript;
     }
     return this.lockscript;
   }

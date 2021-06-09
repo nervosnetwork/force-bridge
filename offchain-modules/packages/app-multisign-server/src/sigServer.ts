@@ -54,7 +54,7 @@ export class SigServer {
     }
   }
 
-  static getKey(chain: string, address: string): string {
+  static getKey(chain: string, address: string): string | undefined {
     const keys = SigServer.keys[chain];
     if (keys === undefined) {
       return;

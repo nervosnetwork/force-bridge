@@ -124,7 +124,7 @@ export class CkbDb {
       .createQueryBuilder()
       .update()
       .set({ confirmStatus: 'confirmed' })
-      .where('ckb_tx_hash in (:txHashes)', { txHashes: txHashes })
+      .where({ ckbTxHash: In(txHashes) })
       .execute();
   }
 

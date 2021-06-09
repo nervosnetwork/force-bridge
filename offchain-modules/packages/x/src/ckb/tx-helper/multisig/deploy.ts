@@ -49,10 +49,11 @@ async function deploy() {
   let txSkeleton = TransactionSkeleton({ cellProvider: indexer });
   const capacity = getDataOutputCapacity();
   txSkeleton = await common.transfer(txSkeleton, [fromAddress], multisigAddress, capacity);
-  const firstOutput = txSkeleton.get('outputs').get(0);
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const firstOutput = txSkeleton.get('outputs').get(0)!;
   firstOutput.data = acpData;
   const firstInput = {
-    previous_output: txSkeleton.get('inputs').get(0).out_point,
+    previous_output: txSkeleton.get('inputs').get(0)?.out_point,
     since: '0x0',
   };
   const typeIDScript = generateTypeIDScript(firstInput, '0x0');
@@ -63,7 +64,8 @@ async function deploy() {
   const feeRate = 3000n;
   txSkeleton = await common.payFeeByFeeRate(txSkeleton, [fromAddress], feeRate);
   txSkeleton = common.prepareSigningEntries(txSkeleton);
-  const message = txSkeleton.get('signingEntries').get(0).message;
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const message = txSkeleton.get('signingEntries').get(0)!.message;
   const content = key.signRecoverable(message, fromPrivateKey);
 
   const tx = sealTransaction(txSkeleton, [content]);

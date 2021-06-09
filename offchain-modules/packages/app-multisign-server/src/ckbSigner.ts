@@ -4,6 +4,7 @@ import { BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '@force-bridg
 import { getOwnLockHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { EthLock } from '@force-bridge/x/dist/db/entity/EthLock';
+import { asserts, nonNullable } from '@force-bridge/x/dist/errors';
 import {
   ckbCollectSignaturesPayload,
   collectSignaturesParams,
@@ -14,16 +15,16 @@ import { BigNumber } from 'ethers';
 import minimist from 'minimist';
 import { SigServer } from './sigServer';
 
-async function verifyCreateCellTx(rawData: string, payload: ckbCollectSignaturesPayload): Promise<Error> {
+async function verifyCreateCellTx(rawData: string, payload: ckbCollectSignaturesPayload): Promise<Error | undefined> {
   const txSkeleton = payload.txSkeleton;
   const sigData = txSkeleton.signingEntries[1].message;
   if (rawData !== sigData) {
     return new Error(`rawData:${rawData} doesn't match with:${sigData}`);
   }
 
-  const createAssets = payload.createAssets;
+  const createAssets = nonNullable(payload.createAssets);
   const ownLockHash = getOwnLockHash(ForceBridgeCore.config.ckb.multisigScript);
-  const bridgeCells = [];
+  const bridgeCells: Cell[] = [];
   txSkeleton.outputs.forEach((output) => {
     if (!output.cell_output.lock) {
       return;
@@ -80,11 +81,13 @@ async function verifyCreateCellTx(rawData: string, payload: ckbCollectSignatures
   return undefined;
 }
 
-async function verifyDuplicateMintTx(pubKey: string, mintRecords: mintRecord[]): Promise<Error> {
+async function verifyDuplicateMintTx(pubKey: string, mintRecords: mintRecord[]): Promise<Error | null> {
   const mintTxHashes = mintRecords.map((mintRecord) => {
     return mintRecord.id;
   });
   const signedTxHashes = await SigServer.signedDb.getDistinctSignedTxByRefTxHashes(pubKey, mintTxHashes);
+  asserts(signedTxHashes);
+
   if (signedTxHashes.length === 0) {
     // return new Error(`refTxHashes:${mintTxHashes.join(',')} had already signed`);
     return null;
@@ -94,20 +97,25 @@ async function verifyDuplicateMintTx(pubKey: string, mintRecords: mintRecord[]):
   return new Error(`duplicate mint tx in ${mintTxHashes.join(',')}`);
 }
 
-async function verifyMintTx(pubKey: string, rawData: string, payload: ckbCollectSignaturesPayload): Promise<Error> {
+async function verifyMintTx(
+  pubKey: string,
+  rawData: string,
+  payload: ckbCollectSignaturesPayload,
+): Promise<Error | undefined> {
   const txSkeleton = payload.txSkeleton;
   const sigData = txSkeleton.signingEntries[1].message;
   if (rawData !== sigData) {
     return new Error(`rawData:${rawData} doesn't match with:${sigData}`);
   }
   const mintRecords = payload.mintRecords;
+  asserts(mintRecords);
 
-  let err = await verifyDuplicateMintTx(pubKey, mintRecords);
+  let err: Error | undefined | null = await verifyDuplicateMintTx(pubKey, mintRecords);
   if (err) {
     return err;
   }
 
-  const mintCells = [];
+  const mintCells: Cell[] = [];
   txSkeleton.outputs.forEach((output) => {
     if (!output.cell_output.type) {
       return;
@@ -146,14 +154,15 @@ async function verifyMintTx(pubKey: string, rawData: string, payload: ckbCollect
     }
   }
 
-  err = await verifyEthMintRecords(mintRecordsMap.get(ChainType.ETH));
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  err = await verifyEthMintRecords(mintRecordsMap.get(ChainType.ETH)!);
   if (err) {
     return err;
   }
   return undefined;
 }
 
-async function verifyEthMintRecords(records: mintRecord[]): Promise<Error> {
+async function verifyEthMintRecords(records: mintRecord[]): Promise<Error | undefined> {
   const mintTxHashes = records.map((record) => {
     return record.id;
   });
@@ -201,7 +210,7 @@ function verifyEthBridgeFee(asset: EthAsset, mintAmount: string, lockAmount: str
   return bridgeFee.gte(expectedBridgeFee.div(4)) && bridgeFee.lte(expectedBridgeFee.mul(4));
 }
 
-async function verifyEthMintTx(mintRecord: mintRecord, output: Cell): Promise<Error> {
+async function verifyEthMintTx(mintRecord: mintRecord, output: Cell): Promise<Error | undefined> {
   const ownLockHash = getOwnLockHash(ForceBridgeCore.config.ckb.multisigScript);
   const recipient = new Address(mintRecord.recipientLockscript, AddressType.ckb);
   const amount = new Amount(mintRecord.amount, 0);
@@ -224,7 +233,7 @@ async function verifyEthMintTx(mintRecord: mintRecord, output: Cell): Promise<Er
     return new Error(`lockScript args:${lockScript.args} doesn't match with:${recipientLockscript.args}`);
   }
 
-  const typeScript = output.cell_output.type;
+  const typeScript = nonNullable(output.cell_output.type);
   if (typeScript.code_hash !== ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash) {
     return new Error(
       `typescript code_hash:${typeScript.code_hash} doesn't match with:${ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash}`,
@@ -248,7 +257,8 @@ async function verifyEthMintTx(mintRecord: mintRecord, output: Cell): Promise<Er
 }
 
 export async function signCkbTx(params: collectSignaturesParams): Promise<string> {
-  const privKey = SigServer.getKey('ckb', params.requestAddress);
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const privKey = SigServer.getKey('ckb', params.requestAddress!);
   if (privKey === undefined) {
     return Promise.reject(new Error(`cannot found key by address:${params.requestAddress}`));
   }
@@ -256,7 +266,7 @@ export async function signCkbTx(params: collectSignaturesParams): Promise<string
 
   const payload = params.payload as ckbCollectSignaturesPayload;
   const txSkeleton = payload.txSkeleton;
-  let err: Error;
+  let err: Error | undefined;
   switch (payload.sigType) {
     case 'mint':
       err = await verifyMintTx(pubKey, params.rawData, payload);
@@ -278,6 +288,8 @@ export async function signCkbTx(params: collectSignaturesParams): Promise<string
   const sig = key.signRecoverable(message, privKey).slice(2);
 
   if (payload.sigType === 'mint') {
+    asserts(payload.mintRecords);
+
     await SigServer.signedDb.createSigned(
       payload.mintRecords.map((mintRecord) => {
         return {

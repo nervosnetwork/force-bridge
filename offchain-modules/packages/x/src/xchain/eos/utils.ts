@@ -1,5 +1,6 @@
 import { Buffer } from 'buffer';
 import { sha256 } from 'eosjs/dist/eosjs-key-conversions';
+import { asserts } from '../../errors';
 
 export class EosAssetAmount {
   Amount: string;
@@ -14,6 +15,8 @@ export class EosAssetAmount {
   static assetAmountFromQuantity(quantity: string): EosAssetAmount {
     //parse quantity "1.0000 EOS" to "1.0000" and "EOS"
     const res = quantity.match(/^(\d+\.\d+)\s*(\w+)?$/i);
+
+    asserts(res);
     return new EosAssetAmount(res[1], res[2], getPrecisionFromAmount(res[1]));
   }
 

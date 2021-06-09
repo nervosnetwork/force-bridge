@@ -3,6 +3,7 @@ import bitcore from 'bitcore-lib';
 import { RPCClient } from 'rpc-bitcoin';
 import { ForceBridgeCore } from '../../core';
 import { BtcUnlock } from '../../db/entity/BtcUnlock';
+import { asserts, nonNullable } from '../../errors';
 import { logger } from '../../utils/logger';
 import {
   BtcLockData,
@@ -150,7 +151,8 @@ export class BTCChain {
     });
     logger.debug(`collect live utxos for unlock: ${JSON.stringify(liveUtxos, null, 2)}`);
     let VinNeedAmount = BigInt(0);
-    const unlockVout = [];
+    // TODO
+    const unlockVout: unknown[] = [];
     let unlockData = '';
     records.map((r) => {
       let tx_hash = r.ckbTxHash;
@@ -216,6 +218,7 @@ export class BTCChain {
       return false;
     }
     const firstVoutScriptAddrList = txVouts[0].scriptPubKey.addresses;
+    asserts(firstVoutScriptAddrList);
     const secondVoutScriptPubKeyHex: string = txVouts[1].scriptPubKey.hex;
 
     if (firstVoutScriptAddrList.length != 1) {
@@ -254,8 +257,10 @@ export class BTCChain {
     if (txVins.length === 0) {
       return false;
     }
-    const inputRawTx: ITx = await this.rpcClient.getrawtransaction({ txid: txVins[0].txid, verbose: true });
-    const txSenders = inputRawTx.vout[txVins[0].vout].scriptPubKey.addresses;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const inputRawTx: ITx = await this.rpcClient.getrawtransaction({ txid: txVins[0].txid!, verbose: true });
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const txSenders = inputRawTx.vout[txVins[0].vout!].scriptPubKey.addresses!;
     for (let i = 0; i < txSenders.length; i++) {
       if (address === txSenders[i]) {
         return true;
@@ -265,8 +270,10 @@ export class BTCChain {
   }
 
   async getInputAddress(txVins: IVin[]): Promise<string> {
-    const inputRawTx: ITx = await this.rpcClient.getrawtransaction({ txid: txVins[0].txid, verbose: true });
-    const txSenders = inputRawTx.vout[txVins[0].vout].scriptPubKey.addresses;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const inputRawTx: ITx = await this.rpcClient.getrawtransaction({ txid: txVins[0].txid!, verbose: true });
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const txSenders = inputRawTx.vout[nonNullable(txVins[0].vout)].scriptPubKey.addresses!;
     return txSenders[0];
   }
 }
@@ -276,7 +283,7 @@ function getVins(balance: IBalance, unlockAmount: BigInt): IUnspents[] {
     return [];
   }
   let utxoAmount = 0n;
-  const vins = [];
+  const vins: IUnspents[] = [];
   for (let i = 0; utxoAmount < unlockAmount; i++) {
     utxoAmount = utxoAmount + BigInt(Unit.fromBTC(balance.unspents[i].amount).toSatoshis());
     vins.push(balance.unspents[i]);
@@ -289,7 +296,7 @@ function splitTxhash(burnHashesStr: string): string[] {
     return [];
   }
   let index = 0;
-  const burnHashes = [];
+  const burnHashes: string[] = [];
   while (index < burnHashesStr.length) {
     burnHashes.push(burnHashesStr.slice(index, (index += CkbTxHashLen)));
   }
@@ -303,5 +310,6 @@ export async function getBtcMainnetFee(): Promise<MainnetFee> {
     return res.data;
   } catch (err) {
     console.error('failed get btc mainnet recommended fee. by error : ', err.response.data);
+    throw err;
   }
 }
