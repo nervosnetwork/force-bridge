@@ -17,7 +17,7 @@ export const rpcCmd = new commander.Command('rpc')
 async function rpc(opts: { port: string }, command: commander.Command) {
   const options = parseOptions(opts, command);
   const port = options.get('port') !== undefined ? options.get('port') : defaultPort;
-  const corsOrigin = options.get('corsOrigin') !== undefined ? options.get('corsOrigin') : defaultCorsOrigin;
+  const corsOrigin = options.get('corsOrigin') || defaultCorsOrigin;
   const configPath = options.get('config') !== undefined ? options.get('config') : defaultConfig;
   nconf.env().file({ file: configPath });
   const cfg: Config = nconf.get('forceBridge');
