@@ -24,7 +24,7 @@ export class EosChain {
     this.api = new Api({
       rpc: this.rpc,
       signatureProvider: signatureProvider,
-      textDecoder: new TextDecoder(),
+      textDecoder: new TextDecoder() as Api['textDecoder'],
       textEncoder: new TextEncoder(),
     });
   }

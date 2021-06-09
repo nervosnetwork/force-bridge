@@ -2,9 +2,8 @@
 // todo: remove lumos indexer dep, use collector in packages/ckb/tx-helper/collector
 import { promises as fs } from 'fs';
 import path from 'path';
-import { Asset, BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
-import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
-import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
+import { asserts, nonNullable } from '@force-bridge/x';
+import { BtcAsset, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
 import { generateTypeIDScript } from '@force-bridge/x/dist/ckb/tx-helper/multisig/typeid';
 import { asyncSleep as sleep, blake2b, parsePrivateKey } from '@force-bridge/x/dist/utils';
@@ -38,7 +37,7 @@ const PATH_RECIPIENT_TYPESCRIPT = pathFromProjectRoot('/ckb-contracts/build/rele
 const PATH_BRIDGE_LOCKSCRIPT = pathFromProjectRoot('/ckb-contracts/build/release/bridge-lockscript');
 
 async function getCells(script_args: string, indexerUrl: string): Promise<RawTransactionParams.Cell[]> {
-  const cells = [];
+  const cells: RawTransactionParams.Cell[] = [];
   const postData = {
     id: 2,
     jsonrpc: '2.0',
@@ -71,9 +70,11 @@ async function getCells(script_args: string, indexerUrl: string): Promise<RawTra
   for (const rawCell of rawCells) {
     const cell: RawTransactionParams.Cell = {
       capacity: rawCell.output.capacity,
-      lock: Script.fromRPC(rawCell.output.lock),
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      lock: Script.fromRPC(rawCell.output.lock)!,
       type: Script.fromRPC(rawCell.output.type),
-      outPoint: OutPoint.fromRPC(rawCell.out_point),
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      outPoint: OutPoint.fromRPC(rawCell.out_point)!,
       data: rawCell.output_data,
     };
     cells.push(cell);
@@ -132,7 +133,7 @@ const deploy = async () => {
   const unspentCells = await getCells(ARGS, CKB_IndexerURL);
   console.log('unspentCells', unspentCells);
 
-  const emptyCells = [];
+  const emptyCells: RawTransactionParams.Cell[] = [];
   for (let i = 0; i < unspentCells.length; i++) {
     const res = await ckb.rpc.getLiveCell(unspentCells[i].outPoint, false);
     console.log('cell capacity: ', res.cell.output.capacity, ' cell status: ', res.status);
@@ -151,7 +152,8 @@ const deploy = async () => {
     safeMode: true,
     cells: emptyCells,
     outputsData: [utils.bytesToHex(lockscriptBin)],
-    deps: secp256k1Dep,
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    deps: secp256k1Dep!,
   });
   // add sudt
   const sudtCodeCellCapacity = (BigInt(sudtBin.length) + 200n) * 10n ** 8n;
@@ -187,8 +189,8 @@ const deploy = async () => {
   rawTx.outputs[1].capacity = `0x${changeCellCap.toString(16)}`;
   const firstInput = {
     previous_output: {
-      tx_hash: rawTx.inputs[0].previousOutput.txHash,
-      index: rawTx.inputs[0].previousOutput.index,
+      tx_hash: nonNullable(rawTx.inputs[0].previousOutput).txHash,
+      index: nonNullable(rawTx.inputs[0].previousOutput).index,
     },
     since: '0x0',
   };
@@ -278,6 +280,7 @@ const setStartTime = async () => {
 
 async function setOwnerLockHash() {
   const { secp256k1Dep } = await ckb.loadDeps();
+  asserts(secp256k1Dep);
 
   const lockscript = Script.fromRPC({
     code_hash: secp256k1Dep.codeHash,

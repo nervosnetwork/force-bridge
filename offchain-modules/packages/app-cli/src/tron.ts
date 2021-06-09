@@ -1,3 +1,4 @@
+import { nonNullable } from '@force-bridge/x';
 import { Account } from '@force-bridge/x/dist/ckb/model/accounts';
 import { TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
@@ -43,7 +44,7 @@ async function doLock(
 ) {
   const options = parseOptions(opts, command);
   const privateKey = options.get('privateKey');
-  const amount = options.get('amount');
+  const amount = nonNullable(options.get('amount'));
   const recipient = options.get('recipient');
   const extra = options.get('extra');
   const memo = extra === undefined ? recipient : `${recipient},${extra}`;
@@ -81,9 +82,9 @@ async function doUnlock(
   command: commander.Command,
 ) {
   const options = parseOptions(opts, command);
-  const recipientAddress = options.get('recipient');
-  const amount = options.get('amount');
-  const privateKey = options.get('privateKey');
+  const recipientAddress = nonNullable(options.get('recipient'));
+  const amount = nonNullable(options.get('amount'));
+  const privateKey = nonNullable(options.get('privateKey'));
 
   const account = new Account(privateKey);
   const generator = new CkbTxGenerator(ForceBridgeCore.ckb, ForceBridgeCore.ckbIndexer);
@@ -105,7 +106,7 @@ async function doUnlock(
 
 async function doBalanceOf(opts: { address: boolean; origin?: boolean }, command: commander.Command) {
   const options = parseOptions(opts, command);
-  const address = options.get('address');
+  const address = nonNullable(options.get('address'));
 
   if (opts.origin) {
     const tronWeb = new TronWeb({ fullHost: ForceBridgeCore.config.tron.tronGridUrl });
