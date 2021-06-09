@@ -1,0 +1,73 @@
+version: "3.3"
+services:
+  collector:
+    image: node:14
+    volumes:
+      - type: volume
+        source: node-modules
+        target: /app/node_modules
+      - type: bind
+        source: ../../offchain-modules
+        target: /app
+      - type: bind
+        source: ./config
+        target: /config
+    environment:
+      CONFIG_PATH: /config/collector.json
+    working_dir: /app
+    command: |
+      sh -c '
+      npx ts-node /app/packages/app-relayer/src/index.ts'
+    networks:
+      - docker_forcenet
+  verifier1:
+    image: node:14
+    volumes:
+      - type: volume
+        source: node-modules
+        target: /app/node_modules
+      - type: bind
+        source: ../../offchain-modules
+        target: /app
+      - type: bind
+        source: ./config
+        target: /config
+    working_dir: /app
+    environment:
+      CONFIG_PATH: /config/verifier1.json
+    command: |
+      sh -c '
+      npx ts-node /app/packages/app-multisign-server/src/index.ts --port 8090
+      '
+    ports:
+      - '8090:8090'
+    networks:
+      - docker_forcenet
+  verifier2:
+    image: node:14
+    volumes:
+      - type: volume
+        source: node-modules
+        target: /app/node_modules
+      - type: bind
+        source: ../../offchain-modules
+        target: /app
+      - type: bind
+        source: ./config
+        target: /config
+    working_dir: /app
+    environment:
+      CONFIG_PATH: /config/verifier2.json
+    command: |
+      sh -c '
+      npx ts-node /app/packages/app-multisign-server/src/index.ts --port 8091
+      '
+    ports:
+      - '8091:8091'
+    networks:
+      - docker_forcenet
+networks:
+  docker_forcenet:
+    external: true
+volumes:
+  node-modules:

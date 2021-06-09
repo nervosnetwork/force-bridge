@@ -7,6 +7,11 @@ services:
       MYSQL_DATABASE: forcebridge
     ports:
       - 3306:3306
+    networks:
+      forcenet:
+        ipv4_address: 10.5.0.100
+        aliases:
+          - mysql-relayer
   mysql-verifier1:
     image: mysql:5.7
     environment:
@@ -14,6 +19,11 @@ services:
       MYSQL_DATABASE: forcebridge
     ports:
       - 3307:3306
+    networks:
+      forcenet:
+        ipv4_address: 10.5.0.101
+        aliases:
+          - mysql-verifier1
   mysql-verifier2:
     image: mysql:5.7
     environment:
@@ -21,10 +31,20 @@ services:
       MYSQL_DATABASE: forcebridge
     ports:
       - 3308:3306
+    networks:
+      forcenet:
+        ipv4_address: 10.5.0.102
+        aliases:
+          - mysql-verifier2
   ckb:
     image: tockb/ckb-dev:v0.39.2
     ports:
       - "8114:8114"
+    networks:
+      forcenet:
+        ipv4_address: 10.5.0.103
+        aliases:
+          - ckb
   ckb-indexer:
     image: tockb/ckb-indexer:ab57116
     ports:
@@ -34,6 +54,11 @@ services:
     command: ckb-indexer -s /tmp/ckb-indexer-test -c http://ckb:8114 -l 0.0.0.0:8116
     depends_on:
       - ckb
+    networks:
+      forcenet:
+        ipv4_address: 10.5.0.104
+        aliases:
+          - ckb-indexer
   geth:
     image: tockb/geth-priv:v1.9.23
     volumes:
@@ -45,15 +70,37 @@ services:
         target: /config
     ports:
       - "8545:8545"
+    networks:
+      forcenet:
+        ipv4_address: 10.5.0.105
+        aliases:
+          - geth
   btc:
     image: tockb/btc-regtest
     stdin_open: true
     tty: true
     ports:
       - "18443:18443"
+    networks:
+      forcenet:
+        ipv4_address: 10.5.0.106
+        aliases:
+          - btc
   eos:
     image: tockb/eosio-priv:2.0.11
     ports:
       - '8888:8888'
+    networks:
+      forcenet:
+        ipv4_address: 10.5.0.107
+        aliases:
+          - eos
 volumes:
   geth-dag:
+networks:
+  forcenet:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.5.0.0/16
+          gateway: 10.5.0.1
