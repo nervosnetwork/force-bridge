@@ -12,6 +12,7 @@ import { logger } from '@force-bridge/x/dist/utils/logger';
 import { IBalance } from '@force-bridge/x/dist/xchain/btc';
 import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
 import { Amount, HashType, Script } from '@lay2/pw-core';
+import { parseAddress } from '@nervosnetwork/ckb-sdk-utils';
 import { BigNumber } from 'bignumber.js';
 import bitcore from 'bitcore-lib';
 import { ethers } from 'ethers';
@@ -68,6 +69,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
   ): Promise<API.GenerateTransactionResponse<T>> {
     logger.info('generateBridgeInNervosTransaction ', payload);
 
+    checkCKBAddress(payload.recipient);
     const sender = payload.sender;
 
     const network = payload.asset.network;
@@ -136,7 +138,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
       //   tx = await tronWeb.transactionBuilder.addUpdateData(unsignedTx, memo, 'utf8');
       default:
         // TODO: add other chains
-        Promise.reject(new Error('invalid chain type'));
+        throw new Error('invalid chain type');
     }
     return {
       network: network,
@@ -148,6 +150,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     payload: API.GenerateBridgeOutNervosTransactionPayload,
   ): Promise<API.GenerateTransactionResponse<T>> {
     logger.info('generateBridgeOutNervosTransaction ', payload);
+    checkCKBAddress(payload.sender);
     const fromLockscript = ForceBridgeCore.ckb.utils.addressToScript(payload.sender);
     const ownLockHash = getOwnLockHash(ForceBridgeCore.config.ckb.multisigScript);
 
@@ -159,7 +162,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     switch (network) {
       case 'Ethereum':
         checkETHAmount(assetName, amount);
-
+        checkETHAddress(payload.recipient);
         asset = new EthAsset(assetName, ownLockHash);
         break;
       case 'Tron':
@@ -167,7 +170,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         break;
       default:
         //TODO: add other chains
-        Promise.reject(new Error('invalid chain type'));
+        throw new Error('invalid chain type');
     }
 
     const script = Script.fromRPC({
@@ -550,6 +553,20 @@ function getTokenShadowIdent(XChainNetwork: XChainNetWork, XChainToken: string):
     args: asset.toBridgeLockscriptArgs(),
   };
   return ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
+}
+
+function checkETHAddress(address) {
+  if (!ethers.utils.isAddress(address)) {
+    throw new Error('invalid eth address');
+  }
+}
+
+function checkCKBAddress(address) {
+  try {
+    parseAddress(address);
+  } catch (e) {
+    throw new Error('invalid ckb address');
+  }
 }
 
 function checkETHAmount(assetIdent, amount) {
