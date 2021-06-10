@@ -1,11 +1,10 @@
 import { ForceBridgeAPIV1Client } from '@force-bridge/app-rpc-server/dist/client';
 import { nonNullable } from '@force-bridge/x';
-import { Account } from '@force-bridge/x/dist/ckb/model/accounts';
 import { Amount } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import commander from 'commander';
 import { ethers } from 'ethers';
-import { parseOptions } from './utils';
+import { ckbPrivateKeyToAddress, parseOptions, waitUnlockCompleted } from './utils';
 
 const ForceBridgeRpc = 'http://127.0.0.1:8080/force-bridge/api/v1';
 const EthNodeRpc = 'http://127.0.0.1:8545';
@@ -20,6 +19,7 @@ ethCmd
   .option('-n, --name', 'token name', 'ETH')
   .option('--ethRpcUrl', 'Url of eth rpc', EthNodeRpc)
   .option('--forceBridgeRpcUrl', 'Url of force-bridge rpc', ForceBridgeRpc)
+  .option('-w, --wait', 'whether wait for transaction confirmed')
   .action(doLock)
   .description('lock asset on eth');
 
@@ -29,9 +29,9 @@ ethCmd
   .requiredOption('-p, --privateKey', 'private key of unlock address on ckb')
   .requiredOption('-a, --amount', 'amount of unlock')
   .option('-n, --name', 'token name', 'ckETH')
-  .option('--ethRpcUrl', 'Url of eth rpc', EthNodeRpc)
   .option('--ckbRpcUrl', 'Url of ckb rpc', CkbNodeRpc)
   .option('--forceBridgeRpcUrl', 'Url of force-bridge rpc', ForceBridgeRpc)
+  .option('-w, --wait', 'whether wait for transaction confirmed')
   .action(doUnlock)
   .description('unlock asset on eth');
 
@@ -39,8 +39,6 @@ ethCmd
   .command('balanceOf')
   .requiredOption('-addr, --address', 'address on eth or ckb')
   .option('-n, --name', 'token name', 'ETH')
-  .option('--ethRpcUrl', 'Url of eth rpc', EthNodeRpc)
-  .option('--ckbRpcUrl', 'Url of ckb rpc', CkbNodeRpc)
   .option('--forceBridgeRpcUrl', 'Url of force-bridge rpc', ForceBridgeRpc)
   .action(doBalanceOf)
   .description('query balance of address on eth or ckb');
@@ -68,6 +66,7 @@ async function doLock(
     name?: boolean;
     ethRpcUrl?: boolean;
     forceBridgeRpcUrl?: boolean;
+    wait?: boolean;
   },
   command: commander.Command,
 ) {
@@ -101,7 +100,6 @@ async function doLock(
     await new ForceBridgeAPIV1Client(forceBridgeRpc).generateBridgeInNervosTransaction(mintPayload),
   );
 
-  // metamask will provide nonce, gasLimit and gasPrice.
   const provider = new ethers.providers.JsonRpcProvider(ethRpc);
   const wallet = new ethers.Wallet(privateKey, provider);
 
@@ -110,13 +108,18 @@ async function doLock(
   unsignedTx.gasLimit = ethers.BigNumber.from(1000000);
   unsignedTx.gasPrice = ethers.BigNumber.from(0);
 
-  // use metamask to sign and send tx.
   const signedTx = await wallet.signTransaction(unsignedTx);
-  const lockTxHash = (await provider.sendTransaction(signedTx)).hash;
+  const lockRes = await provider.sendTransaction(signedTx);
 
   console.log(
-    `Address:${wallet.address} locked:${amount} ${assetInfo.info.symbol}, recipient:${recipient}, lockTxHash:${lockTxHash}`,
+    `Address:${wallet.address} locked:${amount} ${assetInfo.info.symbol}, recipient:${recipient}, lockTxHash:${lockRes.hash}`,
   );
+
+  if (opts.wait) {
+    console.log('Waiting for transaction confirmed...');
+    await lockRes.wait(3);
+    console.log('Lock success.');
+  }
 }
 
 async function doUnlock(
@@ -127,6 +130,7 @@ async function doUnlock(
     name?: boolean;
     ckbRpc?: boolean;
     forceBridgeRpc?: boolean;
+    wait?: boolean;
   },
   command: commander.Command,
 ) {
@@ -137,7 +141,9 @@ async function doUnlock(
   const tokenName = nonNullable(options.get('name') || 'ckETH');
   const ckbRpc = nonNullable(options.get('ckbRpcUrl') || CkbNodeRpc);
   const forceBridgeRpc = nonNullable(options.get('forceBridgeRpcUrl') || ForceBridgeRpc);
-  const account = new Account(privateKey);
+
+  const ckb = new CKB(ckbRpc);
+  const ckbAddress = ckbPrivateKeyToAddress(ckb, privateKey);
 
   const assetList = await new ForceBridgeAPIV1Client(forceBridgeRpc).getAssetList();
   const assetInfo = assetList.find((asset) => {
@@ -150,21 +156,23 @@ async function doUnlock(
 
   const burnPayload = {
     network: 'Ethereum',
-    sender: account.address,
+    sender: ckbAddress,
     recipient: recipientAddress,
     asset: assetInfo.info.shadow.ident,
     amount: new Amount(amount, assetInfo.info.decimals).toString(0),
   };
 
   const unlockTx = await new ForceBridgeAPIV1Client(forceBridgeRpc).generateBridgeOutNervosTransaction(burnPayload);
-
-  const ckb = new CKB(ckbRpc);
   const signedTx = ckb.signTransaction(privateKey)(<CKBComponents.RawTransactionToSign>unlockTx.rawTransaction);
   const unlockTxHash = await ckb.rpc.sendTransaction(signedTx);
 
   console.log(
-    `Address:${account.address} unlock ${amount} ${assetInfo.info.symbol}, recipientAddress:${recipientAddress}, unlockTxHash:${unlockTxHash}`,
+    `Address:${ckbAddress} unlock ${amount} ${assetInfo.info.symbol}, recipientAddress:${recipientAddress}, unlockTxHash:${unlockTxHash}`,
   );
+
+  if (opts.wait) {
+    await waitUnlockCompleted(ckb, unlockTxHash);
+  }
 }
 
 async function doBalanceOf(
