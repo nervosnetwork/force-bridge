@@ -1,5 +1,6 @@
 import { Config } from '@force-bridge/x/dist/config';
 import nconf from 'nconf';
+import { resolveCurrentPackagePath, resolveOffChainModulesPath } from '../../resolvePath';
 
 const firstCkbMultiSigAddr = 'ckt1qyqvsv5240xeh85wvnau2eky8pwrhh4jr8ts8vyj37';
 const firstCkbMultiSigServerHost = 'http://127.0.0.1:8090';
@@ -7,18 +8,18 @@ const secondCkbMultiSigAddr = 'ckt1qyqywrwdchjyqeysjegpzw38fvandtktdhrs0zaxl4';
 const secondCkbMultiSigServerHost = 'http://127.0.0.1:8091';
 
 function main() {
-  const configPath = process.env.CONFIG_PATH || './config.json';
+  const configPath = process.env.CONFIG_PATH || resolveOffChainModulesPath('./config.json');
   nconf.env().file({ file: configPath });
   const cfg: Config = nconf.get('forceBridge');
 
-  updateConfig('./packages/scripts/src/integration-test/config/collector.json', cfg);
-  updateConfig('./packages/scripts/src/integration-test/config/watcher.json', cfg);
-  updateConfig('./packages/scripts/src/integration-test/config/verifier1.json', cfg);
-  updateConfig('./packages/scripts/src/integration-test/config/verifier2.json', cfg);
+  updateConfig(resolveCurrentPackagePath('src/integration-test/config/collector.json'), cfg);
+  updateConfig(resolveCurrentPackagePath('src/integration-test/config/watcher.json'), cfg);
+  updateConfig(resolveCurrentPackagePath('src/integration-test/config/verifier1.json'), cfg);
+  updateConfig(resolveCurrentPackagePath('src/integration-test/config/verifier2.json'), cfg);
 
-  updateETHCollectorConfig('./packages/scripts/src/integration-test/config/collector.json', cfg);
-  updateETHVerifier1Config('./packages/scripts/src/integration-test/config/verifier1.json', cfg);
-  updateETHVerifier2Config('./packages/scripts/src/integration-test/config/verifier2.json', cfg);
+  updateETHCollectorConfig(resolveCurrentPackagePath('src/integration-test/config/collector.json'), cfg);
+  updateETHVerifier1Config(resolveCurrentPackagePath('src/integration-test/config/verifier1.json'), cfg);
+  updateETHVerifier2Config(resolveCurrentPackagePath('src/integration-test/config/verifier2.json'), cfg);
 }
 
 function updateConfig(cfgPath: string, cfg: Config) {
