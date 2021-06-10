@@ -1,6 +1,6 @@
 import { promises as fs } from 'fs';
-import { IndexerCollector as CellCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { asserts } from '@force-bridge/x';
+import { IndexerCollector as CellCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import * as utils from '@nervosnetwork/ckb-sdk-utils';
