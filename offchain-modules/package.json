@@ -29,7 +29,7 @@
     "prepare-xchain-test": "sleep 5",
     "btc-test": "ts-node ./packages/scripts/src/integration-test/btc.ts",
     "integration-test": "run-p -r relayer-test sign-server1 sign-server2 xchain-test",
-    "docker:build": "docker run --rm -v `pwd`:/app -v node-modules:/app/node_modules node:14 bash -c 'cd /app && yarn install && yarn clean && yarn build'",
+    "docker:build": "docker run --rm -v `pwd`:/app -v `pwd`/node_modules_docker:/app/node_modules node:14 bash -c 'cd /app && yarn install && yarn clean && yarn build'",
     "docker:start": "cd ../tests/integration && docker-compose up",
     "docker:stop": "cd ../tests/integration && docker-compose down",
     "docker:integration-test": "run-p -r docker:start xchain-test",

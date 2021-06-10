@@ -3,15 +3,9 @@ services:
   collector:
     image: node:14
     volumes:
-      - type: volume
-        source: node-modules
-        target: /app/node_modules
-      - type: bind
-        source: ../../offchain-modules
-        target: /app
-      - type: bind
-        source: ./config
-        target: /config
+      - ./config:/config
+      - ../../offchain-modules:/app
+      - ../../offchain-modules/node_modules_docker:/app/node_modules
     environment:
       CONFIG_PATH: /config/collector.json
     working_dir: /app
@@ -23,15 +17,9 @@ services:
   verifier1:
     image: node:14
     volumes:
-      - type: volume
-        source: node-modules
-        target: /app/node_modules
-      - type: bind
-        source: ../../offchain-modules
-        target: /app
-      - type: bind
-        source: ./config
-        target: /config
+      - ./config:/config
+      - ../../offchain-modules:/app
+      - ../../offchain-modules/node_modules_docker:/app/node_modules
     working_dir: /app
     environment:
       CONFIG_PATH: /config/verifier1.json
@@ -46,15 +34,9 @@ services:
   verifier2:
     image: node:14
     volumes:
-      - type: volume
-        source: node-modules
-        target: /app/node_modules
-      - type: bind
-        source: ../../offchain-modules
-        target: /app
-      - type: bind
-        source: ./config
-        target: /config
+      - ./config:/config
+      - ../../offchain-modules:/app
+      - ../../offchain-modules/node_modules_docker:/app/node_modules
     working_dir: /app
     environment:
       CONFIG_PATH: /config/verifier2.json
@@ -69,5 +51,3 @@ services:
 networks:
   docker_forcenet:
     external: true
-volumes:
-  node-modules:
