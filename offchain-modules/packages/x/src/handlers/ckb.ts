@@ -305,6 +305,7 @@ export class CkbHandler {
     });
     if (0 === mintedSudtCellIndexes.length) return null;
 
+    logger.info(`mkxbl filter mint tx:${JSON.stringify(tx, null, 2)}`);
     logger.info(`mkxbl filter mint success, tx witness:${tx.witnesses[0]}`);
 
     const witnessArgs = new core.WitnessArgs(new Reader(tx.witnesses[0]));
@@ -389,7 +390,7 @@ export class CkbHandler {
 
         const tx = sealTransaction(txSkeleton, [content0, content1]);
         const mintTxHash = await this.transactionManager.send_transaction(tx);
-        logger.info(`mkxbl send mint success ${tx}`);
+        logger.info(`mkxbl send mint success ${JSON.stringify(tx, null, 2)}`);
         logger.info(
           `CkbHandler handleMintRecords Mint Transaction has been sent, ckbTxHash ${mintTxHash}, mintIds:${mintIds}`,
         );

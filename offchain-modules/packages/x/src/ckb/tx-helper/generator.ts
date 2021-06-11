@@ -129,11 +129,16 @@ export class CkbTxGenerator {
       return cellDeps.push(this.bridgeLockDep);
     });
 
+    logger.info(`mkxbl before mintWitness :${JSON.stringify(txSkeleton, null, 2)}`);
+
     const mintWitness = this.getMintWitness(records);
+    logger.info(`mkxbl mintWitness: 0x${toHexString(new Uint8Array(mintWitness))}`);
     const mintWitnessArgs = core.SerializeWitnessArgs({ lock: null, input_type: mintWitness, output_type: null });
+    logger.info(`mkxbl witness args: 0x${toHexString(new Uint8Array(mintWitnessArgs))}`);
     txSkeleton = txSkeleton.update('witnesses', (witnesses) => {
       return witnesses.push(`0x${toHexString(new Uint8Array(mintWitnessArgs))}`);
     });
+    logger.info(`mkxbl witnesses: ${txSkeleton.witnesses}`);
 
     txSkeleton = await this.buildSudtOutput(txSkeleton, records);
     txSkeleton = await this.buildBridgeCellOutput(txSkeleton, records, indexer);
