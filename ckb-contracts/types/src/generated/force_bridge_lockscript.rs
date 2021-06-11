@@ -21,7 +21,12 @@ impl ::core::fmt::Debug for ForceBridgeLockscriptArgs {
 impl ::core::fmt::Display for ForceBridgeLockscriptArgs {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         write!(f, "{} {{ ", Self::NAME)?;
-        write!(f, "{}: {}", "owner_lock_hash", self.owner_lock_hash())?;
+        write!(
+            f,
+            "{}: {}",
+            "owner_cell_type_hash",
+            self.owner_cell_type_hash()
+        )?;
         write!(f, ", {}: {}", "chain", self.chain())?;
         write!(f, ", {}: {}", "asset", self.asset())?;
         let extra_count = self.count_extra_fields();
@@ -58,7 +63,7 @@ impl ForceBridgeLockscriptArgs {
     pub fn has_extra_fields(&self) -> bool {
         Self::FIELD_COUNT != self.field_count()
     }
-    pub fn owner_lock_hash(&self) -> Byte32 {
+    pub fn owner_cell_type_hash(&self) -> Byte32 {
         let slice = self.as_slice();
         let start = molecule::unpack_number(&slice[4..]) as usize;
         let end = molecule::unpack_number(&slice[8..]) as usize;
@@ -108,7 +113,7 @@ impl molecule::prelude::Entity for ForceBridgeLockscriptArgs {
     }
     fn as_builder(self) -> Self::Builder {
         Self::new_builder()
-            .owner_lock_hash(self.owner_lock_hash())
+            .owner_cell_type_hash(self.owner_cell_type_hash())
             .chain(self.chain())
             .asset(self.asset())
     }
@@ -132,7 +137,12 @@ impl<'r> ::core::fmt::Debug for ForceBridgeLockscriptArgsReader<'r> {
 impl<'r> ::core::fmt::Display for ForceBridgeLockscriptArgsReader<'r> {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         write!(f, "{} {{ ", Self::NAME)?;
-        write!(f, "{}: {}", "owner_lock_hash", self.owner_lock_hash())?;
+        write!(
+            f,
+            "{}: {}",
+            "owner_cell_type_hash",
+            self.owner_cell_type_hash()
+        )?;
         write!(f, ", {}: {}", "chain", self.chain())?;
         write!(f, ", {}: {}", "asset", self.asset())?;
         let extra_count = self.count_extra_fields();
@@ -160,7 +170,7 @@ impl<'r> ForceBridgeLockscriptArgsReader<'r> {
     pub fn has_extra_fields(&self) -> bool {
         Self::FIELD_COUNT != self.field_count()
     }
-    pub fn owner_lock_hash(&self) -> Byte32Reader<'r> {
+    pub fn owner_cell_type_hash(&self) -> Byte32Reader<'r> {
         let slice = self.as_slice();
         let start = molecule::unpack_number(&slice[4..]) as usize;
         let end = molecule::unpack_number(&slice[8..]) as usize;
@@ -240,14 +250,14 @@ impl<'r> molecule::prelude::Reader<'r> for ForceBridgeLockscriptArgsReader<'r> {
 }
 #[derive(Debug, Default)]
 pub struct ForceBridgeLockscriptArgsBuilder {
-    pub(crate) owner_lock_hash: Byte32,
+    pub(crate) owner_cell_type_hash: Byte32,
     pub(crate) chain: Byte,
     pub(crate) asset: Bytes,
 }
 impl ForceBridgeLockscriptArgsBuilder {
     pub const FIELD_COUNT: usize = 3;
-    pub fn owner_lock_hash(mut self, v: Byte32) -> Self {
-        self.owner_lock_hash = v;
+    pub fn owner_cell_type_hash(mut self, v: Byte32) -> Self {
+        self.owner_cell_type_hash = v;
         self
     }
     pub fn chain(mut self, v: Byte) -> Self {
@@ -264,7 +274,7 @@ impl molecule::prelude::Builder for ForceBridgeLockscriptArgsBuilder {
     const NAME: &'static str = "ForceBridgeLockscriptArgsBuilder";
     fn expected_length(&self) -> usize {
         molecule::NUMBER_SIZE * (Self::FIELD_COUNT + 1)
-            + self.owner_lock_hash.as_slice().len()
+            + self.owner_cell_type_hash.as_slice().len()
             + self.chain.as_slice().len()
             + self.asset.as_slice().len()
     }
@@ -272,7 +282,7 @@ impl molecule::prelude::Builder for ForceBridgeLockscriptArgsBuilder {
         let mut total_size = molecule::NUMBER_SIZE * (Self::FIELD_COUNT + 1);
         let mut offsets = Vec::with_capacity(Self::FIELD_COUNT);
         offsets.push(total_size);
-        total_size += self.owner_lock_hash.as_slice().len();
+        total_size += self.owner_cell_type_hash.as_slice().len();
         offsets.push(total_size);
         total_size += self.chain.as_slice().len();
         offsets.push(total_size);
@@ -281,7 +291,7 @@ impl molecule::prelude::Builder for ForceBridgeLockscriptArgsBuilder {
         for offset in offsets.into_iter() {
             writer.write_all(&molecule::pack_number(offset as molecule::Number))?;
         }
-        writer.write_all(self.owner_lock_hash.as_slice())?;
+        writer.write_all(self.owner_cell_type_hash.as_slice())?;
         writer.write_all(self.chain.as_slice())?;
         writer.write_all(self.asset.as_slice())?;
         Ok(())

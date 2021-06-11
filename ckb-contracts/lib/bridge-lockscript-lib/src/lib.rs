@@ -25,9 +25,10 @@ pub fn _verify<T: Adapter>(data_loader: T) {
     ForceBridgeLockscriptArgsReader::verify(&script_args, false).expect("args are invalid");
     let force_bridge_args = ForceBridgeLockscriptArgsReader::new_unchecked(&script_args);
 
-    if !data_loader
-        .lock_script_exists_in_inputs(force_bridge_args.owner_lock_hash().raw_data().as_ref())
-    {
+    let owner_cell_type_hash = force_bridge_args.owner_cell_type_hash().raw_data().as_ref();
+    let owner_lock_hash = data_loader.get_owner_lock_hash(owner_cell_type_hash);
+
+    if !data_loader.lock_script_exists_in_inputs(&owner_lock_hash) {
         panic!("not authorized to unlock the cell");
     }
 }
