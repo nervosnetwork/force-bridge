@@ -1,8 +1,10 @@
 // invoke in ckb handler
+import { Amount } from '@lay2/pw-core';
 import { Connection, DeleteResult, In, UpdateResult } from 'typeorm';
 import { ForceBridgeCore } from '../core';
 import { dbTxStatus } from './entity/CkbMint';
 import {
+  EthLock,
   BtcUnlock,
   CkbBurn,
   CkbMint,
@@ -13,6 +15,7 @@ import {
   IEosUnlock,
   IEthUnlock,
   ITronUnlock,
+  MintedRecords,
   TronUnlock,
 } from './model';
 
@@ -56,6 +59,31 @@ export class CkbDb {
   // update mint status
   async updateCkbMint(records: CkbMint[]): Promise<void> {
     await this.connection.manager.save(records);
+  }
+
+  async updateLockBridgeFee(mintedRecords: MintedRecords) {
+    const query = this.connection.getRepository(EthLock).createQueryBuilder();
+    for (const record of mintedRecords.records) {
+      const row = await query.where('txHash = :lockTxHash', { lockTxHash: record.lockTxHash }).getOneOrFail();
+      const bridgeFee = new Amount(row.amount, 0).sub(record.amount).toString(0);
+      await query
+        .update()
+        .set({ bridgeFee: bridgeFee })
+        .where('txHash = :lockTxHash', { lockTxHash: record.lockTxHash })
+        .execute();
+    }
+  }
+
+  async watcherUpdateCkbMint(mintedRecords: MintedRecords) {
+    for (const record of mintedRecords.records) {
+      await this.connection
+        .getRepository(CkbMint)
+        .createQueryBuilder()
+        .update()
+        .set({ status: 'success', mintHash: mintedRecords.txHash, amount: record.amount.toString(0) })
+        .where('id = :lockTxHash', { lockTxHash: record.lockTxHash })
+        .execute();
+    }
   }
 
   async updateCkbMintStatus(mintTxHash: string, status: dbTxStatus) {

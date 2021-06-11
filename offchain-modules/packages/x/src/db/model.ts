@@ -1,3 +1,4 @@
+import { Amount } from '@lay2/pw-core';
 import { getRepository } from 'typeorm';
 import { ChainType } from '../ckb/model/asset';
 import { SigType } from '../multisig/multisig-mgr';
@@ -210,6 +211,11 @@ export interface UnlockRecord {
   asset: string;
   message: string;
   bridge_fee: string;
+}
+
+export interface MintedRecords {
+  txHash: string;
+  records: { amount: Amount; lockTxHash: string }[];
 }
 
 export interface IQuery {

@@ -80,7 +80,7 @@ export class EthHandler {
 
       const logs = await this.ethChain.getLogs(this.lastHandledBlockHeight + 1, endBlockNumber);
       for (const log of logs) {
-        await this.onLogs(log.log, log.parsedLog);
+        await this.onLockLogs(log.log, log.parsedLog);
       }
       const endBlock = await this.ethChain.getBlock(endBlockNumber);
 
@@ -121,7 +121,7 @@ export class EthHandler {
           await this.db.removeUnconfirmedLocks(confirmedBlockHeight);
           const logs = await this.ethChain.getLogs(confirmedBlockHeight + 1, block.number);
           for (const log of logs) {
-            await this.onLogs(log.log, log.parsedLog);
+            await this.onLockLogs(log.log, log.parsedLog);
           }
         }
 
@@ -169,10 +169,14 @@ export class EthHandler {
     await this.db.updateLockConfirmStatus(confirmedTxHashes);
 
     const mintRecords = confirmedRecords.map((lockRecord) => {
+      const amount =
+        this.role === 'collector'
+          ? new Amount(lockRecord.amount, 0).sub(new Amount(lockRecord.bridgeFee, 0)).toString(0)
+          : '0';
       return {
         id: lockRecord.txHash,
         chain: ChainType.ETH,
-        amount: new Amount(lockRecord.amount, 0).sub(new Amount(lockRecord.bridgeFee, 0)).toString(0),
+        amount: amount,
         asset: lockRecord.token,
         recipientLockscript: lockRecord.recipient,
         sudtExtraData: lockRecord.sudtExtraData,
@@ -187,7 +191,7 @@ export class EthHandler {
     });
   }
 
-  async onLogs(log, parsedLog) {
+  async onLockLogs(log, parsedLog) {
     for (let i = 1; i <= MAX_RETRY_TIMES; i++) {
       try {
         logger.info(
@@ -202,11 +206,12 @@ export class EthHandler {
         const asset = new EthAsset(parsedLog.args.token);
         if (!asset.inWhiteList() || new Amount(amount, 0).lt(new Amount(asset.getMinimalAmount(), 0))) return;
 
+        const bridgeFee = this.role === 'collector' ? asset.getBridgeFee('in') : '0';
         await this.db.createEthLock([
           {
             txHash: log.transactionHash,
             amount: amount,
-            bridgeFee: asset.getBridgeFee('in'),
+            bridgeFee: bridgeFee,
             token: parsedLog.args.token,
             recipient: uint8ArrayToString(fromHexString(parsedLog.args.recipientLockscript)),
             sudtExtraData: parsedLog.args.sudtExtraData,
@@ -226,10 +231,38 @@ export class EthHandler {
     }
   }
 
+  async onUnlockLogs(log, parsedLog) {
+    for (let i = 1; i <= MAX_RETRY_TIMES; i++) {
+      try {
+        const amount = parsedLog.args.receivedAmount.toString();
+        const ckbTxHash = parsedLog.args.ckbTxHash;
+        const unlockTxHash = log.transactionHash;
+        logger.info(
+          `EthHandler watchUnlockEvents receiveLog blockHeight:${log.blockNumber} blockHash:${log.blockHash} txHash:${unlockTxHash} amount:${amount} asset:${parsedLog.args.token} recipient:${parsedLog.args.recipient} ckbTxHash:${ckbTxHash} sender:${parsedLog.args.sender}`,
+        );
+        logger.info('EthHandler watchUnlockEvents eth unlockLog:', { log, parsedLog });
+        await this.db.updateBurnBridgeFee(ckbTxHash, amount);
+        await this.db.watcherUpdateUnlock(ckbTxHash, unlockTxHash, amount);
+      } catch (e) {
+        logger.error(`EthHandler watchUnlockEvents error: ${e}`);
+        if (i == MAX_RETRY_TIMES) {
+          throw e;
+        }
+        await asyncSleep(3000);
+      }
+    }
+  }
+
   // listen ETH chain and handle the new lock events
   async watchLockEvents() {
     await this.ethChain.watchLockEvents(this.lastHandledBlockHeight, async (log, parsedLog) => {
-      await this.onLogs(log, parsedLog);
+      await this.onLockLogs(log, parsedLog);
+    });
+  }
+
+  async watchUnlockEvents() {
+    await this.ethChain.watchUnlockEvents(this.lastHandledBlockHeight, async (log, parsedLog) => {
+      await this.onUnlockLogs(log, parsedLog);
     });
   }
 
@@ -239,7 +272,7 @@ export class EthHandler {
 
   // watch the eth_unlock table and handle the new unlock events
   // send tx according to the data
-  async watchUnlockEvents() {
+  async handleUnlockRecords() {
     if (this.role !== 'collector') {
       return;
     }
@@ -320,7 +353,10 @@ export class EthHandler {
     await this.init();
     this.watchNewBlock();
     this.watchLockEvents();
-    this.watchUnlockEvents();
+    if (this.role !== 'collector') {
+      this.watchUnlockEvents();
+    }
+    this.handleUnlockRecords();
     logger.info('eth handler started  🚀');
   }
 }

@@ -1,4 +1,4 @@
-import { Cell, Script as LumosScript, Indexer } from '@ckb-lumos/base';
+import { Cell, Script as LumosScript, Indexer, WitnessArgs } from '@ckb-lumos/base';
 import { common } from '@ckb-lumos/common-scripts';
 import { TransactionSkeleton, TransactionSkeletonType } from '@ckb-lumos/helpers';
 
@@ -11,10 +11,12 @@ import { logger } from '../../utils/logger';
 import { Asset } from '../model/asset';
 import { IndexerCollector } from './collector';
 import { SerializeRecipientCellData } from './generated/eth_recipient_cell';
+import { SerializeMintWitness } from './generated/mint_witness';
 import { CkbIndexer, ScriptType } from './indexer';
 import { getFromAddr, getMultisigLock } from './multisig/multisig_helper';
 
 export interface MintAssetRecord {
+  lockTxHash: string;
   asset: Asset;
   amount: Amount;
   recipient: Address;
@@ -127,6 +129,12 @@ export class CkbTxGenerator {
       return cellDeps.push(this.bridgeLockDep);
     });
 
+    const mintWitness = this.getMintWitness(records);
+    const mintWitnessArgs = SerializeMintWitness({ lock: null, input_type: mintWitness, output_type: null });
+    txSkeleton = txSkeleton.update('witnesses', (witnesses) => {
+      return witnesses.push(`0x${toHexString(new Uint8Array(SerializeRecipientCellData(mintWitnessArgs)))}`);
+    });
+
     txSkeleton = await this.buildSudtOutput(txSkeleton, records);
     txSkeleton = await this.buildBridgeCellOutput(txSkeleton, records, indexer);
 
@@ -134,6 +142,15 @@ export class CkbTxGenerator {
     txSkeleton = await common.payFeeByFeeRate(txSkeleton, [fromAddress], feeRate);
     txSkeleton = common.prepareSigningEntries(txSkeleton);
     return txSkeleton;
+  }
+
+  getMintWitness(records: MintAssetRecord[]): ArrayBuffer {
+    const lockTxHashes = new Array(0);
+    records.forEach((record) => {
+      const lockTxHash = fromHexString(toHexString(stringToUint8Array(record.lockTxHash))).buffer;
+      lockTxHashes.push(lockTxHash);
+    });
+    return SerializeMintWitness({ lock_tx_hashes: lockTxHashes });
   }
 
   async buildSudtOutput(

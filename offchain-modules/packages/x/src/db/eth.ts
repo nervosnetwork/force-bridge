@@ -1,4 +1,5 @@
 // invoke in eth handler
+import { Amount } from '@lay2/pw-core';
 import { Connection, DeleteResult, In, Repository, UpdateResult } from 'typeorm';
 import { ForceBridgeCore } from '../core';
 import { EthUnlockStatus } from './entity/EthUnlock';
@@ -72,6 +73,27 @@ export class EthDb implements IQuery {
       updataResults.push(result);
     }
     return updataResults;
+  }
+
+  async updateBurnBridgeFee(burnTxHash: string, unlockAmount: string) {
+    const query = this.connection.getRepository(CkbBurn).createQueryBuilder();
+    const row = await query.where('ckbTxHash = :ckbTxHash', { ckbTxHash: burnTxHash }).getOneOrFail();
+    const bridgeFee = new Amount(row.amount, 0).sub(new Amount(unlockAmount, 0)).toString(0);
+    await query
+      .update()
+      .set({ bridgeFee: bridgeFee })
+      .where('ckbTxHash = :ckbTxHash', { ckbTxHash: burnTxHash })
+      .execute();
+  }
+
+  async watcherUpdateUnlock(burnTxHash: string, unlockTxHash: string, unlockAmount: string) {
+    await this.connection
+      .getRepository(EthUnlock)
+      .createQueryBuilder()
+      .update()
+      .set({ status: 'success', ethTxHash: unlockTxHash, amount: unlockAmount })
+      .where('ckbTxHash = :ckbTxHash', { ckbTxHash: burnTxHash })
+      .execute();
   }
 
   async getEthUnlockRecordsToUnlock(status: EthUnlockStatus, take = 100): Promise<EthUnlock[]> {

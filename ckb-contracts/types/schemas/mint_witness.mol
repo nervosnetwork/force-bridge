@@ -1,0 +1,7 @@
+import basic;
+
+vector BytesVec <Bytes>;
+
+table MintWitness {
+    lock_tx_hashes: BytesVec,
+}

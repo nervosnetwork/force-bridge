@@ -10,6 +10,7 @@ import { abi } from './abi/ForceBridge.json';
 import { buildSigRawData } from './utils';
 
 export const lockTopic = ethers.utils.id('Locked(address,address,uint256,bytes,bytes)');
+export const unlockTopic = ethers.utils.id('Unlocked(address,address,address,uint256,bytes)');
 
 export interface EthUnlockRecord {
   token: string;
@@ -49,6 +50,19 @@ export class EthChain {
       address: this.bridgeContractAddr,
       fromBlock: 'earliest',
       topics: [lockTopic],
+    };
+    this.provider.resetEventsBlock(startHeight);
+    this.provider.on(filter, async (log) => {
+      const parsedLog = this.iface.parseLog(log);
+      await handleLogFunc(log, parsedLog);
+    });
+  }
+
+  watchUnlockEvents(startHeight = 1, handleLogFunc) {
+    const filter = {
+      address: this.bridgeContractAddr,
+      fromBlock: 'earliest',
+      topics: [unlockTopic],
     };
     this.provider.resetEventsBlock(startHeight);
     this.provider.on(filter, async (log) => {
