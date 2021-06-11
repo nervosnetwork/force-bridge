@@ -192,6 +192,7 @@ export class CkbHandler {
     for (const tx of block.transactions) {
       const parsedMintRecords = await this.parseMintTx(tx);
       if (parsedMintRecords) {
+        logger.info(`mkxbl parse mint records succ: ${parsedMintRecords}`);
         await this.onMintTx(parsedMintRecords);
       }
       const recipientData = tx.outputsData[0];
@@ -304,6 +305,8 @@ export class CkbHandler {
     });
     if (0 === mintedSudtCellIndexes.length) return null;
 
+    logger.info(`mkxbl filter mint success, tx witness:${tx.witnesses[0]}`);
+
     const witnessArgs = new core.WitnessArgs(new Reader(tx.witnesses[0]));
     const inputTypeWitness = witnessArgs.getInputType().value().raw();
     const mintWitness = new MintWitness(inputTypeWitness, { validate: true });
@@ -312,6 +315,7 @@ export class CkbHandler {
     mintedSudtCellIndexes.forEach((value, index) => {
       const amount = Amount.fromUInt128LE(tx.outputsData[value]);
       const lockTxHash = uint8ArrayToString(new Uint8Array(lockTxHashes.indexAt(index).raw()));
+      logger.info(`mkxbl filter lock tx hash:${lockTxHash}`);
       parsedResult.push({ amount: amount, lockTxHash: lockTxHash });
     });
     return { txHash: tx.hash, records: parsedResult };
@@ -357,6 +361,7 @@ export class CkbHandler {
         await this.db.updateCkbMint(mintRecords);
         await this.waitUntilSync();
         const txSkeleton = await generator.mint(records, this.ckbIndexer);
+        logger.info(`mkxbl generate mint success`);
         logger.info(`mint tx txSkeleton ${JSON.stringify(txSkeleton, null, 2)}`);
         const content0 = key.signRecoverable(
           txSkeleton.get('signingEntries').get(0)!.message,
@@ -384,6 +389,7 @@ export class CkbHandler {
 
         const tx = sealTransaction(txSkeleton, [content0, content1]);
         const mintTxHash = await this.transactionManager.send_transaction(tx);
+        logger.info(`mkxbl send mint success ${tx}`);
         logger.info(
           `CkbHandler handleMintRecords Mint Transaction has been sent, ckbTxHash ${mintTxHash}, mintIds:${mintIds}`,
         );

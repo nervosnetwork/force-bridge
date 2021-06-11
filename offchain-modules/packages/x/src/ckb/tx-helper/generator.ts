@@ -1,4 +1,4 @@
-import { Cell, Script as LumosScript, Indexer, WitnessArgs } from '@ckb-lumos/base';
+import { Cell, Script as LumosScript, Indexer, WitnessArgs, core } from '@ckb-lumos/base';
 import { common } from '@ckb-lumos/common-scripts';
 import { TransactionSkeleton, TransactionSkeletonType } from '@ckb-lumos/helpers';
 
@@ -130,9 +130,9 @@ export class CkbTxGenerator {
     });
 
     const mintWitness = this.getMintWitness(records);
-    const mintWitnessArgs = SerializeMintWitness({ lock: null, input_type: mintWitness, output_type: null });
+    const mintWitnessArgs = core.SerializeWitnessArgs({ lock: null, input_type: mintWitness, output_type: null });
     txSkeleton = txSkeleton.update('witnesses', (witnesses) => {
-      return witnesses.push(`0x${toHexString(new Uint8Array(SerializeRecipientCellData(mintWitnessArgs)))}`);
+      return witnesses.push(`0x${toHexString(new Uint8Array(mintWitnessArgs))}`);
     });
 
     txSkeleton = await this.buildSudtOutput(txSkeleton, records);
