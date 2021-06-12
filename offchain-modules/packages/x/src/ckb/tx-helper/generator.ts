@@ -138,11 +138,9 @@ export class CkbTxGenerator {
     txSkeleton = txSkeleton.update('witnesses', (witnesses) => {
       const witness = `0x${toHexString(new Uint8Array(mintWitnessArgs))}`;
       if (witnesses.isEmpty()) {
-        witnesses.push(witness);
-      } else {
-        witnesses[0] = witness;
+        return witnesses.push(witness);
       }
-      return witnesses;
+      return witnesses.set(0, witness);
     });
     logger.info(`mkxbl witnesses: ${txSkeleton.witnesses}`);
 
