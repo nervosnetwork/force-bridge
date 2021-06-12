@@ -77,12 +77,12 @@ export class EthDb implements IQuery {
 
   async updateBurnBridgeFee(burnTxHash: string, unlockAmount: string) {
     const query = this.connection.getRepository(CkbBurn).createQueryBuilder();
-    const row = await query.select().where('ckbTxHash = :ckbTxHash', { ckbTxHash: burnTxHash }).getOneOrFail();
+    const row = await query.select().where('ckb_tx_hash = :ckbTxHash', { ckbTxHash: burnTxHash }).getOneOrFail();
     const bridgeFee = new Amount(row.amount, 0).sub(new Amount(unlockAmount, 0)).toString(0);
     await query
       .update()
       .set({ bridgeFee: bridgeFee })
-      .where('ckbTxHash = :ckbTxHash', { ckbTxHash: burnTxHash })
+      .where('ckb_tx_hash = :ckbTxHash', { ckbTxHash: burnTxHash })
       .execute();
   }
 
@@ -92,7 +92,7 @@ export class EthDb implements IQuery {
       .createQueryBuilder()
       .update()
       .set({ status: 'success', ethTxHash: unlockTxHash, amount: unlockAmount })
-      .where('ckbTxHash = :ckbTxHash', { ckbTxHash: burnTxHash })
+      .where('ckb_tx_hash = :ckbTxHash', { ckbTxHash: burnTxHash })
       .execute();
   }
 
