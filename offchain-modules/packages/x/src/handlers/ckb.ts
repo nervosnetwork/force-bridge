@@ -192,9 +192,10 @@ export class CkbHandler {
     for (const tx of block.transactions) {
       const parsedMintRecords = await this.parseMintTx(tx);
       if (parsedMintRecords) {
-        logger.info(`mkxbl parse mint records succ: ${parsedMintRecords}`);
+        logger.info(`mkxbl parse mint records succ: ${JSON.stringify(parsedMintRecords, null, 2)}`);
         await this.onMintTx(parsedMintRecords);
       }
+      logger.info(`mkxbl ${this.role} go through parseMint`);
       const recipientData = tx.outputsData[0];
       let cellData;
       try {
@@ -228,8 +229,16 @@ export class CkbHandler {
     if (this.role === 'collector') {
       return await this.db.updateCkbMintStatus(mintedRecords.txHash, 'success');
     }
-    await this.db.updateLockBridgeFee(mintedRecords);
-    await this.db.watcherUpdateCkbMint(mintedRecords);
+    try {
+      await this.db.updateLockBridgeFee(mintedRecords);
+    } catch (e) {
+      logger.error(`mkxbl updateLockBridgeFee error ${e}`);
+    }
+    try {
+      await this.db.watcherUpdateCkbMint(mintedRecords);
+    } catch (e) {
+      logger.error(`mkxbl watcherUpdateCkbMint error ${e}`);
+    }
   }
 
   async onBurnTxs(latestHeight: number, burnTxs: Map<string, BurnDbData>) {

@@ -64,7 +64,7 @@ export class CkbDb {
   async updateLockBridgeFee(mintedRecords: MintedRecords) {
     const query = this.connection.getRepository(EthLock).createQueryBuilder();
     for (const record of mintedRecords.records) {
-      const row = await query.where('txHash = :lockTxHash', { lockTxHash: record.lockTxHash }).getOneOrFail();
+      const row = await query.select().where('txHash = :lockTxHash', { lockTxHash: record.lockTxHash }).getOneOrFail();
       const bridgeFee = new Amount(row.amount, 0).sub(record.amount).toString(0);
       await query
         .update()

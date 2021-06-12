@@ -77,7 +77,7 @@ export class EthDb implements IQuery {
 
   async updateBurnBridgeFee(burnTxHash: string, unlockAmount: string) {
     const query = this.connection.getRepository(CkbBurn).createQueryBuilder();
-    const row = await query.where('ckbTxHash = :ckbTxHash', { ckbTxHash: burnTxHash }).getOneOrFail();
+    const row = await query.select().where('ckbTxHash = :ckbTxHash', { ckbTxHash: burnTxHash }).getOneOrFail();
     const bridgeFee = new Amount(row.amount, 0).sub(new Amount(unlockAmount, 0)).toString(0);
     await query
       .update()
