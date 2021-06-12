@@ -136,7 +136,13 @@ export class CkbTxGenerator {
     const mintWitnessArgs = core.SerializeWitnessArgs({ lock: null, input_type: mintWitness, output_type: null });
     logger.info(`mkxbl witness args: 0x${toHexString(new Uint8Array(mintWitnessArgs))}`);
     txSkeleton = txSkeleton.update('witnesses', (witnesses) => {
-      return witnesses.push(`0x${toHexString(new Uint8Array(mintWitnessArgs))}`);
+      const witness = `0x${toHexString(new Uint8Array(mintWitnessArgs))}`;
+      if (witnesses.isEmpty()) {
+        witnesses.push(witness);
+      } else {
+        witnesses[0] = witness;
+      }
+      return witnesses;
     });
     logger.info(`mkxbl witnesses: ${txSkeleton.witnesses}`);
 
