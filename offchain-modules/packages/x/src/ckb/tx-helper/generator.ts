@@ -1,9 +1,9 @@
 import { Cell, Script as LumosScript, Indexer, WitnessArgs, core } from '@ckb-lumos/base';
 import { common } from '@ckb-lumos/common-scripts';
 import { TransactionSkeleton, TransactionSkeletonType } from '@ckb-lumos/helpers';
-
 import { Address, Amount, Script } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
+import { Reader, normalizers } from 'ckb-js-toolkit';
 import { ForceBridgeCore } from '../../core';
 import { asserts } from '../../errors';
 import { asyncSleep, bigintToSudtAmount, fromHexString, stringToUint8Array, toHexString } from '../../utils';
@@ -136,11 +136,23 @@ export class CkbTxGenerator {
     const mintWitnessArgs = core.SerializeWitnessArgs({ lock: null, input_type: mintWitness, output_type: null });
     logger.info(`mkxbl witness args: 0x${toHexString(new Uint8Array(mintWitnessArgs))}`);
     txSkeleton = txSkeleton.update('witnesses', (witnesses) => {
-      const witness = `0x${toHexString(new Uint8Array(mintWitnessArgs))}`;
       if (witnesses.isEmpty()) {
-        return witnesses.push(witness);
+        return witnesses.push(`0x${toHexString(new Uint8Array(mintWitnessArgs))}`);
       }
-      return witnesses.set(0, witness);
+      const witnessArgs = new core.WitnessArgs(new Reader(witnesses.get(0) as string));
+      const newWitnessArgs: WitnessArgs = {
+        input_type: `0x${toHexString(new Uint8Array(mintWitness))}`,
+      };
+      if (witnessArgs.getLock().hasValue()) {
+        newWitnessArgs.lock = new Reader(witnessArgs.getLock().value().raw()).serializeJson();
+      }
+      if (witnessArgs.getOutputType().hasValue()) {
+        newWitnessArgs.output_type = new Reader(witnessArgs.getOutputType().value().raw()).serializeJson();
+      }
+      return witnesses.set(
+        0,
+        new Reader(core.SerializeWitnessArgs(normalizers.NormalizeWitnessArgs(newWitnessArgs))).serializeJson(),
+      );
     });
     logger.info(`mkxbl witnesses: ${txSkeleton.witnesses}`);
 
