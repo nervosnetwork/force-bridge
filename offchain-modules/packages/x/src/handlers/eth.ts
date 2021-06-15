@@ -254,25 +254,17 @@ export class EthHandler {
           `EthHandler watchUnlockEvents receiveLog blockHeight:${log.blockNumber} blockHash:${log.blockHash} txHash:${unlockTxHash} amount:${amount} asset:${parsedLog.args.token} recipient:${parsedLog.args.recipient} ckbTxHash:${ckbTxHash} sender:${parsedLog.args.sender}`,
         );
         logger.info('EthHandler watchUnlockEvents eth unlockLog:', { log, parsedLog });
-        try {
-          await this.db.createEthUnlock([
-            {
-              ckbTxHash: ckbTxHash,
-              amount: amount,
-              asset: parsedLog.args.token,
-              recipientAddress: parsedLog.args.recipient,
-              ethTxHash: unlockTxHash,
-              status: 'success',
-            },
-          ]);
-        } catch (e) {
-          logger.error(`mkxbl createEthUnlock error ${e}`);
-        }
-        try {
-          await this.db.updateBurnBridgeFee(ckbTxHash, amount);
-        } catch (e) {
-          logger.error(`mkxbl updateBurnBridgeFee error ${e}`);
-        }
+        await this.db.createEthUnlock([
+          {
+            ckbTxHash: ckbTxHash,
+            amount: amount,
+            asset: parsedLog.args.token,
+            recipientAddress: parsedLog.args.recipient,
+            ethTxHash: unlockTxHash,
+            status: 'success',
+          },
+        ]);
+        await this.db.updateBurnBridgeFee(ckbTxHash, amount);
       } catch (e) {
         logger.error(`EthHandler watchUnlockEvents error: ${e}`);
         if (i == MAX_RETRY_TIMES) {
