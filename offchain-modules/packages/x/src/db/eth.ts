@@ -118,15 +118,6 @@ export class EthDb implements IQuery {
     }
   }
 
-  async getMintRecord(lockTxHash: string): Promise<CkbMint | undefined> {
-    return this.connection
-      .getRepository(CkbMint)
-      .createQueryBuilder()
-      .select()
-      .where('id = :lockTxHash', { lockTxHash: lockTxHash })
-      .getOne();
-  }
-
   async updateLockBridgeFee(lockTxHash: string, bridgeFee: string): Promise<void> {
     await this.ethLockRepository
       .createQueryBuilder()
@@ -147,16 +138,6 @@ export class EthDb implements IQuery {
         .where('ckb_tx_hash = :ckbTxHash', { ckbTxHash: burnTxHash })
         .execute();
     }
-  }
-
-  async watcherUpdateUnlock(burnTxHash: string, unlockTxHash: string, unlockAmount: string): Promise<void> {
-    await this.connection
-      .getRepository(EthUnlock)
-      .createQueryBuilder()
-      .update()
-      .set({ status: 'success', ethTxHash: unlockTxHash, amount: unlockAmount })
-      .where('ckb_tx_hash = :ckbTxHash', { ckbTxHash: burnTxHash })
-      .execute();
   }
 
   async getEthUnlockRecordsToUnlock(status: EthUnlockStatus, take = 100): Promise<EthUnlock[]> {

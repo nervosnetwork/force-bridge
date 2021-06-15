@@ -100,18 +100,6 @@ export class CkbDb {
     }
   }
 
-  async watcherUpdateCkbMint(mintedRecords: MintedRecords): Promise<void> {
-    for (const record of mintedRecords.records) {
-      await this.connection
-        .getRepository(CkbMint)
-        .createQueryBuilder()
-        .update()
-        .set({ status: 'success', mintHash: mintedRecords.txHash, amount: record.amount.toString(0) })
-        .where('id = :lockTxHash', { lockTxHash: record.lockTxHash })
-        .execute();
-    }
-  }
-
   async updateBurnBridgeFee(records: ICkbBurn[]): Promise<void> {
     const unlockQuery = this.connection.getRepository(EthUnlock).createQueryBuilder();
     const burnQuery = this.connection.getRepository(CkbBurn).createQueryBuilder();

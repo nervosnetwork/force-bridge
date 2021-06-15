@@ -284,8 +284,25 @@ export class CkbHandler {
   }
 
   async parseMintTx(tx: Transaction): Promise<null | MintedRecords> {
-    // FIXME verify cellDeps force-bridge-unique-type-id
-    const isCellDepsContainTypeID = false;
+    // FIXME verify cellDeps force-bridge-unique-type-id after related pr merged
+    // let isCellDepsContainTypeID = false;
+    // for (const cellDep of tx.cellDeps) {
+    //   if (!cellDep.outPoint) continue;
+    //   const txPrevious = await this.ckb.rpc.getTransaction(cellDep.outPoint.txHash);
+    //   if (txPrevious == null) {
+    //     continue;
+    //   }
+    //   const typeID = txPrevious.transaction.outputs[Number(cellDep.outPoint.index)].type;
+    //   if (
+    //     typeID &&
+    //     typeID.codeHash === ForceBridgeCore.config.ckb.deps.FIXME &&
+    //     typeID.hashType === ForceBridgeCore.config.ckb.deps.FIXME
+    //   ) {
+    //     isCellDepsContainTypeID = true;
+    //     break;
+    //   }
+    // }
+    // if (!isCellDepsContainTypeID) return null;
 
     let isInputsContainBridgeCell = false;
     for (const input of tx.inputs) {
@@ -301,6 +318,7 @@ export class CkbHandler {
         inputLock.hashType === ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType
       ) {
         isInputsContainBridgeCell = true;
+        break;
       }
     }
     if (!isInputsContainBridgeCell) return null;
