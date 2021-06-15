@@ -108,6 +108,16 @@ export interface GetBridgeOutNervosBridgeFeeResponse {
   fee: RequiredAsset<'amount'>;
 }
 
+export interface EthereumConfig {
+  contractAddress: string;
+}
+
+export interface GetBridgeConfigResponse {
+  xchains: {
+    Ethereum: EthereumConfig;
+  };
+}
+
 // TODO: change to the higher order generic when it impl
 // https://github.com/microsoft/TypeScript/issues/1213
 export interface ForceBridgeAPIV1 {
@@ -140,4 +150,6 @@ export interface ForceBridgeAPIV1 {
   // get the user's balance, or if no `assets` param is passed in, return all whitelisted assets
   // prettier-ignore
   getBalance: (payload: GetBalancePayload) => Promise<GetBalanceResponse>;
+
+  getBridgeConfig: () => Promise<GetBridgeConfigResponse>;
 }
