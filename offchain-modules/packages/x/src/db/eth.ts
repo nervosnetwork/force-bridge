@@ -3,7 +3,18 @@ import { Amount } from '@lay2/pw-core';
 import { Connection, DeleteResult, In, Repository, UpdateResult } from 'typeorm';
 import { ForceBridgeCore } from '../core';
 import { EthUnlockStatus } from './entity/EthUnlock';
-import { CkbBurn, CkbMint, EthLock, EthUnlock, ICkbMint, IEthLock, IQuery, LockRecord, UnlockRecord } from './model';
+import {
+  CkbBurn,
+  CkbMint,
+  EthLock,
+  EthUnlock,
+  ICkbMint,
+  IEthLock,
+  IEthUnlock,
+  IQuery,
+  LockRecord,
+  UnlockRecord,
+} from './model';
 
 export class EthDb implements IQuery {
   private ckbMintRepository: Repository<CkbMint>;
@@ -24,6 +35,12 @@ export class EthDb implements IQuery {
   async createCkbMint(records: ICkbMint[]): Promise<void> {
     const dbRecords = records.map((r) => this.ckbMintRepository.create(r));
     await this.ckbMintRepository.save(dbRecords);
+  }
+
+  async createEthUnlock(records: IEthUnlock[]): Promise<void> {
+    const ethUnlockRepo = this.connection.getRepository(EthUnlock);
+    const dbRecords = records.map((r) => ethUnlockRepo.create(r));
+    await ethUnlockRepo.save(dbRecords);
   }
 
   async saveEthUnlock(records: EthUnlock[]): Promise<void> {
@@ -75,18 +92,64 @@ export class EthDb implements IQuery {
     return updataResults;
   }
 
-  async updateBurnBridgeFee(burnTxHash: string, unlockAmount: string) {
-    const query = this.connection.getRepository(CkbBurn).createQueryBuilder();
-    const row = await query.select().where('ckb_tx_hash = :ckbTxHash', { ckbTxHash: burnTxHash }).getOneOrFail();
-    const bridgeFee = new Amount(row.amount, 0).sub(new Amount(unlockAmount, 0)).toString(0);
-    await query
+  async updateBridgeInRecord(
+    lockTxHash: string,
+    amount: string,
+    token: string,
+    recipient: string,
+    sudtExtraData: string,
+  ): Promise<void> {
+    const mintRecord = await this.connection
+      .getRepository(CkbMint)
+      .createQueryBuilder()
+      .select()
+      .where('id = :lockTxHash', { lockTxHash: lockTxHash })
+      .getOne();
+    if (mintRecord) {
+      const bridgeFee = new Amount(amount, 0).sub(new Amount(mintRecord.amount, 0)).toString(0);
+      await this.updateLockBridgeFee(lockTxHash, bridgeFee);
+      await this.connection
+        .getRepository(CkbMint)
+        .createQueryBuilder()
+        .update()
+        .set({ asset: token, recipientLockscript: recipient, sudtExtraData: sudtExtraData })
+        .where('id = :lockTxHash', { lockTxHash: lockTxHash })
+        .execute();
+    }
+  }
+
+  async getMintRecord(lockTxHash: string): Promise<CkbMint | undefined> {
+    return this.connection
+      .getRepository(CkbMint)
+      .createQueryBuilder()
+      .select()
+      .where('id = :lockTxHash', { lockTxHash: lockTxHash })
+      .getOne();
+  }
+
+  async updateLockBridgeFee(lockTxHash: string, bridgeFee: string): Promise<void> {
+    await this.ethLockRepository
+      .createQueryBuilder()
       .update()
       .set({ bridgeFee: bridgeFee })
-      .where('ckb_tx_hash = :ckbTxHash', { ckbTxHash: burnTxHash })
+      .where('tx_hash = :lockTxHash', { lockTxHash: lockTxHash })
       .execute();
   }
 
-  async watcherUpdateUnlock(burnTxHash: string, unlockTxHash: string, unlockAmount: string) {
+  async updateBurnBridgeFee(burnTxHash: string, unlockAmount: string): Promise<void> {
+    const query = this.connection.getRepository(CkbBurn).createQueryBuilder();
+    const row = await query.select().where('ckb_tx_hash = :ckbTxHash', { ckbTxHash: burnTxHash }).getOne();
+    if (row) {
+      const bridgeFee = new Amount(row.amount, 0).sub(new Amount(unlockAmount, 0)).toString(0);
+      await query
+        .update()
+        .set({ bridgeFee: bridgeFee })
+        .where('ckb_tx_hash = :ckbTxHash', { ckbTxHash: burnTxHash })
+        .execute();
+    }
+  }
+
+  async watcherUpdateUnlock(burnTxHash: string, unlockTxHash: string, unlockAmount: string): Promise<void> {
     await this.connection
       .getRepository(EthUnlock)
       .createQueryBuilder()

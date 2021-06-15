@@ -65,10 +65,10 @@ export class CkbHandler {
   }
 
   async onCkbBurnConfirmed(confirmedCkbBurns: ICkbBurn[]) {
+    if (this.role !== 'collector') return;
     for (const burn of confirmedCkbBurns) {
       logger.info(`CkbHandler onCkbBurnConfirmed burnRecord:${JSON.stringify(burn, undefined, 2)}`);
-      const unlockAmount =
-        this.role === 'collector' ? new Amount(burn.amount, 0).sub(new Amount(burn.bridgeFee, 0)).toString(0) : '0';
+      const unlockAmount = new Amount(burn.amount, 0).sub(new Amount(burn.bridgeFee, 0)).toString(0);
       switch (burn.chain) {
         case ChainType.BTC:
           await this.db.createBtcUnlock([
@@ -230,14 +230,14 @@ export class CkbHandler {
       return await this.db.updateCkbMintStatus(mintedRecords.txHash, 'success');
     }
     try {
-      await this.db.updateLockBridgeFee(mintedRecords);
+      await this.db.watcherCreateMint(mintedRecords);
     } catch (e) {
-      logger.error(`mkxbl updateLockBridgeFee error ${e}`);
+      logger.error(`mkxbl watcherCreateMint error ${e}`);
     }
     try {
-      await this.db.watcherUpdateCkbMint(mintedRecords);
+      await this.db.updateBridgeInRecords(mintedRecords);
     } catch (e) {
-      logger.error(`mkxbl watcherUpdateCkbMint error ${e}`);
+      logger.error(`mkxbl updateBridgeInRecords error ${e}`);
     }
   }
 
@@ -277,6 +277,9 @@ export class CkbHandler {
       burnTxHashes.push(k);
     });
     await this.db.createCkbBurn(ckbBurns);
+    if (this.role === 'watcher') {
+      await this.db.updateBurnBridgeFee(ckbBurns);
+    }
     logger.info(`CkbHandler processBurnTxs saveBurnEvent success, burnTxHashes:${burnTxHashes.join(', ')}`);
   }
 

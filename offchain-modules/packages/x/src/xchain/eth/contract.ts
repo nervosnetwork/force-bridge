@@ -101,7 +101,7 @@ export class EthChain {
     return this.provider.getBlock(blockTag);
   }
 
-  async getLogs(
+  async getLockLogs(
     fromBlock: ethers.providers.BlockTag,
     toBlock: ethers.providers.BlockTag,
   ): Promise<{ log; parsedLog }[]> {
@@ -109,6 +109,22 @@ export class EthChain {
       fromBlock: fromBlock,
       address: ForceBridgeCore.config.eth.contractAddress,
       topics: [lockTopic],
+      toBlock: toBlock,
+    });
+    return logs.map((log) => {
+      const parsedLog = this.iface.parseLog(log);
+      return { log, parsedLog };
+    });
+  }
+
+  async getUnlockLogs(
+    fromBlock: ethers.providers.BlockTag,
+    toBlock: ethers.providers.BlockTag,
+  ): Promise<{ log; parsedLog }[]> {
+    const logs = await this.provider.getLogs({
+      fromBlock: fromBlock,
+      address: ForceBridgeCore.config.eth.contractAddress,
+      topics: [unlockTopic],
       toBlock: toBlock,
     });
     return logs.map((log) => {

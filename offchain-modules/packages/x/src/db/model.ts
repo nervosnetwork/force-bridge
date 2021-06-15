@@ -5,11 +5,11 @@ import { SigType } from '../multisig/multisig-mgr';
 import { BtcLock } from './entity/BtcLock';
 import { BtcUnlock } from './entity/BtcUnlock';
 import { CkbBurn } from './entity/CkbBurn';
-import { CkbMint, dbTxStatus } from './entity/CkbMint';
+import { CkbMint, CkbMintStatus, dbTxStatus } from './entity/CkbMint';
 import { EosLock } from './entity/EosLock';
 import { EosUnlock } from './entity/EosUnlock';
 import { EthLock, TxConfirmStatus } from './entity/EthLock';
-import { EthUnlock } from './entity/EthUnlock';
+import { EthUnlock, EthUnlockStatus } from './entity/EthUnlock';
 import { TronLock } from './entity/TronLock';
 import { TronUnlock } from './entity/TronUnlock';
 
@@ -47,6 +47,8 @@ export interface ICkbMint {
   amount: string;
   recipientLockscript: string;
   sudtExtraData?: string;
+  status?: CkbMintStatus;
+  mintHash?: string;
 }
 
 export interface IEthLock {
@@ -78,6 +80,8 @@ export interface IEthUnlock {
   asset: string;
   amount: string;
   recipientAddress: string;
+  ethTxHash?: string;
+  status?: EthUnlockStatus;
 }
 
 export interface ITronLock {

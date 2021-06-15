@@ -449,6 +449,11 @@ function transferDbRecordToResponse(
   let bridgeTxRecord: TransactionSummary;
   if ('lock_hash' in record) {
     const confirmStatus = record.lock_confirm_status === 'confirmed' ? 'confirmed' : record.lock_confirm_number;
+    const bridgeFee = new EthAsset(record.asset).getBridgeFee('in');
+    const mintAmount =
+      record.mint_amount === null
+        ? new Amount(record.lock_amount, 0).sub(new Amount(bridgeFee, 0)).toString(0)
+        : record.mint_amount;
     bridgeTxRecord = {
       txSummary: {
         fromAsset: {
@@ -460,7 +465,7 @@ function transferDbRecordToResponse(
           network: 'Nervos',
           // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           ident: getTokenShadowIdent(XChainNetwork, record.asset)!,
-          amount: new Amount(record.lock_amount, 0).sub(new Amount(record.bridge_fee, 0)).toString(0),
+          amount: mintAmount,
         },
         sender: record.sender,
         recipient: record.recipient,
@@ -476,6 +481,11 @@ function transferDbRecordToResponse(
     }
   } else if ('burn_hash' in record) {
     const confirmStatus = record.burn_confirm_status === 'confirmed' ? 'confirmed' : record.burn_confirm_number;
+    const bridgeFee = new EthAsset(record.asset).getBridgeFee('out');
+    const unlockAmount =
+      record.unlock_amount === null
+        ? new Amount(record.burn_amount, 0).sub(new Amount(bridgeFee, 0)).toString(0)
+        : record.unlock_amount;
     bridgeTxRecord = {
       txSummary: {
         fromAsset: {
@@ -487,7 +497,7 @@ function transferDbRecordToResponse(
         toAsset: {
           network: XChainNetwork,
           ident: record.asset,
-          amount: new Amount(record.burn_amount, 0).sub(new Amount(record.bridge_fee, 0)).toString(0),
+          amount: unlockAmount,
         },
         sender: record.sender,
         recipient: record.recipient,
