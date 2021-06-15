@@ -110,9 +110,15 @@ export interface GetBridgeOutNervosBridgeFeeResponse {
 
 export interface EthereumConfig {
   contractAddress: string;
+  confirmNumber: number;
 }
 
 export interface GetBridgeConfigResponse {
+  nervos: {
+    network: 'mainnet' | 'testnet';
+    confirmNumber: number;
+  };
+
   xchains: {
     Ethereum: EthereumConfig;
   };

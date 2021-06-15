@@ -421,8 +421,20 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
   }
 
   async getBridgeConfig(): Promise<API.GetBridgeConfigResponse> {
-    const contractAddress = ForceBridgeCore.config.eth.contractAddress;
-    return { xchains: { Ethereum: { contractAddress } } };
+    const ethConfig = ForceBridgeCore.config.eth;
+
+    return {
+      nervos: {
+        network: ForceBridgeCore.config.common.network,
+        confirmNumber: ForceBridgeCore.config.ckb.confirmNumber,
+      },
+      xchains: {
+        Ethereum: {
+          contractAddress: ethConfig.contractAddress,
+          confirmNumber: ethConfig.confirmNumber,
+        },
+      },
+    };
   }
 }
 
