@@ -284,26 +284,6 @@ export class CkbHandler {
   }
 
   async parseMintTx(tx: Transaction): Promise<null | MintedRecords> {
-    // FIXME verify cellDeps force-bridge-unique-type-id after related pr merged
-    // let isCellDepsContainTypeID = false;
-    // for (const cellDep of tx.cellDeps) {
-    //   if (!cellDep.outPoint) continue;
-    //   const txPrevious = await this.ckb.rpc.getTransaction(cellDep.outPoint.txHash);
-    //   if (txPrevious == null) {
-    //     continue;
-    //   }
-    //   const typeID = txPrevious.transaction.outputs[Number(cellDep.outPoint.index)].type;
-    //   if (
-    //     typeID &&
-    //     typeID.codeHash === ForceBridgeCore.config.ckb.deps.FIXME &&
-    //     typeID.hashType === ForceBridgeCore.config.ckb.deps.FIXME
-    //   ) {
-    //     isCellDepsContainTypeID = true;
-    //     break;
-    //   }
-    // }
-    // if (!isCellDepsContainTypeID) return null;
-
     let isInputsContainBridgeCell = false;
     for (const input of tx.inputs) {
       const previousOutput = nonNullable(input.previousOutput);
@@ -315,7 +295,8 @@ export class CkbHandler {
       const inputLock = txPrevious.transaction.outputs[Number(previousOutput.index)].lock;
       if (
         inputLock.codeHash === ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash &&
-        inputLock.hashType === ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType
+        inputLock.hashType === ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType &&
+        isTypeIDCorrect(inputLock.args)
       ) {
         isInputsContainBridgeCell = true;
         break;
@@ -606,6 +587,11 @@ export class CkbHandler {
     this.handleMintRecords();
     logger.info('ckb handler started 🚀');
   }
+}
+
+function isTypeIDCorrect(_args: string): boolean {
+  // FIXME verify force-bridge-unique-type-id after related pr merged
+  return true;
 }
 
 export async function isBurnTx(tx: Transaction, cellData: RecipientCellData): Promise<boolean> {
