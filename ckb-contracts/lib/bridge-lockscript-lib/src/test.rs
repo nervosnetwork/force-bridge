@@ -94,7 +94,7 @@ fn test_manage_mode_when_owner_cell_type_hash_not_exist_in_header_deps() {
 #[test]
 #[should_panic(expected = "not authorized to unlock the cell")]
 fn test_manage_mode_when_lock_script_not_exist_in_inputs() {
-    let mut test_params = get_correct_params();
+    let test_params = get_correct_params();
 
     let mut mock = generate_correct_mock(test_params);
 

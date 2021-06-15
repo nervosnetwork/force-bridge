@@ -36,7 +36,12 @@ impl ::core::fmt::Display for RecipientCellData {
             "bridge_lock_hash_type",
             self.bridge_lock_hash_type()
         )?;
-        write!(f, ", {}: {}", "owner_lock_hash", self.owner_lock_hash())?;
+        write!(
+            f,
+            ", {}: {}",
+            "owner_cell_type_hash",
+            self.owner_cell_type_hash()
+        )?;
         write!(f, ", {}: {}", "amount", self.amount())?;
         let extra_count = self.count_extra_fields();
         if extra_count != 0 {
@@ -105,7 +110,7 @@ impl RecipientCellData {
         let end = molecule::unpack_number(&slice[24..]) as usize;
         Byte::new_unchecked(self.0.slice(start..end))
     }
-    pub fn owner_lock_hash(&self) -> Byte32 {
+    pub fn owner_cell_type_hash(&self) -> Byte32 {
         let slice = self.as_slice();
         let start = molecule::unpack_number(&slice[24..]) as usize;
         let end = molecule::unpack_number(&slice[28..]) as usize;
@@ -153,7 +158,7 @@ impl molecule::prelude::Entity for RecipientCellData {
             .asset(self.asset())
             .bridge_lock_code_hash(self.bridge_lock_code_hash())
             .bridge_lock_hash_type(self.bridge_lock_hash_type())
-            .owner_lock_hash(self.owner_lock_hash())
+            .owner_cell_type_hash(self.owner_cell_type_hash())
             .amount(self.amount())
     }
 }
@@ -191,7 +196,12 @@ impl<'r> ::core::fmt::Display for RecipientCellDataReader<'r> {
             "bridge_lock_hash_type",
             self.bridge_lock_hash_type()
         )?;
-        write!(f, ", {}: {}", "owner_lock_hash", self.owner_lock_hash())?;
+        write!(
+            f,
+            ", {}: {}",
+            "owner_cell_type_hash",
+            self.owner_cell_type_hash()
+        )?;
         write!(f, ", {}: {}", "amount", self.amount())?;
         let extra_count = self.count_extra_fields();
         if extra_count != 0 {
@@ -248,7 +258,7 @@ impl<'r> RecipientCellDataReader<'r> {
         let end = molecule::unpack_number(&slice[24..]) as usize;
         ByteReader::new_unchecked(&self.as_slice()[start..end])
     }
-    pub fn owner_lock_hash(&self) -> Byte32Reader<'r> {
+    pub fn owner_cell_type_hash(&self) -> Byte32Reader<'r> {
         let slice = self.as_slice();
         let start = molecule::unpack_number(&slice[24..]) as usize;
         let end = molecule::unpack_number(&slice[28..]) as usize;
@@ -331,7 +341,7 @@ pub struct RecipientCellDataBuilder {
     pub(crate) asset: Bytes,
     pub(crate) bridge_lock_code_hash: Byte32,
     pub(crate) bridge_lock_hash_type: Byte,
-    pub(crate) owner_lock_hash: Byte32,
+    pub(crate) owner_cell_type_hash: Byte32,
     pub(crate) amount: Uint128,
 }
 impl RecipientCellDataBuilder {
@@ -356,8 +366,8 @@ impl RecipientCellDataBuilder {
         self.bridge_lock_hash_type = v;
         self
     }
-    pub fn owner_lock_hash(mut self, v: Byte32) -> Self {
-        self.owner_lock_hash = v;
+    pub fn owner_cell_type_hash(mut self, v: Byte32) -> Self {
+        self.owner_cell_type_hash = v;
         self
     }
     pub fn amount(mut self, v: Uint128) -> Self {
@@ -375,7 +385,7 @@ impl molecule::prelude::Builder for RecipientCellDataBuilder {
             + self.asset.as_slice().len()
             + self.bridge_lock_code_hash.as_slice().len()
             + self.bridge_lock_hash_type.as_slice().len()
-            + self.owner_lock_hash.as_slice().len()
+            + self.owner_cell_type_hash.as_slice().len()
             + self.amount.as_slice().len()
     }
     fn write<W: molecule::io::Write>(&self, writer: &mut W) -> molecule::io::Result<()> {
@@ -392,7 +402,7 @@ impl molecule::prelude::Builder for RecipientCellDataBuilder {
         offsets.push(total_size);
         total_size += self.bridge_lock_hash_type.as_slice().len();
         offsets.push(total_size);
-        total_size += self.owner_lock_hash.as_slice().len();
+        total_size += self.owner_cell_type_hash.as_slice().len();
         offsets.push(total_size);
         total_size += self.amount.as_slice().len();
         writer.write_all(&molecule::pack_number(total_size as molecule::Number))?;
@@ -404,7 +414,7 @@ impl molecule::prelude::Builder for RecipientCellDataBuilder {
         writer.write_all(self.asset.as_slice())?;
         writer.write_all(self.bridge_lock_code_hash.as_slice())?;
         writer.write_all(self.bridge_lock_hash_type.as_slice())?;
-        writer.write_all(self.owner_lock_hash.as_slice())?;
+        writer.write_all(self.owner_cell_type_hash.as_slice())?;
         writer.write_all(self.amount.as_slice())?;
         Ok(())
     }

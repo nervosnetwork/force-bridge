@@ -27,13 +27,25 @@ pub fn run_test(case: TestCase) {
     // Cell deps
     let mut cell_deps = vec![];
     // Custom cell deps
-    for cell_dep_view in case.cell_deps.iter() {
-        cell_deps.push(cell_dep_view.build_cell_dep(&mut context, &mut outpoints_context));
+    for cell_dep in case.cell_deps.iter() {
+        cell_deps.push(cell_dep.clone());
     }
     // Script cell deps
     for (_, v) in outpoints_context.iter() {
         let cell_dep = CellDep::new_builder().out_point(v.clone()).build();
         cell_deps.push(cell_dep);
+    }
+    // deploy owner cell and put it into cell_deps
+    if let Some(owner_cell) = case.owner_cell {
+        let owner_cell_output = CellOutput::new_builder()
+            .lock(owner_cell.lockscript.clone())
+            .type_(Some(owner_cell.typescript.clone()).pack())
+            .build();
+        let owner_cell_outpoint = context.create_cell(owner_cell_output, Bytes::default());
+        let owner_cell_dep = CellDep::new_builder()
+            .out_point(owner_cell_outpoint)
+            .build();
+        cell_deps.push(owner_cell_dep);
     }
 
     // Cells

@@ -18,7 +18,7 @@
     "lint-staged:eslint": "eslint --fix --config ./.eslintrc.next.js $(git diff --name-only --diff-filter=ACMRT --relative | grep -E \"(.ts$)\")",
     "fix": "run-p fix:prettier fix:eslint",
     "fix:eslint": "eslint --fix --format=pretty 'packages/*/src/**/*.ts'",
-    "fix:prettier": "prettier --write .",
+    "fix:prettier": "prettier --write 'packages/*/src/**/*.ts'",
     "watch:start": "ts-node-dev --respawn --transpile-only ./packages/apps/relayer/index.ts",
     "check:prettier": "prettier -c .",
     "check:eslint": "yarn eslint --format=pretty 'packages/*/src/**/*.ts'",

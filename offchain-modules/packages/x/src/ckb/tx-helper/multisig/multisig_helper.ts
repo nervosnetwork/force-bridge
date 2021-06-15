@@ -40,6 +40,15 @@ export function getOwnLockHash(multisigScript: MultisigItem): string {
   return ownLockHash;
 }
 
+export function getOwnerTypeHash(): string {
+  const ownerTypeHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>{
+    codeHash: ForceBridgeCore.config.ckb.ownerCellTypescript.code_hash,
+    hashType: ForceBridgeCore.config.ckb.ownerCellTypescript.hash_type,
+    args: ForceBridgeCore.config.ckb.ownerCellTypescript.args,
+  });
+  return ownerTypeHash;
+}
+
 export function getMultisigAddr(multisigScript: MultisigItem): string {
   const multisigLockScript = getMultisigLock(multisigScript);
   return generateAddress(multisigLockScript);

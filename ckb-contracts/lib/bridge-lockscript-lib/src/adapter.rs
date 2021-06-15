@@ -50,7 +50,7 @@ where
                 Err(err) => panic!("iter input return an error: {:?}, index: {:?}", err, index),
                 Ok(cell_type_hash_opt) => {
                     if let Some(cell_type_hash) = cell_type_hash_opt {
-                        if &cell_type_hash == owner_cell_type_hash {
+                        if cell_type_hash == owner_cell_type_hash {
                             let data = self
                                 .chain
                                 .load_cell_lock_hash(index, source)
