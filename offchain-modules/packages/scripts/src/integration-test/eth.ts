@@ -93,8 +93,8 @@ async function main() {
     args: sudtArgs,
   };
   const recipientBalanceBefore = await collector.getSUDTBalance(
-      new Script(sudtType.codeHash, sudtType.args, sudtType.hashType),
-      await account.getLockscript(),
+    new Script(sudtType.codeHash, sudtType.args, sudtType.hashType),
+    await account.getLockscript(),
   );
 
   // create eth unlock

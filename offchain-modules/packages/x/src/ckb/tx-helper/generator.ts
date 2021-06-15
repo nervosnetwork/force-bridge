@@ -12,7 +12,7 @@ import { Asset } from '../model/asset';
 import { IndexerCollector } from './collector';
 import { SerializeRecipientCellData } from './generated/eth_recipient_cell';
 import { CkbIndexer, ScriptType } from './indexer';
-import {getFromAddr, getMultisigLock, getOwnerTypeHash} from './multisig/multisig_helper';
+import { getFromAddr, getMultisigLock, getOwnerTypeHash } from './multisig/multisig_helper';
 
 export interface MintAssetRecord {
   asset: Asset;
