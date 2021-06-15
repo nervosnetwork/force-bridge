@@ -55,18 +55,18 @@ export class MultiSigMgr {
 
   public async collectSignatures(params: collectSignaturesParams): Promise<string[]> {
     logger.info(
-        `collectSignatures chain:${this.chainType} rawData:${params.rawData} payload:${JSON.stringify(
-            params.payload,
-            null,
-            2,
-        )}`,
+      `collectSignatures chain:${this.chainType} rawData:${params.rawData} payload:${JSON.stringify(
+        params.payload,
+        null,
+        2,
+      )}`,
     );
     const successSigSvr: string[] = [];
     const sigs: string[] = [];
     let sigServerHosts = this.sigServerHosts;
 
     for (let i = 0; i < MaxRetryTimes; i++) {
-      if(sigServerHosts.length === 0){
+      if (sigServerHosts.length === 0) {
         break;
       }
       const failedSigServerHosts: MultiSignHost[] = [];
@@ -77,23 +77,23 @@ export class MultiSigMgr {
           sigs.push(sig);
           successSigSvr.push(svrHost.host);
           logger.info(
-              `MultiSigMgr collectSignatures chain:${this.chainType} address:${svrHost.address} rawData:${
-                  params.rawData
-              } sigServer:${svrHost.host} sig:${sig.toString()}`,
+            `MultiSigMgr collectSignatures chain:${this.chainType} address:${svrHost.address} rawData:${
+              params.rawData
+            } sigServer:${svrHost.host} sig:${sig.toString()}`,
           );
           if (successSigSvr.length === this.threshold) {
             logger.info(
-                `MultiSigMgr collectSignatures success, chain:${this.chainType} address:${svrHost.address} rawData:${
-                    params.rawData
-                } sigServers:${successSigSvr.join(',')}`,
+              `MultiSigMgr collectSignatures success, chain:${this.chainType} address:${svrHost.address} rawData:${
+                params.rawData
+              } sigServers:${successSigSvr.join(',')}`,
             );
             return sigs;
           }
         } catch (e) {
           logger.error(
-              `MultiSigMgr collectSignatures chain:${this.chainType} address:${svrHost.address} rawData:${
-                  params.rawData
-              } payload:${JSON.stringify(params.payload, null, 2)} sigServer:${svrHost.host}, error:${e.message}`,
+            `MultiSigMgr collectSignatures chain:${this.chainType} address:${svrHost.address} rawData:${
+              params.rawData
+            } payload:${JSON.stringify(params.payload, null, 2)} sigServer:${svrHost.host}, error:${e.message}`,
           );
           failedSigServerHosts.push(svrHost);
         }
