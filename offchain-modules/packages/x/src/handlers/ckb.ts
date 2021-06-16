@@ -114,16 +114,31 @@ export class CkbHandler {
     }
   }
 
-  async watchNewBlock() {
+  async initLastHandledBlock() {
     const lastHandledBlock = await this.getLastHandledBlock();
-    if (lastHandledBlock.blockNumber === 0) {
-      const currentBlock = await this.ckb.rpc.getTipHeader();
-      this.lastHandledBlockHeight = Number(currentBlock.number);
-      this.lastHandledBlockHash = currentBlock.hash;
-    } else {
+    if (lastHandledBlock.blockNumber !== 0) {
       this.lastHandledBlockHeight = lastHandledBlock.blockNumber;
       this.lastHandledBlockHash = lastHandledBlock.blockHash;
+      return;
     }
+
+    const lastHandledBlockHeight = ForceBridgeCore.config.ckb.startBlockHeight;
+    if (lastHandledBlockHeight > 0) {
+      const lastHandledHead = await this.ckb.rpc.getHeaderByNumber(lastHandledBlockHeight.toString());
+      if (lastHandledHead !== undefined) {
+        this.lastHandledBlockHeight = Number(lastHandledHead.number);
+        this.lastHandledBlockHash = lastHandledHead.hash;
+        return;
+      }
+    }
+
+    const currentBlock = await this.ckb.rpc.getTipHeader();
+    this.lastHandledBlockHeight = Number(currentBlock.number);
+    this.lastHandledBlockHash = currentBlock.hash;
+  }
+
+  async watchNewBlock() {
+    await this.initLastHandledBlock();
 
     for (;;) {
       const nextBlockHeight = this.lastHandledBlockHeight + 1;
