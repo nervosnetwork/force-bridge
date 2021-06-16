@@ -9,7 +9,7 @@ import express from 'express';
 import { JSONRPCServer } from 'json-rpc-2.0';
 import { ForceBridgeAPIV1Handler } from './handler';
 import { GetBalancePayload, GetBridgeTransactionSummariesPayload, XChainNetWork } from './types/apiv1';
-
+import {RpcMetric} from "@force-bridge/x/dist/monitor/rpc-metric";
 const version = '0.0.0';
 const forceBridgePath = '/force-bridge/api/v1';
 const defaultLogFile = './log/force-bridge-rpc.log';
@@ -19,6 +19,11 @@ export async function startRpcServer(config: Config) {
   if (!config.common.log.logFile) {
     config.common.log.logFile = defaultLogFile;
   }
+  let promPushGateWayURL = "";
+  if (config.common.monitor) {
+    promPushGateWayURL = config.common.monitor.pushGatewayURL;
+  }
+  const metrics = new RpcMetric(promPushGateWayURL);
   initLog(config.common.log);
   config.common.role = 'watcher';
 
@@ -76,17 +81,20 @@ export async function startRpcServer(config: Config) {
   app.post(forceBridgePath, cors(config.rpc.corsOptions), (req, res) => {
     logger.info('request', req.method, req.body);
     const jsonRPCRequest = req.body;
+    const startTime =  Date.now()
     // server.receive takes a JSON-RPC request and returns a promise of a JSON-RPC response.
     // Alternatively, you can use server.receiveJSON, which takes JSON string as is (in this case req.body).
     server.receive(jsonRPCRequest).then((jsonRPCResponse) => {
       if (jsonRPCResponse) {
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.json(jsonRPCResponse);
+        metrics.setRpcRequestDurationMetric(jsonRPCRequest.method,'success',Date.now() - startTime);
         logger.info('response', jsonRPCResponse);
       } else {
         // If response is absent, it was a JSON-RPC notification method.
         // Respond with no content status (204).
         logger.error('response', 204);
+        metrics.setRpcRequestDurationMetric(jsonRPCRequest.method,'failed',Date.now() - startTime);
         res.sendStatus(204);
       }
     });

@@ -140,7 +140,13 @@ export interface commonConfig {
   log: logConfig;
   network: 'mainnet' | 'testnet';
   orm: ormConfig;
+  monitor?: promConfig;
 }
+
+export interface promConfig {
+  pushGatewayURL: string;
+}
+
 
 export interface WhiteListEthAsset {
   address: string;
