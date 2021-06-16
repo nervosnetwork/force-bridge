@@ -54,7 +54,7 @@ where
                             let data = self
                                 .chain
                                 .load_cell_lock_hash(index, source)
-                                .expect("laod cell data fail");
+                                .expect("load cell data fail");
                             return data;
                         }
                     }
