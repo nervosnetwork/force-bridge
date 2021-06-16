@@ -13,7 +13,7 @@ import { RecipientCellData } from '../ckb/tx-helper/generated/eth_recipient_cell
 import { MintWitness } from '../ckb/tx-helper/generated/mint_witness';
 import { CkbTxGenerator, MintAssetRecord } from '../ckb/tx-helper/generator';
 import { ScriptType } from '../ckb/tx-helper/indexer';
-import { getOwnLockHash } from '../ckb/tx-helper/multisig/multisig_helper';
+import { getOwnerTypeHash, getOwnLockHash } from '../ckb/tx-helper/multisig/multisig_helper';
 import { forceBridgeRole } from '../config';
 import { ForceBridgeCore } from '../core';
 import { CkbDb } from '../db';
@@ -118,16 +118,31 @@ export class CkbHandler {
     }
   }
 
-  async watchNewBlock() {
+  async initLastHandledBlock() {
     const lastHandledBlock = await this.getLastHandledBlock();
-    if (lastHandledBlock.blockNumber === 0) {
-      const currentBlock = await this.ckb.rpc.getTipHeader();
-      this.lastHandledBlockHeight = Number(currentBlock.number);
-      this.lastHandledBlockHash = currentBlock.hash;
-    } else {
+    if (lastHandledBlock.blockNumber !== 0) {
       this.lastHandledBlockHeight = lastHandledBlock.blockNumber;
       this.lastHandledBlockHash = lastHandledBlock.blockHash;
+      return;
     }
+
+    const lastHandledBlockHeight = ForceBridgeCore.config.ckb.startBlockHeight;
+    if (lastHandledBlockHeight > 0) {
+      const lastHandledHead = await this.ckb.rpc.getHeaderByNumber(lastHandledBlockHeight.toString());
+      if (lastHandledHead !== undefined) {
+        this.lastHandledBlockHeight = Number(lastHandledHead.number);
+        this.lastHandledBlockHash = lastHandledHead.hash;
+        return;
+      }
+    }
+
+    const currentBlock = await this.ckb.rpc.getTipHeader();
+    this.lastHandledBlockHeight = Number(currentBlock.number);
+    this.lastHandledBlockHash = currentBlock.hash;
+  }
+
+  async watchNewBlock() {
+    await this.initLastHandledBlock();
 
     for (;;) {
       const nextBlockHeight = this.lastHandledBlockHeight + 1;
@@ -323,7 +338,8 @@ export class CkbHandler {
     if (this.role !== 'collector') {
       return;
     }
-    const ownLockHash = getOwnLockHash(ForceBridgeCore.config.ckb.multisigScript);
+    // const ownLockHash = getOwnLockHash(ForceBridgeCore.config.ckb.multisigScript);
+    const ownerTypeHash = getOwnerTypeHash();
     const generator = new CkbTxGenerator(this.ckb, this.ckbIndexer);
     while (true) {
       const mintRecords = await this.db.getCkbMintRecordsToMint();
@@ -341,11 +357,11 @@ export class CkbHandler {
         })
         .join(', ');
 
-      const records = mintRecords.map((r) => this.filterMintRecords(r, ownLockHash));
+      const records = mintRecords.map((r) => this.filterMintRecords(r, ownerTypeHash));
       const newTokens = await this.filterNewTokens(records);
       if (newTokens.length > 0) {
         logger.info(
-          `CkbHandler handleMintRecords bridge cell is not exist. do create bridge cell. ownLockHash:${ownLockHash.toString()}`,
+          `CkbHandler handleMintRecords bridge cell is not exist. do create bridge cell. ownerTypeHash:${ownerTypeHash.toString()}`,
         );
         logger.info(`CkbHandler handleMintRecords createBridgeCell newToken:${JSON.stringify(newTokens, null, 2)}`);
         await this.waitUntilSync();
@@ -416,33 +432,33 @@ export class CkbHandler {
     }
   }
 
-  filterMintRecords(r: CkbMint, ownLockHash: string): MintAssetRecord {
+  filterMintRecords(r: CkbMint, ownerTypeHash: string): MintAssetRecord {
     switch (r.chain) {
       case ChainType.BTC:
         return {
           lockTxHash: r.id,
-          asset: new BtcAsset(r.asset, ownLockHash),
+          asset: new BtcAsset(r.asset, ownerTypeHash),
           recipient: new Address(r.recipientLockscript, AddressType.ckb),
           amount: new Amount(r.amount, 0),
         };
       case ChainType.ETH:
         return {
           lockTxHash: r.id,
-          asset: new EthAsset(r.asset, ownLockHash),
+          asset: new EthAsset(r.asset, ownerTypeHash),
           recipient: new Address(r.recipientLockscript, AddressType.ckb),
           amount: new Amount(r.amount, 0),
         };
       case ChainType.TRON:
         return {
           lockTxHash: r.id,
-          asset: new TronAsset(r.asset, ownLockHash),
+          asset: new TronAsset(r.asset, ownerTypeHash),
           amount: new Amount(r.amount, 0),
           recipient: new Address(r.recipientLockscript, AddressType.ckb),
         };
       case ChainType.EOS:
         return {
           lockTxHash: r.id,
-          asset: new EosAsset(r.asset, ownLockHash),
+          asset: new EosAsset(r.asset, ownerTypeHash),
           amount: new Amount(r.amount, 0),
           recipient: new Address(r.recipientLockscript, AddressType.ckb),
         };
@@ -582,7 +598,7 @@ export async function isBurnTx(tx: Transaction, cellData: RecipientCellData): Pr
   if (tx.outputs.length < 1) {
     return false;
   }
-  const ownLockHash = getOwnLockHash(ForceBridgeCore.config.ckb.multisigScript);
+  const ownerTypeHash = getOwnerTypeHash();
   logger.debug('amount: ', toHexString(new Uint8Array(cellData.getAmount().raw())));
   logger.debug('recipient address: ', toHexString(new Uint8Array(cellData.getRecipientAddress().raw())));
   logger.debug('asset: ', toHexString(new Uint8Array(cellData.getAsset().raw())));
@@ -591,16 +607,16 @@ export async function isBurnTx(tx: Transaction, cellData: RecipientCellData): Pr
   const assetAddress = toHexString(new Uint8Array(cellData.getAsset().raw()));
   switch (cellData.getChain()) {
     case ChainType.BTC:
-      asset = new BtcAsset(uint8ArrayToString(fromHexString(assetAddress)), ownLockHash);
+      asset = new BtcAsset(uint8ArrayToString(fromHexString(assetAddress)), ownerTypeHash);
       break;
     case ChainType.ETH:
-      asset = new EthAsset(uint8ArrayToString(fromHexString(assetAddress)), ownLockHash);
+      asset = new EthAsset(uint8ArrayToString(fromHexString(assetAddress)), ownerTypeHash);
       break;
     case ChainType.TRON:
-      asset = new TronAsset(uint8ArrayToString(fromHexString(assetAddress)), ownLockHash);
+      asset = new TronAsset(uint8ArrayToString(fromHexString(assetAddress)), ownerTypeHash);
       break;
     case ChainType.EOS:
-      asset = new EosAsset(uint8ArrayToString(fromHexString(assetAddress)), ownLockHash);
+      asset = new EosAsset(uint8ArrayToString(fromHexString(assetAddress)), ownerTypeHash);
       break;
     default:
       return false;

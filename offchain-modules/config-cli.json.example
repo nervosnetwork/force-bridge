@@ -32,7 +32,6 @@
     "ckb": {
       "ckbRpcUrl": "http://47.56.233.149:3054",
       "ckbIndexerUrl": "http://47.56.233.149:3056",
-      "ownerLockHash": "0x49beb8c4c29d06e05452b5d9ea8e86ffd4ea2b614498ba1a0c47890a0ad4f550",
       "deps": {
         "bridgeLock": {
           "cellDep": {

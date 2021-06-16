@@ -17,7 +17,7 @@ pub struct RecipientDataView {
     pub asset: String,
     pub bridge_lock_code_hash: [u8; 32],
     pub bridge_lock_hash_type: u8,
-    pub owner_lock_hash: [u8; 32],
+    pub owner_cell_type_hash: [u8; 32],
     pub amount: u128,
 }
 
@@ -35,8 +35,8 @@ impl RecipientDataView {
 
         let bridge_lock_hash_type = data_reader.bridge_lock_hash_type().to_entity().into();
 
-        let mut owner_lock_hash = [0u8; 32];
-        owner_lock_hash.copy_from_slice(data_reader.owner_lock_hash().raw_data());
+        let mut owner_cell_type_hash = [0u8; 32];
+        owner_cell_type_hash.copy_from_slice(data_reader.owner_cell_type_hash().raw_data());
 
         let mut amount = [0u8; 16];
         amount.copy_from_slice(data_reader.amount().raw_data());
@@ -48,7 +48,7 @@ impl RecipientDataView {
             asset,
             bridge_lock_code_hash,
             bridge_lock_hash_type,
-            owner_lock_hash,
+            owner_cell_type_hash,
             amount,
         })
     }
@@ -58,8 +58,8 @@ impl RecipientDataView {
             .recipient_address(self.recipient_address.clone().into())
             .asset(self.asset.clone().into())
             .chain(self.chain.into())
-            .owner_lock_hash(
-                self.owner_lock_hash
+            .owner_cell_type_hash(
+                self.owner_cell_type_hash
                     .to_vec()
                     .try_into()
                     .expect("owner_lock_hash convert fail"),
@@ -89,7 +89,7 @@ mod tests {
             asset: "TRC".to_string(),
             bridge_lock_code_hash: [1u8; 32],
             bridge_lock_hash_type: 0,
-            owner_lock_hash: [2u8; 32],
+            owner_cell_type_hash: [2u8; 32],
             amount: 100,
         };
         let mol_data = eth_recipient_data.as_molecule_data().unwrap();
@@ -110,8 +110,8 @@ mod tests {
             new_eth_recipient_data.bridge_lock_hash_type
         );
         assert_eq!(
-            eth_recipient_data.owner_lock_hash,
-            new_eth_recipient_data.owner_lock_hash
+            eth_recipient_data.owner_cell_type_hash,
+            new_eth_recipient_data.owner_cell_type_hash
         );
         assert_eq!(eth_recipient_data.amount, new_eth_recipient_data.amount);
     }

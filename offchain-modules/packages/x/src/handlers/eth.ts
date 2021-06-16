@@ -37,7 +37,11 @@ export class EthHandler {
     const currentBlockHeight = await this.ethChain.getCurrentBlockNumber();
     const lastHandledBlock = await this.getLastHandledBlock();
     if (lastHandledBlock.blockNumber === 0) {
-      const currentBlock = await this.ethChain.getBlock(currentBlockHeight);
+      let lastHandledBlockHeight = currentBlockHeight;
+      if (ForceBridgeCore.config.eth.startBlockHeight > 0) {
+        lastHandledBlockHeight = ForceBridgeCore.config.eth.startBlockHeight;
+      }
+      const currentBlock = await this.ethChain.getBlock(lastHandledBlockHeight);
       this.lastHandledBlockHash = currentBlock.hash;
       this.lastHandledBlockHeight = currentBlock.number;
     } else {

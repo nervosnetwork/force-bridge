@@ -5,6 +5,7 @@ import { TransactionSkeleton, sealTransaction, parseAddress, minimalCellCapacity
 import { RPC } from '@ckb-lumos/rpc';
 import TransactionManager from '@ckb-lumos/transaction-manager';
 import CKB from '@nervosnetwork/ckb-sdk-core';
+import * as lodash from 'lodash';
 import nconf from 'nconf';
 import { Config } from '../../../config';
 import { ForceBridgeCore } from '../../../core';
@@ -22,7 +23,7 @@ const ckb = new CKB(CKB_URL);
 const indexer = new CkbIndexer(CKB_URL, CKB_INDEXER_URL);
 const transactionManager = new TransactionManager(indexer);
 
-function getDataOutputCapacity() {
+function getOwnerCellCapacity() {
   const output = {
     cell_output: {
       lock: parseAddress(getMultisigAddr(ForceBridgeCore.config.ckb.multisigScript)),
@@ -40,28 +41,52 @@ function getDataOutputCapacity() {
   return min;
 }
 
+function getMultiSigCellCapacity() {
+  const output = {
+    cell_output: {
+      lock: parseAddress(getMultisigAddr(ForceBridgeCore.config.ckb.multisigScript)),
+      capacity: '0x0',
+    },
+    data: acpData,
+  };
+
+  const min = minimalCellCapacity(output);
+  return min;
+}
+
 async function deploy() {
   const fromPrivateKey = parsePrivateKey(ForceBridgeCore.config.ckb.fromPrivateKey);
   const fromAddress = getFromAddr();
   const multisigLockScript = getMultisigLock(ForceBridgeCore.config.ckb.multisigScript);
+  console.log(`multisigLockScript: ${JSON.stringify(multisigLockScript, null, 2)}`);
   const multisigAddress = getMultisigAddr(ForceBridgeCore.config.ckb.multisigScript);
 
   let txSkeleton = TransactionSkeleton({ cellProvider: indexer });
-  const capacity = getDataOutputCapacity();
+  const ownerCellCapacity = getOwnerCellCapacity();
+  const multiSigCellCapacity = getMultiSigCellCapacity();
+  const capacity = ownerCellCapacity + multiSigCellCapacity;
   txSkeleton = await common.transfer(txSkeleton, [fromAddress], multisigAddress, capacity);
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  const firstOutput = txSkeleton.get('outputs').get(0)!;
-  firstOutput.data = acpData;
+  const multiSigCellOutput = txSkeleton.get('outputs').get(0)!;
+  multiSigCellOutput.data = acpData;
+  multiSigCellOutput.cell_output.capacity = `0x${multiSigCellCapacity.toString(16)}`;
+  txSkeleton = txSkeleton.update('outputs', (outputs) => {
+    return outputs.set(0, multiSigCellOutput);
+  });
+  // owner cell
   const firstInput = {
     previous_output: txSkeleton.get('inputs').get(0)!.out_point,
     since: '0x0',
   };
-  const typeIDScript = generateTypeIDScript(firstInput, '0x0');
-  firstOutput.cell_output.type = typeIDScript;
+  const typeIDScript = generateTypeIDScript(firstInput, '0x2');
+  const ownerCellOutput = lodash.cloneDeep(multiSigCellOutput);
+  ownerCellOutput.cell_output.type = typeIDScript;
+  ownerCellOutput.cell_output.capacity = `0x${ownerCellCapacity.toString(16)}`;
   txSkeleton = txSkeleton.update('outputs', (outputs) => {
-    return outputs.set(0, firstOutput);
+    return outputs.set(2, ownerCellOutput);
   });
-  const feeRate = 3000n;
+  console.dir(txSkeleton, { depth: null });
+  const feeRate = 1000n;
   txSkeleton = await common.payFeeByFeeRate(txSkeleton, [fromAddress], feeRate);
   txSkeleton = common.prepareSigningEntries(txSkeleton);
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -73,7 +98,8 @@ async function deploy() {
   const txHash = await transactionManager.send_transaction(tx);
   await waitUntilCommitted(ckb, txHash, 60);
 
-  nconf.set('forceBridge:ckb:multisigType', typeIDScript);
+  nconf.set('forceBridge:ckb:ownerCellTypescript', typeIDScript);
+  nconf.set('forceBridge:ckb:multisigLockscript', multisigLockScript);
   nconf.save();
 
   console.log('multi lockscript:', JSON.stringify(multisigLockScript, null, 2));

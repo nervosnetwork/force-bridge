@@ -1,7 +1,7 @@
 import { Asset, BtcAsset, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
-import { getOwnLockHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
+import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { EthDb, TronDb } from '@force-bridge/x/dist/db';
 import { BtcDb } from '@force-bridge/x/dist/db/btc';
@@ -20,7 +20,7 @@ import { RPCClient } from 'rpc-bitcoin';
 import { Connection } from 'typeorm';
 import Web3 from 'web3';
 import { AbiItem } from 'web3-utils';
-import { API, AssetType, NetworkBase, NetworkTypes, RequiredAsset } from './types';
+import { API, AssetType, NetworkTypes, RequiredAsset } from './types';
 import {
   BalancePayload,
   BridgeTransactionStatus,
@@ -70,7 +70,6 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     logger.info('generateBridgeInNervosTransaction ', payload);
 
     checkCKBAddress(payload.recipient);
-    const sender = payload.sender;
 
     const network = payload.asset.network;
     let tx;
@@ -152,7 +151,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     logger.info('generateBridgeOutNervosTransaction ', payload);
     checkCKBAddress(payload.sender);
     const fromLockscript = ForceBridgeCore.ckb.utils.addressToScript(payload.sender);
-    const ownLockHash = getOwnLockHash(ForceBridgeCore.config.ckb.multisigScript);
+    const ownerTypeHash = getOwnerTypeHash();
 
     const network = payload.network;
     const assetName = payload.asset;
@@ -163,10 +162,10 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
       case 'Ethereum':
         checkETHAmount(assetName, amount);
         checkETHAddress(payload.recipient);
-        asset = new EthAsset(assetName, ownLockHash);
+        asset = new EthAsset(assetName, ownerTypeHash);
         break;
       case 'Tron':
-        asset = new TronAsset(assetName, ownLockHash);
+        asset = new TronAsset(assetName, ownerTypeHash);
         break;
       default:
         //TODO: add other chains
@@ -187,9 +186,8 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     };
   }
 
-  async sendSignedTransaction<T extends NetworkBase>(
-    payload: API.SignedTransactionPayload<T>,
-  ): Promise<API.TransactionIdent> {
+  async sendSignedTransaction(): // payload: API.SignedTransactionPayload<T>,
+  Promise<API.TransactionIdent> {
     // const network = payload.network;
     // let txId;
     // switch (network) {
@@ -207,29 +205,10 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     return { txId: txId };
   }
 
-  async getBridgeTransactionStatus(payload): Promise<any> {
-    const network = payload.network;
-    const txId = payload.txId;
-    let status;
-    switch (network) {
-      case 'Ethereum': {
-        const provider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
-        const receipt = await provider.getTransactionReceipt(txId);
-        if (receipt == null) {
-          status = 'Pending';
-          break;
-        }
-        if (receipt.status == 1) {
-          status = 'Failed';
-          break;
-        } else {
-          status = 'Successful';
-          break;
-        }
-      }
-      default:
-        Promise.reject(new Error('not yet'));
-    }
+  async getBridgeTransactionStatus(
+    _payload: API.GetBridgeTransactionStatusPayload,
+  ): Promise<API.GetBridgeTransactionStatusResponse> {
+    throw new Error('not implemented');
   }
 
   async getBridgeInNervosBridgeFee(
@@ -336,7 +315,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     return result;
   }
 
-  async getAssetList(payload): Promise<RequiredAsset<'info'>[]> {
+  async getAssetList(_name?: unknown): Promise<RequiredAsset<'info'>[]> {
     const whiteListAssets = ForceBridgeCore.config.eth.assetWhiteList;
     const assetList = whiteListAssets.map((asset) => {
       return {
@@ -440,6 +419,23 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
       amount: balance!,
     };
   }
+
+  async getBridgeConfig(): Promise<API.GetBridgeConfigResponse> {
+    const ethConfig = ForceBridgeCore.config.eth;
+
+    return {
+      nervos: {
+        network: ForceBridgeCore.config.common.network,
+        confirmNumber: ForceBridgeCore.config.ckb.confirmNumber,
+      },
+      xchains: {
+        Ethereum: {
+          contractAddress: ethConfig.contractAddress,
+          confirmNumber: ethConfig.confirmNumber,
+        },
+      },
+    };
+  }
 }
 
 function transferDbRecordToResponse(
@@ -538,20 +534,20 @@ function transferDbRecordToResponse(
 }
 
 function getTokenShadowIdent(XChainNetwork: XChainNetWork, XChainToken: string): string | undefined {
-  const ownLockHash = getOwnLockHash(ForceBridgeCore.config.ckb.multisigScript);
+  const ownerTypeHash = getOwnerTypeHash();
   let asset: Asset;
   switch (XChainNetwork) {
     case 'Bitcoin':
-      asset = new BtcAsset('btc', ownLockHash);
+      asset = new BtcAsset('btc', ownerTypeHash);
       break;
     case 'EOS':
-      asset = new EosAsset(XChainToken, ownLockHash);
+      asset = new EosAsset(XChainToken, ownerTypeHash);
       break;
     case 'Ethereum':
-      asset = new EthAsset(XChainToken, ownLockHash);
+      asset = new EthAsset(XChainToken, ownerTypeHash);
       break;
     case 'Tron':
-      asset = new TronAsset(XChainToken, ownLockHash);
+      asset = new TronAsset(XChainToken, ownerTypeHash);
       break;
     default:
       logger.warn(`chain type is ${XChainNetwork} which not support yet.`);

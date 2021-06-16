@@ -39,12 +39,19 @@ pub trait CellBuilder {
 }
 
 pub struct TestCase {
-    pub cell_deps: Vec<CellDepView>,
+    pub cell_deps: Vec<CellDep>,
+    pub owner_cell: Option<OwnerCell>,
     pub script_cells: CustomCells,
     pub sudt_cells: SudtCells,
     pub capacity_cells: CapacityCells,
     pub witnesses: Vec<Witness>,
     pub expect_return_error_info: String,
+}
+
+#[derive(Clone)]
+pub struct OwnerCell {
+    pub lockscript: Script,
+    pub typescript: Script,
 }
 
 pub struct CustomCells {
@@ -101,15 +108,6 @@ impl CellBuilder for CustomCell {
     }
 }
 
-#[allow(dead_code)]
-pub enum CellDepView {}
-
-impl CellDepView {
-    pub fn build_cell_dep(&self, _context: &mut Context, _outpoints: &OutpointsContext) -> CellDep {
-        CellDep::default()
-    }
-}
-
 pub struct RecipientCell {
     pub capacity: u64,
     pub data: RecipientDataView,
@@ -152,7 +150,7 @@ pub struct BridgeCell {
     pub index: usize,
     pub asset: String,
     pub chain: u8,
-    pub owner_lock_hash: [u8; 32],
+    pub owner_cell_type_hash: [u8; 32],
 }
 
 impl BridgeCell {
@@ -195,11 +193,11 @@ impl BridgeCell {
         let force_bridge_lock_args = ForceBridgeLockscriptArgs::new_builder()
             .asset(self.asset.clone().into())
             .chain(self.chain.into())
-            .owner_lock_hash(
-                self.owner_lock_hash
+            .owner_cell_type_hash(
+                self.owner_cell_type_hash
                     .to_vec()
                     .try_into()
-                    .expect("owner_lock_hash convert fail"),
+                    .expect("owner_cell_type_hash convert fail"),
             )
             .build();
         context
@@ -232,12 +230,12 @@ impl ScriptView {
             .expect("build script succ")
     }
 
-    pub fn build_sudt_owner(chain: u8, asset: String, owner_lock_hash: [u8; 32]) -> Self {
+    pub fn build_sudt_owner(chain: u8, asset: String, owner_cell_type_hash: [u8; 32]) -> Self {
         let args = ForceBridgeLockscriptArgs::new_builder()
             .asset(asset.into())
             .chain(chain.into())
-            .owner_lock_hash(
-                owner_lock_hash
+            .owner_cell_type_hash(
+                owner_cell_type_hash
                     .to_vec()
                     .try_into()
                     .expect("owner_lock_hash convert fail"),
