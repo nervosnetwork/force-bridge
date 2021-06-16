@@ -35,9 +35,9 @@ function updateConfig(cfgPath: string, cfg: Config) {
   nconf.set('forceBridge:ckb:ckbIndexerUrl', cfg.ckb.ckbIndexerUrl);
   nconf.set('forceBridge:ckb:multisigScript', cfg.ckb.multisigScript);
   nconf.set('forceBridge:ckb:deps', cfg.ckb.deps);
-  nconf.set('forceBridge:ckb:ownerLockHash', cfg.ckb.ownerLockHash);
   nconf.set('forceBridge:ckb:startBlockHeight', cfg.ckb.startBlockHeight);
-  nconf.set('forceBridge:ckb:multisigType', cfg.ckb.multisigType);
+  nconf.set('forceBridge:ckb:ownerCellTypescript', cfg.ckb.ownerCellTypescript);
+  nconf.set('forceBridge:ckb:multisigLockscript', cfg.ckb.multisigLockscript);
   nconf.set('forceBridge:ckb:confirmNumber', cfg.ckb.confirmNumber);
   nconf.save();
 }

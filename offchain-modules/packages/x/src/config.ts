@@ -46,8 +46,8 @@ export interface CkbConfig {
   multiSignKeys: MultiSignKey[];
   multiSignHosts: MultiSignHost[];
   multisigScript: MultisigItem;
-  multisigType: ScriptItem;
-  ownerLockHash: string;
+  multisigLockscript: ScriptItem;
+  ownerCellTypescript: ScriptItem;
   deps: {
     bridgeLock: ConfigItem;
     recipientType: ConfigItem;

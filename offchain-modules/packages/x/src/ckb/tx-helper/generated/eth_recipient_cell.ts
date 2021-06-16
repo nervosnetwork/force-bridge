@@ -139,7 +139,7 @@ export class RecipientCellData {
     return new DataView(this.view.buffer.slice(offset, offset_end)).getUint8(0);
   }
 
-  getOwnerLockHash() {
+  getOwnerCellTypeHash() {
     const start = 24;
     const offset = this.view.getUint32(start, true);
     const offset_end = this.view.getUint32(start + 4, true);
@@ -165,7 +165,7 @@ export function SerializeRecipientCellData(value): ArrayBuffer {
   const bridgeLockHashTypeView = new DataView(new ArrayBuffer(1));
   bridgeLockHashTypeView.setUint8(0, value.bridge_lock_hash_type);
   buffers.push(bridgeLockHashTypeView.buffer);
-  buffers.push(SerializeByte32(value.owner_lock_hash));
+  buffers.push(SerializeByte32(value.owner_cell_type_hash));
   buffers.push(SerializeUint128(value.amount));
   return serializeTable(buffers);
 }

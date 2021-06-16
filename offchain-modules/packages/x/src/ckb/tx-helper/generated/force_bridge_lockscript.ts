@@ -170,7 +170,7 @@ export class ForceBridgeLockscriptArgs {
     new Bytes(this.view.buffer.slice(offsets[2], offsets[3]), { validate: false }).validate();
   }
 
-  getOwnerLockHash() {
+  getOwnerCellTypeHash() {
     const start = 4;
     const offset = this.view.getUint32(start, true);
     const offset_end = this.view.getUint32(start + 4, true);
@@ -194,7 +194,7 @@ export class ForceBridgeLockscriptArgs {
 
 export function SerializeForceBridgeLockscriptArgs(value): ArrayBuffer {
   const buffers: ArrayBuffer[] = [];
-  buffers.push(SerializeByte32(value.owner_lock_hash));
+  buffers.push(SerializeByte32(value.owner_cell_type_hash));
   const chainView = new DataView(new ArrayBuffer(1));
   chainView.setUint8(0, value.chain);
   buffers.push(chainView.buffer);

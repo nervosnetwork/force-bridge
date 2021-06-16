@@ -3,7 +3,7 @@ import { Account } from '@force-bridge/x/dist/ckb/model/accounts';
 import { EosAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
-import { getOwnLockHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
+import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { asyncSleep } from '@force-bridge/x/dist/utils';
 import { EosChain } from '@force-bridge/x/dist/xchain/eos/eosChain';
@@ -111,7 +111,7 @@ async function doUnlock(
   const burnTx = await generator.burn(
     await account.getLockscript(),
     recipientAddress,
-    new EosAsset(assetAmount.Asset, getOwnLockHash(ForceBridgeCore.config.ckb.multisigScript)),
+    new EosAsset(assetAmount.Asset, getOwnerTypeHash()),
     new Amount(assetAmount.Amount, assetAmount.Precision),
   );
   const signedTx = ForceBridgeCore.ckb.signTransaction(privateKey)(burnTx);
@@ -148,7 +148,7 @@ async function doBalanceOf(
     console.log(balance);
   }
   if (address) {
-    const asset = new EosAsset(token, getOwnLockHash(ForceBridgeCore.config.ckb.multisigScript));
+    const asset = new EosAsset(token, getOwnerTypeHash());
     const balance = await getSudtBalance(address, asset);
     console.log(
       `BalanceOf address:${address} on ckb is ${balance.toString(await chain.getCurrencyPrecision(token))} ${token}`,

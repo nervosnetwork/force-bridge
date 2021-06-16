@@ -60,7 +60,7 @@ fn generate_correct_mock(test_params: TestParams) -> MockDataLoader {
         asset: test_params.asset,
         bridge_lock_code_hash: test_params.bridge_lock_code_hash,
         bridge_lock_hash_type: test_params.bridge_lock_hash_type,
-        owner_lock_hash: test_params.owner_lock_hash,
+        owner_cell_type_hash: test_params.owner_lock_hash,
         amount: test_params.amount,
     };
 

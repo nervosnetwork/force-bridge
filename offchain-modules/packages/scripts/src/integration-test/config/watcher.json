@@ -87,12 +87,12 @@
           "cellDep": {
             "depType": "code",
             "outPoint": {
-              "txHash": "0xcd5926a2c61d561cb04c2911985fa4a2b08956d1c22379bf4cf1d1934b218dca",
+              "txHash": "0x8b42fd0e607dc70cf15f72782a44154197b2beb6c581e24e9888081e66506ad4",
               "index": "0x0"
             }
           },
           "script": {
-            "codeHash": "0x8aa08e1154cbd2cb7dbb63f2a8b2f14c1fc7ec622f234e4ae6be37d757a4d106",
+            "codeHash": "0x098fc87ba45ca95d7904f04c9921e4315e074537294c4cd794dd5237721bf640",
             "hashType": "data"
           }
         },
@@ -100,7 +100,7 @@
           "cellDep": {
             "depType": "code",
             "outPoint": {
-              "txHash": "0xcd5926a2c61d561cb04c2911985fa4a2b08956d1c22379bf4cf1d1934b218dca",
+              "txHash": "0x8b42fd0e607dc70cf15f72782a44154197b2beb6c581e24e9888081e66506ad4",
               "index": "0x2"
             }
           },
@@ -113,12 +113,12 @@
           "cellDep": {
             "depType": "code",
             "outPoint": {
-              "txHash": "0xcd5926a2c61d561cb04c2911985fa4a2b08956d1c22379bf4cf1d1934b218dca",
+              "txHash": "0x8b42fd0e607dc70cf15f72782a44154197b2beb6c581e24e9888081e66506ad4",
               "index": "0x3"
             }
           },
           "script": {
-            "codeHash": "0x4097943baa281ee2a4afa152df0f3b1d2de21294fbf55201f1abb1358f725a12",
+            "codeHash": "0xcfa8deb97db22fe777413c88f6682ad13292af1087f48c41d8f801bf7ad61d58",
             "hashType": "data"
           }
         }
@@ -140,6 +140,16 @@
           "0xd9a188cc1985a7d4a31f141f4ebb61f241aec182",
           "0xebf9befcd8396e88cab8fcb920ab149231658f4b"
         ]
+      },
+      "ownerCellTypescript": {
+        "code_hash": "0x00000000000000000000000000000000000000000000000000545950455f4944",
+        "hash_type": "type",
+        "args": "0x50726c38a50f3c39d7fa02debf6bcad8f04db5fb2a54e52974c8e260f640a20e"
+      },
+      "multisigLockscript": {
+        "code_hash": "0x5c5069eb0857efc65e1bca0c07df34c31663b3622fd3876c876320fc9634e2a8",
+        "hash_type": "type",
+        "args": "0x7ae4ef98cc4c3e46d359f380cd60c50e3412de5d"
       }
     }
   }
