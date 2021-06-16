@@ -71,7 +71,7 @@ export class EthHandler {
       const confirmedBlockHeight = nextBlock.number - confirmNumber;
       const confirmedBlock = await this.ethChain.getBlock(currentBlockHeight);
       await this.db.removeUnconfirmedLocks(confirmedBlockHeight);
-      await this.setLastHandledBlock(currentBlockHeight, confirmedBlock.hash);
+      await this.setLastHandledBlock(confirmedBlockHeight, confirmedBlock.hash);
     }
 
     for (;;) {
