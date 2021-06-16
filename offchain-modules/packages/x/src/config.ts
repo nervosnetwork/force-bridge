@@ -147,7 +147,6 @@ export interface promConfig {
   pushGatewayURL: string;
 }
 
-
 export interface WhiteListEthAsset {
   address: string;
   name: string;
