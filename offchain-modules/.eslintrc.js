@@ -6,6 +6,10 @@ module.exports = {
     'plugin:import/warnings',
     'plugin:import/typescript',
   ],
+  parserOptions: {
+    tsconfigRootDir: __dirname,
+    project: ['./tsconfig.json', './packages/*/tsconfig.json'],
+  },
   env: { jest: true, node: true },
   plugins: ['@typescript-eslint', 'import', 'prettier'],
   rules: {
