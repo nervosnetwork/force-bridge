@@ -142,7 +142,6 @@
       "multiSignKeys":[],
       "multiSignHosts":[],
       "fromPrivateKey": "privkeys/ckb",
-      "ownerLockHash": "0x49beb8c4c29d06e05452b5d9ea8e86ffd4ea2b614498ba1a0c47890a0ad4f550",
       "deps": {
         "bridgeLock": {
           "cellDep": {

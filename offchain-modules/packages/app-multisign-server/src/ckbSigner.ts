@@ -1,7 +1,7 @@
 import { Cell } from '@ckb-lumos/base';
 import { key } from '@ckb-lumos/hd';
 import { BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
-import { getOwnLockHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
+import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { EthLock } from '@force-bridge/x/dist/db/entity/EthLock';
 import { asserts, nonNullable } from '@force-bridge/x/dist/errors';
@@ -23,7 +23,7 @@ async function verifyCreateCellTx(rawData: string, payload: ckbCollectSignatures
   }
 
   const createAssets = nonNullable(payload.createAssets);
-  const ownLockHash = getOwnLockHash(ForceBridgeCore.config.ckb.multisigScript);
+  const ownerTypeHash = getOwnerTypeHash();
   const bridgeCells: Cell[] = [];
   txSkeleton.outputs.forEach((output) => {
     if (!output.cell_output.lock) {
@@ -41,16 +41,16 @@ async function verifyCreateCellTx(rawData: string, payload: ckbCollectSignatures
     let asset;
     switch (createAsset.chain) {
       case ChainType.BTC:
-        asset = new BtcAsset(createAsset.asset, ownLockHash);
+        asset = new BtcAsset(createAsset.asset, ownerTypeHash);
         break;
       case ChainType.ETH:
-        asset = new EthAsset(createAsset.asset, ownLockHash);
+        asset = new EthAsset(createAsset.asset, ownerTypeHash);
         break;
       case ChainType.TRON:
-        asset = new TronAsset(createAsset.asset, ownLockHash);
+        asset = new TronAsset(createAsset.asset, ownerTypeHash);
         break;
       case ChainType.EOS:
-        asset = new EosAsset(createAsset.asset, ownLockHash);
+        asset = new EosAsset(createAsset.asset, ownerTypeHash);
         break;
       default:
         return Promise.reject(new Error(`chain type:${createAsset.chain} doesn't support`));
@@ -211,10 +211,10 @@ function verifyEthBridgeFee(asset: EthAsset, mintAmount: string, lockAmount: str
 }
 
 async function verifyEthMintTx(mintRecord: mintRecord, output: Cell): Promise<Error | undefined> {
-  const ownLockHash = getOwnLockHash(ForceBridgeCore.config.ckb.multisigScript);
+  const ownerTypeHash = getOwnerTypeHash();
   const recipient = new Address(mintRecord.recipientLockscript, AddressType.ckb);
   const amount = new Amount(mintRecord.amount, 0);
-  const asset = new EthAsset(mintRecord.asset, ownLockHash);
+  const asset = new EthAsset(mintRecord.asset, ownerTypeHash);
   const recipientLockscript = recipient.toLockScript();
   const bridgeCellLockscript = {
     codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,

@@ -34,6 +34,7 @@ fn get_correct_case() -> TestCase {
     .unwrap();
     TestCase {
         cell_deps: vec![],
+        owner_cell: None,
         script_cells: CustomCells {
             inputs: vec![],
             outputs: vec![CustomCell::RecipientCustomCell(RecipientCell {
@@ -44,7 +45,7 @@ fn get_correct_case() -> TestCase {
                     asset: "trx".to_string(),
                     bridge_lock_code_hash: lock_hash,
                     bridge_lock_hash_type: 0,
-                    owner_lock_hash: [0u8; 32],
+                    owner_cell_type_hash: [0u8; 32],
                     amount: 100,
                 },
                 index: 0,

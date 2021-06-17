@@ -1,9 +1,11 @@
 import { TransactionSkeletonType } from '@ckb-lumos/helpers';
 import { MultiSignHost } from '../config';
-import { asserts } from '../errors';
+import { asyncSleep } from '../utils';
 import { logger } from '../utils/logger';
 import { EthUnlockRecord } from '../xchain/eth';
 import { httpRequest } from './client';
+
+const MaxRetryTimes = 3;
 
 export interface ethCollectSignaturesPayload {
   domainSeparator: string;
@@ -61,32 +63,43 @@ export class MultiSigMgr {
     );
     const successSigSvr: string[] = [];
     const sigs: string[] = [];
-    for (const svrHost of this.sigServerHosts) {
-      try {
-        params.requestAddress = svrHost.address;
-        const sig = await this.requestSig(svrHost.host, params);
-        sigs.push(sig);
-        successSigSvr.push(svrHost.host);
-        logger.info(
-          `MultiSigMgr collectSignatures chain:${this.chainType} address:${svrHost.address} rawData:${
-            params.rawData
-          } sigServer:${svrHost.host} sig:${sig.toString()}`,
-        );
-      } catch (e) {
-        logger.error(
-          `MultiSigMgr collectSignatures chain:${this.chainType} address:${svrHost.address} rawData:${
-            params.rawData
-          } payload:${JSON.stringify(params.payload, null, 2)} sigServer:${svrHost.host}, error:${e.message}`,
-        );
-      }
-      if (successSigSvr.length === this.threshold) {
-        logger.info(
-          `MultiSigMgr collectSignatures success, chain:${this.chainType} address:${svrHost.address} rawData:${
-            params.rawData
-          } sigServers:${successSigSvr.join(',')}`,
-        );
+    let sigServerHosts = this.sigServerHosts;
+
+    for (let i = 0; i < MaxRetryTimes; i++) {
+      if (sigServerHosts.length === 0) {
         break;
       }
+      const failedSigServerHosts: MultiSignHost[] = [];
+      for (const svrHost of sigServerHosts) {
+        params.requestAddress = svrHost.address;
+        try {
+          const sig = await this.requestSig(svrHost.host, params);
+          sigs.push(sig);
+          successSigSvr.push(svrHost.host);
+          logger.info(
+            `MultiSigMgr collectSignatures chain:${this.chainType} address:${svrHost.address} rawData:${
+              params.rawData
+            } sigServer:${svrHost.host} sig:${sig.toString()}`,
+          );
+          if (successSigSvr.length === this.threshold) {
+            logger.info(
+              `MultiSigMgr collectSignatures success, chain:${this.chainType} address:${svrHost.address} rawData:${
+                params.rawData
+              } sigServers:${successSigSvr.join(',')}`,
+            );
+            return sigs;
+          }
+        } catch (e) {
+          logger.error(
+            `MultiSigMgr collectSignatures chain:${this.chainType} address:${svrHost.address} rawData:${
+              params.rawData
+            } payload:${JSON.stringify(params.payload, null, 2)} sigServer:${svrHost.host}, error:${e.message}`,
+          );
+          failedSigServerHosts.push(svrHost);
+        }
+      }
+      sigServerHosts = failedSigServerHosts;
+      await asyncSleep(1000 * (3 + i * 2));
     }
     return sigs;
   }

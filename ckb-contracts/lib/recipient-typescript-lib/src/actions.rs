@@ -23,7 +23,7 @@ pub fn verify_burn_token<T: Adapter>(data_loader: T, data: RecipientDataView) {
         )
     }
     let force_bridge_lock_hash = calc_xchain_bridge_lock_hash(
-        &data.owner_lock_hash,
+        &data.owner_cell_type_hash,
         data.chain,
         data.asset,
         &data.bridge_lock_code_hash,
@@ -48,15 +48,15 @@ pub fn verify_burn_token<T: Adapter>(data_loader: T, data: RecipientDataView) {
 }
 
 fn calc_xchain_bridge_lock_hash(
-    owner_lock_hash: &[u8; 32],
+    owner_cell_type_hash: &[u8; 32],
     chain: u8,
     asset: String,
     for_bridge_lock_code_hash: &[u8; 32],
     for_bridge_lock_hash_type: u8,
 ) -> [u8; 32] {
     let args = ForceBridgeLockscriptArgs::new_builder()
-        .owner_lock_hash(
-            basic::Byte32::from_slice(owner_lock_hash)
+        .owner_cell_type_hash(
+            basic::Byte32::from_slice(owner_cell_type_hash)
                 .expect("convert light_client_typescript_hash to Bytes32"),
         )
         .chain(chain.into())

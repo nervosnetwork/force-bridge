@@ -3,22 +3,23 @@ import { JSONRPCClient, JSONRPCRequest } from 'json-rpc-2.0';
 import fetch from 'node-fetch';
 import {
   ForceBridgeAPIV1,
-  GetBridgeInNervosBridgeFeePayload,
-  GetBridgeOutNervosBridgeFeePayload,
-  GetBridgeOutNervosBridgeFeeResponse,
   GenerateBridgeInTransactionPayload,
-  GenerateTransactionResponse,
   GenerateBridgeOutNervosTransactionPayload,
-  GetBridgeTransactionStatusPayload,
-  SignedTransactionPayload,
-  GetBridgeTransactionStatusResponse,
-  GetBridgeTransactionSummariesPayload,
-  TransactionSummaryWithStatus,
-  TransactionIdent,
+  GenerateTransactionResponse,
   GetBalancePayload,
   GetBalanceResponse,
-  XChainNetWork,
+  GetBridgeInNervosBridgeFeePayload,
   GetBridgeInNervosBridgeFeeResponse,
+  GetBridgeOutNervosBridgeFeePayload,
+  GetBridgeOutNervosBridgeFeeResponse,
+  GetBridgeTransactionStatusPayload,
+  GetBridgeTransactionStatusResponse,
+  GetBridgeTransactionSummariesPayload,
+  GetBridgeConfigResponse,
+  SignedTransactionPayload,
+  TransactionIdent,
+  TransactionSummaryWithStatus,
+  XChainNetWork,
 } from './types/apiv1';
 import { NetworkBase, NetworkTypes, RequiredAsset } from './types/network';
 
@@ -107,5 +108,9 @@ export class ForceBridgeAPIV1Client implements ForceBridgeAPIV1 {
 
   async getBalance(payload: GetBalancePayload): Promise<GetBalanceResponse> {
     return this.client.request('getBalance', payload);
+  }
+
+  async getBridgeConfig(): Promise<GetBridgeConfigResponse> {
+    return this.client.request('getBridgeConfig');
   }
 }

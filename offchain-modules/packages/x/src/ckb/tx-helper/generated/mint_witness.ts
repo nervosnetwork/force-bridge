@@ -18,7 +18,7 @@ function assertArrayBuffer(reader) {
   return reader;
 }
 
-function verifyAndExtractOffsets(view: DataView, expectedFieldCount, compatible) {
+function verifyAndExtractOffsets(view, expectedFieldCount, compatible) {
   if (view.byteLength < 4) {
     dataLengthError(view.byteLength, '>4');
   }
@@ -43,7 +43,7 @@ function verifyAndExtractOffsets(view: DataView, expectedFieldCount, compatible)
   if (requiredByteLength < firstOffset) {
     throw new Error(`First offset is larger than byte length: ${firstOffset}`);
   }
-  const offsets: number[] = [];
+  const offsets = new Array(0);
   for (let i = 0; i < itemCount; i++) {
     const start = 4 + i * 4;
     offsets.push(view.getUint32(start, true));
@@ -60,7 +60,7 @@ function verifyAndExtractOffsets(view: DataView, expectedFieldCount, compatible)
 function serializeTable(buffers) {
   const itemCount = buffers.length;
   let totalSize = 4 * (itemCount + 1);
-  const offsets: number[] = [];
+  const offsets = new Array(0);
 
   for (let i = 0; i < itemCount; i++) {
     offsets.push(totalSize);
@@ -77,6 +77,82 @@ function serializeTable(buffers) {
     array.set(new Uint8Array(buffers[i]), offsets[i]);
   }
   return buffer;
+}
+
+export class BytesVec {
+  private view;
+
+  constructor(reader, { validate = true } = {}) {
+    this.view = new DataView(assertArrayBuffer(reader));
+    if (validate) {
+      this.validate();
+    }
+  }
+
+  validate(compatible = false) {
+    const offsets = verifyAndExtractOffsets(this.view, 0, true);
+    for (let i = 0; i < offsets.length - 1; i++) {
+      new Bytes(this.view.buffer.slice(offsets[i], offsets[i + 1]), {
+        validate: false,
+      }).validate();
+    }
+  }
+
+  length() {
+    if (this.view.byteLength < 8) {
+      return 0;
+    } else {
+      return this.view.getUint32(4, true) / 4 - 1;
+    }
+  }
+
+  indexAt(i) {
+    const start = 4 + i * 4;
+    const offset = this.view.getUint32(start, true);
+    let offset_end = this.view.byteLength;
+    if (i + 1 < this.length()) {
+      offset_end = this.view.getUint32(start + 4, true);
+    }
+    return new Bytes(this.view.buffer.slice(offset, offset_end), {
+      validate: false,
+    });
+  }
+}
+
+export function SerializeBytesVec(value) {
+  return serializeTable(value.map((item) => SerializeBytes(item)));
+}
+
+export class MintWitness {
+  private view;
+  constructor(reader, { validate = true } = {}) {
+    this.view = new DataView(assertArrayBuffer(reader));
+    if (validate) {
+      this.validate();
+    }
+  }
+
+  validate(compatible = false) {
+    const offsets = verifyAndExtractOffsets(this.view, 0, true);
+    new BytesVec(this.view.buffer.slice(offsets[0], offsets[1]), {
+      validate: false,
+    }).validate();
+  }
+
+  getLockTxHashes() {
+    const start = 4;
+    const offset = this.view.getUint32(start, true);
+    const offset_end = this.view.byteLength;
+    return new BytesVec(this.view.buffer.slice(offset, offset_end), {
+      validate: false,
+    });
+  }
+}
+
+export function SerializeMintWitness(value) {
+  const buffers = new Array(0);
+  buffers.push(SerializeBytesVec(value.lock_tx_hashes));
+  return serializeTable(buffers);
 }
 
 export class Bytes {
@@ -151,7 +227,7 @@ export function SerializeByte32(value) {
   return buffer;
 }
 
-export class ForceBridgeLockscriptArgs {
+export class Uint128 {
   private view;
 
   constructor(reader, { validate = true } = {}) {
@@ -162,42 +238,24 @@ export class ForceBridgeLockscriptArgs {
   }
 
   validate(compatible = false) {
-    const offsets = verifyAndExtractOffsets(this.view, 0, true);
-    new Byte32(this.view.buffer.slice(offsets[0], offsets[1]), { validate: false }).validate();
-    if (offsets[2] - offsets[1] !== 1) {
-      throw new Error(`Invalid offset for chain: ${offsets[1]} - ${offsets[2]}`);
-    }
-    new Bytes(this.view.buffer.slice(offsets[2], offsets[3]), { validate: false }).validate();
+    assertDataLength(this.view.byteLength, 16);
   }
 
-  getOwnerCellTypeHash() {
-    const start = 4;
-    const offset = this.view.getUint32(start, true);
-    const offset_end = this.view.getUint32(start + 4, true);
-    return new Byte32(this.view.buffer.slice(offset, offset_end), { validate: false });
+  indexAt(i) {
+    return this.view.getUint8(i);
   }
 
-  getChain() {
-    const start = 8;
-    const offset = this.view.getUint32(start, true);
-    const offset_end = this.view.getUint32(start + 4, true);
-    return new DataView(this.view.buffer.slice(offset, offset_end)).getUint8(0);
+  raw() {
+    return this.view.buffer;
   }
 
-  getAsset() {
-    const start = 12;
-    const offset = this.view.getUint32(start, true);
-    const offset_end = this.view.byteLength;
-    return new Bytes(this.view.buffer.slice(offset, offset_end), { validate: false });
+  static size() {
+    return 16;
   }
 }
 
-export function SerializeForceBridgeLockscriptArgs(value): ArrayBuffer {
-  const buffers: ArrayBuffer[] = [];
-  buffers.push(SerializeByte32(value.owner_cell_type_hash));
-  const chainView = new DataView(new ArrayBuffer(1));
-  chainView.setUint8(0, value.chain);
-  buffers.push(chainView.buffer);
-  buffers.push(SerializeBytes(value.asset));
-  return serializeTable(buffers);
+export function SerializeUint128(value) {
+  const buffer = assertArrayBuffer(value);
+  assertDataLength(buffer.byteLength, 16);
+  return buffer;
 }
