@@ -14,8 +14,7 @@
     "build": "yarn install && lerna run build",
     "test": "ava",
     "lint": "run-p check:prettier check:eslint",
-    "lint-staged": "npm run build && npm run lint-staged:eslint",
-    "lint-staged:eslint": "eslint --fix --config ./.eslintrc.next.js $(git diff --name-only --diff-filter=ACMRT --relative | grep -E \"(.ts$)\")",
+    "lint-staged": "node ./packages/internal/bin/pre-commit.js",
     "fix": "run-p fix:prettier fix:eslint",
     "fix:eslint": "eslint --fix --format=pretty 'packages/*/src/**/*.ts'",
     "fix:prettier": "prettier --write 'packages/*/src/**/*.ts'",
@@ -91,7 +90,7 @@
     ]
   },
   "lint-staged": {
-    "packages/*/src/**/*.ts": [
+    "*.ts": [
       "npm run lint-staged",
       "git add"
     ]
