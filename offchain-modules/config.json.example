@@ -16,7 +16,10 @@
           "timezone": "Z",
           "synchronize": true,
           "logging": false
-        }
+        },
+      "monitor": {
+         "pushGatewayURL": ""
+      }
     },
     "eth": {
       "rpcUrl": "http://127.0.0.1:8545",

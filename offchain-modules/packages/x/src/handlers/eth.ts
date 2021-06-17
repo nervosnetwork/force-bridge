@@ -106,6 +106,7 @@ export class EthHandler {
   async watchNewBlock() {
     await this.ethChain.watchNewBlock(this.lastHandledBlockHeight, async (newBlock: ethers.providers.Block) => {
       await this.onBlock(newBlock);
+      this.metrics.setBlockHeightMetrics(this.role, 'eth', newBlock.number);
     });
   }
 

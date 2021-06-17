@@ -136,6 +136,7 @@ export class CkbHandler {
         continue;
       }
       await this.onBlock(block);
+      this.metrics.setBlockHeightMetrics(this.role, 'ckb', nextBlockHeight);
     }
   }
 

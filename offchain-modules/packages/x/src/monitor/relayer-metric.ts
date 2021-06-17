@@ -2,7 +2,7 @@ import * as Prometheus from 'prom-client';
 import { forceBridgeRole } from '../config';
 import { logger } from '../utils/logger';
 
-export type heightType = 'synced_ckb_height' | 'actual_ckb_height' | 'synced_eth_height' | 'actual_eth_height';
+export type chainType = 'ckb' | 'eth';
 export type txType = 'ckb_mint' | 'ckb_burn' | 'eth_lock' | 'eth_unlock';
 export type txStatus = 'success' | 'failed';
 
@@ -19,7 +19,7 @@ export class RelayerMetric {
 
     this.relayBlockHeightNum = new Prometheus.Gauge({
       name: 'relay_block_height_number',
-      help: 'block height snyaced by different role. and actual height',
+      help: 'block height synced by different role.',
       labelNames: ['role', 'height_type'],
     });
     this.relayBridgeTxNum = new Prometheus.Counter({
@@ -42,13 +42,18 @@ export class RelayerMetric {
     }
   }
 
-  setBlockHeightMetrics(role: forceBridgeRole, height_type: heightType, height: number) {
-    this.relayBlockHeightNum.set({ role: role, height_type: height_type }, height);
+  setBlockHeightMetrics(role: forceBridgeRole, chain_type: chainType, sync_height: number) {
+    this.relayBlockHeightNum.labels({ role: role, height_type: `${chain_type}_synced_height` }).set(sync_height);
     this.handlerPushMetric('relay_bridgetx');
   }
 
   addBridgeTxMetrics(tx_type: txType, tx_status: txStatus) {
-    this.relayBridgeTxNum.inc({ tx_type: tx_type, status: tx_status });
+    this.relayBridgeTxNum.labels({ tx_type: tx_type, status: tx_status }).inc(1);
+    this.handlerPushMetric('relay_bridgetx');
+  }
+
+  addBridgeTokenMetrics(tx_type: txType, token: string, amount: number) {
+    this.relayBridgeTokenAmountNum.labels({ tx_type: tx_type, token: token }).inc(amount);
     this.handlerPushMetric('relay_bridgetx');
   }
 
