@@ -26,6 +26,7 @@ import { getAssetTypeByAsset } from '../xchain/tron/utils';
 import Transaction = CKBComponents.Transaction;
 import TransactionWithStatus = CKBComponents.TransactionWithStatus;
 import Block = CKBComponents.Block;
+import { ForceBridgeLockscriptArgs } from '../ckb/tx-helper/generated/force_bridge_lockscript';
 
 const lastHandleCkbBlockKey = 'lastHandleCkbBlock';
 
@@ -589,9 +590,11 @@ export class CkbHandler {
   }
 }
 
-function isTypeIDCorrect(_args: string): boolean {
-  // FIXME verify force-bridge-unique-type-id after related pr merged
-  return true;
+function isTypeIDCorrect(args: string): boolean {
+  const expectOwnerTypeHash = getOwnerTypeHash();
+  const bridgeLockArgs = new ForceBridgeLockscriptArgs(fromHexString(args).buffer);
+  const ownerTypeHash = toHexString(new Uint8Array(bridgeLockArgs.getOwnerCellTypeHash().raw()));
+  return ownerTypeHash === expectOwnerTypeHash;
 }
 
 export async function isBurnTx(tx: Transaction, cellData: RecipientCellData): Promise<boolean> {
@@ -630,38 +633,17 @@ export async function isBurnTx(tx: Transaction, cellData: RecipientCellData): Pr
   )
     return false;
 
-  // verify tx input: sudt cell.
-  const previousOutput = nonNullable(tx.inputs[0].previousOutput);
-
-  const preHash = previousOutput.txHash;
-  const txPrevious = await ForceBridgeCore.ckb.rpc.getTransaction(preHash);
-  if (txPrevious == null) {
-    return false;
-  }
-  const sudtType = txPrevious.transaction.outputs[Number(previousOutput.index)].type;
-  const bridgeCellLockscript = {
-    codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
-    hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
-    args: asset.toBridgeLockscriptArgs(),
-  };
-  const bridgeLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
-  const expectType = {
-    codeHash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
-    hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
-    args: bridgeLockHash,
-  };
-  logger.debug('expectType:', expectType);
-  logger.debug('sudtType:', sudtType);
-  if (sudtType == null || expectType.codeHash != sudtType.codeHash || expectType.args != sudtType.args) {
-    return false;
-  }
-
-  // verify tx output recipientLockscript: recipient cell.
-  const recipientScript = nonNullable(tx.outputs[0].type);
-  const expect = ForceBridgeCore.config.ckb.deps.recipientType.script;
-  logger.debug('recipientScript:', recipientScript);
-  logger.debug('expect:', expect);
-  return recipientScript.codeHash == expect.codeHash;
+  // verify tx output: recipient cell.
+  const recipientTypescript = nonNullable(tx.outputs[0].type);
+  const recipientCellOwnerTypeHash = `0x${toHexString(new Uint8Array(cellData.getOwnerCellTypeHash().raw()))}`;
+  const expectRecipientTypescript = ForceBridgeCore.config.ckb.deps.recipientType.script;
+  logger.debug('recipientScript:', recipientTypescript);
+  logger.debug('expect:', expectRecipientTypescript);
+  return (
+    recipientTypescript.codeHash === expectRecipientTypescript.codeHash &&
+    recipientTypescript.hashType == expectRecipientTypescript.hashType &&
+    recipientCellOwnerTypeHash === ownerTypeHash
+  );
 }
 
 type BurnDbData = {
