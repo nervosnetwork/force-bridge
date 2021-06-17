@@ -15,8 +15,8 @@ fn test_tx_when_owner_not_in_inputs() {
     let mut case = get_correct_case();
     #[allow(irrefutable_let_patterns)]
     if let CustomCell::BridgeCustomCell(cell) = &mut case.script_cells.inputs[0] {
-        cell.owner_lock_hash = [0u8; 32];
-        case.expect_return_error_info = "not authorized to unlock the cell".to_string();
+        cell.owner_cell_type_hash = [0u8; 32];
+        case.expect_return_error_info = "owner cell not found".to_string();
         case_runner::run_test(case);
     };
 }
@@ -29,24 +29,29 @@ fn get_correct_case() -> TestCase {
     ])
     .unwrap();
 
-    let owner_lock_hash = always_success_lockscript.calc_script_hash().unpack();
+    let owner_cell = OwnerCell {
+        lockscript: always_success_lockscript.clone(),
+        typescript: always_success_lockscript.clone(),
+    };
+    let owner_cell_type_hash = owner_cell.typescript.calc_script_hash().unpack();
 
     TestCase {
         cell_deps: vec![],
+        owner_cell: Some(owner_cell),
         script_cells: CustomCells {
             inputs: vec![CustomCell::BridgeCustomCell(BridgeCell {
                 capacity: 100 * CKB_UNITS,
                 index: 0,
                 asset: "trx".to_string(),
                 chain: 1,
-                owner_lock_hash,
+                owner_cell_type_hash,
             })],
             outputs: vec![CustomCell::BridgeCustomCell(BridgeCell {
                 capacity: 100 * CKB_UNITS,
                 index: 2,
                 asset: "trx".to_string(),
                 chain: 1,
-                owner_lock_hash,
+                owner_cell_type_hash,
             })],
         },
         sudt_cells: SudtCells {
@@ -59,7 +64,7 @@ fn get_correct_case() -> TestCase {
                     owner_script: ScriptView::build_sudt_owner(
                         1,
                         "trx".to_string(),
-                        owner_lock_hash,
+                        owner_cell_type_hash,
                     ),
                     index: 0,
                     sudt_extra_data: "sudt_extra_data".to_string(),
@@ -71,7 +76,7 @@ fn get_correct_case() -> TestCase {
                     owner_script: ScriptView::build_sudt_owner(
                         1,
                         "trx".to_string(),
-                        owner_lock_hash,
+                        owner_cell_type_hash,
                     ),
                     index: 1,
                     sudt_extra_data: "sudt_extra_data".to_string(),

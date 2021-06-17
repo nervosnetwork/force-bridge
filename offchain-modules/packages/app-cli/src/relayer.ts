@@ -7,11 +7,12 @@ import { parseOptions } from './utils';
 const defaultConfig = './config.json';
 
 export const relayerCmd = new commander.Command('relayer')
-  .option('-cfg, --config', 'config path of replayer', defaultConfig)
+  .option('-cfg, --config', `config path of replayer default:${defaultConfig}`, defaultConfig)
   .action(sigServer);
 
-async function sigServer(opts: { port: string }, command: commander.Command) {
-  const options = parseOptions(opts, command);
+async function sigServer(command: commander.Command, args: any) {
+  const opts = command.opts();
+  const options = parseOptions(opts, args);
   const configPath = options.get('config') !== undefined ? options.get('config') : defaultConfig;
   nconf.env().file({ file: configPath });
   const cfg: Config = nconf.get('forceBridge');

@@ -6,6 +6,6 @@ table RecipientCellData {
     asset: Bytes,
     bridge_lock_code_hash: Byte32,
     bridge_lock_hash_type: byte,
-    owner_lock_hash: Byte32,
+    owner_cell_type_hash: Byte32,
     amount: Uint128,
 }

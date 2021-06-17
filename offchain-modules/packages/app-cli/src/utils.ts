@@ -5,12 +5,15 @@ import { asyncSleep } from '@force-bridge/x/dist/utils';
 import { Amount, HashType, Script } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 
-export function parseOptions(args: any, command: any): Map<string, string> {
-  const values = command.args;
+export function parseOptions(opts: any, args: any): Map<string, string> {
   const optionMap = new Map();
-  const options = Object.keys(args);
-  for (const i in options) {
-    optionMap.set(options[i], values[i]);
+  let index = 0;
+  for (const o in opts) {
+    if (opts[o] === undefined) {
+      continue;
+    }
+    optionMap.set(o, args[index]);
+    index++;
   }
   return optionMap;
 }

@@ -3,7 +3,7 @@ import { Account } from '@force-bridge/x/dist/ckb/model/accounts';
 import { TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
-import { getOwnLockHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
+import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { asyncSleep } from '@force-bridge/x/dist/utils';
 import { Amount } from '@lay2/pw-core';
@@ -91,7 +91,7 @@ async function doUnlock(
   const burnTx = await generator.burn(
     await account.getLockscript(),
     recipientAddress,
-    new TronAsset('trx', getOwnLockHash(ForceBridgeCore.config.ckb.multisigScript)),
+    new TronAsset('trx', getOwnerTypeHash()),
     new Amount(amount, 6),
   );
   const signedTx = ForceBridgeCore.ckb.signTransaction(privateKey)(burnTx);
@@ -114,7 +114,7 @@ async function doBalanceOf(opts: { address: boolean; origin?: boolean }, command
     console.log(accountInfo);
     return;
   }
-  const asset = new TronAsset('trx', getOwnLockHash(ForceBridgeCore.config.ckb.multisigScript));
+  const asset = new TronAsset('trx', getOwnerTypeHash());
   const balance = await getSudtBalance(address, asset);
   console.log(`BalanceOf address:${address} on ckb is ${balance.toString(6)}`);
 }

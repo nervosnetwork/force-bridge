@@ -16,9 +16,9 @@ ethCmd
   .requiredOption('-p, --privateKey', 'private key of locked account')
   .requiredOption('-a, --amount', 'amount to lock')
   .requiredOption('-r, --recipient', 'recipient address on ckb')
-  .option('-n, --name', 'token name', 'ETH')
-  .option('--ethRpcUrl', 'Url of eth rpc', EthNodeRpc)
-  .option('--forceBridgeRpcUrl', 'Url of force-bridge rpc', ForceBridgeRpc)
+  .option('-s, --symbol', `token symbol default:ETH`, 'ETH')
+  .option('-eth-rpc, --ethRpcUrl', `Url of eth rpc default:${EthNodeRpc}`, EthNodeRpc)
+  .option('-rpc, --forceBridgeRpcUrl', `Url of force-bridge rpc default:${ForceBridgeRpc}`, ForceBridgeRpc)
   .option('-w, --wait', 'whether wait for transaction confirmed')
   .action(doLock)
   .description('lock asset on eth');
@@ -28,9 +28,9 @@ ethCmd
   .requiredOption('-r, --recipient', 'recipient address on eth')
   .requiredOption('-p, --privateKey', 'private key of unlock address on ckb')
   .requiredOption('-a, --amount', 'amount of unlock')
-  .option('-n, --name', 'token name', 'ckETH')
-  .option('--ckbRpcUrl', 'Url of ckb rpc', CkbNodeRpc)
-  .option('--forceBridgeRpcUrl', 'Url of force-bridge rpc', ForceBridgeRpc)
+  .option('-s, --symbol', `token symbol default:ckETH`, 'ckETH')
+  .option('--ckbRpcUrl', `Url of ckb rpc default:${CkbNodeRpc}`, CkbNodeRpc)
+  .option('-rpc, --forceBridgeRpcUrl', `Url of force-bridge rpc default:${ForceBridgeRpc}`, ForceBridgeRpc)
   .option('-w, --wait', 'whether wait for transaction confirmed')
   .action(doUnlock)
   .description('unlock asset on eth');
@@ -38,14 +38,14 @@ ethCmd
 ethCmd
   .command('balanceOf')
   .requiredOption('-addr, --address', 'address on eth or ckb')
-  .option('-n, --name', 'token name', 'ETH')
-  .option('--forceBridgeRpcUrl', 'Url of force-bridge rpc', ForceBridgeRpc)
+  .option('-s, --symbol', `token symbol default:ETH`, 'ETH')
+  .option('-rpc, --forceBridgeRpcUrl', `Url of force-bridge rpc default:${ForceBridgeRpc}`, ForceBridgeRpc)
   .action(doBalanceOf)
   .description('query balance of address on eth or ckb');
 
 ethCmd
   .command('assetList')
-  .option('--forceBridgeRpcUrl', 'Url of force-bridge rpc', ForceBridgeRpc)
+  .option('-rpc, --forceBridgeRpcUrl', `Url of force-bridge rpc default:${ForceBridgeRpc}`, ForceBridgeRpc)
   .option('-d, --detail', 'show detail asset list info')
   .action(getAssetList)
   .description('get support asset list on eth');
@@ -53,37 +53,27 @@ ethCmd
 ethCmd
   .command('txSummaries')
   .requiredOption('-addr, --address', 'address on eth or ckb')
-  .option('-n, --name', 'token name', 'ETH')
-  .option('--forceBridgeRpcUrl', 'Url of force-bridge rpc', ForceBridgeRpc)
+  .option('-s, --symbol', `token symbol default:ETH`, 'ETH')
+  .option('-rpc, --forceBridgeRpcUrl', `Url of force-bridge rpc default:${ForceBridgeRpc}`, ForceBridgeRpc)
   .action(getTxSummaries)
   .description(`get transaction summaries`);
 
-async function doLock(
-  opts: {
-    privateKey: boolean;
-    amount: boolean;
-    recipient: boolean;
-    name?: boolean;
-    ethRpcUrl?: boolean;
-    forceBridgeRpcUrl?: boolean;
-    wait?: boolean;
-  },
-  command: commander.Command,
-) {
-  const options = parseOptions(opts, command);
+async function doLock(command: commander.Command, args: any) {
+  const opts = command.opts();
+  const options = parseOptions(opts, args);
   const privateKey = nonNullable(options.get('privateKey'));
   const amount = nonNullable(options.get('amount'));
   const recipient = nonNullable(options.get('recipient'));
-  const tokenName = nonNullable(options.get('name') || 'ETH');
+  const tokenSymbol = nonNullable(options.get('symbol') || 'ETH');
   const forceBridgeRpc = nonNullable(options.get('forceBridgeRpcUrl') || ForceBridgeRpc);
   const ethRpc = nonNullable(options.get('ethRpcUrl') || EthNodeRpc);
 
   const assetList = await new ForceBridgeAPIV1Client(forceBridgeRpc).getAssetList();
   const assetInfo = assetList.find((asset) => {
-    return asset.info.name === tokenName;
+    return asset.info.symbol === tokenSymbol;
   });
   if (assetInfo === undefined) {
-    console.log(`Invalid token name:${tokenName}`);
+    console.log(`Invalid token symbol:${tokenSymbol}`);
     return;
   }
 
@@ -122,23 +112,13 @@ async function doLock(
   }
 }
 
-async function doUnlock(
-  opts: {
-    recipient: boolean;
-    privateKey: boolean;
-    amount: boolean;
-    name?: boolean;
-    ckbRpc?: boolean;
-    forceBridgeRpc?: boolean;
-    wait?: boolean;
-  },
-  command: commander.Command,
-) {
-  const options = parseOptions(opts, command);
+async function doUnlock(command: commander.Command, args: any) {
+  const opts = command.opts();
+  const options = parseOptions(opts, args);
   const recipientAddress = nonNullable(options.get('recipient'));
   const privateKey = nonNullable(options.get('privateKey'));
   const amount = nonNullable(options.get('amount'));
-  const tokenName = nonNullable(options.get('name') || 'ckETH');
+  const tokenSymbol = nonNullable(options.get('symbol') || 'ckETH');
   const ckbRpc = nonNullable(options.get('ckbRpcUrl') || CkbNodeRpc);
   const forceBridgeRpc = nonNullable(options.get('forceBridgeRpcUrl') || ForceBridgeRpc);
 
@@ -147,10 +127,10 @@ async function doUnlock(
 
   const assetList = await new ForceBridgeAPIV1Client(forceBridgeRpc).getAssetList();
   const assetInfo = assetList.find((asset) => {
-    return asset.info.name === tokenName;
+    return asset.info.symbol === tokenSymbol;
   });
   if (assetInfo === undefined) {
-    console.log(`Invalid token name:${tokenName}`);
+    console.log(`Invalid token symbol:${tokenSymbol}`);
     return;
   }
 
@@ -175,21 +155,19 @@ async function doUnlock(
   }
 }
 
-async function doBalanceOf(
-  opts: { address: boolean; name?: boolean; forceBridgeRpcUrl?: boolean },
-  command: commander.Command,
-) {
-  const options = parseOptions(opts, command);
+async function doBalanceOf(command: commander.Command, args: any) {
+  const opts = command.opts();
+  const options = parseOptions(opts, args);
   const address = nonNullable(options.get('address'));
-  const tokenName = nonNullable(options.get('name') || 'ETH');
+  const tokenSymbol = nonNullable(options.get('symbol') || 'ETH');
   const forceBridgeRpc = nonNullable(options.get('forceBridgeRpcUrl') || ForceBridgeRpc);
 
   const assetList = await new ForceBridgeAPIV1Client(forceBridgeRpc).getAssetList();
   const assetInfo = assetList.find((asset) => {
-    return asset.info.name === tokenName;
+    return asset.info.symbol === tokenSymbol;
   });
   if (assetInfo === undefined) {
-    console.log(`Invalid token name:${tokenName}`);
+    console.log(`Invalid token symbol:${tokenSymbol}`);
     return;
   }
 
@@ -209,8 +187,9 @@ async function doBalanceOf(
   });
 }
 
-async function getAssetList(opts: { forceBridgeRpcUrl?: boolean; detail?: boolean }, command: commander.Command) {
-  const options = parseOptions(opts, command);
+async function getAssetList(command: commander.Command, args: any) {
+  const opts = command.opts();
+  const options = parseOptions(opts, args);
   const forceBridgeRpc = nonNullable(options.get('forceBridgeRpcUrl') || ForceBridgeRpc);
   const assetList = await new ForceBridgeAPIV1Client(forceBridgeRpc).getAssetList();
   if (opts.detail) {
@@ -223,8 +202,9 @@ async function getAssetList(opts: { forceBridgeRpcUrl?: boolean; detail?: boolea
   });
 }
 
-async function getTxStatus(opts: { txHash: boolean; forceBridgeRpcUrl?: boolean }, command: commander.Command) {
-  const options = parseOptions(opts, command);
+async function getTxStatus(command: commander.Command, args: any) {
+  const opts = command.opts();
+  const options = parseOptions(opts, args);
   const txHash = nonNullable(options.get('txHash'));
   const forceBridgeRpc = nonNullable(options.get('forceBridgeRpcUrl') || ForceBridgeRpc);
   const txStatus = nonNullable(
@@ -236,18 +216,19 @@ async function getTxStatus(opts: { txHash: boolean; forceBridgeRpcUrl?: boolean 
   console.log('TxStatus:', JSON.stringify(txStatus, undefined, 2));
 }
 
-async function getTxSummaries(opts: { address: boolean; forceBridgeRpcUrl?: boolean }, command: commander.Command) {
-  const options = parseOptions(opts, command);
-  const tokenName = nonNullable(options.get('name') || 'ETH');
+async function getTxSummaries(command: commander.Command, args: any) {
+  const opts = command.opts();
+  const options = parseOptions(opts, args);
+  const tokenSymbol = nonNullable(options.get('symbol') || 'ETH');
   const forceBridgeRpc = nonNullable(options.get('forceBridgeRpcUrl') || ForceBridgeRpc);
   const address = nonNullable(options.get('address'));
 
   const assetList = await new ForceBridgeAPIV1Client(forceBridgeRpc).getAssetList();
   const assetInfo = assetList.find((asset) => {
-    return asset.info.name === tokenName;
+    return asset.info.symbol === tokenSymbol;
   });
   if (assetInfo === undefined) {
-    console.log(`Invalid token name:${tokenName}`);
+    console.log(`Invalid token symbol:${tokenSymbol}`);
     return;
   }
 

@@ -1,7 +1,7 @@
 import { Asset, BtcAsset, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
-import { getOwnLockHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
+import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { EthDb, TronDb } from '@force-bridge/x/dist/db';
 import { BtcDb } from '@force-bridge/x/dist/db/btc';
@@ -151,7 +151,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     logger.info('generateBridgeOutNervosTransaction ', payload);
     checkCKBAddress(payload.sender);
     const fromLockscript = ForceBridgeCore.ckb.utils.addressToScript(payload.sender);
-    const ownLockHash = getOwnLockHash(ForceBridgeCore.config.ckb.multisigScript);
+    const ownerTypeHash = getOwnerTypeHash();
 
     const network = payload.network;
     const assetName = payload.asset;
@@ -162,10 +162,10 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
       case 'Ethereum':
         checkETHAmount(assetName, amount);
         checkETHAddress(payload.recipient);
-        asset = new EthAsset(assetName, ownLockHash);
+        asset = new EthAsset(assetName, ownerTypeHash);
         break;
       case 'Tron':
-        asset = new TronAsset(assetName, ownLockHash);
+        asset = new TronAsset(assetName, ownerTypeHash);
         break;
       default:
         //TODO: add other chains
@@ -451,6 +451,11 @@ function transferDbRecordToResponse(
   let bridgeTxRecord: TransactionSummary;
   if ('lock_hash' in record) {
     const confirmStatus = record.lock_confirm_status === 'confirmed' ? 'confirmed' : record.lock_confirm_number;
+    const bridgeFee = new EthAsset(record.asset).getBridgeFee('in');
+    const mintAmount =
+      record.mint_amount === null
+        ? new Amount(record.lock_amount, 0).sub(new Amount(bridgeFee, 0)).toString(0)
+        : record.mint_amount;
     bridgeTxRecord = {
       txSummary: {
         fromAsset: {
@@ -462,7 +467,7 @@ function transferDbRecordToResponse(
           network: 'Nervos',
           // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           ident: getTokenShadowIdent(XChainNetwork, record.asset)!,
-          amount: new Amount(record.lock_amount, 0).sub(new Amount(record.bridge_fee, 0)).toString(0),
+          amount: mintAmount,
         },
         sender: record.sender,
         recipient: record.recipient,
@@ -478,6 +483,11 @@ function transferDbRecordToResponse(
     }
   } else if ('burn_hash' in record) {
     const confirmStatus = record.burn_confirm_status === 'confirmed' ? 'confirmed' : record.burn_confirm_number;
+    const bridgeFee = new EthAsset(record.asset).getBridgeFee('out');
+    const unlockAmount =
+      record.unlock_amount === null
+        ? new Amount(record.burn_amount, 0).sub(new Amount(bridgeFee, 0)).toString(0)
+        : record.unlock_amount;
     bridgeTxRecord = {
       txSummary: {
         fromAsset: {
@@ -489,7 +499,7 @@ function transferDbRecordToResponse(
         toAsset: {
           network: XChainNetwork,
           ident: record.asset,
-          amount: new Amount(record.burn_amount, 0).sub(new Amount(record.bridge_fee, 0)).toString(0),
+          amount: unlockAmount,
         },
         sender: record.sender,
         recipient: record.recipient,
@@ -530,20 +540,20 @@ function transferDbRecordToResponse(
 }
 
 function getTokenShadowIdent(XChainNetwork: XChainNetWork, XChainToken: string): string | undefined {
-  const ownLockHash = getOwnLockHash(ForceBridgeCore.config.ckb.multisigScript);
+  const ownerTypeHash = getOwnerTypeHash();
   let asset: Asset;
   switch (XChainNetwork) {
     case 'Bitcoin':
-      asset = new BtcAsset('btc', ownLockHash);
+      asset = new BtcAsset('btc', ownerTypeHash);
       break;
     case 'EOS':
-      asset = new EosAsset(XChainToken, ownLockHash);
+      asset = new EosAsset(XChainToken, ownerTypeHash);
       break;
     case 'Ethereum':
-      asset = new EthAsset(XChainToken, ownLockHash);
+      asset = new EthAsset(XChainToken, ownerTypeHash);
       break;
     case 'Tron':
-      asset = new TronAsset(XChainToken, ownLockHash);
+      asset = new TronAsset(XChainToken, ownerTypeHash);
       break;
     default:
       logger.warn(`chain type is ${XChainNetwork} which not support yet.`);
