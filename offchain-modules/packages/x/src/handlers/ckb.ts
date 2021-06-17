@@ -641,7 +641,7 @@ export async function isBurnTx(tx: Transaction, cellData: RecipientCellData): Pr
   logger.debug('expect:', expectRecipientTypescript);
   return (
     recipientTypescript.codeHash === expectRecipientTypescript.codeHash &&
-    recipientTypescript.hashType === expectRecipientTypescript.hashType &&
+    recipientTypescript.hashType == expectRecipientTypescript.hashType &&
     recipientCellOwnerTypeHash === ownerTypeHash
   );
 }
