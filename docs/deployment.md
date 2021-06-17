@@ -130,3 +130,180 @@ Once all committee members starting their service, the Force Bridge is live.
 
 The users can start use it with the Force Bridge UI hosted by Nervos Foundation or dapp server running by themselves.
 
+### Configuration Description
+
+An verifier config example:
+
+```
+{
+  "forceBridge": {
+    "common": {
+      "log": {
+        "level": "info"
+      },
+      "network": "testnet",
+      "role": "watcher",
+      "orm": {
+        "type": "mysql",
+        "host": "localhost",
+        "port": 3307,
+        "username": "root",
+        "password": "root",
+        "database": "forcebridge",
+        "timezone": "Z",
+        "synchronize": true,
+        "logging": false
+      }
+    },
+    "eth": {
+      "rpcUrl": "http://127.0.0.1:8545",
+      "multiSignAddresses": [
+        "0xB026351cD0c62aC89e488A840b7205730E8476bd",
+        "0x27EE444d5D96094EACecC00194b7026Eb4fD979c",
+        "0x0C2207536768EcFFeB11744AdbCC90428a0EE83B"
+      ],
+      "multiSignKeys": [
+        {
+          "address": "0xB026351cD0c62aC89e488A840b7205730E8476bd",
+          "privKey": "privkeys/eth-multisig-1"
+        }
+      ],
+      "contractAddress": "0x8326e1d621Cd32752920ed2A44B49bB1a96c7391",
+      "confirmNumber": 1,
+      "startBlockHeight": 5,
+      "batchUnlock": {
+        "batchNumber": 100,
+        "maxWaitTime": 86400000
+      },
+      "assetWhiteList": [
+        {
+          "address": "0x0000000000000000000000000000000000000000",
+          "name": "ETH",
+          "symbol": "ETH",
+          "decimal": 18,
+          "logoURI": "https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=002",
+          "minimalBridgeAmount": "1000000000000000",
+          "bridgeFee": {
+            "in": "1000000000000",
+            "out": "2000000000000"
+          }
+        },
+        {
+          "address": "0x265566D4365d80152515E800ca39424300374A83",
+          "name": "USDC",
+          "symbol": "USDC",
+          "decimal": 6,
+          "logoURI": "https://cryptologos.cc/logos/usd-coin-usdc-logo.svg?v=002",
+          "minimalBridgeAmount": "1000",
+          "bridgeFee": {
+            "in": "10",
+            "out": "20"
+          }
+        }
+      ]
+    },
+    "ckb": {
+      "ckbRpcUrl": "http://127.0.0.1:8114",
+      "ckbIndexerUrl": "http://127.0.0.1:8116",
+      "multisigScript": {
+        "R": 0,
+        "M": 2,
+        "publicKeyHashes": [
+          "0x40dcec2ef1ffc2340ea13ff4dd9671d2f9787e95",
+          "0xc8328aabcd9b9e8e64fbc566c4385c3bdeb219d7",
+          "0x470dcdc5e44064909650113a274b3b36aecb6dc7",
+          "0xd9a188cc1985a7d4a31f141f4ebb61f241aec182",
+          "0xebf9befcd8396e88cab8fcb920ab149231658f4b"
+        ]
+      },
+      "multiSignKeys": [
+        {
+          "address": "ckt1qyqvsv5240xeh85wvnau2eky8pwrhh4jr8ts8vyj37",
+          "privKey": "privkeys/ckb-multisig-1"
+        }
+      ],
+      "ownerLockHash": "0x49beb8c4c29d06e05452b5d9ea8e86ffd4ea2b614498ba1a0c47890a0ad4f550",
+      "deps": {
+        "bridgeLock": {
+          "cellDep": {
+            "depType": "code",
+            "outPoint": {
+              "txHash": "0x8b42fd0e607dc70cf15f72782a44154197b2beb6c581e24e9888081e66506ad4",
+              "index": "0x0"
+            }
+          },
+          "script": {
+            "codeHash": "0x098fc87ba45ca95d7904f04c9921e4315e074537294c4cd794dd5237721bf640",
+            "hashType": "data"
+          }
+        },
+        "sudtType": {
+          "cellDep": {
+            "depType": "code",
+            "outPoint": {
+              "txHash": "0x8b42fd0e607dc70cf15f72782a44154197b2beb6c581e24e9888081e66506ad4",
+              "index": "0x2"
+            }
+          },
+          "script": {
+            "codeHash": "0xe1e354d6d643ad42724d40967e334984534e0367405c5ae42a9d7d63d77df419",
+            "hashType": "data"
+          }
+        },
+        "recipientType": {
+          "cellDep": {
+            "depType": "code",
+            "outPoint": {
+              "txHash": "0x8b42fd0e607dc70cf15f72782a44154197b2beb6c581e24e9888081e66506ad4",
+              "index": "0x3"
+            }
+          },
+          "script": {
+            "codeHash": "0xcfa8deb97db22fe777413c88f6682ad13292af1087f48c41d8f801bf7ad61d58",
+            "hashType": "data"
+          }
+        }
+      },
+      "startBlockHeight": 0,
+      "confirmNumber": 1,
+      "ownerCellTypescript": {
+        "code_hash": "0x00000000000000000000000000000000000000000000000000545950455f4944",
+        "hash_type": "type",
+        "args": "0x50726c38a50f3c39d7fa02debf6bcad8f04db5fb2a54e52974c8e260f640a20e"
+      },
+      "multisigLockscript": {
+        "code_hash": "0x5c5069eb0857efc65e1bca0c07df34c31663b3622fd3876c876320fc9634e2a8",
+        "hash_type": "type",
+        "args": "0x7ae4ef98cc4c3e46d359f380cd60c50e3412de5d"
+      }
+    }
+  }
+}
+```
+
+Common Configuration
+
+| field                   | description                                                                                                                                                                                                                                                                                                                             |
+|-------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| eth.confirmNumber       | only after the lock transaction is confirmed with this number of blocks, the mapped token will be minted on CKB chain                                                                                                                                                                                                                   |
+| eth.startBlockHeight    | the height force bridge start to watch, usually the height we deploy the bridge contract                                                                                                                                                                                                                                                |
+| eth.batchUnlock         | since the Ethereum transaction fee is high, we will unlock asset on Ethereum on batch. We will batch unlock `batchNumber` transactions. To avoid it takes too long to reach the batch size, there is an additional `maxWaitTime`, which will batch the transactions after this time even if the number does not reach the `batchNumber` |
+| eth.assetWhiteList      | The asset whitelist of force bridge. We will ignore all crosschain assets not int the list.                                                                                                                                                                                                                                             |
+| ckb.deps                | ckb contracts deps                                                                                                                                                                                                                                                                                                                      |
+| ckb.ownerCellTypescript | The owner cell typescript is used to identify the owner cell. The lockscript of the cell will be the committee multisig lockscript.                                                                                                                                                                                                     |
+| ckb.multisigLockscript  | The committee multisig lockscript.                                                                                                                                                                                                                                                                                                      |
+
+
+What we should change
+
+
+| field             | description                                                     |
+|-------------------|-----------------------------------------------------------------|
+| common.log.level  | it can be `info`, `debug` and `error`, change it on your demand |
+| common.role       | it can be `collector`, `verifier` and `watcher`                 |
+| common.orm        | change it to your own database configuration                    |
+| eth.rpcUrl        | change it to your own endpoint                                  |
+| eth.multiSighKeys | change it to your own address and privKey path                  |
+| ckb.ckbRpcUrl     | change it to your own endpoint                                  |
+| ckb.ckbIndexerUrl | change it to your own indexer URL                               |
+| ckb.multiSignKeys | change it to your own ckb private Key                           |
