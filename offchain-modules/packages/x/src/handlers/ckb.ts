@@ -24,6 +24,7 @@ import { getAssetTypeByAsset } from '../xchain/tron/utils';
 import Transaction = CKBComponents.Transaction;
 import TransactionWithStatus = CKBComponents.TransactionWithStatus;
 import Block = CKBComponents.Block;
+import { RelayerMetric } from '../monitor/relayer-metric';
 
 const lastHandleCkbBlockKey = 'lastHandleCkbBlock';
 
@@ -37,14 +38,16 @@ export class CkbHandler {
   private multisigMgr: MultiSigMgr;
   private lastHandledBlockHeight: number;
   private lastHandledBlockHash: string;
+  private metrics: RelayerMetric;
 
-  constructor(private db: CkbDb, private kvDb, private role: forceBridgeRole) {
+  constructor(private db: CkbDb, private kvDb, private role: forceBridgeRole, monitorPushGateWayURL: string) {
     this.transactionManager = new TransactionManager(this.ckbIndexer);
     this.multisigMgr = new MultiSigMgr(
       'CKB',
       ForceBridgeCore.config.ckb.multiSignHosts,
       ForceBridgeCore.config.ckb.multisigScript.M,
     );
+    this.metrics = new RelayerMetric(monitorPushGateWayURL);
   }
 
   async getLastHandledBlock(): Promise<{ blockNumber: number; blockHash: string }> {
@@ -188,6 +191,7 @@ export class CkbHandler {
     for (const tx of block.transactions) {
       if (await this.isMintTx(tx)) {
         await this.onMintTx(tx);
+        this.metrics.addBridgeTxMetrics('ckb_mint', 'success');
       }
       const recipientData = tx.outputsData[0];
       let cellData;
@@ -212,6 +216,7 @@ export class CkbHandler {
             tx.hash
           } senderAddress:${senderAddress} cellData:${JSON.stringify(cellData, null, 2)}`,
         );
+        this.metrics.addBridgeTxMetrics('ckb_burn', 'success');
       }
     }
     await this.onBurnTxs(blockNumber, burnTxs);
@@ -383,6 +388,7 @@ export class CkbHandler {
           r.status = 'error';
           r.message = e.toString();
         });
+        this.metrics.addBridgeTxMetrics('ckb_mint', 'failed');
         await this.db.updateCkbMint(mintRecords);
       }
     }

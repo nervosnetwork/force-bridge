@@ -6,6 +6,7 @@ import { ForceBridgeCore } from '../core';
 import { EthDb, KVDb } from '../db';
 import { EthUnlockStatus } from '../db/entity/EthUnlock';
 import { EthUnlock } from '../db/model';
+import { RelayerMetric } from '../monitor/relayer-metric';
 import { asyncSleep, fromHexString, uint8ArrayToString } from '../utils';
 import { logger } from '../utils/logger';
 import { EthChain } from '../xchain/eth';
@@ -16,7 +17,17 @@ const lastHandleEthBlockKey = 'lastHandleEthBlock';
 export class EthHandler {
   private lastHandledBlockHeight: number;
   private lastHandledBlockHash: string;
-  constructor(private db: EthDb, private kvDb: KVDb, private ethChain: EthChain, private role: forceBridgeRole) {}
+  private metrics: RelayerMetric;
+
+  constructor(
+    private db: EthDb,
+    private kvDb: KVDb,
+    private ethChain: EthChain,
+    private role: forceBridgeRole,
+    monitorPushGateWayURL: string,
+  ) {
+    this.metrics = new RelayerMetric(monitorPushGateWayURL);
+  }
 
   async getLastHandledBlock(): Promise<{ blockNumber: number; blockHash: string }> {
     const lastHandledBlock = await this.kvDb.get(lastHandleEthBlockKey);
@@ -215,6 +226,7 @@ export class EthHandler {
             sender: parsedLog.args.sender,
           },
         ]);
+        this.metrics.addBridgeTxMetrics('eth_lock', 'success');
         logger.info(`EthHandler watchLockEvents save EthLock successful for eth tx ${log.transactionHash}.`);
       } catch (e) {
         logger.error(`EthHandler watchLockEvents error: ${e}`);
@@ -282,11 +294,13 @@ export class EthHandler {
           records.map((r) => {
             r.status = 'success';
           });
+          this.metrics.addBridgeTxMetrics('eth_unlock', 'success');
         } else {
           records.map((r) => {
             r.status = 'error';
             r.message = 'unlock tx failed';
           });
+          this.metrics.addBridgeTxMetrics('eth_unlock', 'failed');
           logger.error('EthHandler watchUnlockEvents unlock execute failed:', receipt);
         }
         await this.db.saveEthUnlock(records);

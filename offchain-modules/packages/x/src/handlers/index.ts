@@ -23,13 +23,18 @@ export async function startHandlers(conn: Connection) {
   const role = ForceBridgeCore.config.common.role;
   const isCollector = ForceBridgeCore.config.common.role === 'collector';
 
+  let promPushGateWayURL = '';
+  if (ForceBridgeCore.config.common.monitor) {
+    promPushGateWayURL = ForceBridgeCore.config.common.monitor.pushGatewayURL;
+  }
+
   // init db and start handlers
   const ckbDb = new CkbDb(conn);
   const kvDb = new KVDb(conn);
   if (isCollector) {
     ForceBridgeCore.config.ckb.fromPrivateKey = parsePrivateKey(ForceBridgeCore.config.ckb.fromPrivateKey);
   }
-  const ckbHandler = new CkbHandler(ckbDb, kvDb, role);
+  const ckbHandler = new CkbHandler(ckbDb, kvDb, role, promPushGateWayURL);
   ckbHandler.start();
 
   // start xchain handlers if config exists
@@ -39,7 +44,7 @@ export async function startHandlers(conn: Connection) {
     }
     const ethDb = new EthDb(conn);
     const ethChain = new EthChain(role);
-    const ethHandler = new EthHandler(ethDb, kvDb, ethChain, role);
+    const ethHandler = new EthHandler(ethDb, kvDb, ethChain, role, promPushGateWayURL);
     ethHandler.start();
   }
   if (ForceBridgeCore.config.eos !== undefined) {
