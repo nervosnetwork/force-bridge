@@ -10,6 +10,7 @@ import { abi } from './abi/ForceBridge.json';
 import { buildSigRawData } from './utils';
 
 export const lockTopic = ethers.utils.id('Locked(address,address,uint256,bytes,bytes)');
+export const unlockTopic = ethers.utils.id('Unlocked(address,address,address,uint256,bytes)');
 
 export interface EthUnlockRecord {
   token: string;
@@ -57,6 +58,19 @@ export class EthChain {
     });
   }
 
+  watchUnlockEvents(startHeight = 1, handleLogFunc) {
+    const filter = {
+      address: this.bridgeContractAddr,
+      fromBlock: 'earliest',
+      topics: [unlockTopic],
+    };
+    this.provider.resetEventsBlock(startHeight);
+    this.provider.on(filter, async (log) => {
+      const parsedLog = this.iface.parseLog(log);
+      await handleLogFunc(log, parsedLog);
+    });
+  }
+
   async watchNewBlock(startHeight: number, handleBlockFunc) {
     let block: ethers.providers.Block;
     for (let height = startHeight + 1; ; ) {
@@ -87,7 +101,7 @@ export class EthChain {
     return this.provider.getBlock(blockTag);
   }
 
-  async getLogs(
+  async getLockLogs(
     fromBlock: ethers.providers.BlockTag,
     toBlock: ethers.providers.BlockTag,
   ): Promise<{ log; parsedLog }[]> {
@@ -95,6 +109,22 @@ export class EthChain {
       fromBlock: fromBlock,
       address: ForceBridgeCore.config.eth.contractAddress,
       topics: [lockTopic],
+      toBlock: toBlock,
+    });
+    return logs.map((log) => {
+      const parsedLog = this.iface.parseLog(log);
+      return { log, parsedLog };
+    });
+  }
+
+  async getUnlockLogs(
+    fromBlock: ethers.providers.BlockTag,
+    toBlock: ethers.providers.BlockTag,
+  ): Promise<{ log; parsedLog }[]> {
+    const logs = await this.provider.getLogs({
+      fromBlock: fromBlock,
+      address: ForceBridgeCore.config.eth.contractAddress,
+      topics: [unlockTopic],
       toBlock: toBlock,
     });
     return logs.map((log) => {
