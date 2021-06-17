@@ -642,7 +642,7 @@ export async function isBurnTx(tx: Transaction, cellData: RecipientCellData): Pr
   return (
     recipientTypescript.codeHash === expectRecipientTypescript.codeHash &&
     recipientTypescript.hashType == expectRecipientTypescript.hashType &&
-    recipientCellOwnerTypeHash === ownerTypeHash
+    recipientCellOwnerTypeHash === `0x${ownerTypeHash}`
   );
 }
 
