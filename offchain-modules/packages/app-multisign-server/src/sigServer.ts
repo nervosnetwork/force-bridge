@@ -106,5 +106,5 @@ export async function startSigServer(config: Config, port: number) {
     });
   });
   app.listen(port);
-  logger.info(`rpc server handler started on ${port}  🚀`);
+  logger.info(`sig server handler started on ${port}  🚀`);
 }

@@ -216,6 +216,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
   ): Promise<GetBridgeInNervosBridgeFeeResponse> {
     switch (payload.network) {
       case 'Ethereum': {
+        checkETHAddress(payload.xchainAssetIdent);
         checkETHAmount(payload.xchainAssetIdent, payload.amount);
 
         const asset = new EthAsset(payload.xchainAssetIdent);
@@ -239,6 +240,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
   ): Promise<GetBridgeOutNervosBridgeFeeResponse> {
     switch (payload.network) {
       case 'Ethereum': {
+        checkETHAddress(payload.xchainAssetIdent);
         checkETHAmount(payload.xchainAssetIdent, payload.amount);
 
         const asset = new EthAsset(payload.xchainAssetIdent);
@@ -363,6 +365,8 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
       case 'Ethereum': {
         const tokenAddress = value.assetIdent;
         const userAddress = value.userIdent;
+        checkETHAddress(tokenAddress);
+        checkETHAddress(userAddress);
         if (tokenAddress === '0x0000000000000000000000000000000000000000') {
           const eth_amount = await this.web3.eth.getBalance(userAddress);
           balance = eth_amount.toString();
@@ -411,6 +415,8 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         // const accountInfo = await tronWeb.trx.getAccount(value.userIdent);
         // balance = JSON.stringify(accountInfo,null,2);
         break;
+      default:
+        throw new Error('invalid chain type');
     }
     return {
       network: value.network,
@@ -552,7 +558,7 @@ function getTokenShadowIdent(XChainNetwork: XChainNetWork, XChainToken: string):
 }
 
 function checkETHAddress(address) {
-  if (!ethers.utils.isAddress(address)) {
+  if (!ethers.utils.isAddress(address) || address.substr(0, 2).toLowerCase() != '0x') {
     throw new Error('invalid eth address');
   }
 }
