@@ -635,14 +635,14 @@ export async function isBurnTx(tx: Transaction, cellData: RecipientCellData): Pr
 
   // verify tx output: recipient cell.
   const recipientTypescript = nonNullable(tx.outputs[0].type);
-  const recipientCellOwnerTypeHash = toHexString(new Uint8Array(cellData.getOwnerCellTypeHash().raw()));
+  const recipientCellOwnerTypeHash = `0x${toHexString(new Uint8Array(cellData.getOwnerCellTypeHash().raw()))}`;
   const expectRecipientTypescript = ForceBridgeCore.config.ckb.deps.recipientType.script;
   logger.debug('recipientScript:', recipientTypescript);
   logger.debug('expect:', expectRecipientTypescript);
   return (
     recipientTypescript.codeHash === expectRecipientTypescript.codeHash &&
     recipientTypescript.hashType == expectRecipientTypescript.hashType &&
-    recipientCellOwnerTypeHash === `0x${ownerTypeHash}`
+    recipientCellOwnerTypeHash === ownerTypeHash
   );
 }
 
