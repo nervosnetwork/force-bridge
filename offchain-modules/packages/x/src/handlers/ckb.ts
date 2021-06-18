@@ -129,7 +129,7 @@ export class CkbHandler {
 
     const lastHandledBlockHeight = ForceBridgeCore.config.ckb.startBlockHeight;
     if (lastHandledBlockHeight > 0) {
-      const lastHandledHead = await this.ckb.rpc.getHeaderByNumber(lastHandledBlockHeight.toString());
+      const lastHandledHead = await this.ckb.rpc.getHeaderByNumber(`0x${lastHandledBlockHeight.toString(16)}`);
       if (lastHandledHead !== undefined) {
         this.lastHandledBlockHeight = Number(lastHandledHead.number);
         this.lastHandledBlockHash = lastHandledHead.hash;
