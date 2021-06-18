@@ -151,6 +151,15 @@
         "hash_type": "type",
         "args": "0x7ae4ef98cc4c3e46d359f380cd60c50e3412de5d"
       }
+    },
+    "rpc": {
+      "port": 8080,
+      "corsOptions": {
+        "origin": "*",
+        "methods": "GET,HEAD,PUT,PATCH,POST,DELETE",
+        "preflightContinue": false,
+        "optionsSuccessStatus": 200
+      }
     }
   }
 }
