@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "start": "ts-node ./packages/app-relayer/src/index.ts",
-    "rpc": "ts-node ./packages/app-rpc-server/src/index.ts",
+    "rpc": "CONFIG_PATH=./packages/scripts/src/integration-test/config/watcher.json ts-node ./packages/app-rpc-server/src/index.ts",
     "prepare-rpc-test": "sleep 10",
     "rpc-ci": "ts-node ./packages/scripts/src/integration-test/rpc-ci.ts",
     "rpc-test": "run-s prepare-rpc-test rpc-ci",
