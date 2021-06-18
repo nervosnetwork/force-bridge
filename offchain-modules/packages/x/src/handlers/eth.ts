@@ -33,7 +33,7 @@ export class EthHandler {
     await this.kvDb.set(lastHandleEthBlockKey, `${blockNumber},${blockHash}`);
   }
 
-  async init() {
+  async init(): Promise<void> {
     const currentBlockHeight = await this.ethChain.getCurrentBlockNumber();
     const lastHandledBlock = await this.getLastHandledBlock();
     if (lastHandledBlock.blockNumber === 0) {
@@ -103,7 +103,7 @@ export class EthHandler {
     }
   }
 
-  async watchNewBlock() {
+  async watchNewBlock(): Promise<void> {
     await this.ethChain.watchNewBlock(this.lastHandledBlockHeight, async (newBlock: ethers.providers.Block) => {
       await this.onBlock(newBlock);
     });
@@ -118,7 +118,7 @@ export class EthHandler {
     );
   }
 
-  async onBlock(block: ethers.providers.Block) {
+  async onBlock(block: ethers.providers.Block): Promise<void> {
     for (let i = 1; i <= MAX_RETRY_TIMES; i++) {
       try {
         const confirmNumber = ForceBridgeCore.config.eth.confirmNumber;
@@ -152,7 +152,7 @@ export class EthHandler {
     }
   }
 
-  async confirmEthLocks(currentBlockHeight: number, confirmNumber: number) {
+  async confirmEthLocks(currentBlockHeight: number, confirmNumber: number): Promise<void> {
     const confirmedBlockHeight = currentBlockHeight - confirmNumber;
     const unConfirmedLocks = await this.db.getUnconfirmedLocks();
     if (unConfirmedLocks.length === 0) {
@@ -199,7 +199,7 @@ export class EthHandler {
     }
   }
 
-  async onLockLogs(log, parsedLog) {
+  async onLockLogs(log: ethers.providers.Log, parsedLog: ethers.utils.LogDescription): Promise<void> {
     for (let i = 1; i <= MAX_RETRY_TIMES; i++) {
       try {
         const txHash = log.transactionHash;
@@ -238,6 +238,7 @@ export class EthHandler {
             `Watcher update bridge in record successful while handle lock log for eth tx ${log.transactionHash}.`,
           );
         }
+        break;
       } catch (e) {
         logger.error(`EthHandler watchLockEvents error: ${e}`);
         if (i == MAX_RETRY_TIMES) {
@@ -248,7 +249,7 @@ export class EthHandler {
     }
   }
 
-  async onUnlockLogs(log, parsedLog) {
+  async onUnlockLogs(log: ethers.providers.Log, parsedLog: ethers.utils.LogDescription): Promise<void> {
     for (let i = 1; i <= MAX_RETRY_TIMES; i++) {
       try {
         const amount = parsedLog.args.receivedAmount.toString();
@@ -269,6 +270,7 @@ export class EthHandler {
           },
         ]);
         await this.db.updateBurnBridgeFee(ckbTxHash, amount);
+        break;
       } catch (e) {
         logger.error(`EthHandler watchUnlockEvents error: ${e}`);
         if (i == MAX_RETRY_TIMES) {
@@ -280,13 +282,13 @@ export class EthHandler {
   }
 
   // listen ETH chain and handle the new lock events
-  async watchLockEvents() {
+  async watchLockEvents(): Promise<void> {
     await this.ethChain.watchLockEvents(this.lastHandledBlockHeight, async (log, parsedLog) => {
       await this.onLockLogs(log, parsedLog);
     });
   }
 
-  async watchUnlockEvents() {
+  async watchUnlockEvents(): Promise<void> {
     await this.ethChain.watchUnlockEvents(this.lastHandledBlockHeight, async (log, parsedLog) => {
       await this.onUnlockLogs(log, parsedLog);
     });
@@ -298,12 +300,12 @@ export class EthHandler {
 
   // watch the eth_unlock table and handle the new unlock events
   // send tx according to the data
-  async handleUnlockRecords() {
+  async handleUnlockRecords(): Promise<void> {
     if (this.role !== 'collector') {
       return;
     }
     // todo: get and handle pending and error records
-    while (true) {
+    for (;;) {
       await asyncSleep(15000);
       logger.debug('EthHandler watchUnlockEvents get new unlock events and send tx');
       const records = await this.getUnlockRecords('todo');
@@ -375,7 +377,7 @@ export class EthHandler {
     return records.length < ForceBridgeCore.config.eth.batchUnlock.batchNumber;
   }
 
-  async start() {
+  async start(): Promise<void> {
     await this.init();
     this.watchNewBlock();
     this.watchLockEvents();
