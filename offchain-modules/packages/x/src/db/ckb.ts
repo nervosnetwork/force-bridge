@@ -120,7 +120,7 @@ export class CkbDb {
   }
 
   async updateCkbMintStatus(mintTxHash: string, status: dbTxStatus): Promise<void> {
-    this.connection
+    await this.connection
       .getRepository(CkbMint)
       .createQueryBuilder()
       .update()
