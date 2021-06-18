@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import commander from 'commander';
+import { feeCmd } from './bridgeFee';
 import { ethCmd } from './eth';
 import { relayerCmd } from './relayer';
 import { rpcCmd } from './rpc';
@@ -16,6 +17,7 @@ async function main() {
     .addCommand(ethCmd)
     .addCommand(relayerCmd)
     .addCommand(rpcCmd)
+    .addCommand(feeCmd)
     .addCommand(sigCmd);
 
   await program.parseAsync(process.argv);

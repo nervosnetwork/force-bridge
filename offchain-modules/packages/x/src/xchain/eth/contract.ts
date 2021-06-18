@@ -11,6 +11,7 @@ import { buildSigRawData } from './utils';
 
 export const lockTopic = ethers.utils.id('Locked(address,address,uint256,bytes,bytes)');
 export const unlockTopic = ethers.utils.id('Unlocked(address,address,address,uint256,bytes)');
+export const WithdrawBridgeFeeTopic = 'CommiteeWithdrawBridgeFee';
 
 export interface EthUnlockRecord {
   token: string;
@@ -155,6 +156,21 @@ export class EthChain {
       )}`,
     );
     return this.bridge.unlock(params, nonce, signatures);
+  }
+
+  public async getUnlockMessageToSign(records: EthUnlockRecord[], nonceString: string): Promise<string> {
+    const domainSeparator = await this.bridge.DOMAIN_SEPARATOR();
+    const typeHash = await this.bridge.UNLOCK_TYPEHASH();
+    const nonce: BigNumber = BigNumber.from(nonceString);
+    return buildSigRawData(domainSeparator, typeHash, records, nonce);
+  }
+
+  public async sendWithdrawBridgeFeeTx(
+    records: EthUnlockRecord[],
+    nonceString: string,
+    signatures: string[],
+  ): Promise<any> {
+    return this.bridge.unlock(records, BigNumber.from(nonceString), '0x' + signatures.join(''));
   }
 
   private async signUnlockRecords(

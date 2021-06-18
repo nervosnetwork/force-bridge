@@ -40,6 +40,14 @@ export interface ISigned {
   pubKey: string;
 }
 
+export interface IWithdrawedBridgeFee {
+  txHash: string;
+  recipient: string;
+  chain: number;
+  asset: string;
+  amount: string;
+}
+
 export interface ICkbMint {
   id: string;
   chain: ChainType;
