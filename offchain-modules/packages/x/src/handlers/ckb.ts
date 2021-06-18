@@ -5,18 +5,18 @@ import { sealTransaction } from '@ckb-lumos/helpers';
 import { RPC } from '@ckb-lumos/rpc';
 import TransactionManager from '@ckb-lumos/transaction-manager';
 import { Address, AddressType, Amount, HashType, Script } from '@lay2/pw-core';
-import CKB from '@nervosnetwork/ckb-sdk-core';
 import { Reader } from 'ckb-js-toolkit';
 import { Account } from '../ckb/model/accounts';
 import { Asset, BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '../ckb/model/asset';
 import { RecipientCellData } from '../ckb/tx-helper/generated/eth_recipient_cell';
+import { ForceBridgeLockscriptArgs } from '../ckb/tx-helper/generated/force_bridge_lockscript';
 import { MintWitness } from '../ckb/tx-helper/generated/mint_witness';
 import { CkbTxGenerator, MintAssetRecord } from '../ckb/tx-helper/generator';
 import { ScriptType } from '../ckb/tx-helper/indexer';
-import { getOwnerTypeHash, getOwnLockHash } from '../ckb/tx-helper/multisig/multisig_helper';
+import { getOwnerTypeHash } from '../ckb/tx-helper/multisig/multisig_helper';
 import { forceBridgeRole } from '../config';
 import { ForceBridgeCore } from '../core';
-import { CkbDb } from '../db';
+import { CkbDb, KVDb } from '../db';
 import { CkbMint, ICkbBurn, MintedRecords } from '../db/model';
 import { asserts, nonNullable } from '../errors';
 import { createAsset, MultiSigMgr } from '../multisig/multisig-mgr';
@@ -26,7 +26,6 @@ import { getAssetTypeByAsset } from '../xchain/tron/utils';
 import Transaction = CKBComponents.Transaction;
 import TransactionWithStatus = CKBComponents.TransactionWithStatus;
 import Block = CKBComponents.Block;
-import { ForceBridgeLockscriptArgs } from '../ckb/tx-helper/generated/force_bridge_lockscript';
 
 const lastHandleCkbBlockKey = 'lastHandleCkbBlock';
 
@@ -41,7 +40,7 @@ export class CkbHandler {
   private lastHandledBlockHeight: number;
   private lastHandledBlockHash: string;
 
-  constructor(private db: CkbDb, private kvDb, private role: forceBridgeRole) {
+  constructor(private db: CkbDb, private kvDb: KVDb, private role: forceBridgeRole) {
     this.transactionManager = new TransactionManager(this.ckbIndexer);
     this.multisigMgr = new MultiSigMgr(
       'CKB',
@@ -65,7 +64,7 @@ export class CkbHandler {
     await this.kvDb.set(lastHandleCkbBlockKey, `${blockNumber},${blockHash}`);
   }
 
-  async onCkbBurnConfirmed(confirmedCkbBurns: ICkbBurn[]) {
+  async onCkbBurnConfirmed(confirmedCkbBurns: ICkbBurn[]): Promise<void> {
     if (this.role !== 'collector') return;
     for (const burn of confirmedCkbBurns) {
       logger.info(`CkbHandler onCkbBurnConfirmed burnRecord:${JSON.stringify(burn, undefined, 2)}`);
@@ -119,7 +118,7 @@ export class CkbHandler {
     }
   }
 
-  async initLastHandledBlock() {
+  async initLastHandledBlock(): Promise<void> {
     const lastHandledBlock = await this.getLastHandledBlock();
     if (lastHandledBlock.blockNumber !== 0) {
       this.lastHandledBlockHeight = lastHandledBlock.blockNumber;
@@ -142,7 +141,7 @@ export class CkbHandler {
     this.lastHandledBlockHash = currentBlock.hash;
   }
 
-  async watchNewBlock() {
+  async watchNewBlock(): Promise<void> {
     await this.initLastHandledBlock();
 
     for (;;) {
@@ -156,7 +155,7 @@ export class CkbHandler {
     }
   }
 
-  async onBlock(block: Block) {
+  async onBlock(block: Block): Promise<void> {
     const blockNumber = Number(block.header.number);
     const blockHash = block.header.hash;
     logger.info(`CkbHandler onBlock blockHeight:${blockNumber} blockHash:${blockHash}`);
@@ -239,15 +238,16 @@ export class CkbHandler {
     await this.setLastHandledBlock(blockNumber, blockHash);
   }
 
-  async onMintTx(mintedRecords: MintedRecords) {
+  async onMintTx(mintedRecords: MintedRecords): Promise<void> {
     if (this.role === 'collector') {
-      return await this.db.updateCkbMintStatus(mintedRecords.txHash, 'success');
+      await this.db.updateCkbMintStatus(mintedRecords.txHash, 'success');
+      return;
     }
     await this.db.watcherCreateMint(mintedRecords);
     await this.db.updateBridgeInRecords(mintedRecords);
   }
 
-  async onBurnTxs(latestHeight: number, burnTxs: Map<string, BurnDbData>) {
+  async onBurnTxs(latestHeight: number, burnTxs: Map<string, BurnDbData>): Promise<void> {
     if (burnTxs.size === 0) {
       return;
     }
@@ -342,7 +342,7 @@ export class CkbHandler {
     // const ownLockHash = getOwnLockHash(ForceBridgeCore.config.ckb.multisigScript);
     const ownerTypeHash = getOwnerTypeHash();
     const generator = new CkbTxGenerator(this.ckb, this.ckbIndexer);
-    while (true) {
+    for (;;) {
       const mintRecords = await this.db.getCkbMintRecordsToMint();
       if (mintRecords.length == 0) {
         logger.debug('wait for new mint records');
@@ -500,7 +500,7 @@ export class CkbHandler {
     return newTokens;
   }
 
-  async createBridgeCell(newTokens: MintAssetRecord[], generator: CkbTxGenerator) {
+  async createBridgeCell(newTokens: MintAssetRecord[], generator: CkbTxGenerator): Promise<void | Script> {
     const assets: createAsset[] = [];
     const scripts = newTokens.map((r) => {
       assets.push({
@@ -529,7 +529,7 @@ export class CkbHandler {
     content1 += sigs.join('');
 
     const tx = sealTransaction(txSkeleton, [content0, content1]);
-    console.log('tx:', JSON.stringify(tx, null, 2));
+    logger.info('tx:', JSON.stringify(tx, null, 2));
     const txHash = await this.transactionManager.send_transaction(tx);
     await this.waitUntilCommitted(txHash, 60);
   }
@@ -539,7 +539,7 @@ export class CkbHandler {
     const rpcTipNumber = parseInt((await ckbRpc.get_tip_header()).number, 16);
     logger.debug('rpcTipNumber', rpcTipNumber);
     let index = 0;
-    while (true) {
+    for (;;) {
       const indexerTipNumber = parseInt((await this.ckbIndexer.tip()).block_number, 16);
       logger.debug('indexerTipNumber', indexerTipNumber);
       if (indexerTipNumber >= rpcTipNumber) {
@@ -560,11 +560,11 @@ export class CkbHandler {
     return bridgeLockHash;
   }
 
-  async waitUntilCommitted(txHash: string, timeout: number) {
+  async waitUntilCommitted(txHash: string, timeout: number): Promise<CKBComponents.TransactionWithStatus> {
     let waitTime = 0;
     const statusMap = new Map<string, boolean>();
 
-    while (true) {
+    for (;;) {
       const txStatus = await this.ckb.rpc.getTransaction(txHash);
       if (!statusMap.get(txStatus.txStatus.status)) {
         logger.info(
@@ -593,7 +593,7 @@ export class CkbHandler {
 function isTypeIDCorrect(args: string): boolean {
   const expectOwnerTypeHash = getOwnerTypeHash();
   const bridgeLockArgs = new ForceBridgeLockscriptArgs(fromHexString(args).buffer);
-  const ownerTypeHash = toHexString(new Uint8Array(bridgeLockArgs.getOwnerCellTypeHash().raw()));
+  const ownerTypeHash = `0x${toHexString(new Uint8Array(bridgeLockArgs.getOwnerCellTypeHash().raw()))}`;
   return ownerTypeHash === expectOwnerTypeHash;
 }
 
