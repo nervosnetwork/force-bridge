@@ -7,9 +7,9 @@ import { EthDb, KVDb } from '../db';
 import { EthUnlockStatus } from '../db/entity/EthUnlock';
 import { EthUnlock } from '../db/model';
 import { RelayerMetric } from '../monitor/relayer-metric';
-import { asyncSleep, fromHexString, uint8ArrayToString } from '../utils';
+import { asyncSleep, foreverPromise, fromHexString, uint8ArrayToString } from '../utils';
 import { logger } from '../utils/logger';
-import { EthChain } from '../xchain/eth';
+import { EthChain, Log, ParsedLog } from '../xchain/eth';
 
 const MAX_RETRY_TIMES = 3;
 const lastHandleEthBlockKey = 'lastHandleEthBlock';
@@ -44,7 +44,7 @@ export class EthHandler {
     await this.kvDb.set(lastHandleEthBlockKey, `${blockNumber},${blockHash}`);
   }
 
-  async init() {
+  async init(): Promise<void> {
     const currentBlockHeight = await this.ethChain.getCurrentBlockNumber();
     const lastHandledBlock = await this.getLastHandledBlock();
     if (lastHandledBlock.blockNumber === 0) {
@@ -114,8 +114,8 @@ export class EthHandler {
     }
   }
 
-  async watchNewBlock() {
-    await this.ethChain.watchNewBlock(this.lastHandledBlockHeight, async (newBlock: ethers.providers.Block) => {
+  watchNewBlock(): void {
+    this.ethChain.watchNewBlock(this.lastHandledBlockHeight, async (newBlock: ethers.providers.Block) => {
       await this.onBlock(newBlock);
       this.metrics.setBlockHeightMetrics(this.role, 'eth', newBlock.number);
     });
@@ -130,7 +130,7 @@ export class EthHandler {
     );
   }
 
-  async onBlock(block: ethers.providers.Block) {
+  async onBlock(block: ethers.providers.Block): Promise<void> {
     for (let i = 1; i <= MAX_RETRY_TIMES; i++) {
       try {
         const confirmNumber = ForceBridgeCore.config.eth.confirmNumber;
@@ -164,7 +164,7 @@ export class EthHandler {
     }
   }
 
-  async confirmEthLocks(currentBlockHeight: number, confirmNumber: number) {
+  async confirmEthLocks(currentBlockHeight: number, confirmNumber: number): Promise<void> {
     const confirmedBlockHeight = currentBlockHeight - confirmNumber;
     const unConfirmedLocks = await this.db.getUnconfirmedLocks();
     if (unConfirmedLocks.length === 0) {
@@ -211,7 +211,7 @@ export class EthHandler {
     }
   }
 
-  async onLockLogs(log, parsedLog) {
+  async onLockLogs(log: Log, parsedLog: ParsedLog): Promise<void> {
     for (let i = 1; i <= MAX_RETRY_TIMES; i++) {
       try {
         const txHash = log.transactionHash;
@@ -261,7 +261,7 @@ export class EthHandler {
     }
   }
 
-  async onUnlockLogs(log, parsedLog) {
+  async onUnlockLogs(log: Log, parsedLog: ParsedLog): Promise<void> {
     for (let i = 1; i <= MAX_RETRY_TIMES; i++) {
       try {
         const amount = parsedLog.args.receivedAmount.toString();
@@ -293,14 +293,14 @@ export class EthHandler {
   }
 
   // listen ETH chain and handle the new lock events
-  async watchLockEvents() {
-    await this.ethChain.watchLockEvents(this.lastHandledBlockHeight, async (log, parsedLog) => {
+  watchLockEvents(): void {
+    this.ethChain.watchLockEvents(this.lastHandledBlockHeight, async (log, parsedLog) => {
       await this.onLockLogs(log, parsedLog);
     });
   }
 
-  async watchUnlockEvents() {
-    await this.ethChain.watchUnlockEvents(this.lastHandledBlockHeight, async (log, parsedLog) => {
+  watchUnlockEvents(): void {
+    this.ethChain.watchUnlockEvents(this.lastHandledBlockHeight, async (log, parsedLog) => {
       await this.onUnlockLogs(log, parsedLog);
     });
   }
@@ -311,70 +311,76 @@ export class EthHandler {
 
   // watch the eth_unlock table and handle the new unlock events
   // send tx according to the data
-  async handleUnlockRecords() {
+  handleUnlockRecords(): void {
     if (this.role !== 'collector') {
       return;
     }
     // todo: get and handle pending and error records
-    while (true) {
-      await asyncSleep(15000);
-      logger.debug('EthHandler watchUnlockEvents get new unlock events and send tx');
-      const records = await this.getUnlockRecords('todo');
-      if (records.length === 0 || this.waitForBatch(records)) {
-        logger.info('wait for batch');
-        continue;
-      }
-      logger.info('EthHandler watchUnlockEvents unlock records', records);
+    foreverPromise(
+      async () => {
+        await asyncSleep(15000);
+        logger.debug('EthHandler watchUnlockEvents get new unlock events and send tx');
+        const records = await this.getUnlockRecords('todo');
+        if (records.length === 0 || this.waitForBatch(records)) {
+          logger.info('wait for batch');
+          return;
+        }
+        logger.info('EthHandler watchUnlockEvents unlock records', records);
 
-      const unlockTxHashes = records
-        .map((unlockRecord) => {
-          return unlockRecord.ckbTxHash;
-        })
-        .join(', ');
-      logger.info(
-        `EthHandler watchUnlockEvents start process unlock Record, ckbTxHashes:${unlockTxHashes} num:${records.length}`,
-      );
+        const unlockTxHashes = records
+          .map((unlockRecord) => {
+            return unlockRecord.ckbTxHash;
+          })
+          .join(', ');
+        logger.info(
+          `EthHandler watchUnlockEvents start process unlock Record, ckbTxHashes:${unlockTxHashes} num:${records.length}`,
+        );
 
-      try {
-        // write db first, avoid send tx success and fail to write db
-        records.map((r) => {
-          r.status = 'pending';
-        });
-        await this.db.saveEthUnlock(records);
-        const txRes = await this.ethChain.sendUnlockTxs(records);
-        records.map((r) => {
-          r.status = 'pending';
-          r.ethTxHash = txRes.hash;
-        });
-        await this.db.saveEthUnlock(records);
-        logger.debug('sendUnlockTxs res', txRes);
-        const receipt = await txRes.wait();
-        logger.info(`EthHandler watchUnlockEvents sendUnlockTxs receipt:${JSON.stringify(receipt.logs, null, 2)}`);
-        if (receipt.status === 1) {
+        try {
+          // write db first, avoid send tx success and fail to write db
           records.map((r) => {
-            r.status = 'success';
+            r.status = 'pending';
           });
-          this.metrics.addBridgeTxMetrics('eth_unlock', 'success');
-        } else {
+          await this.db.saveEthUnlock(records);
+          const txRes = await this.ethChain.sendUnlockTxs(records);
+          records.map((r) => {
+            r.status = 'pending';
+            r.ethTxHash = txRes.hash;
+          });
+          await this.db.saveEthUnlock(records);
+          logger.debug('sendUnlockTxs res', txRes);
+          const receipt = await txRes.wait();
+          logger.info(`EthHandler watchUnlockEvents sendUnlockTxs receipt:${JSON.stringify(receipt.logs, null, 2)}`);
+          if (receipt.status === 1) {
+            records.map((r) => {
+              r.status = 'success';
+            });
+            this.metrics.addBridgeTxMetrics('eth_unlock', 'success');
+          } else {
+            records.map((r) => {
+              r.status = 'error';
+              r.message = 'unlock tx failed';
+            });
+            this.metrics.addBridgeTxMetrics('eth_unlock', 'failed');
+            logger.error('EthHandler watchUnlockEvents unlock execute failed:', receipt);
+          }
+          await this.db.saveEthUnlock(records);
+          logger.info('EthHandler watchUnlockEvents process unlock Record completed');
+        } catch (e) {
           records.map((r) => {
             r.status = 'error';
-            r.message = 'unlock tx failed';
+            r.message = e.message;
           });
-          this.metrics.addBridgeTxMetrics('eth_unlock', 'failed');
-          logger.error('EthHandler watchUnlockEvents unlock execute failed:', receipt);
-        }
-        await this.db.saveEthUnlock(records);
-        logger.info('EthHandler watchUnlockEvents process unlock Record completed');
-      } catch (e) {
-        records.map((r) => {
-          r.status = 'error';
-          r.message = e.message;
-        });
-        await this.db.saveEthUnlock(records);
+          await this.db.saveEthUnlock(records);
 
-        logger.error(`EthHandler watchUnlockEvents error:${e.toString()}, ${e.message}`);
-      }
-    }
+          logger.error(`EthHandler watchUnlockEvents error:${e.toString()}, ${e.message}`);
+        }
+      },
+      {
+        onRejectedInterval: 0,
+        onResolvedInterval: 0,
+      },
+    );
   }
 
   waitForBatch(records: EthUnlock[]): boolean {
@@ -390,14 +396,15 @@ export class EthHandler {
     return records.length < ForceBridgeCore.config.eth.batchUnlock.batchNumber;
   }
 
-  async start() {
-    await this.init();
-    this.watchNewBlock();
-    this.watchLockEvents();
-    if (this.role !== 'collector') {
-      this.watchUnlockEvents();
-    }
-    this.handleUnlockRecords();
-    logger.info('eth handler started  🚀');
+  start(): void {
+    this.init().then(() => {
+      this.watchNewBlock();
+      this.watchLockEvents();
+
+      if (this.role !== 'collector') this.watchUnlockEvents();
+
+      this.handleUnlockRecords();
+      logger.info('eth handler started  🚀');
+    });
   }
 }
