@@ -23,12 +23,12 @@ export class RpcMetric {
     }
   }
 
-  setRpcRequestDurationMetric(method: string, status: responseStatus, time: number) {
+  setRpcRequestDurationMetric(method: string, status: responseStatus, time: number): void {
     this.rpcRequestDurationms.labels(method, status).observe(time);
     this.handlerPushMetric('rpc_request');
   }
 
-  handlerPushMetric(jobName: string) {
+  handlerPushMetric(jobName: string): void {
     if (this.openPushMetric) {
       this.gateway.push({ jobName: jobName }, (err, resp, body) => {
         if (err != null) {

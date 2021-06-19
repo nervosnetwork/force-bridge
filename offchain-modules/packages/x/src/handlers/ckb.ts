@@ -10,6 +10,7 @@ import { UpdateResult } from 'typeorm';
 import { Account } from '../ckb/model/accounts';
 import { Asset, BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '../ckb/model/asset';
 import { RecipientCellData } from '../ckb/tx-helper/generated/eth_recipient_cell';
+import { ForceBridgeLockscriptArgs } from '../ckb/tx-helper/generated/force_bridge_lockscript';
 import { MintWitness } from '../ckb/tx-helper/generated/mint_witness';
 import { CkbTxGenerator, MintAssetRecord } from '../ckb/tx-helper/generator';
 import { ScriptType } from '../ckb/tx-helper/indexer';
@@ -19,6 +20,7 @@ import { ForceBridgeCore } from '../core';
 import { CkbDb, KVDb } from '../db';
 import { CkbMint, ICkbBurn, MintedRecords } from '../db/model';
 import { asserts, nonNullable } from '../errors';
+import { RelayerMetric } from '../monitor/relayer-metric';
 import { createAsset, MultiSigMgr } from '../multisig/multisig-mgr';
 import { asyncSleep, foreverPromise, fromHexString, toHexString, uint8ArrayToString } from '../utils';
 import { logger } from '../utils/logger';
@@ -26,8 +28,6 @@ import { getAssetTypeByAsset } from '../xchain/tron/utils';
 import Transaction = CKBComponents.Transaction;
 import TransactionWithStatus = CKBComponents.TransactionWithStatus;
 import Block = CKBComponents.Block;
-import { ForceBridgeLockscriptArgs } from '../ckb/tx-helper/generated/force_bridge_lockscript';
-import { RelayerMetric } from '../monitor/relayer-metric';
 
 const lastHandleCkbBlockKey = 'lastHandleCkbBlock';
 
@@ -50,7 +50,7 @@ export class CkbHandler {
       ForceBridgeCore.config.ckb.multiSignHosts,
       ForceBridgeCore.config.ckb.multisigScript.M,
     );
-    this.metrics = new RelayerMetric(monitorPushGateWayURL);
+    this.metrics = new RelayerMetric(role, monitorPushGateWayURL);
   }
 
   async getLastHandledBlock(): Promise<{ blockNumber: number; blockHash: string }> {

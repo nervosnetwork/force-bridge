@@ -26,7 +26,7 @@ export class EthHandler {
     private role: forceBridgeRole,
     monitorPushGateWayURL: string,
   ) {
-    this.metrics = new RelayerMetric(monitorPushGateWayURL);
+    this.metrics = new RelayerMetric(role, monitorPushGateWayURL);
   }
 
   async getLastHandledBlock(): Promise<{ blockNumber: number; blockHash: string }> {

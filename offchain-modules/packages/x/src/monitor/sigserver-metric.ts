@@ -30,7 +30,7 @@ export class SigserverMetric {
     }
   }
 
-  setSigServerRequestMetric(signer: string, method: string, status: status, time: number) {
+  setSigServerRequestMetric(signer: string, method: string, status: status, time: number): void {
     this.sigServerRequestDurationms.labels(signer, method, status).observe(time);
     this.sigServerSignatureNum.labels(signer, method, status).inc(1);
     this.handlerPushMetric('sig_server_request');

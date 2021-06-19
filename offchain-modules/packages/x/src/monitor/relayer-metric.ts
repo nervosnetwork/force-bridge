@@ -13,23 +13,23 @@ export class RelayerMetric {
   private gateway: Prometheus.Pushgateway;
   private openPushMetric: boolean;
 
-  constructor(pushGatewayURL: string) {
+  constructor(role: forceBridgeRole, pushGatewayURL: string) {
     const Registry = Prometheus.Registry;
     const register = new Registry();
 
     this.relayBlockHeightNum = new Prometheus.Gauge({
-      name: 'relay_block_height_number',
-      help: 'block height synced by different role.',
+      name: `${role}_block_height_number`,
+      help: `block height synced by different ${role}.`,
       labelNames: ['role', 'height_type'],
     });
     this.relayBridgeTxNum = new Prometheus.Counter({
-      name: 'relay_bridgetx_total',
-      help: 'tx amount of lock,mint,burn,unlock',
+      name: `${role}_bridgetx_total`,
+      help: `tx amount of lock,mint,burn,unlock`,
       labelNames: ['tx_type', 'status'],
     });
     this.relayBridgeTokenAmountNum = new Prometheus.Gauge({
-      name: 'relay_bridge_token_amount',
-      help: 'token amount of lock,mint,burn,unlock',
+      name: `${role}_bridge_token_amount`,
+      help: `token amount of lock,mint,burn,unlock`,
       labelNames: ['tx_type', 'token'],
     });
     register.registerMetric(this.relayBlockHeightNum);
@@ -42,17 +42,17 @@ export class RelayerMetric {
     }
   }
 
-  setBlockHeightMetrics(role: forceBridgeRole, chain_type: chainType, sync_height: number) {
+  setBlockHeightMetrics(role: forceBridgeRole, chain_type: chainType, sync_height: number): void {
     this.relayBlockHeightNum.labels({ role: role, height_type: `${chain_type}_synced_height` }).set(sync_height);
     this.handlerPushMetric('relay_bridgetx');
   }
 
-  addBridgeTxMetrics(tx_type: txType, tx_status: txStatus) {
+  addBridgeTxMetrics(tx_type: txType, tx_status: txStatus): void {
     this.relayBridgeTxNum.labels({ tx_type: tx_type, status: tx_status }).inc(1);
     this.handlerPushMetric('relay_bridgetx');
   }
 
-  addBridgeTokenMetrics(tx_type: txType, token: string, amount: number) {
+  addBridgeTokenMetrics(tx_type: txType, token: string, amount: number): void {
     this.relayBridgeTokenAmountNum.labels({ tx_type: tx_type, token: token }).inc(amount);
     this.handlerPushMetric('relay_bridgetx');
   }
@@ -65,7 +65,7 @@ export class RelayerMetric {
   //   this.handlerPushMetric('relay_bridgetx');
   // }
 
-  handlerPushMetric(jobName: string) {
+  handlerPushMetric(jobName: string): void {
     if (this.openPushMetric) {
       this.gateway.push({ jobName: jobName }, (err, resp, body) => {
         if (err != null) {
