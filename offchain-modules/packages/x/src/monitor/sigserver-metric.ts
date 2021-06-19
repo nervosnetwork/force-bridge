@@ -36,7 +36,7 @@ export class SigserverMetric {
     this.handlerPushMetric('sig_server_request');
   }
 
-  handlerPushMetric(jobName: string) {
+  handlerPushMetric(jobName: string): void {
     if (this.openPushMetric) {
       this.gateway.push({ jobName: jobName }, (err, resp, body) => {
         if (err != null) {
