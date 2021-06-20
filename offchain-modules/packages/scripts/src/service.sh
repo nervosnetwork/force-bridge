@@ -5,7 +5,7 @@ set -x
 
 PROJECT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && cd .. && pwd )"
 
-
+FORCE_BRIDGE_CLI=forcecli
 rpc_port=8080
 watcher_config="${PROJECT_DIR}/offchain-modules/packages/scripts/src/integration-test/config/watcher.json"
 
