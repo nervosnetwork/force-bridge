@@ -8,8 +8,7 @@ export class RpcMetric {
   private gateway: Prometheus.Pushgateway;
   private openPushMetric: boolean;
   constructor(pushGatewayURL: string) {
-    const Registry = Prometheus.Registry;
-    const register = new Registry();
+    const register = new Prometheus.Registry();
     this.rpcRequestDurationms = new Prometheus.Histogram({
       name: 'rpc_request_duration_ms',
       help: 'Duration of rpc server requests in ms',

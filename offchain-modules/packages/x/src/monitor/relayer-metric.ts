@@ -14,8 +14,7 @@ export class RelayerMetric {
   private openPushMetric: boolean;
 
   constructor(role: forceBridgeRole, pushGatewayURL: string) {
-    const Registry = Prometheus.Registry;
-    const register = new Registry();
+    const register = new Prometheus.Registry();
 
     this.relayBlockHeightNum = new Prometheus.Gauge({
       name: `${role}_block_height_number`,

@@ -10,8 +10,7 @@ export class SigserverMetric {
   private gateway: Prometheus.Pushgateway;
   private openPushMetric: boolean;
   constructor(pushGatewayURL: string) {
-    const Registry = Prometheus.Registry;
-    const register = new Registry();
+    const register = new Prometheus.Registry();
     this.sigServerRequestDurationms = new Prometheus.Histogram({
       name: 'sig_server_request_duration_ms',
       help: 'Duration of sig server requests in ms',
