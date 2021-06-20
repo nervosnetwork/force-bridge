@@ -82,15 +82,15 @@ async function getCells(script_args: string, indexerUrl: string): Promise<RawTra
   return cells.filter((c) => c.data === '0x' && !c.type);
 }
 
-function getPreDeployedAssets() {
-  const ownerLockHash = nconf.get('forceBridge:ckb:ownerLockHash');
-  return [
-    new BtcAsset('btc', ownerLockHash),
-    new EthAsset('0x0000000000000000000000000000000000000000', ownerLockHash),
-    new TronAsset('trx', ownerLockHash),
-    new EosAsset('EOS', ownerLockHash),
-  ];
-}
+// function getPreDeployedAssets() {
+//   const ownerLockHash = nconf.get('forceBridge:ckb:ownerLockHash');
+//   return [
+//     new BtcAsset('btc', ownerLockHash),
+//     new EthAsset('0x0000000000000000000000000000000000000000', ownerLockHash),
+//     new TronAsset('trx', ownerLockHash),
+//     new EosAsset('EOS', ownerLockHash),
+//   ];
+// }
 
 // async function createBridgeCell(assets: Asset[]) {
 //   const { secp256k1Dep } = await ckb.loadDeps();
@@ -211,7 +211,7 @@ const deploy = async () => {
   const signedTx = ckb.signTransaction(PRI_KEY)(rawTx);
   const deployTxHash = await ckb.rpc.sendTransaction(signedTx);
   console.log(`Transaction has been sent with tx hash ${deployTxHash}`);
-  const txStatus = await waitUntilCommitted(deployTxHash);
+  await waitUntilCommitted(deployTxHash);
   // console.dir({ txStatus }, {depth: null})
   // nconf.set('deployTxHash', deployTxHash);
   const scriptsInfo = {
@@ -272,9 +272,9 @@ const waitUntilCommitted = async (txHash) => {
   }
 };
 const setStartTime = async () => {
-  const ckb_tip = await ckb.rpc.getTipBlockNumber();
-  console.debug(`ckb start height is ${parseInt(ckb_tip, 10)}`);
-  nconf.set('forceBridge:ckb:startBlockHeight', parseInt(ckb_tip, 10));
+  const currentBlock = await ckb.rpc.getTipHeader();
+  console.debug(`ckb start height is ${Number(currentBlock.number)}`);
+  nconf.set('forceBridge:ckb:startBlockHeight', Number(currentBlock.number));
   nconf.save();
 };
 

@@ -6,6 +6,10 @@ module.exports = {
     'plugin:import/warnings',
     'plugin:import/typescript',
   ],
+  parserOptions: {
+    tsconfigRootDir: __dirname,
+    project: ['./tsconfig.json', './packages/*/tsconfig.json'],
+  },
   env: { jest: true, node: true },
   plugins: ['@typescript-eslint', 'import', 'prettier'],
   rules: {
@@ -18,5 +22,6 @@ module.exports = {
     'import/order': ['warn', { alphabetize: { order: 'asc' } }],
     'no-console': 'warn',
     'no-constant-condition': 'warn',
+    '@typescript-eslint/no-floating-promises': ['warn'],
   },
 };
