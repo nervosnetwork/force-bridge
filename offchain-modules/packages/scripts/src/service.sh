@@ -3,7 +3,7 @@
 set -e
 set -x
 
-PROJECT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && cd .. && pwd )"
+PROJECT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && cd ../../../../ && pwd )"
 
 FORCE_BRIDGE_CLI=forcecli
 rpc_port=8080
@@ -23,7 +23,6 @@ build_cli(){
 }
 
 deploy_contract(){
-  cd "${PROJECT_DIR}/ckb-contracts" && capsule build --release
 	cd "${PROJECT_DIR}/offchain-modules" && yarn --frozen-lockfile && yarn build
 	cd "${PROJECT_DIR}/offchain-modules" && yarn deploy
 	cd "${PROJECT_DIR}/offchain-modules" && yarn init-multisig
