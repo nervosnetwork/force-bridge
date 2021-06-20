@@ -20,7 +20,7 @@ import { ForceBridgeCore } from '../core';
 import { CkbDb, KVDb } from '../db';
 import { CkbMint, ICkbBurn, MintedRecords } from '../db/model';
 import { asserts, nonNullable } from '../errors';
-import { RelayerMetric } from '../monitor/relayer-metric';
+import { RelayerMetric, txTokenInfo } from '../monitor/relayer-metric';
 import { createAsset, MultiSigMgr } from '../multisig/multisig-mgr';
 import { asyncSleep, foreverPromise, fromHexString, toHexString, uint8ArrayToString } from '../utils';
 import { logger } from '../utils/logger';
@@ -155,7 +155,8 @@ export class CkbHandler {
           if (block == null) return asyncSleep(5000);
 
           await this.onBlock(block);
-          RelayerMetric.setBlockHeightMetrics(this.role, 'ckb', nextBlockHeight);
+          const currentBlock = await this.ckb.rpc.getTipHeader();
+          RelayerMetric.setBlockHeightMetrics(this.role, 'ckb', nextBlockHeight, Number(currentBlock.number));
         },
         {
           onRejectedInterval: 3000,
@@ -246,7 +247,6 @@ export class CkbHandler {
             tx.hash
           } senderAddress:${senderAddress} cellData:${JSON.stringify(cellData, null, 2)}`,
         );
-        RelayerMetric.addBridgeTxMetrics('ckb_burn', 'success');
       }
     }
     await this.onBurnTxs(blockNumber, burnTxs);
@@ -289,6 +289,15 @@ export class CkbHandler {
           };
           break;
         }
+      }
+      if (burn) {
+        RelayerMetric.addBridgeTxMetrics('ckb_burn', 'success');
+        RelayerMetric.addBridgeTokenMetrics('ckb_burn', [
+          {
+            token: burn.asset,
+            amount: Number(burn.amount),
+          },
+        ]);
       }
 
       asserts(burn);
@@ -424,10 +433,16 @@ export class CkbHandler {
           );
           const txStatus = await this.waitUntilCommitted(mintTxHash, 200);
           if (txStatus.txStatus.status === 'committed') {
+            const mintTokens: txTokenInfo[] = [];
             mintRecords.map((r) => {
               r.status = 'success';
               r.mintHash = mintTxHash;
+              mintTokens.push({
+                token: r.asset,
+                amount: Number(r.amount),
+              });
             });
+            RelayerMetric.addBridgeTokenMetrics('ckb_mint', mintTokens);
           } else {
             mintRecords.map((r) => {
               r.mintHash = mintTxHash;

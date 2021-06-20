@@ -5,13 +5,16 @@ import { logger } from '../utils/logger';
 export type chainType = 'ckb' | 'eth';
 export type txType = 'ckb_mint' | 'ckb_burn' | 'eth_lock' | 'eth_unlock';
 export type txStatus = 'success' | 'failed';
+export type txTokenInfo = {
+  token: string;
+  amount: number;
+};
 
 export class RelayerMetric {
   private static _relayBlockHeightNum: Prometheus.Gauge<any>;
   private static _relayBridgeTxNum: Prometheus.Counter<any>;
   private static _relayBridgeTokenAmountNum: Prometheus.Gauge<any>;
 
-  // private static _register: Prometheus.Registry;
   private static _gateway: Prometheus.Pushgateway;
   private static _openPushMetric: boolean;
 
@@ -43,10 +46,18 @@ export class RelayerMetric {
     }
   }
 
-  static setBlockHeightMetrics(role: forceBridgeRole, chain_type: chainType, sync_height: number): void {
+  static setBlockHeightMetrics(
+    role: forceBridgeRole,
+    chain_type: chainType,
+    sync_height: number,
+    actual_height: number,
+  ): void {
     RelayerMetric._relayBlockHeightNum
       .labels({ role: role, height_type: `${chain_type}_synced_height` })
       .set(sync_height);
+    RelayerMetric._relayBlockHeightNum
+      .labels({ role: role, height_type: `${chain_type}_actual_height` })
+      .set(actual_height);
     this.handlerPushMetric('relay_bridgetx');
   }
 
@@ -55,8 +66,12 @@ export class RelayerMetric {
     this.handlerPushMetric('relay_bridgetx');
   }
 
-  static addBridgeTokenMetrics(tx_type: txType, token: string, amount: number): void {
-    RelayerMetric._relayBridgeTokenAmountNum.labels({ tx_type: tx_type, token: token }).inc(amount);
+  static addBridgeTokenMetrics(tx_type: txType, tokens: txTokenInfo[]): void {
+    tokens.map((tokenInfo) => {
+      RelayerMetric._relayBridgeTokenAmountNum
+        .labels({ tx_type: tx_type, token: tokenInfo.token })
+        .inc(Number(tokenInfo.amount));
+    });
     this.handlerPushMetric('relay_bridgetx');
   }
 
