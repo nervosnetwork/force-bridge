@@ -8,6 +8,7 @@ import { CkbHandler } from '../handlers/ckb';
 import { EosHandler } from '../handlers/eos';
 import { EthHandler } from '../handlers/eth';
 import { TronHandler } from '../handlers/tron';
+import { RelayerMetric } from '../monitor/relayer-metric';
 import { parsePrivateKey } from '../utils';
 import { logger } from '../utils/logger';
 import { BTCChain } from '../xchain/btc';
@@ -27,6 +28,7 @@ export async function startHandlers(conn: Connection) {
   if (ForceBridgeCore.config.common.monitor) {
     promPushGateWayURL = ForceBridgeCore.config.common.monitor.pushGatewayURL;
   }
+  new RelayerMetric().init(role, promPushGateWayURL);
 
   // init db and start handlers
   const ckbDb = new CkbDb(conn);
@@ -34,7 +36,7 @@ export async function startHandlers(conn: Connection) {
   if (isCollector) {
     ForceBridgeCore.config.ckb.fromPrivateKey = parsePrivateKey(ForceBridgeCore.config.ckb.fromPrivateKey);
   }
-  const ckbHandler = new CkbHandler(ckbDb, kvDb, role, promPushGateWayURL);
+  const ckbHandler = new CkbHandler(ckbDb, kvDb, role);
   ckbHandler.start();
 
   // start xchain handlers if config exists
@@ -44,7 +46,7 @@ export async function startHandlers(conn: Connection) {
     }
     const ethDb = new EthDb(conn);
     const ethChain = new EthChain(role);
-    const ethHandler = new EthHandler(ethDb, kvDb, ethChain, role, promPushGateWayURL);
+    const ethHandler = new EthHandler(ethDb, kvDb, ethChain, role);
     ethHandler.start();
   }
   if (ForceBridgeCore.config.eos !== undefined) {

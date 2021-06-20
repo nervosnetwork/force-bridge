@@ -41,16 +41,14 @@ export class CkbHandler {
   private multisigMgr: MultiSigMgr;
   private lastHandledBlockHeight: number;
   private lastHandledBlockHash: string;
-  private metrics: RelayerMetric;
 
-  constructor(private db: CkbDb, private kvDb: KVDb, private role: forceBridgeRole, monitorPushGateWayURL: string) {
+  constructor(private db: CkbDb, private kvDb: KVDb, private role: forceBridgeRole) {
     this.transactionManager = new TransactionManager(this.ckbIndexer);
     this.multisigMgr = new MultiSigMgr(
       'CKB',
       ForceBridgeCore.config.ckb.multiSignHosts,
       ForceBridgeCore.config.ckb.multisigScript.M,
     );
-    this.metrics = new RelayerMetric(role, monitorPushGateWayURL);
   }
 
   async getLastHandledBlock(): Promise<{ blockNumber: number; blockHash: string }> {
@@ -157,7 +155,7 @@ export class CkbHandler {
           if (block == null) return asyncSleep(5000);
 
           await this.onBlock(block);
-          this.metrics.setBlockHeightMetrics(this.role, 'ckb', nextBlockHeight);
+          RelayerMetric.setBlockHeightMetrics(this.role, 'ckb', nextBlockHeight);
         },
         {
           onRejectedInterval: 3000,
@@ -223,7 +221,7 @@ export class CkbHandler {
       const parsedMintRecords = await this.parseMintTx(tx);
       if (parsedMintRecords) {
         await this.onMintTx(parsedMintRecords);
-        this.metrics.addBridgeTxMetrics('ckb_mint', 'success');
+        RelayerMetric.addBridgeTxMetrics('ckb_mint', 'success');
       }
       const recipientData = tx.outputsData[0];
       let cellData;
@@ -248,7 +246,7 @@ export class CkbHandler {
             tx.hash
           } senderAddress:${senderAddress} cellData:${JSON.stringify(cellData, null, 2)}`,
         );
-        this.metrics.addBridgeTxMetrics('ckb_burn', 'success');
+        RelayerMetric.addBridgeTxMetrics('ckb_burn', 'success');
       }
     }
     await this.onBurnTxs(blockNumber, burnTxs);
@@ -446,7 +444,7 @@ export class CkbHandler {
             r.status = 'error';
             r.message = e.toString();
           });
-          this.metrics.addBridgeTxMetrics('ckb_mint', 'failed');
+          RelayerMetric.addBridgeTxMetrics('ckb_mint', 'failed');
           await this.db.updateCkbMint(mintRecords);
         }
       },

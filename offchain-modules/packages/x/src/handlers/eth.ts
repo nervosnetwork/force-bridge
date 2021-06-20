@@ -17,17 +17,8 @@ const lastHandleEthBlockKey = 'lastHandleEthBlock';
 export class EthHandler {
   private lastHandledBlockHeight: number;
   private lastHandledBlockHash: string;
-  private metrics: RelayerMetric;
 
-  constructor(
-    private db: EthDb,
-    private kvDb: KVDb,
-    private ethChain: EthChain,
-    private role: forceBridgeRole,
-    monitorPushGateWayURL: string,
-  ) {
-    this.metrics = new RelayerMetric(role, monitorPushGateWayURL);
-  }
+  constructor(private db: EthDb, private kvDb: KVDb, private ethChain: EthChain, private role: forceBridgeRole) {}
 
   async getLastHandledBlock(): Promise<{ blockNumber: number; blockHash: string }> {
     const lastHandledBlock = await this.kvDb.get(lastHandleEthBlockKey);
@@ -117,7 +108,7 @@ export class EthHandler {
   watchNewBlock(): void {
     this.ethChain.watchNewBlock(this.lastHandledBlockHeight, async (newBlock: ethers.providers.Block) => {
       await this.onBlock(newBlock);
-      this.metrics.setBlockHeightMetrics(this.role, 'eth', newBlock.number);
+      RelayerMetric.setBlockHeightMetrics(this.role, 'eth', newBlock.number);
     });
   }
 
@@ -243,7 +234,7 @@ export class EthHandler {
             sender: sender,
           },
         ]);
-        this.metrics.addBridgeTxMetrics('eth_lock', 'success');
+        RelayerMetric.addBridgeTxMetrics('eth_lock', 'success');
         logger.info(`EthHandler watchLockEvents save EthLock successful for eth tx ${log.transactionHash}.`);
         if (this.role === 'watcher') {
           await this.db.updateBridgeInRecord(txHash, amount, token, recipient, sudtExtraData);
@@ -355,13 +346,13 @@ export class EthHandler {
             records.map((r) => {
               r.status = 'success';
             });
-            this.metrics.addBridgeTxMetrics('eth_unlock', 'success');
+            RelayerMetric.addBridgeTxMetrics('eth_unlock', 'success');
           } else {
             records.map((r) => {
               r.status = 'error';
               r.message = 'unlock tx failed';
             });
-            this.metrics.addBridgeTxMetrics('eth_unlock', 'failed');
+            RelayerMetric.addBridgeTxMetrics('eth_unlock', 'failed');
             logger.error('EthHandler watchUnlockEvents unlock execute failed:', receipt);
           }
           await this.db.saveEthUnlock(records);
