@@ -17,7 +17,7 @@ export class BridgeFeeDB {
     const result = await this.conn.manager.query(
       `select SUM(cast(bridge_fee as DECIMAL(32,0))) as fee from eth_lock where token='${asset}'`,
     );
-    if (result.length === 0) return '0';
+    if (!result.length) return '0';
     return result[0].fee;
   }
 
@@ -25,7 +25,7 @@ export class BridgeFeeDB {
     const result = await this.conn.manager.query(
       `select SUM(cast(bridge_fee as DECIMAL(32,0))) as fee from ckb_burn where asset='${asset}'`,
     );
-    if (result.length === 0) return '0';
+    if (!result.length) return '0';
     return result[0].fee;
   }
 
@@ -40,7 +40,7 @@ export class BridgeFeeDB {
     const result = await this.conn.manager.query(
       `select SUM(cast(amount as DECIMAL(32,0))) as fee from withdrawed_bridge_fee where asset='${asset}' and chain=${chain}`,
     );
-    if (result.length === 0) return '0';
+    if (!result.length) return '0';
     return result[0].fee;
   }
 }

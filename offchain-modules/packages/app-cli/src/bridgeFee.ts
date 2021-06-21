@@ -98,8 +98,8 @@ async function getTotalWithdrawed(command: commander.Command) {
   const bridgeFeeDB = new BridgeFeeDB(conn);
   const ethAsset = new EthAsset(asset);
 
-  const withdrawdBridgeFee = await bridgeFeeDB.getEthTotalWithdrawedBridgeFee(asset);
-  const humanizedWithdrawedBridgeFee = ethAsset.getHumanizedDescription(withdrawdBridgeFee);
+  const withdrawedBridgeFee = await bridgeFeeDB.getEthTotalWithdrawedBridgeFee(asset);
+  const humanizedWithdrawedBridgeFee = ethAsset.getHumanizedDescription(withdrawedBridgeFee);
   console.log('total withdrawed bridge fee:', humanizedWithdrawedBridgeFee);
 }
 
@@ -117,9 +117,9 @@ async function getTotalAvailable(command: commander.Command) {
   const bridgeFeeDB = new BridgeFeeDB(conn);
   const ethAsset = new EthAsset(asset);
 
-  const withdrawdBridgeFee = await bridgeFeeDB.getEthTotalWithdrawedBridgeFee(asset);
+  const withdrawedBridgeFee = await bridgeFeeDB.getEthTotalWithdrawedBridgeFee(asset);
   const generatedBridgeFee = await bridgeFeeDB.getEthTotalGeneratedBridgeFee(asset);
-  const availableBridgeFee = new Amount(generatedBridgeFee, 0).add(new Amount(withdrawdBridgeFee, 0)).toString(0);
+  const availableBridgeFee = new Amount(generatedBridgeFee, 0).add(new Amount(withdrawedBridgeFee, 0)).toString(0);
   const humanizedAvailableBridgeFee = ethAsset.getHumanizedDescription(availableBridgeFee);
   console.log('total available bridge fee:', humanizedAvailableBridgeFee);
 }
