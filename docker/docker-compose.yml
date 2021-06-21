@@ -21,6 +21,13 @@ services:
       MYSQL_DATABASE: forcebridge
     ports:
       - 3308:3306
+  mysql-rpc:
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: forcebridge
+    ports:
+      - 3309:3306
   ckb:
     image: tockb/ckb-dev:v0.39.2
     ports:
