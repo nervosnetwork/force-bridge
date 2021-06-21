@@ -83,14 +83,11 @@ export class EthChain {
 
   watchNewBlock(startHeight: number, handleBlockFunc: (newBlock: ethers.providers.Block) => void): void {
     let currentHeight = startHeight + 1;
-
     void (async () => {
       for (;;) {
         await retryPromise(
           async () => {
             const block = await this.provider.getBlock(currentHeight);
-            logger.info('block', block);
-
             if (!block) return asyncSleep(5000);
             await handleBlockFunc(block);
             currentHeight++;
