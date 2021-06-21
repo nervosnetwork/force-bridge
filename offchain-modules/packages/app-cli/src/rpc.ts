@@ -9,14 +9,13 @@ const defaultCorsOrigin = '*';
 const defaultConfig = './config.json';
 
 export const rpcCmd = new commander.Command('rpc')
-  .option('-p, --port', `Rpc server listen port default:${defaultPort}`, defaultPort)
-  .option('-co, --corsOrigin', `cors options of origin default:${defaultCorsOrigin}`, defaultCorsOrigin)
-  .option('-cfg, --config', `config path of rpc server default:${defaultConfig}`, defaultConfig)
+  .option('-p, --port', 'Rpc server listen port', defaultPort)
+  .option('-co, --corsOrigin', 'cors options of origin', defaultCorsOrigin)
+  .option('-cfg, --config', 'config path of rpc server', defaultConfig)
   .action(rpc);
 
-async function rpc(command: commander.Command, args: any) {
-  const opts = command.opts();
-  const options = parseOptions(opts, args);
+async function rpc(opts: { port: string }, command: commander.Command) {
+  const options = parseOptions(opts, command);
   const port = options.get('port') !== undefined ? options.get('port') : defaultPort;
   const corsOrigin = options.get('corsOrigin') || defaultCorsOrigin;
   const configPath = options.get('config') !== undefined ? options.get('config') : defaultConfig;

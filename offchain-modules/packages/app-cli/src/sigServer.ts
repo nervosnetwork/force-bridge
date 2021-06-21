@@ -8,13 +8,12 @@ const defaultPort = '8090';
 const defaultConfig = './config.json';
 
 export const sigCmd = new commander.Command('signer')
-  .option('-p, --port', `Sig server listen port default:${defaultPort}`, defaultPort)
-  .option('-cfg, --config', `config path of sig server default:${defaultConfig}`, defaultConfig)
+  .option('-p, --port', 'Sig server listen port', defaultPort)
+  .option('-cfg, --config', 'config path of sig server', defaultConfig)
   .action(sigServer);
 
-async function sigServer(command: commander.Command, args: any) {
-  const opts = command.opts();
-  const options = parseOptions(opts, args);
+async function sigServer(opts: { port: string }, command: commander.Command) {
+  const options = parseOptions(opts, command);
   const port = options.get('port') !== undefined ? options.get('port') : defaultPort;
   const configPath = options.get('config') !== undefined ? options.get('config') : defaultConfig;
   nconf.env().file({ file: configPath });
