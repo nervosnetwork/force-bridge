@@ -89,6 +89,8 @@ export class EthChain {
         await retryPromise(
           async () => {
             const block = await this.provider.getBlock(currentHeight);
+            logger.info('block', block);
+
             if (!block) return asyncSleep(5000);
             await handleBlockFunc(block);
             currentHeight++;
@@ -100,7 +102,7 @@ export class EthChain {
           },
         );
       }
-    });
+    })();
   }
 
   async getCurrentBlockNumber(): Promise<number> {
