@@ -14,7 +14,8 @@
     "@force-bridge/xchain-eth": "*",
     "@force-bridge/ckb-indexer-client": "*",
     "@force-bridge/reconc": "*",
-    "@force-bridge/internal": "*"
+    "@force-bridge/internal": "*",
+    "node-fetch": "^1.7.3"
   },
   "version": "0.0.0"
 }

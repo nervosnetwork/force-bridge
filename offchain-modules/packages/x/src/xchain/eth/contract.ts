@@ -81,26 +81,25 @@ export class EthChain {
     });
   }
 
-  async watchNewBlock(startHeight: number, handleBlockFunc: (newBlock: ethers.providers.Block) => void): Promise<void> {
+  watchNewBlock(startHeight: number, handleBlockFunc: (newBlock: ethers.providers.Block) => void): void {
     let currentHeight = startHeight + 1;
-
-    for (;;) {
-      await retryPromise(
-        async () => {
-          const block = await this.provider.getBlock(currentHeight);
-
-          if (!block) return asyncSleep(5000);
-
-          await handleBlockFunc(block);
-          currentHeight++;
-        },
-        {
-          onRejectedInterval: 3000,
-          maxRetryTimes: Infinity,
-          onRejected: (e: Error) => logger.error(`Eth watchNewBlock blockHeight:${currentHeight} error:${e.message}`),
-        },
-      );
-    }
+    void (async () => {
+      for (;;) {
+        await retryPromise(
+          async () => {
+            const block = await this.provider.getBlock(currentHeight);
+            if (!block) return asyncSleep(5000);
+            await handleBlockFunc(block);
+            currentHeight++;
+          },
+          {
+            onRejectedInterval: 3000,
+            maxRetryTimes: Infinity,
+            onRejected: (e: Error) => logger.error(`Eth watchNewBlock blockHeight:${currentHeight} error:${e.message}`),
+          },
+        );
+      }
+    })();
   }
 
   async getCurrentBlockNumber(): Promise<number> {
