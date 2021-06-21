@@ -174,7 +174,7 @@ async function sendWithdrawTx(command: commander.Command) {
       recipient: r,
     };
   });
-  const ethChain = new EthChain('verifier');
+  const ethChain = new EthChain('collector');
   const txRes = await ethChain.sendWithdrawBridgeFeeTx(withdrawRecords, signature);
   if (opts.wait) {
     const receipt = await txRes.wait();

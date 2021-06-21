@@ -174,14 +174,13 @@ export class EthChain {
     const bridge = new ethers.Contract(this.bridgeContractAddr, abi, this.provider);
     const domainSeparator = await bridge.DOMAIN_SEPARATOR();
     const typeHash = await bridge.UNLOCK_TYPEHASH();
-    const nonce: BigNumber = await this.bridge.latestUnlockNonce_();
+    const nonce: BigNumber = await bridge.latestUnlockNonce_();
     console.log('unlock nonce: ', nonce.toString());
     return buildSigRawData(domainSeparator, typeHash, records, nonce);
   }
 
   public async sendWithdrawBridgeFeeTx(records: EthUnlockRecord[], signatures: string[]): Promise<any> {
-    const bridge = new ethers.Contract(this.bridgeContractAddr, abi, this.provider);
-    const nonce: BigNumber = await bridge.latestUnlockNonce_();
+    const nonce: BigNumber = await this.bridge.latestUnlockNonce_();
     return this.bridge.unlock(records, nonce, '0x' + signatures.join(''));
   }
 
