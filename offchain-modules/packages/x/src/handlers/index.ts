@@ -28,7 +28,7 @@ export async function startHandlers(conn: Connection) {
   if (ForceBridgeCore.config.common.monitor) {
     promPushGateWayURL = ForceBridgeCore.config.common.monitor.pushGatewayURL;
   }
-  new RelayerMetric().init(role, promPushGateWayURL);
+  new RelayerMetric(role).init(promPushGateWayURL);
 
   // init db and start handlers
   const ckbDb = new CkbDb(conn);

@@ -18,9 +18,7 @@ export class RelayerMetric {
   private static _gateway: Prometheus.Pushgateway;
   private static _openPushMetric: boolean;
 
-  init(role: forceBridgeRole, pushGatewayURL: string): void {
-    const register = new Prometheus.Registry();
-
+  constructor(role: forceBridgeRole) {
     RelayerMetric._relayBlockHeightNum = new Prometheus.Gauge({
       name: `${role}_block_height_number`,
       help: `block height synced by different ${role}.`,
@@ -36,6 +34,11 @@ export class RelayerMetric {
       help: `token amount of lock,mint,burn,unlock`,
       labelNames: ['tx_type', 'token'],
     });
+  }
+
+  init(pushGatewayURL: string): void {
+    const register = new Prometheus.Registry();
+
     register.registerMetric(RelayerMetric._relayBlockHeightNum);
     register.registerMetric(RelayerMetric._relayBridgeTxNum);
     register.registerMetric(RelayerMetric._relayBridgeTokenAmountNum);
@@ -58,12 +61,12 @@ export class RelayerMetric {
     RelayerMetric._relayBlockHeightNum
       .labels({ role: role, height_type: `${chain_type}_actual_height` })
       .set(actual_height);
-    this.handlerPushMetric('relay_bridgetx');
+    RelayerMetric.handlerPushMetric('relay_bridgetx');
   }
 
   static addBridgeTxMetrics(tx_type: txType, tx_status: txStatus): void {
     RelayerMetric._relayBridgeTxNum.labels({ tx_type: tx_type, status: tx_status }).inc(1);
-    this.handlerPushMetric('relay_bridgetx');
+    RelayerMetric.handlerPushMetric('relay_bridgetx');
   }
 
   static addBridgeTokenMetrics(tx_type: txType, tokens: txTokenInfo[]): void {
@@ -72,7 +75,7 @@ export class RelayerMetric {
         .labels({ tx_type: tx_type, token: tokenInfo.token })
         .inc(Number(tokenInfo.amount));
     });
-    this.handlerPushMetric('relay_bridgetx');
+    RelayerMetric.handlerPushMetric('relay_bridgetx');
   }
 
   static handlerPushMetric(jobName: string): void {

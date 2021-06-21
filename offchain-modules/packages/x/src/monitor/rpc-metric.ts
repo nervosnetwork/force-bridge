@@ -13,7 +13,7 @@ export class RpcMetric {
       name: 'rpc_request_duration_ms',
       help: 'Duration of rpc server requests in ms',
       labelNames: ['method', 'status'],
-      buckets: [0.1, 5, 15, 50, 100], // buckets for response time from 0.1ms to 100ms
+      buckets: [2, 10, 50, 250, 500, 1000, 2500, 5000], // buckets for response time from 2ms to 5s
     });
     register.registerMetric(this.rpcRequestDurationms);
     if (pushGatewayURL != '' && pushGatewayURL.startsWith('http')) {
