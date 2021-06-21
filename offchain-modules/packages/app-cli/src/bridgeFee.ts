@@ -176,7 +176,8 @@ async function sendWithdrawTx(command: commander.Command) {
     };
   });
   const ethChain = new EthChain('collector');
-  const txRes = await ethChain.sendWithdrawBridgeFeeTx(withdrawRecords, signature);
+  const parsedSigs = signature.map((s) => s.slice(2));
+  const txRes = await ethChain.sendWithdrawBridgeFeeTx(withdrawRecords, parsedSigs);
   if (opts.wait) {
     const receipt = await txRes.wait();
     if (receipt.status == 1) {
