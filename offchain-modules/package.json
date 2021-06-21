@@ -44,7 +44,8 @@
     "prepare": "cd .. && husky install offchain-modules/.husky",
     "init-multisig": "ts-node ./packages/x/src/ckb/tx-helper/multisig/deploy.ts",
     "sign-server1": "CONFIG_PATH=./packages/scripts/src/integration-test/config/verifier1.json ts-node ./packages/app-multisign-server/src/index.ts --port 8090",
-    "sign-server2": "CONFIG_PATH=./packages/scripts/src/integration-test/config/verifier2.json ts-node ./packages/app-multisign-server/src/index.ts --port 8091"
+    "sign-server2": "CONFIG_PATH=./packages/scripts/src/integration-test/config/verifier2.json ts-node ./packages/app-multisign-server/src/index.ts --port 8091",
+    "force-cli": "ts-node ./packages/app-cli/src/index.ts"
   },
   "author": "",
   "license": "MIT",
