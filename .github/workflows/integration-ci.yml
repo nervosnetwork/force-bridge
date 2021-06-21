@@ -17,7 +17,7 @@ jobs:
 #          restore-keys: |
 #            node-modules-
       - name: install dependencies
-        run: make install-node-modules && npm install -g ts-node
+        run: make install-node-modules
 #        if: steps.yarn-cache.outputs.cache-hit != 'true'
       - name: install-capsule
         run: |
