@@ -3,7 +3,7 @@ import { EthAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { Config } from '@force-bridge/x/dist/config';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { BridgeFeeDB } from '@force-bridge/x/dist/db';
-import { getDBConnection } from '@force-bridge/x/dist/utils';
+import { getDBConnection, parsePrivateKey } from '@force-bridge/x/dist/utils';
 import { EthChain, WithdrawBridgeFeeTopic } from '@force-bridge/x/dist/xchain/eth';
 import { Amount } from '@lay2/pw-core';
 import commander from 'commander';
@@ -146,7 +146,8 @@ async function generateWithdrawTxSignature(command: commander.Command) {
   });
   const ethChain = new EthChain('verifier');
   const message = await ethChain.getUnlockMessageToSign(withdrawRecords);
-  const privKey = ForceBridgeCore.config.eth.multiSignKeys[0].privKey;
+  const privKeyPath = ForceBridgeCore.config.eth.multiSignKeys[0].privKey;
+  const privKey = parsePrivateKey(privKeyPath);
   const { v, r, s } = ecsign(Buffer.from(message.slice(2), 'hex'), Buffer.from(privKey.slice(2), 'hex'));
   console.log(`signature of withdraw tx: ${toRpcSig(v, r, s)}`);
 }
