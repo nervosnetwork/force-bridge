@@ -19,7 +19,6 @@ collector_config="${PROJECT_DIR}/offchain-modules/packages/scripts/src/integrati
 
 build_cli(){
   cd "${PROJECT_DIR}/offchain-modules" && yarn && yarn build
-  cd "${PROJECT_DIR}/offchain-modules/packages/app-cli/" && sudo npm link
 }
 
 deploy_contract(){
