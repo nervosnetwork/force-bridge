@@ -23,7 +23,7 @@ export class BridgeFeeDB {
 
   async getEthTotalGeneratedBridgeOutFee(asset: string): Promise<string> {
     const result = await this.conn.manager.query(
-      `select SUM(cast(bridge_fee as DECIMAL(32,0))) from ckb_burn where asset='${asset}'`,
+      `select SUM(cast(bridge_fee as DECIMAL(32,0))) as fee from ckb_burn where asset='${asset}'`,
     );
     if (result.length === 0) return '0';
     return result[0].fee;
@@ -38,7 +38,7 @@ export class BridgeFeeDB {
   async getEthTotalWithdrawedBridgeFee(asset: string): Promise<string> {
     const chain = ChainType.ETH;
     const result = await this.conn.manager.query(
-      `select SUM(cast(amount as DECIMAL(32,0))) from withdrawed_bridge_fee where asset='${asset}' and chain=${chain}`,
+      `select SUM(cast(amount as DECIMAL(32,0))) as fee from withdrawed_bridge_fee where asset='${asset}' and chain=${chain}`,
     );
     if (result.length === 0) return '0';
     return result[0].fee;
