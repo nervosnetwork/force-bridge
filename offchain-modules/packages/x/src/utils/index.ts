@@ -1,7 +1,7 @@
 import fs from 'fs';
 import * as utils from '@nervosnetwork/ckb-sdk-utils';
 import * as lodash from 'lodash';
-import { Connection, createConnection, getConnectionManager, getConnectionOptions } from 'typeorm';
+import { Connection, createConnection } from 'typeorm';
 import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
 import { ForceBridgeCore } from '../core';
 import { BtcLock } from '../db/entity/BtcLock';
@@ -17,12 +17,9 @@ import { TronLock } from '../db/entity/TronLock';
 import { TronUnlock } from '../db/entity/TronUnlock';
 import { WithdrawedBridgeFee } from '../db/entity/WithdrawedBridgeFee';
 import { KV } from '../db/entity/kv';
-import { asserts, nonNullable } from '../errors';
-import { logger } from './logger';
+import { nonNullable } from '../errors';
 
-export function asyncSleep(ms = 0): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
-}
+export { asyncSleep, retryPromise, foreverPromise } from './promise';
 
 export function blake2b(buffer: Uint8Array): Uint8Array {
   return utils.blake2b(32, null, null, utils.PERSONAL).update(buffer).digest('binary') as Uint8Array;

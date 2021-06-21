@@ -1,13 +1,21 @@
-import { ecsign, toRpcSig } from 'ethereumjs-util';
 import { BigNumber, ethers } from 'ethers';
+import { Interface } from 'ethers/lib/utils';
 import { EthConfig, forceBridgeRole } from '../../config';
 import { ForceBridgeCore } from '../../core';
 import { EthUnlock } from '../../db/entity/EthUnlock';
 import { MultiSigMgr } from '../../multisig/multisig-mgr';
-import { asyncSleep } from '../../utils';
+import { asyncSleep, retryPromise } from '../../utils';
 import { logger } from '../../utils/logger';
 import { abi } from './abi/ForceBridge.json';
 import { buildSigRawData } from './utils';
+
+export type Log = Parameters<Interface['parseLog']>[0] & {
+  transactionHash: string;
+  blockHash: string;
+  blockNumber: number;
+};
+export type ParsedLog = ReturnType<Interface['parseLog']>;
+export type HandleLogFn = (log: Log, parsedLog: ParsedLog) => Promise<void> | void;
 
 export const lockTopic = ethers.utils.id('Locked(address,address,uint256,bytes,bytes)');
 export const unlockTopic = ethers.utils.id('Unlocked(address,address,address,uint256,bytes)');
@@ -46,12 +54,14 @@ export class EthChain {
     }
   }
 
-  watchLockEvents(startHeight = 1, handleLogFunc) {
+  watchLockEvents(startHeight = 1, handleLogFunc: HandleLogFn): void {
     const filter = {
       address: this.bridgeContractAddr,
       fromBlock: 'earliest',
       topics: [lockTopic],
     };
+    // TODO resetEventsBlock is deprecated, replace with contract.queryFilter
+    // <wangbing@cryptape.com>
     this.provider.resetEventsBlock(startHeight);
     this.provider.on(filter, async (log) => {
       const parsedLog = this.iface.parseLog(log);
@@ -59,7 +69,7 @@ export class EthChain {
     });
   }
 
-  watchUnlockEvents(startHeight = 1, handleLogFunc) {
+  watchUnlockEvents(startHeight = 1, handleLogFunc: HandleLogFn): void {
     const filter = {
       address: this.bridgeContractAddr,
       fromBlock: 'earliest',
@@ -72,25 +82,25 @@ export class EthChain {
     });
   }
 
-  async watchNewBlock(startHeight: number, handleBlockFunc) {
-    let block: ethers.providers.Block;
-    for (let height = startHeight + 1; ; ) {
-      while (true) {
-        try {
-          block = await this.provider.getBlock(height);
-          if (!block) {
-            //wait for new block
-            await asyncSleep(5 * 1000);
-          } else {
-            break;
-          }
-        } catch (e) {
-          logger.error(`Eth watchNewBlock blockHeight:${height} error:${e.message}`);
-          await asyncSleep(3 * 1000);
-        }
-      }
-      await handleBlockFunc(block);
-      height++;
+  async watchNewBlock(startHeight: number, handleBlockFunc: (newBlock: ethers.providers.Block) => void): Promise<void> {
+    let currentHeight = startHeight + 1;
+
+    for (;;) {
+      await retryPromise(
+        async () => {
+          const block = await this.provider.getBlock(currentHeight);
+
+          if (!block) return asyncSleep(5000);
+
+          await handleBlockFunc(block);
+          currentHeight++;
+        },
+        {
+          onRejectedInterval: 3000,
+          maxRetryTimes: Infinity,
+          onRejected: (e: Error) => logger.error(`Eth watchNewBlock blockHeight:${currentHeight} error:${e.message}`),
+        },
+      );
     }
   }
 
@@ -134,6 +144,8 @@ export class EthChain {
     });
   }
 
+  // TODO marks the type @JacobDenver007
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async sendUnlockTxs(records: EthUnlock[]): Promise<any> {
     logger.debug('contract balance', await this.provider.getBalance(this.bridgeContractAddr));
     const params: EthUnlockRecord[] = records.map((r) => {
