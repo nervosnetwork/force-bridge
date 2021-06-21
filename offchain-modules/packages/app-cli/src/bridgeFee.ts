@@ -41,7 +41,6 @@ feeCmd
   .requiredOption('-a --asset <asset>', 'bridge fee of which asset')
   .requiredOption('-r --recipient [recipients...]', 'bridge fee recipients')
   .requiredOption('-m --amount [amounts...]', 'bridge fee amounts')
-  .option('-n --nonce <nonce>', 'account nonce if xchain is ethereum')
   .option('-cfg, --config <config>', `config path of force bridge default:${defaultConfig}`, defaultConfig)
   .action(generateWithdrawTxSignature);
 
@@ -52,7 +51,6 @@ feeCmd
   .requiredOption('-r --recipient [recipients...]', 'bridge fee recipients')
   .requiredOption('-m --amount [amounts...]', 'bridge fee amounts')
   .requiredOption('-s --signature [signatures...]', 'signatures of withdraw tx')
-  .option('-n --nonce <nonce>', 'account nonce if xchain is ethereum')
   .option('-cfg, --config <config>', `config path of force bridge default:${defaultConfig}`, defaultConfig)
   .option('-w, --wait', 'whether wait for transaction confirmed')
   .action(sendWithdrawTx);
@@ -127,8 +125,7 @@ async function getTotalAvailable(command: commander.Command) {
 async function generateWithdrawTxSignature(command: commander.Command) {
   const opts = command.opts();
   const xchain = nonNullable(opts.xchain);
-  const nonce = opts.nonce;
-  if (xchain !== 'ethereum' || !nonce) throw new Error('only support ethereum currently');
+  if (xchain !== 'ethereum') throw new Error('only support ethereum currently');
   const asset = nonNullable(opts.asset);
   const ethAsset = new EthAsset(asset);
   const recipient = nonNullable(opts.recipient);
@@ -142,13 +139,13 @@ async function generateWithdrawTxSignature(command: commander.Command) {
   const withdrawRecords = recipient.map((r, i) => {
     return {
       ckbTxHash: WithdrawBridgeFeeTopic,
-      asset: asset,
+      token: asset,
       amount: ethAsset.parseAmount(amount[i]),
-      recipientAddress: r,
+      recipient: r,
     };
   });
   const ethChain = new EthChain('verifier');
-  const message = await ethChain.getUnlockMessageToSign(withdrawRecords, nonce);
+  const message = await ethChain.getUnlockMessageToSign(withdrawRecords);
   const privKey = ForceBridgeCore.config.eth.multiSignKeys[0].privKey;
   const { v, r, s } = ecsign(Buffer.from(message.slice(2), 'hex'), Buffer.from(privKey.slice(2), 'hex'));
   console.log(`signature of withdraw tx: ${toRpcSig(v, r, s)}`);
@@ -157,8 +154,7 @@ async function generateWithdrawTxSignature(command: commander.Command) {
 async function sendWithdrawTx(command: commander.Command) {
   const opts = command.opts();
   const xchain = nonNullable(opts.xchain);
-  const nonce = opts.nonce;
-  if (xchain !== 'ethereum' || !nonce) throw new Error('only support ethereum currently');
+  if (xchain !== 'ethereum') throw new Error('only support ethereum currently');
   const asset = nonNullable(opts.asset);
   const ethAsset = new EthAsset(asset);
   const recipient = nonNullable(opts.recipient);
@@ -173,13 +169,13 @@ async function sendWithdrawTx(command: commander.Command) {
   const withdrawRecords = recipient.map((r, i) => {
     return {
       ckbTxHash: WithdrawBridgeFeeTopic,
-      asset: asset,
+      token: asset,
       amount: ethAsset.parseAmount(amount[i]),
-      recipientAddress: r,
+      recipient: r,
     };
   });
   const ethChain = new EthChain('verifier');
-  const txRes = await ethChain.sendWithdrawBridgeFeeTx(withdrawRecords, nonce, signature);
+  const txRes = await ethChain.sendWithdrawBridgeFeeTx(withdrawRecords, signature);
   if (opts.wait) {
     const receipt = await txRes.wait();
     if (receipt.status == 1) {

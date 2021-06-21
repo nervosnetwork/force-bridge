@@ -19,7 +19,7 @@ export type HandleLogFn = (log: Log, parsedLog: ParsedLog) => Promise<void> | vo
 
 export const lockTopic = ethers.utils.id('Locked(address,address,uint256,bytes,bytes)');
 export const unlockTopic = ethers.utils.id('Unlocked(address,address,address,uint256,bytes)');
-export const WithdrawBridgeFeeTopic = 'CommiteeWithdrawBridgeFee';
+export const WithdrawBridgeFeeTopic = '0xff';
 
 export interface EthUnlockRecord {
   token: string;
@@ -170,20 +170,19 @@ export class EthChain {
     return this.bridge.unlock(params, nonce, signatures);
   }
 
-  public async getUnlockMessageToSign(records: EthUnlockRecord[], nonceString: string): Promise<string> {
+  public async getUnlockMessageToSign(records: EthUnlockRecord[]): Promise<string> {
     const bridge = new ethers.Contract(this.bridgeContractAddr, abi, this.provider);
     const domainSeparator = await bridge.DOMAIN_SEPARATOR();
     const typeHash = await bridge.UNLOCK_TYPEHASH();
-    const nonce: BigNumber = BigNumber.from(nonceString);
+    const nonce: BigNumber = await this.bridge.latestUnlockNonce_();
+    console.log('unlock nonce: ', nonce.toString());
     return buildSigRawData(domainSeparator, typeHash, records, nonce);
   }
 
-  public async sendWithdrawBridgeFeeTx(
-    records: EthUnlockRecord[],
-    nonceString: string,
-    signatures: string[],
-  ): Promise<any> {
-    return this.bridge.unlock(records, BigNumber.from(nonceString), '0x' + signatures.join(''));
+  public async sendWithdrawBridgeFeeTx(records: EthUnlockRecord[], signatures: string[]): Promise<any> {
+    const bridge = new ethers.Contract(this.bridgeContractAddr, abi, this.provider);
+    const nonce: BigNumber = await bridge.latestUnlockNonce_();
+    return this.bridge.unlock(records, nonce, '0x' + signatures.join(''));
   }
 
   private async signUnlockRecords(
