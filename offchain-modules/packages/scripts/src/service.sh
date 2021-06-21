@@ -52,10 +52,10 @@ stop_service_by_daemon(){
 }
 
 ci_flow(){
-  cd "${PROJECT_DIR}/offchain-modules" && yarn xchain-test
+  cd "${PROJECT_DIR}/offchain-modules" && yarn ci-test
 }
 
-while getopts "rcsw:" opt; do
+while getopts "rcsf:" opt; do
   case $opt in
   	r)
 	      echo "set remove services params"
@@ -69,7 +69,7 @@ while getopts "rcsw:" opt; do
         echo "set start services: relayer rpc multi-sign-server params"
         START_SERVICES="Y"
         ;;
-    w)
+    f)
         echo "set ci flow params"
         CI_FLOW="Y"
         ;;
