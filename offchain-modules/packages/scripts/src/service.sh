@@ -5,7 +5,7 @@ set -x
 
 PROJECT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && cd ../../../../ && pwd )"
 
-FORCE_BRIDGE_CLI="cd ${PROJECT_DIR}/offchain-modules/packages/app-cli/ && yarn forcecli"
+FORCE_BRIDGE_CLI="yarn forcecli"
 rpc_port=8080
 watcher_config="${PROJECT_DIR}/offchain-modules/packages/scripts/src/integration-test/config/watcher.json"
 
@@ -31,6 +31,7 @@ deploy_contract(){
 
 start_service_by_pm2(){
   build_cli
+  cd "${PROJECT_DIR}/offchain-modules/packages/app-cli/"
   pm2 start --name multisig-rpc-server "${FORCE_BRIDGE_CLI} rpc --port ${rpc_port} --config ${watcher_config}"
   pm2 start --name multisig-signer-1 "${FORCE_BRIDGE_CLI} signer --port ${first_signer_port} --config ${first_signer_config}"
   pm2 start --name multisig-signer-2 "${FORCE_BRIDGE_CLI} signer --port ${second_signer_port} --config ${second_signer_config}"
@@ -39,6 +40,7 @@ start_service_by_pm2(){
 
 start_service_by_daemon(){
   build_cli
+  cd "${PROJECT_DIR}/offchain-modules/packages/app-cli/"
   ${FORCE_BRIDGE_CLI} rpc --port ${rpc_port} --config "${watcher_config}" 2>&1 &
   ${FORCE_BRIDGE_CLI} signer --port ${first_signer_port} --config "${first_signer_config}" 2>&1 &
   ${FORCE_BRIDGE_CLI} signer --port ${second_signer_port} --config "${second_signer_config}" 2>&1 &
