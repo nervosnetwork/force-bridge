@@ -171,8 +171,9 @@ export class EthChain {
   }
 
   public async getUnlockMessageToSign(records: EthUnlockRecord[], nonceString: string): Promise<string> {
-    const domainSeparator = await this.bridge.DOMAIN_SEPARATOR();
-    const typeHash = await this.bridge.UNLOCK_TYPEHASH();
+    const bridge = new ethers.Contract(this.bridgeContractAddr, abi, this.provider);
+    const domainSeparator = await bridge.DOMAIN_SEPARATOR();
+    const typeHash = await bridge.UNLOCK_TYPEHASH();
     const nonce: BigNumber = BigNumber.from(nonceString);
     return buildSigRawData(domainSeparator, typeHash, records, nonce);
   }
