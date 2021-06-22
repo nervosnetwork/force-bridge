@@ -12,7 +12,7 @@ import nconf from 'nconf';
 
 const defaultConfig = './config.json';
 
-export const feeCmd = new commander.Command('fee');
+export const feeCmd = new commander.Command('fee').description('query and withdraw bridge fee');
 
 feeCmd
   .command('get-total-generated')
@@ -117,7 +117,7 @@ async function getTotalAvailable(command: commander.Command) {
 
   const withdrawedBridgeFee = await bridgeFeeDB.getEthTotalWithdrawedBridgeFee(asset);
   const generatedBridgeFee = await bridgeFeeDB.getEthTotalGeneratedBridgeFee(asset);
-  const availableBridgeFee = new Amount(generatedBridgeFee, 0).add(new Amount(withdrawedBridgeFee, 0)).toString(0);
+  const availableBridgeFee = new Amount(generatedBridgeFee, 0).sub(new Amount(withdrawedBridgeFee, 0)).toString(0);
   const humanizedAvailableBridgeFee = ethAsset.getHumanizedDescription(availableBridgeFee);
   console.log('total available bridge fee:', humanizedAvailableBridgeFee);
 }
@@ -166,6 +166,7 @@ async function sendWithdrawTx(command: commander.Command) {
   nconf.env().file({ file: configPath });
   const cfg: Config = nconf.get('forceBridge');
   await new ForceBridgeCore().init(cfg);
+  ForceBridgeCore.config.eth.privateKey = parsePrivateKey(ForceBridgeCore.config.eth.privateKey);
 
   const withdrawRecords = recipient.map((r, i) => {
     return {
