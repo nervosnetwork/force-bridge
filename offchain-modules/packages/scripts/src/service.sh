@@ -52,7 +52,7 @@ stop_service_by_daemon(){
 }
 
 ci_flow(){
-  cd "${PROJECT_DIR}/offchain-modules" && yarn ci-test
+  cd "${PROJECT_DIR}/offchain-modules" && yarn rpc-test
 }
 
 while getopts "rcsf:" opt; do
