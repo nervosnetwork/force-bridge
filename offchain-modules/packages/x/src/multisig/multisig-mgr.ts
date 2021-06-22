@@ -40,7 +40,6 @@ export interface collectSignaturesParams {
   rawData: string;
   requestAddress?: string;
   payload: ethCollectSignaturesPayload | ckbCollectSignaturesPayload;
-  lastFailedTxHash?: string;
 }
 
 export class MultiSigMgr {

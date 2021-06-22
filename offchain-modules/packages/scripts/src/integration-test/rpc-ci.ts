@@ -13,15 +13,15 @@ const FORCE_BRIDGE_URL = 'http://127.0.0.1:8080/force-bridge/api/v1';
 const ETH_NODE_URL = 'http://127.0.0.1:8545';
 
 const ETH_TOKEN_ADDRESS = '0x0000000000000000000000000000000000000000';
-const ERC20_DAI_TOKEN_ADDRESS = '0x0000000000000000000000000000000000000000';
-const ERC20_USDT_TOKEN_ADDRESS = '0x0000000000000000000000000000000000000000';
-const ERC20_USDC_TOKEN_ADDRESS = '0x0000000000000000000000000000000000000000';
+// const ERC20_DAI_TOKEN_ADDRESS = '0x0000000000000000000000000000000000000000';
+// const ERC20_USDT_TOKEN_ADDRESS = '0x0000000000000000000000000000000000000000';
+// const ERC20_USDC_TOKEN_ADDRESS = '0x0000000000000000000000000000000000000000';
 
 const ETH_PRI_KEY = '0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed37a';
 const ETH_TEST_ADDRESS = '0x17c4b5CE0605F63732bfd175feCe7aC6b4620FD2';
 
 const CKB_NODE_URL = 'http://127.0.0.1:8114';
-const CKB_INDEXER_URL = 'http://127.0.0.1:8116';
+// const CKB_INDEXER_URL = 'http://127.0.0.1:8116';
 
 const CKB_PRI_KEY = '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
 const CKB_TEST_ADDRESS = 'ckt1qyqyph8v9mclls35p6snlaxajeca97tc062sa5gahk';
@@ -751,7 +751,7 @@ async function lock(testcases) {
       nonce++;
 
       const beforeBalance = await getBalance(testcase.payload.asset.ident, CKB_TEST_ADDRESS, ETH_TEST_ADDRESS);
-      const { inFee, outFee } = await getFee('Ethereum', testcase.payload.asset.ident, testcase.payload.asset.amount);
+      const { inFee } = await getFee('Ethereum', testcase.payload.asset.ident, testcase.payload.asset.amount);
 
       const signedTx = await wallet.signTransaction(unsignedTx);
       const lockTxHash = (await provider.sendTransaction(signedTx)).hash;

@@ -24,7 +24,7 @@ const defaultLogFile = './log/force-bridge-sigsvr.log';
 export class SigServer {
   static ethProvider: ethers.providers.JsonRpcProvider;
   static ethInterface: ethers.utils.Interface;
-  static ownLockHash: string;
+  static ethBridgeContract: ethers.Contract;
   static conn: Connection;
   static signedDb: SignedDb;
   static ckbDb: CkbDb;
@@ -35,6 +35,11 @@ export class SigServer {
   constructor(conn: Connection) {
     SigServer.ethProvider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
     SigServer.ethInterface = new ethers.utils.Interface(abi);
+    SigServer.ethBridgeContract = new ethers.Contract(
+      ForceBridgeCore.config.eth.contractAddress,
+      abi,
+      SigServer.ethProvider,
+    );
     SigServer.conn = conn;
     SigServer.signedDb = new SignedDb(conn);
     SigServer.ckbDb = new CkbDb(conn);

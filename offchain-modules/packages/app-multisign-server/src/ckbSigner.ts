@@ -12,7 +12,6 @@ import {
 } from '@force-bridge/x/dist/multisig/multisig-mgr';
 import { Address, AddressType, Amount } from '@lay2/pw-core';
 import { BigNumber } from 'ethers';
-import minimist from 'minimist';
 import { SigServer } from './sigServer';
 
 async function verifyCreateCellTx(rawData: string, payload: ckbCollectSignaturesPayload): Promise<Error | undefined> {
@@ -81,7 +80,11 @@ async function verifyCreateCellTx(rawData: string, payload: ckbCollectSignatures
   return undefined;
 }
 
-async function verifyDuplicateMintTx(pubKey: string, mintRecords: mintRecord[]): Promise<Error | null> {
+async function verifyDuplicateMintTx(
+  pubKey: string,
+  mintRecords: mintRecord[],
+  sigData: string,
+): Promise<Error | undefined> {
   const mintTxHashes = mintRecords.map((mintRecord) => {
     return mintRecord.id;
   });
@@ -89,8 +92,15 @@ async function verifyDuplicateMintTx(pubKey: string, mintRecords: mintRecord[]):
   asserts(signedTxHashes);
 
   if (signedTxHashes.length === 0) {
-    // return new Error(`refTxHashes:${mintTxHashes.join(',')} had already signed`);
-    return null;
+    return undefined;
+  }
+
+  if (
+    !signedTxHashes.some((signedTxHash) => {
+      return signedTxHash != sigData;
+    })
+  ) {
+    return undefined;
   }
 
   //TODO check whether signedTx failed
@@ -110,7 +120,7 @@ async function verifyMintTx(
   const mintRecords = payload.mintRecords;
   asserts(mintRecords);
 
-  let err: Error | undefined | null = await verifyDuplicateMintTx(pubKey, mintRecords);
+  let err: Error | undefined = await verifyDuplicateMintTx(pubKey, mintRecords, sigData);
   if (err) {
     return err;
   }

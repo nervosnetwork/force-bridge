@@ -157,15 +157,9 @@ export class EthChain {
     const domainSeparator = await this.bridge.DOMAIN_SEPARATOR();
     const typeHash = await this.bridge.UNLOCK_TYPEHASH();
     const nonce: BigNumber = await this.bridge.latestUnlockNonce_();
-    const signatures = this.signUnlockRecords(domainSeparator, typeHash, params, nonce);
-    logger.info(
-      `sendUnlockTxs params:${JSON.stringify(params, undefined, 2)} signatures:${JSON.stringify(
-        signatures,
-        undefined,
-        2,
-      )}`,
-    );
-    return this.bridge.unlock(params, nonce, signatures);
+    const signatures = await this.signUnlockRecords(domainSeparator, typeHash, params, nonce);
+    const signature = '0x' + signatures.join('');
+    return this.bridge.unlock(params, nonce, signature);
   }
 
   private async signUnlockRecords(
@@ -173,17 +167,25 @@ export class EthChain {
     typeHash: string,
     records: EthUnlockRecord[],
     nonce: BigNumber,
-  ) {
-    const rawData = buildSigRawData(domainSeparator, typeHash, records, nonce);
-    const sigs = await this.multisigMgr.collectSignatures({
-      rawData: rawData,
-      payload: {
-        domainSeparator: domainSeparator,
-        typeHash: typeHash,
-        unlockRecords: records,
-        nonce: nonce.toNumber(),
-      },
-    });
-    return '0x' + sigs.join('');
+  ): Promise<string[]> {
+    for (;;) {
+      const rawData = buildSigRawData(domainSeparator, typeHash, records, nonce);
+      const signatures = await this.multisigMgr.collectSignatures({
+        rawData: rawData,
+        payload: {
+          domainSeparator: domainSeparator,
+          typeHash: typeHash,
+          unlockRecords: records,
+          nonce: nonce.toNumber(),
+        },
+      });
+      if (signatures.length >= ForceBridgeCore.config.eth.multiSignThreshold) {
+        return signatures;
+      }
+      logger.error(
+        `multi-sig number:${signatures.length} less than multiSignThreshold:${ForceBridgeCore.config.eth.multiSignThreshold}`,
+      );
+      await asyncSleep(3000);
+    }
   }
 }

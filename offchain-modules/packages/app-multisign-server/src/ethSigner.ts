@@ -1,5 +1,4 @@
 import { ChainType, EthAsset } from '@force-bridge/x/dist/ckb/model/asset';
-import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { ICkbBurn } from '@force-bridge/x/dist/db/model';
 import { collectSignaturesParams, ethCollectSignaturesPayload } from '@force-bridge/x/dist/multisig/multisig-mgr';
 import { logger } from '@force-bridge/x/dist/utils/logger';
@@ -7,53 +6,29 @@ import { EthUnlockRecord } from '@force-bridge/x/dist/xchain/eth';
 import { buildSigRawData } from '@force-bridge/x/dist/xchain/eth/utils';
 import { ecsign, toRpcSig } from 'ethereumjs-util';
 import { BigNumber } from 'ethers';
-import minimist from 'minimist';
 import { publicKeyCreate } from 'secp256k1';
 import { SigServer } from './sigServer';
 
-async function verifyDuplicateEthTx(
-  pubKey: string,
-  payload: ethCollectSignaturesPayload,
-  lastFailedTxHash?: string,
-): Promise<Error | null> {
+async function verifyDuplicateEthTx(pubKey: string, payload: ethCollectSignaturesPayload): Promise<Error | undefined> {
+  const nonce = await SigServer.ethBridgeContract.latestUnlockNonce_();
+  if (nonce.toString() !== payload.nonce.toString()) {
+    return new Error(`nonce:${payload.nonce} doesn't match with:${nonce.toString()}`);
+  }
+
   const refTxHashes = payload.unlockRecords.map((record) => {
     return record.ckbTxHash;
   });
   const lastNonceRow = await SigServer.signedDb.getMaxNonceByRefTxHashes(pubKey, refTxHashes);
   const lastNonce = lastNonceRow.nonce;
   if (!lastNonce) {
-    return null;
+    return undefined;
   }
   if (lastNonce === payload.nonce) {
     // sig to tx with the same nonce, only one will be success
-    return null;
+    return undefined;
   }
 
-  if (!lastFailedTxHash) {
-    return new Error(`miss lastFailedTxHash with duplicate refTxHash`);
-  }
-  const failedTxWithReceipt = await SigServer.ethProvider.getTransactionReceipt(lastFailedTxHash);
-  if (!failedTxWithReceipt) {
-    return new Error(`cannot found tx receipt by lastFailedTxHash:${lastFailedTxHash}`);
-  }
-  if (failedTxWithReceipt.status === 1) {
-    return new Error(`lastTxHash:${lastFailedTxHash} executed successful`);
-  }
-
-  // Parse abi function params to compare unlock records
-  const failedTx = await SigServer.ethProvider.getTransaction(lastFailedTxHash);
-  const contractUnlockParams = SigServer.ethInterface.decodeFunctionData('unlock', failedTx.data);
-  const unlockResults: EthUnlockRecord[] = contractUnlockParams[0];
-  const nonce: BigNumber = contractUnlockParams[1];
-  if (nonce.toNumber() !== lastNonce) {
-    return new Error(`nonce:${nonce} of last failed tx doesn't match with:${lastNonce}`);
-  }
-
-  if (!equalsUnlockRecord(unlockResults, payload.unlockRecords)) {
-    return new Error(`payload doesn't match with lastFailedTx:${lastFailedTxHash}`);
-  }
-
-  return null;
+  return new Error(`duplicate signature`);
 }
 
 async function verifyEthTx(pubKey: string, params: collectSignaturesParams): Promise<Error | undefined> {
@@ -74,16 +49,13 @@ async function verifyEthTx(pubKey: string, params: collectSignaturesParams): Pro
   }
 
   // Verify unlock records all includes correct transactions
-  let err = await verifyUnlockRecord(payload.unlockRecords);
+  const err = await verifyUnlockRecord(payload.unlockRecords);
   if (err) {
     return err;
   }
 
   // Verify was duplicate signature to unlock txs
-  err = await verifyDuplicateEthTx(pubKey, payload, params.lastFailedTxHash);
-  if (err) {
-    return err;
-  }
+  return await verifyDuplicateEthTx(pubKey, payload);
 }
 
 export async function signEthTx(params: collectSignaturesParams): Promise<string> {
@@ -129,7 +101,7 @@ export async function signEthTx(params: collectSignaturesParams): Promise<string
   return signature;
 }
 
-async function verifyUnlockRecord(unlockRecords: EthUnlockRecord[]): Promise<Error | null> {
+async function verifyUnlockRecord(unlockRecords: EthUnlockRecord[]): Promise<Error | undefined> {
   const ckbBurnTxHashes = unlockRecords.map((record) => {
     return record.ckbTxHash;
   });
@@ -171,28 +143,13 @@ async function verifyUnlockRecord(unlockRecords: EthUnlockRecord[]): Promise<Err
       );
     }
   }
-  return null;
+  return undefined;
 }
 
 function verifyEthBridgeFee(asset: EthAsset, unlockAmount: BigNumber, burnAmount: string): boolean {
   const bridgeFee = BigNumber.from(burnAmount).sub(unlockAmount);
   const expectedBridgeFee = BigNumber.from(asset.getBridgeFee('out'));
   return bridgeFee.gte(expectedBridgeFee.div(4)) && bridgeFee.lte(expectedBridgeFee.mul(4));
-}
-
-function equalsUnlockRecord(a, b: EthUnlockRecord[]): boolean {
-  if (a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i++) {
-    if (
-      a[i].ckbTxHash !== b[i].ckbTxHash ||
-      a[i].token !== b[i].token ||
-      a[i].amount.toString() !== b[i].amount.toString() ||
-      a[i].recipient !== b[i].recipient
-    ) {
-      return false;
-    }
-  }
-  return true;
 }
 
 function privateKeyToPublicKey(privateKey) {
