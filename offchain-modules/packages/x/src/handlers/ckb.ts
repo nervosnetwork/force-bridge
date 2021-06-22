@@ -143,7 +143,7 @@ export class CkbHandler {
   }
 
   watchNewBlock(): void {
-    (async () => {
+    void (async () => {
       await this.initLastHandledBlock();
 
       foreverPromise(
@@ -251,7 +251,8 @@ export class CkbHandler {
 
   async onMintTx(mintedRecords: MintedRecords): Promise<UpdateResult | undefined> {
     if (this.role === 'collector') {
-      return await this.db.updateCkbMintStatus(mintedRecords.txHash, 'success');
+      await this.db.updateCkbMintStatus(mintedRecords.txHash, 'success');
+      return;
     }
     await this.db.watcherCreateMint(mintedRecords);
     await this.db.updateBridgeInRecords(mintedRecords);
@@ -543,7 +544,7 @@ export class CkbHandler {
     content1 += sigs.join('');
 
     const tx = sealTransaction(txSkeleton, [content0, content1]);
-    console.log('tx:', JSON.stringify(tx, null, 2));
+    logger.info('tx:', JSON.stringify(tx, null, 2));
     const txHash = await this.transactionManager.send_transaction(tx);
     await this.waitUntilCommitted(txHash, 60);
   }
@@ -578,7 +579,7 @@ export class CkbHandler {
     let waitTime = 0;
     const statusMap = new Map<string, boolean>();
 
-    while (true) {
+    for (;;) {
       const txStatus = await this.ckb.rpc.getTransaction(txHash);
       if (!statusMap.get(txStatus.txStatus.status)) {
         logger.info(
@@ -607,7 +608,7 @@ export class CkbHandler {
 function isTypeIDCorrect(args: string): boolean {
   const expectOwnerTypeHash = getOwnerTypeHash();
   const bridgeLockArgs = new ForceBridgeLockscriptArgs(fromHexString(args).buffer);
-  const ownerTypeHash = toHexString(new Uint8Array(bridgeLockArgs.getOwnerCellTypeHash().raw()));
+  const ownerTypeHash = `0x${toHexString(new Uint8Array(bridgeLockArgs.getOwnerCellTypeHash().raw()))}`;
   return ownerTypeHash === expectOwnerTypeHash;
 }
 

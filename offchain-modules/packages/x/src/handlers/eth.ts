@@ -245,6 +245,7 @@ export class EthHandler {
             `Watcher update bridge in record successful while handle lock log for eth tx ${log.transactionHash}.`,
           );
         }
+        break;
       } catch (e) {
         logger.error(`EthHandler watchLockEvents error: ${e}`);
         if (i == MAX_RETRY_TIMES) {
@@ -288,6 +289,7 @@ export class EthHandler {
           },
         ]);
         await this.ethDb.updateBurnBridgeFee(ckbTxHash, amount);
+        break;
       } catch (e) {
         logger.error(`EthHandler watchUnlockEvents error: ${e}`);
         if (i == MAX_RETRY_TIMES) {

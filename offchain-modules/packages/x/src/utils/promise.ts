@@ -67,7 +67,7 @@ interface ForeverPromiseOptions {
 export function foreverPromise(promiseThunk: (times: number) => Promise<void>, options: ForeverPromiseOptions): void {
   const { onRejectedInterval, onResolvedInterval, onRejected } = options;
 
-  (async () => {
+  void (async () => {
     for (let times = 0; ; times++) {
       await retryPromise(() => promiseThunk(times), {
         maxRetryTimes: Infinity,
