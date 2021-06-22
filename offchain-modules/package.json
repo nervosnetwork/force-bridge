@@ -31,7 +31,7 @@
     "xchain-test": "run-s prepare-xchain-test eth-test",
     "prepare-xchain-test": "sleep 5",
     "btc-test": "ts-node ./packages/scripts/src/integration-test/btc.ts",
-    "ci-test": "run-s rpc-test xchain-test",
+    "ci-test": "run-s xchain-test rpc-test",
     "integration-test": "run-p -r relayer-test sign-server1 sign-server2 rpc ci-test",
     "prepare-ckb": "run-s clean build",
     "ci-flow": "run-s deploy init-multisig prepare-xchain-test ci-config integration-test",
