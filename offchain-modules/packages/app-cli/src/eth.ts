@@ -6,7 +6,7 @@ import commander from 'commander';
 import { ethers } from 'ethers';
 import { ckbPrivateKeyToAddress, parseOptions, waitUnlockCompleted } from './utils';
 
-const ForceBridgeRpc = 'http://127.0.0.1:8080/force-bridge/api/v1';
+const ForceBridgeRpc = 'http://47.56.233.149:3083/force-bridge/api/v1';
 const EthNodeRpc = 'http://127.0.0.1:8545';
 const CkbNodeRpc = 'http://127.0.0.1:8114';
 

@@ -10,7 +10,8 @@ import express from 'express';
 import { JSONRPCServer } from 'json-rpc-2.0';
 import { ForceBridgeAPIV1Handler } from './handler';
 import { GetBalancePayload, GetBridgeTransactionSummariesPayload, XChainNetWork } from './types/apiv1';
-const version = '0.0.0';
+
+const version = '0.0.1';
 const forceBridgePath = '/force-bridge/api/v1';
 const defaultLogFile = './log/force-bridge-rpc.log';
 
