@@ -1,12 +1,12 @@
+import assert from 'assert';
 import { Config } from '@force-bridge/x/dist/config';
 import { asyncSleep } from '@force-bridge/x/dist/utils';
 import { initLog, logger } from '@force-bridge/x/dist/utils/logger';
-import CKB from '@nervosnetwork/ckb-sdk-core/';
 import { Amount } from '@lay2/pw-core';
+import CKB from '@nervosnetwork/ckb-sdk-core/';
 import { ethers } from 'ethers';
 import { JSONRPCClient } from 'json-rpc-2.0';
 import nconf from 'nconf';
-import assert from 'assert';
 import fetch from 'node-fetch/index';
 
 const FORCE_BRIDGE_URL = 'http://127.0.0.1:8080/force-bridge/api/v1';
