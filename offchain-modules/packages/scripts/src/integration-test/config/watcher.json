@@ -9,7 +9,7 @@
       "orm": {
         "type": "mysql",
         "host": "localhost",
-        "port": 3306,
+        "port": 3309,
         "username": "root",
         "password": "root",
         "database": "forcebridge",
@@ -150,6 +150,15 @@
         "code_hash": "0x5c5069eb0857efc65e1bca0c07df34c31663b3622fd3876c876320fc9634e2a8",
         "hash_type": "type",
         "args": "0x7ae4ef98cc4c3e46d359f380cd60c50e3412de5d"
+      }
+    },
+    "rpc": {
+      "port": 8080,
+      "corsOptions": {
+        "origin": "*",
+        "methods": "GET,HEAD,PUT,PATCH,POST,DELETE",
+        "preflightContinue": false,
+        "optionsSuccessStatus": 200
       }
     }
   }

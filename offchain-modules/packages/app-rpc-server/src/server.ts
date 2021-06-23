@@ -28,7 +28,7 @@ export async function startRpcServer(config: Config): Promise<void> {
   await new ForceBridgeCore().init(config);
   const conn = await getDBConnection();
   //start chain handlers
-  startHandlers(conn);
+  void startHandlers(conn);
   const forceBridgeRpc = new ForceBridgeAPIV1Handler(conn);
 
   const server = new JSONRPCServer();
@@ -73,6 +73,7 @@ export async function startRpcServer(config: Config): Promise<void> {
   server.addMethod('getAssetList', async (payload) => {
     return await forceBridgeRpc.getAssetList(payload);
   });
+  server.addMethod('getBridgeConfig', () => forceBridgeRpc.getBridgeConfig());
   const app = express();
   app.use(bodyParser.json());
 
@@ -82,7 +83,7 @@ export async function startRpcServer(config: Config): Promise<void> {
     const startTime = Date.now();
     // server.receive takes a JSON-RPC request and returns a promise of a JSON-RPC response.
     // Alternatively, you can use server.receiveJSON, which takes JSON string as is (in this case req.body).
-    server.receive(jsonRPCRequest).then((jsonRPCResponse) => {
+    void server.receive(jsonRPCRequest).then((jsonRPCResponse) => {
       if (jsonRPCResponse) {
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.json(jsonRPCResponse);
