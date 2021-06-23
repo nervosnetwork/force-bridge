@@ -1,5 +1,6 @@
 import * as Prometheus from 'prom-client';
-import { logger } from '../utils/logger';
+import { forceBridgeRole } from '../config';
+import { BridgeMetricSingleton } from './bridge-metric';
 
 export type status = 'success' | 'failed';
 export type chainType = 'ckb' | 'eth';
@@ -7,47 +8,24 @@ export type chainType = 'ckb' | 'eth';
 export class SigserverMetric {
   private sigServerRequestDurationms: Prometheus.Histogram<any>;
   private sigServerSignatureNum: Prometheus.Counter<any>;
-  private gateway: Prometheus.Pushgateway;
-  private openPushMetric: boolean;
-  constructor(pushGatewayURL: string) {
-    const register = new Prometheus.Registry();
+  constructor(role: forceBridgeRole) {
     this.sigServerRequestDurationms = new Prometheus.Histogram({
-      name: 'sig_server_request_duration_ms',
+      name: `${role}_sig_server_request_duration_ms`,
       help: 'Duration of sig server requests in ms',
       labelNames: ['signer', 'method', 'status'],
-      buckets: [0.1, 5, 15, 50, 100],
+      buckets: [2, 10, 50, 250, 500, 1000, 2500, 5000],
     });
     this.sigServerSignatureNum = new Prometheus.Counter({
-      name: 'sig_server_sign_total',
+      name: `${role}_sig_server_sign_total`,
       help: 'amount of signature',
       labelNames: ['method', 'status'],
     });
-    register.registerMetric(this.sigServerRequestDurationms);
-    if (pushGatewayURL != '' && pushGatewayURL.startsWith('http')) {
-      this.gateway = new Prometheus.Pushgateway(pushGatewayURL, [], register);
-      this.openPushMetric = true;
-    }
+    BridgeMetricSingleton.getInstance(role).getRegister().registerMetric(this.sigServerRequestDurationms);
+    BridgeMetricSingleton.getInstance(role).getRegister().registerMetric(this.sigServerSignatureNum);
   }
 
   setSigServerRequestMetric(signer: string, method: string, status: status, time: number): void {
     this.sigServerRequestDurationms.labels(signer, method, status).observe(time);
     this.sigServerSignatureNum.labels(signer, method, status).inc(1);
-    this.handlerPushMetric('sig_server_request');
-  }
-
-  handlerPushMetric(jobName: string): void {
-    if (this.openPushMetric) {
-      this.gateway.push({ jobName: jobName }, (err, resp, body) => {
-        if (err != null) {
-          logger.warn(
-            `Prometheus Monitor PushGateWay ${jobName} Error: failed to push ${jobName} metrics. error is ${err}, callback body is ${body}, response is ${JSON.stringify(
-              resp,
-              null,
-              2,
-            )}`,
-          );
-        }
-      });
-    }
   }
 }

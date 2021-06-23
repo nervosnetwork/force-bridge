@@ -40,11 +40,7 @@ export class SigServer {
     SigServer.ethDb = new EthDb(conn);
     SigServer.keys = new Map<string, Map<string, string>>();
 
-    let promPushGateWayURL = '';
-    if (ForceBridgeCore.config.common.monitor) {
-      promPushGateWayURL = ForceBridgeCore.config.common.monitor.pushGatewayURL;
-    }
-    SigServer.metrics = new SigserverMetric(promPushGateWayURL);
+    SigServer.metrics = new SigserverMetric(ForceBridgeCore.config.common.role);
 
     if (ForceBridgeCore.config.ckb !== undefined) {
       const ckbKeys = new Map<string, string>();
@@ -71,7 +67,7 @@ export class SigServer {
   }
 }
 
-export async function startSigServer(config: Config, port: number) {
+export async function startSigServer(config: Config, port: number): Promise<void> {
   if (!config.common.log.logFile) {
     config.common.log.logFile = defaultLogFile;
   }

@@ -144,7 +144,7 @@ export interface commonConfig {
 }
 
 export interface promConfig {
-  pushGatewayURL: string;
+  metricPort: number;
 }
 
 export interface WhiteListEthAsset {

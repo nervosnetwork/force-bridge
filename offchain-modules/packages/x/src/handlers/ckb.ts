@@ -20,7 +20,7 @@ import { ForceBridgeCore } from '../core';
 import { CkbDb, KVDb } from '../db';
 import { CkbMint, ICkbBurn, MintedRecords } from '../db/model';
 import { asserts, nonNullable } from '../errors';
-import { RelayerMetric, txTokenInfo } from '../monitor/relayer-metric';
+import { BridgeMetricSingleton, txTokenInfo } from '../monitor/bridge-metric';
 import { createAsset, MultiSigMgr } from '../multisig/multisig-mgr';
 import { asyncSleep, foreverPromise, fromHexString, toHexString, uint8ArrayToString } from '../utils';
 import { logger } from '../utils/logger';
@@ -156,7 +156,11 @@ export class CkbHandler {
 
           await this.onBlock(block);
           const currentBlock = await this.ckb.rpc.getTipHeader();
-          RelayerMetric.setBlockHeightMetrics(this.role, 'ckb', nextBlockHeight, Number(currentBlock.number));
+          BridgeMetricSingleton.getInstance(this.role).setBlockHeightMetrics(
+            'ckb',
+            nextBlockHeight,
+            Number(currentBlock.number),
+          );
         },
         {
           onRejectedInterval: 3000,
@@ -222,7 +226,7 @@ export class CkbHandler {
       const parsedMintRecords = await this.parseMintTx(tx);
       if (parsedMintRecords) {
         await this.onMintTx(parsedMintRecords);
-        RelayerMetric.addBridgeTxMetrics('ckb_mint', 'success');
+        BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('ckb_mint', 'success');
       }
       const recipientData = tx.outputsData[0];
       let cellData;
@@ -291,8 +295,8 @@ export class CkbHandler {
         }
       }
       if (burn) {
-        RelayerMetric.addBridgeTxMetrics('ckb_burn', 'success');
-        RelayerMetric.addBridgeTokenMetrics('ckb_burn', [
+        BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('ckb_burn', 'success');
+        BridgeMetricSingleton.getInstance(this.role).addBridgeTokenMetrics('ckb_burn', [
           {
             token: burn.asset,
             amount: Number(burn.amount),
@@ -442,7 +446,7 @@ export class CkbHandler {
                 amount: Number(r.amount),
               });
             });
-            RelayerMetric.addBridgeTokenMetrics('ckb_mint', mintTokens);
+            BridgeMetricSingleton.getInstance(this.role).addBridgeTokenMetrics('ckb_mint', mintTokens);
           } else {
             mintRecords.map((r) => {
               r.mintHash = mintTxHash;
@@ -459,7 +463,7 @@ export class CkbHandler {
             r.status = 'error';
             r.message = e.toString();
           });
-          RelayerMetric.addBridgeTxMetrics('ckb_mint', 'failed');
+          BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('ckb_mint', 'failed');
           await this.db.updateCkbMint(mintRecords);
         }
       },

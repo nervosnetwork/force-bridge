@@ -6,7 +6,7 @@ import { ForceBridgeCore } from '../core';
 import { EthDb, KVDb } from '../db';
 import { EthUnlockStatus } from '../db/entity/EthUnlock';
 import { EthUnlock } from '../db/model';
-import { RelayerMetric, txTokenInfo } from '../monitor/relayer-metric';
+import { BridgeMetricSingleton, txTokenInfo } from '../monitor/bridge-metric';
 import { asyncSleep, foreverPromise, fromHexString, uint8ArrayToString } from '../utils';
 import { logger } from '../utils/logger';
 import { EthChain, Log, ParsedLog } from '../xchain/eth';
@@ -109,7 +109,7 @@ export class EthHandler {
     this.ethChain.watchNewBlock(this.lastHandledBlockHeight, async (newBlock: ethers.providers.Block) => {
       await this.onBlock(newBlock);
       const currentBlockHeight = await this.ethChain.getCurrentBlockNumber();
-      RelayerMetric.setBlockHeightMetrics(this.role, 'eth', newBlock.number, currentBlockHeight);
+      BridgeMetricSingleton.getInstance(this.role).setBlockHeightMetrics('eth', newBlock.number, currentBlockHeight);
     });
   }
 
@@ -235,8 +235,8 @@ export class EthHandler {
             sender: sender,
           },
         ]);
-        RelayerMetric.addBridgeTxMetrics('eth_lock', 'success');
-        RelayerMetric.addBridgeTokenMetrics('eth_lock', [
+        BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_lock', 'success');
+        BridgeMetricSingleton.getInstance(this.role).addBridgeTokenMetrics('eth_lock', [
           {
             amount: Number(amount),
             token: token,
@@ -280,7 +280,7 @@ export class EthHandler {
           },
         ]);
         await this.db.updateBurnBridgeFee(ckbTxHash, amount);
-        RelayerMetric.addBridgeTokenMetrics('eth_unlock', [
+        BridgeMetricSingleton.getInstance(this.role).addBridgeTokenMetrics('eth_unlock', [
           {
             amount: Number(amount),
             token: parsedLog.args.token,
@@ -309,7 +309,7 @@ export class EthHandler {
       await this.onUnlockLogs(log, parsedLog);
       if (log.transactionHash != unlockHash) {
         unlockHash = log.transactionHash;
-        RelayerMetric.addBridgeTxMetrics('eth_unlock', 'success');
+        BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_unlock', 'success');
       }
     });
   }
@@ -371,14 +371,14 @@ export class EthHandler {
               };
               return tokenInfo;
             });
-            RelayerMetric.addBridgeTokenMetrics('eth_unlock', unlockTokens);
-            RelayerMetric.addBridgeTxMetrics('eth_unlock', 'success');
+            BridgeMetricSingleton.getInstance(this.role).addBridgeTokenMetrics('eth_unlock', unlockTokens);
+            BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_unlock', 'success');
           } else {
             records.map((r) => {
               r.status = 'error';
               r.message = 'unlock tx failed';
             });
-            RelayerMetric.addBridgeTxMetrics('eth_unlock', 'failed');
+            BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_unlock', 'failed');
             logger.error('EthHandler watchUnlockEvents unlock execute failed:', receipt);
           }
           await this.db.saveEthUnlock(records);

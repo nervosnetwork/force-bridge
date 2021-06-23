@@ -14,18 +14,16 @@ const version = '0.0.0';
 const forceBridgePath = '/force-bridge/api/v1';
 const defaultLogFile = './log/force-bridge-rpc.log';
 
-export async function startRpcServer(config: Config) {
+export async function startRpcServer(config: Config): Promise<void> {
   const rpcConfig: rpcConfig = config.rpc;
   if (!config.common.log.logFile) {
     config.common.log.logFile = defaultLogFile;
   }
-  let promPushGateWayURL = '';
-  if (config.common.monitor) {
-    promPushGateWayURL = config.common.monitor.pushGatewayURL;
-  }
-  const metrics = new RpcMetric(promPushGateWayURL);
+
   initLog(config.common.log);
   config.common.role = 'watcher';
+
+  const metrics = new RpcMetric(config.common.role);
 
   await new ForceBridgeCore().init(config);
   const conn = await getDBConnection();
