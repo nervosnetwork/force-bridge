@@ -1,19 +1,33 @@
 import { Cell, Script as LumosScript, Indexer, WitnessArgs, core } from '@ckb-lumos/base';
 import { common } from '@ckb-lumos/common-scripts';
 import { TransactionSkeleton, TransactionSkeletonType } from '@ckb-lumos/helpers';
-import { Address, Amount, DepType, Script } from '@lay2/pw-core';
+import { Address, Amount, DepType, Script, HashType } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import { Reader, normalizers } from 'ckb-js-toolkit';
 import { ForceBridgeCore } from '../../core';
 import { asserts } from '../../errors';
-import { asyncSleep, bigintToSudtAmount, fromHexString, stringToUint8Array, toHexString } from '../../utils';
+import { asyncSleep, fromHexString, stringToUint8Array, toHexString } from '../../utils';
 import { logger } from '../../utils/logger';
 import { Asset } from '../model/asset';
 import { IndexerCollector } from './collector';
 import { SerializeRecipientCellData } from './generated/eth_recipient_cell';
 import { SerializeMintWitness } from './generated/mint_witness';
-import { CkbIndexer, ScriptType } from './indexer';
-import { getFromAddr, getMultisigLock, getOwnerTypeHash } from './multisig/multisig_helper';
+import { CkbIndexer, IndexerCell, ScriptType } from './indexer';
+import { getFromAddr, getOwnerTypeHash } from './multisig/multisig_helper';
+
+interface OutPutCell {
+  lock: {
+    codeHash: string;
+    hashType: HashType;
+    args: string;
+  };
+  type?: {
+    codeHash: string;
+    hashType: HashType;
+    args: string;
+  };
+  capacity: string;
+}
 
 export interface MintAssetRecord {
   lockTxHash: string;
@@ -297,7 +311,6 @@ export class CkbTxGenerator {
     asset: Asset,
     amount: Amount,
   ): Promise<CKBComponents.RawTransactionToSign> {
-    const multisigLockScript = getMultisigLock(ForceBridgeCore.config.ckb.multisigScript);
     if (amount.eq(Amount.ZERO)) {
       throw new Error('amount should larger then zero!');
     }
@@ -394,6 +407,10 @@ export class CkbTxGenerator {
         recipientTypeScript.codeHash,
         new Amount(`0x${needSupplyCap.toString(16)}`, 0),
       );
+      const suppliedCap = needSupplyCapCells.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
+      if (suppliedCap - needSupplyCap < 0) {
+        throw new Error('need supply amount is not enough!');
+      }
       inputCells = inputCells.concat(needSupplyCapCells);
     }
 
@@ -436,7 +453,13 @@ export class CkbTxGenerator {
     return rawTx as CKBComponents.RawTransactionToSign;
   }
 
-  handleChangeCell(inputCells, outputs, outputsData, userLockscript, fee): void {
+  handleChangeCell(
+    inputCells: IndexerCell[],
+    outputs: Array<OutPutCell>,
+    outputsData: Array<string>,
+    userLockscript: Script,
+    fee: bigint,
+  ): void {
     const inputCap = inputCells.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
     const outputCap = outputs.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
     const changeCellCapacity = inputCap - outputCap - fee;
@@ -455,35 +478,5 @@ export class CkbTxGenerator {
       outputs.push(changeCell);
       outputsData.push('0x');
     }
-  }
-
-  async supplyCap(lockscript, inputsCell, outputs, outputsData, fee) {
-    let inputCap = inputsCell.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
-    const outputCap = outputs.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
-    const needSupplyCapCells = await this.collector.getCellsByLockscriptAndCapacity(
-      lockscript,
-      Amount.fromUInt128LE(bigintToSudtAmount(outputCap - inputCap + fee)),
-    );
-    inputsCell = inputsCell.concat(needSupplyCapCells);
-    inputCap = inputsCell.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
-    const changeCellCapacity = inputCap - outputCap - fee;
-    if (changeCellCapacity > 64n * 10n ** 8n) {
-      const changeLockScript = {
-        codeHash: lockscript.codeHash,
-        hashType: lockscript.hashType,
-        args: lockscript.args,
-      };
-      const changeCell = {
-        lock: changeLockScript,
-        capacity: `0x${changeCellCapacity.toString(16)}`,
-      };
-      outputs.push(changeCell);
-      outputsData.push('0x');
-    }
-    return {
-      inputsCell: inputsCell,
-      outputs: outputs,
-      outputsData: outputsData,
-    };
   }
 }
