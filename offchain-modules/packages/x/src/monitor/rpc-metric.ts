@@ -24,7 +24,7 @@ export class RpcMetric {
     BridgeMetricSingleton.getInstance(role).getRegister().registerMetric(this.rpcRequestNum);
   }
 
-  setRpcRequestDurationMetric(method: string, status: responseStatus, time: number): void {
+  setRpcRequestMetric(method: string, status: responseStatus, time: number): void {
     this.rpcRequestDurationms.labels(method, status).observe(time);
     this.rpcRequestNum.labels(method, status).inc(1);
   }

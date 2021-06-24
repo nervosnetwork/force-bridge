@@ -98,29 +98,43 @@ export async function startSigServer(config: Config, port: number): Promise<void
     const jsonRPCRequest = req.body;
     // server.receive takes a JSON-RPC request and returns a promise of a JSON-RPC response.
     // Alternatively, you can use server.receiveJSON, which takes JSON string as is (in this case req.body).
-    server.receive(jsonRPCRequest).then((jsonRPCResponse) => {
-      if (jsonRPCResponse) {
-        res.json(jsonRPCResponse);
-        SigServer.metrics.setSigServerRequestMetric(
-          jsonRPCRequest.params.requestAddress!,
-          jsonRPCRequest.method,
-          'success',
-          Date.now() - startTime,
-        );
-        logger.info('response', jsonRPCResponse);
-      } else {
-        // If response is absent, it was a JSON-RPC notification method.
-        // Respond with no content status (204).
-        logger.error('response', 204);
-        SigServer.metrics.setSigServerRequestMetric(
-          jsonRPCRequest.params.requestAddress!,
-          jsonRPCRequest.method,
-          'failed',
-          Date.now() - startTime,
-        );
-        res.sendStatus(204);
-      }
-    });
+    server.receive(jsonRPCRequest).then(
+      (jsonRPCResponse) => {
+        if (jsonRPCResponse) {
+          res.json(jsonRPCResponse);
+          SigServer.metrics.setSigServerRequestMetric(
+            jsonRPCRequest.params.requestAddress!,
+            jsonRPCRequest.method,
+            'success',
+            Date.now() - startTime,
+          );
+          logger.info('response', jsonRPCResponse);
+        } else {
+          logger.error('Sig Server Error: the jsonRPCResponse is null');
+          if (jsonRPCRequest.params && jsonRPCRequest.method && jsonRPCRequest.params.requestAddress) {
+            SigServer.metrics.setSigServerRequestMetric(
+              jsonRPCRequest.params.requestAddress!,
+              jsonRPCRequest.method,
+              'failed',
+              Date.now() - startTime,
+            );
+          }
+          res.sendStatus(204);
+        }
+      },
+      (reason) => {
+        logger.error('Sig Server Error: the request is rejected by ', reason);
+        if (jsonRPCRequest.params && jsonRPCRequest.method && jsonRPCRequest.params.requestAddress) {
+          SigServer.metrics.setSigServerRequestMetric(
+            jsonRPCRequest.params.requestAddress!,
+            jsonRPCRequest.method,
+            'failed',
+            Date.now() - startTime,
+          );
+        }
+        res.sendStatus(500);
+      },
+    );
   });
   app.listen(port);
   logger.info(`sig server handler started on ${port}  🚀`);
