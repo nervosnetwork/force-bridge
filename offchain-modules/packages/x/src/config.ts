@@ -140,6 +140,11 @@ export interface commonConfig {
   log: logConfig;
   network: 'mainnet' | 'testnet';
   orm: ormConfig;
+  monitor?: promConfig;
+}
+
+export interface promConfig {
+  metricPort: number;
 }
 
 export interface WhiteListEthAsset {
