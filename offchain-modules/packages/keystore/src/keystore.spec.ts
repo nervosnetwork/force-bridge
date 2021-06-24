@@ -23,4 +23,7 @@ test('keystore', (t) => {
   t.is('0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', store.getDecryptedByKeyID('Alice'));
   t.is('0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', store.getDecryptedByKeyID('Bob'));
   t.is('0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', store.getDecryptedByKeyID('Charlie'));
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  t.throws(() => store.getDecryptedByKeyID('nonexistent'), null, 'error when trying to get a nonexistent item');
 });

@@ -5,8 +5,10 @@ function noop(): void {
 }
 
 export type Encrypted = KeysData<string>;
+type KeyPair = Record<string, string>;
+type KeyIDOf<T> = T extends Record<infer X, unknown> ? X : string;
 
-export class KeyStore {
+export class KeyStore<KeyID extends string = string> {
   #password: string;
   #isDecrypted = false;
 
@@ -16,7 +18,7 @@ export class KeyStore {
     this.store = createStore(noop, encrypted);
   }
 
-  static createFromPairs(keyPairs: Record<string, string>, password: string): KeyStore {
+  static createFromPairs<P extends KeyPair>(keyPairs: P, password: string): KeyStore<KeyIDOf<P>> {
     const raw = createStore(noop);
 
     const savedKeys = Object.entries(keyPairs).map(([id, privateKey]) => ({
@@ -48,8 +50,11 @@ export class KeyStore {
     this.#isDecrypted = true;
   }
 
-  getDecryptedByKeyID(id: string): string {
-    return this.store.getPrivateKeyData(id, this.#password);
+  getDecryptedByKeyID(id: KeyID): string {
+    const decrypted = this.store.getPrivateKeyData(id, this.#password);
+    if (!decrypted) throw new Error(`cannot find ${id} in the keystore`);
+
+    return decrypted;
   }
 
   listKeyIDs(): string[] {
@@ -59,6 +64,6 @@ export class KeyStore {
   getEncryptedData(): KeysData<string> {
     return this.store
       .getKeyIDs()
-      .reduce((result, id) => Object.assign(result, { [id]: this.store.getPublicKeyData(id) }), {} as KeysData<string>);
+      .reduce((result, id) => Object.assign(result, { [id]: this.store.getRawKeyData(id) }), {} as KeysData<string>);
   }
 }
