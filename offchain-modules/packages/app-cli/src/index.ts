@@ -2,6 +2,7 @@
 import commander from 'commander';
 import { feeCmd } from './bridgeFee';
 import { ethCmd } from './eth';
+import { keystoreCmd } from './keystore';
 import { relayerCmd } from './relayer';
 import { rpcCmd } from './rpc';
 import { sigCmd } from './sigServer';
@@ -16,11 +17,12 @@ async function main() {
     .description('forcecli is command line tool to lock & unlock asset to force bridge')
     .addCommand(ethCmd)
     .addCommand(relayerCmd)
-    .addCommand(rpcCmd)
     .addCommand(feeCmd)
-    .addCommand(sigCmd);
+    .addCommand(rpcCmd)
+    .addCommand(sigCmd)
+    .addCommand(keystoreCmd);
 
   await program.parseAsync(process.argv);
 }
 
-main();
+void main();

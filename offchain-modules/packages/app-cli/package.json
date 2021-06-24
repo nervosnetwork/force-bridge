@@ -16,6 +16,7 @@
     "@force-bridge/app-multisign-server": "*",
     "@force-bridge/app-relayer": "*",
     "@force-bridge/app-rpc-server": "*",
+    "@force-bridge/keystore": "*",
     "@force-bridge/x": "*"
   }
 }
