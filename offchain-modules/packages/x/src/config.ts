@@ -42,7 +42,13 @@ export class MultiSignKey {
 export interface CkbConfig {
   ckbRpcUrl: string;
   ckbIndexerUrl: string;
+  /**
+   * @deprecated migrate to {@link KeyStore}
+   */
   fromPrivateKey: string;
+  /**
+   * @deprecated migrate to {@link KeyStore}
+   */
   multiSignKeys: MultiSignKey[];
   multiSignHosts: MultiSignHost[];
   multisigScript: MultisigItem;
@@ -60,7 +66,13 @@ export interface CkbConfig {
 export interface EthConfig {
   rpcUrl: string;
   contractAddress: string;
+  /**
+   * @deprecated migrate to {@link KeyStore}
+   */
   privateKey: string;
+  /**
+   * @deprecated migrate to {@link KeyStore}
+   */
   multiSignKeys: MultiSignKey[];
   multiSignAddresses: string[];
   multiSignHosts: MultiSignHost[];
