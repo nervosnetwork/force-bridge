@@ -6,6 +6,7 @@ import { ForceBridgeCore } from '../core';
 import { EthDb, KVDb } from '../db';
 import { EthUnlockStatus } from '../db/entity/EthUnlock';
 import { EthUnlock } from '../db/model';
+import { BridgeMetricSingleton, txTokenInfo } from '../monitor/bridge-metric';
 import { asyncSleep, foreverPromise, fromHexString, retryPromise, uint8ArrayToString } from '../utils';
 import { logger } from '../utils/logger';
 import { EthChain, Log, ParsedLog } from '../xchain/eth';
@@ -111,6 +112,12 @@ export class EthHandler {
         await retryPromise(
           async () => {
             await this.onBlock(newBlock);
+            const currentBlockHeight = await this.ethChain.getCurrentBlockNumber();
+            BridgeMetricSingleton.getInstance(this.role).setBlockHeightMetrics(
+              'eth',
+              newBlock.number,
+              currentBlockHeight,
+            );
           },
           {
             onRejectedInterval: 3000,
@@ -255,6 +262,13 @@ export class EthHandler {
             sender: sender,
           },
         ]);
+        BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_lock', 'success');
+        BridgeMetricSingleton.getInstance(this.role).addBridgeTokenMetrics('eth_lock', [
+          {
+            amount: Number(amount),
+            token: token,
+          },
+        ]);
         logger.info(`EthHandler watchLockEvents save EthLock successful for eth tx ${log.transactionHash}.`);
         if (this.role === 'watcher') {
           await this.db.updateBridgeInRecord(txHash, amount, token, recipient, sudtExtraData);
@@ -294,6 +308,12 @@ export class EthHandler {
           },
         ]);
         await this.db.updateBurnBridgeFee(ckbTxHash, amount);
+        BridgeMetricSingleton.getInstance(this.role).addBridgeTokenMetrics('eth_unlock', [
+          {
+            amount: Number(amount),
+            token: parsedLog.args.token,
+          },
+        ]);
         break;
       } catch (e) {
         logger.error(`EthHandler watchUnlockEvents error: ${e}`);
@@ -303,6 +323,24 @@ export class EthHandler {
         await asyncSleep(3000);
       }
     }
+  }
+
+  // listen ETH chain and handle the new lock events
+  watchLockEvents(): void {
+    this.ethChain.watchLockEvents(this.lastHandledBlockHeight, async (log, parsedLog) => {
+      await this.onLockLogs(log, parsedLog);
+    });
+  }
+
+  watchUnlockEvents(): void {
+    let unlockHash = '';
+    this.ethChain.watchUnlockEvents(this.lastHandledBlockHeight, async (log, parsedLog) => {
+      await this.onUnlockLogs(log, parsedLog);
+      if (log.transactionHash != unlockHash) {
+        unlockHash = log.transactionHash;
+        BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_unlock', 'success');
+      }
+    });
   }
 
   async getUnlockRecords(status: EthUnlockStatus): Promise<EthUnlock[]> {
@@ -355,11 +393,21 @@ export class EthHandler {
             records.map((r) => {
               r.status = 'success';
             });
+            const unlockTokens = records.map((r) => {
+              const tokenInfo: txTokenInfo = {
+                amount: Number(r.amount),
+                token: r.asset,
+              };
+              return tokenInfo;
+            });
+            BridgeMetricSingleton.getInstance(this.role).addBridgeTokenMetrics('eth_unlock', unlockTokens);
+            BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_unlock', 'success');
           } else {
             records.map((r) => {
               r.status = 'error';
               r.message = 'unlock tx failed';
             });
+            BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_unlock', 'failed');
             logger.error('EthHandler watchUnlockEvents unlock execute failed:', receipt);
           }
           await this.db.saveEthUnlock(records);

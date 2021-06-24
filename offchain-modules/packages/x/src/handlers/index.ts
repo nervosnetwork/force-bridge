@@ -1,4 +1,4 @@
-import { Connection, createConnection, getConnectionManager, getConnectionOptions } from 'typeorm';
+import { Connection } from 'typeorm';
 import { ForceBridgeCore } from '../core';
 import { CkbDb, EthDb, KVDb, TronDb } from '../db';
 import { BtcDb } from '../db/btc';
@@ -8,6 +8,7 @@ import { CkbHandler } from '../handlers/ckb';
 import { EosHandler } from '../handlers/eos';
 import { EthHandler } from '../handlers/eth';
 import { TronHandler } from '../handlers/tron';
+import { BridgeMetricSingleton } from '../monitor/bridge-metric';
 import { parsePrivateKey } from '../utils';
 import { logger } from '../utils/logger';
 import { BTCChain } from '../xchain/btc';
@@ -22,6 +23,12 @@ export async function startHandlers(conn: Connection) {
 
   const role = ForceBridgeCore.config.common.role;
   const isCollector = ForceBridgeCore.config.common.role === 'collector';
+
+  let metricsPort = -1;
+  if (ForceBridgeCore.config.common.monitor) {
+    metricsPort = ForceBridgeCore.config.common.monitor.metricPort;
+  }
+  BridgeMetricSingleton.getInstance(role).init(metricsPort);
 
   // init db and start handlers
   const ckbDb = new CkbDb(conn);
