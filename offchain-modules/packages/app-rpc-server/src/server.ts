@@ -1,7 +1,7 @@
 import { rpcConfig, Config } from '@force-bridge/x/dist/config';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { startHandlers } from '@force-bridge/x/dist/handlers';
-import { RpcMetric } from '@force-bridge/x/dist/monitor/rpc-metric';
+import { responseStatus, RpcMetric } from '@force-bridge/x/dist/monitor/rpc-metric';
 import { getDBConnection } from '@force-bridge/x/dist/utils';
 import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
 import bodyParser from 'body-parser';
@@ -85,18 +85,19 @@ export async function startRpcServer(config: Config): Promise<void> {
     // Alternatively, you can use server.receiveJSON, which takes JSON string as is (in this case req.body).
     void server.receive(jsonRPCRequest).then(
       (jsonRPCResponse) => {
-        if (jsonRPCResponse) {
-          res.setHeader('Content-Type', 'application/json; charset=utf-8');
-          res.json(jsonRPCResponse);
-          metrics.setRpcRequestMetric(jsonRPCRequest.method, 'success', Date.now() - startTime);
-          logger.info('response', jsonRPCResponse);
-        } else {
+        if (!jsonRPCResponse) {
           logger.error('RPC Server Error: the jsonRPCResponse is null');
           if (jsonRPCRequest.method) {
             metrics.setRpcRequestMetric(jsonRPCRequest.method, 'failed', Date.now() - startTime);
           }
           res.sendStatus(204);
+          return;
         }
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.json(jsonRPCResponse);
+        const status: responseStatus = jsonRPCResponse.error ? 'failed' : 'success';
+        metrics.setRpcRequestMetric(jsonRPCRequest.method, status, Date.now() - startTime);
+        logger.info('response', jsonRPCResponse, ' status :', status);
       },
       (reason) => {
         logger.error('RPC Server Error: the request is rejected by ', reason);
