@@ -23,7 +23,6 @@
     },
     "eth": {
       "rpcUrl": "http://127.0.0.1:8545",
-      "privateKey": "privkeys/eth",
       "multiSignAddresses":[
         "0xB026351cD0c62aC89e488A840b7205730E8476bd",
         "0x27EE444d5D96094EACecC00194b7026Eb4fD979c",
@@ -141,7 +140,6 @@
       },
       "multiSignKeys":[],
       "multiSignHosts":[],
-      "fromPrivateKey": "privkeys/ckb",
       "deps": {
         "bridgeLock": {
           "cellDep": {

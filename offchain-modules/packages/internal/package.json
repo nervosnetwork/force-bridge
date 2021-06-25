@@ -8,5 +8,8 @@
     "compile": "tsc -p tsconfig.build.json",
     "prepublishOnly": "yarn run build",
     "test": "yarn run build"
+  },
+  "dependencies": {
+    "@force-bridge/keystore": "*"
   }
 }

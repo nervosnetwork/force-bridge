@@ -1,10 +1,12 @@
 import fs from 'fs';
 import { KeyStore } from '@force-bridge/keystore';
 import CKB from '@nervosnetwork/ckb-sdk-core';
+import { has } from 'lodash';
 import nconf from 'nconf';
 import { CkbIndexer } from './ckb/tx-helper/indexer';
 import { Config } from './config';
 import { asserts } from './errors';
+import { logger } from './utils/logger';
 
 type KeyID = 'ckb' | 'eth';
 function bootstrapKeyStore(
@@ -24,19 +26,18 @@ interface BootstrapOptions {
   keystorePath?: string;
 }
 
-export async function bootstrapForceBridgeCore(options: BootstrapOptions = {}): Promise<void> {
+/**
+ * call the bootstrap before your application starts.
+ * @param options
+ */
+export async function bootstrap(options: BootstrapOptions = {}): Promise<void> {
   const { configPath = './config.json', keystorePath = './keystore.json' } = options;
-
-  // bootstrap keystore
-  const store = bootstrapKeyStore(keystorePath);
 
   // bootstrap ForceBridgeCore
   nconf.env().file({ file: configPath });
   const config: Config = nconf.get('forceBridge');
-  await new ForceBridgeCore().init(config);
-
-  // TODO remove private key in ForceBridgeCore
-  ForceBridgeCore.config.ckb.fromPrivateKey = store.getDecryptedByKeyID('ckb');
+  const keystore = bootstrapKeyStore(keystorePath);
+  await new ForceBridgeCore().init(config, keystore);
 }
 
 // make global config and var static,
@@ -61,10 +62,24 @@ export class ForceBridgeCore {
     return ForceBridgeCore._ckbIndexer;
   }
 
-  async init(config: Config): Promise<ForceBridgeCore> {
+  /**
+   * @deprecated migrate to {@link bootstrap}
+   * @param config
+   * @returns
+   */
+  async init(
+    config: Config,
+    keystore: KeyStore<KeyID> = bootstrapKeyStore('./keystore.json'),
+  ): Promise<ForceBridgeCore> {
+    if (has(config, 'ckb.fromPrivateKey')) logger.warn('config.ckb.fromPrivateKey is deprecated.');
+
     ForceBridgeCore._config = config;
     ForceBridgeCore._ckb = new CKB(config.ckb.ckbRpcUrl);
     ForceBridgeCore._ckbIndexer = new CkbIndexer(config.ckb.ckbRpcUrl, config.ckb.ckbIndexerUrl);
+
+    // TODO remove private key in ForceBridgeCore
+    ForceBridgeCore.config.ckb.fromPrivateKey = keystore.getDecryptedByKeyID('ckb');
+    ForceBridgeCore.config.eth.privateKey = keystore.getDecryptedByKeyID('eth');
     return this;
   }
 }
