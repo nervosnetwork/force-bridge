@@ -1,11 +1,12 @@
 import { TransactionSkeletonType } from '@ckb-lumos/helpers';
-import { SigErrorCode } from '@force-bridge/app-multisign-server/dist/error';
 import { JSONRPCResponse } from 'json-rpc-2.0';
 import { MultiSignHost } from '../config';
 import { asyncSleep } from '../utils';
 import { logger } from '../utils/logger';
 import { EthUnlockRecord } from '../xchain/eth';
 import { httpRequest } from './client';
+
+const SigErrorCodeUnknownError = 9999;
 
 export interface ethCollectSignaturesPayload {
   domainSeparator: string;
@@ -73,7 +74,7 @@ export class MultiSigMgr {
         try {
           const sigResp = await this.requestSig(svrHost.host, params);
           if (sigResp.error) {
-            if (sigResp.error.code === Number(SigErrorCode.UnknownError)) {
+            if (sigResp.error.code === SigErrorCodeUnknownError) {
               failedSigServerHosts.push(svrHost);
             }
             logger.error(
