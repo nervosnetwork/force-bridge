@@ -34,10 +34,10 @@ export class CkbDb {
     return rawRes[0].max_block_number || ForceBridgeCore.config.ckb.startBlockHeight;
   }
 
-  async getCkbMintRecordsToMint(take = 100): Promise<CkbMint[]> {
+  async getCkbMintRecordsToMint(status: dbTxStatus, take = 100): Promise<CkbMint[]> {
     return this.connection.getRepository(CkbMint).find({
       where: {
-        status: 'todo',
+        status: status,
       },
       order: {
         createdAt: 'ASC',
