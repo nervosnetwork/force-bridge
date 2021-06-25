@@ -3,6 +3,7 @@ import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { CkbDb, EthDb } from '@force-bridge/x/dist/db';
 import { SignedDb } from '@force-bridge/x/dist/db/signed';
 import { startHandlers } from '@force-bridge/x/dist/handlers';
+import { responseStatus } from '@force-bridge/x/dist/monitor/rpc-metric';
 import { SigserverMetric } from '@force-bridge/x/dist/monitor/sigserver-metric';
 import { collectSignaturesParams } from '@force-bridge/x/dist/multisig/multisig-mgr';
 import { getDBConnection } from '@force-bridge/x/dist/utils';
@@ -98,29 +99,44 @@ export async function startSigServer(config: Config, port: number): Promise<void
     const jsonRPCRequest = req.body;
     // server.receive takes a JSON-RPC request and returns a promise of a JSON-RPC response.
     // Alternatively, you can use server.receiveJSON, which takes JSON string as is (in this case req.body).
-    server.receive(jsonRPCRequest).then((jsonRPCResponse) => {
-      if (jsonRPCResponse) {
+    server.receive(jsonRPCRequest).then(
+      (jsonRPCResponse) => {
+        if (!jsonRPCResponse) {
+          logger.error('Sig Server Error: the jsonRPCResponse is null');
+          if (jsonRPCRequest.params && jsonRPCRequest.method && jsonRPCRequest.params.requestAddress) {
+            SigServer.metrics.setSigServerRequestMetric(
+              jsonRPCRequest.params.requestAddress!,
+              jsonRPCRequest.method,
+              'failed',
+              Date.now() - startTime,
+            );
+          }
+          res.sendStatus(204);
+          return;
+        }
+        const status: responseStatus = jsonRPCResponse.error ? 'failed' : 'success';
         res.json(jsonRPCResponse);
         SigServer.metrics.setSigServerRequestMetric(
           jsonRPCRequest.params.requestAddress!,
           jsonRPCRequest.method,
-          'success',
+          status,
           Date.now() - startTime,
         );
-        logger.info('response', jsonRPCResponse);
-      } else {
-        // If response is absent, it was a JSON-RPC notification method.
-        // Respond with no content status (204).
-        logger.error('response', 204);
-        SigServer.metrics.setSigServerRequestMetric(
-          jsonRPCRequest.params.requestAddress!,
-          jsonRPCRequest.method,
-          'failed',
-          Date.now() - startTime,
-        );
-        res.sendStatus(204);
-      }
-    });
+        logger.info('response', jsonRPCResponse, ' status :', status);
+      },
+      (reason) => {
+        logger.error('Sig Server Error: the request is rejected by ', reason);
+        if (jsonRPCRequest.params && jsonRPCRequest.method && jsonRPCRequest.params.requestAddress) {
+          SigServer.metrics.setSigServerRequestMetric(
+            jsonRPCRequest.params.requestAddress!,
+            jsonRPCRequest.method,
+            'failed',
+            Date.now() - startTime,
+          );
+        }
+        res.sendStatus(500);
+      },
+    );
   });
   app.listen(port);
   logger.info(`sig server handler started on ${port}  🚀`);
