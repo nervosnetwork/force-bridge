@@ -118,7 +118,7 @@ async function verifyUnlockRecord(unlockRecords: EthUnlockRecord[]): Promise<Sig
       return new SigError(SigErrorCode.InvalidRecord, `cannot found ckbBurn record by ckbTxHash:${record.ckbTxHash}`);
     }
     if (ckbBurn.confirmStatus !== 'confirmed') {
-      return new SigError(SigErrorCode.InvalidRecord, `burnTx:${record.ckbTxHash} haven't confirmed`);
+      return new SigError(SigErrorCode.TxUnconfirmed, `burnTx:${record.ckbTxHash} haven't confirmed`);
     }
     if (ckbBurn.asset !== record.token) {
       return new SigError(

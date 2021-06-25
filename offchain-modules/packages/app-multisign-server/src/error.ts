@@ -20,6 +20,7 @@ export enum SigErrorCode {
   InvalidParams = 1000,
   InvalidRecord,
   DuplicateSign,
+  TxUnconfirmed,
   UnknownError = 9999,
 }
 
@@ -28,6 +29,7 @@ const errMessages = new Map([
   [SigErrorCode.InvalidParams, 'invalid sig params'],
   [SigErrorCode.InvalidRecord, 'invalid sig record'],
   [SigErrorCode.DuplicateSign, 'duplicate signature request'],
+  [SigErrorCode.TxUnconfirmed, 'tx unconfirmed'],
   [SigErrorCode.UnknownError, 'unknown error'],
 ]);
 

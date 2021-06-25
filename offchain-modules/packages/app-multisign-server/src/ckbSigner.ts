@@ -190,7 +190,7 @@ async function verifyEthMintRecords(records: mintRecord[]): Promise<SigError> {
       return new SigError(SigErrorCode.InvalidRecord, `cannot found eth lock tx by txHash:${record.id}`);
     }
     if (ethLock.confirmStatus !== 'confirmed') {
-      return new SigError(SigErrorCode.InvalidRecord, `ethLockTx:${ethLock.txHash} doesn't confirmed`);
+      return new SigError(SigErrorCode.TxUnconfirmed, `ethLockTx:${ethLock.txHash} doesn't confirmed`);
     }
     if (record.recipientLockscript != ethLock.recipient) {
       return new SigError(

@@ -6,7 +6,13 @@ import { logger } from '../utils/logger';
 import { EthUnlockRecord } from '../xchain/eth';
 import { httpRequest } from './client';
 
+const SigErrorTxUnconfirmed = 1003;
 const SigErrorCodeUnknownError = 9999;
+
+const retryErrorCode = new Map<number, boolean>([
+  [SigErrorTxUnconfirmed, true],
+  [SigErrorCodeUnknownError, true],
+]);
 
 export interface ethCollectSignaturesPayload {
   domainSeparator: string;
@@ -74,7 +80,7 @@ export class MultiSigMgr {
         try {
           const sigResp = await this.requestSig(svrHost.host, params);
           if (sigResp.error) {
-            if (sigResp.error.code === SigErrorCodeUnknownError) {
+            if (retryErrorCode.get(sigResp.error.code)) {
               failedSigServerHosts.push(svrHost);
             }
             logger.error(
