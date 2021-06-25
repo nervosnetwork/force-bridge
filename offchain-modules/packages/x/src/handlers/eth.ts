@@ -341,6 +341,9 @@ export class EthHandler {
     for (;;) {
       try {
         const records = await this.getUnlockRecords('pending');
+        if (records.length === 0) {
+          break;
+        }
         await this.doHandleUnlockRecords(records);
         break;
       } catch (e) {
@@ -392,6 +395,18 @@ export class EthHandler {
         });
         await this.db.saveEthUnlock(records);
         const txRes = await this.ethChain.sendUnlockTxs(records);
+        if (txRes instanceof Error) {
+          records.map((r) => {
+            r.status = 'error';
+            r.message = (txRes as Error).message;
+          });
+          BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_unlock', 'failed');
+          logger.error(
+            `EthHandler doHandleUnlockRecords ckbTxHashes:${unlockTxHashes}  sendUnlockTxs error:${txRes as Error}`,
+          );
+          break;
+        }
+
         records.map((r) => {
           r.status = 'pending';
           r.ethTxHash = txRes.hash;
@@ -419,7 +434,9 @@ export class EthHandler {
             r.message = 'unlock tx failed';
           });
           BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_unlock', 'failed');
-          logger.error('EthHandler doHandleUnlockRecords unlock execute failed:', receipt);
+          logger.error(
+            `EthHandler doHandleUnlockRecords ckbTxHashes:${unlockTxHashes} unlock execute failed:${receipt}`,
+          );
         }
         break;
       } catch (e) {

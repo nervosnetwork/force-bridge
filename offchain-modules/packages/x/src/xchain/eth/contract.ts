@@ -158,6 +158,11 @@ export class EthChain {
     const typeHash = await this.bridge.UNLOCK_TYPEHASH();
     const nonce: BigNumber = await this.bridge.latestUnlockNonce_();
     const signatures = await this.signUnlockRecords(domainSeparator, typeHash, params, nonce);
+    if (signatures.length < ForceBridgeCore.config.eth.multiSignThreshold) {
+      return new Error(
+        `sig number:${signatures.length} less than multiSignThreshold:${ForceBridgeCore.config.eth.multiSignThreshold}`,
+      );
+    }
     const signature = '0x' + signatures.join('');
     return this.bridge.unlock(params, nonce, signature);
   }
@@ -168,24 +173,15 @@ export class EthChain {
     records: EthUnlockRecord[],
     nonce: BigNumber,
   ): Promise<string[]> {
-    for (;;) {
-      const rawData = buildSigRawData(domainSeparator, typeHash, records, nonce);
-      const signatures = await this.multisigMgr.collectSignatures({
-        rawData: rawData,
-        payload: {
-          domainSeparator: domainSeparator,
-          typeHash: typeHash,
-          unlockRecords: records,
-          nonce: nonce.toNumber(),
-        },
-      });
-      if (signatures.length >= ForceBridgeCore.config.eth.multiSignThreshold) {
-        return signatures;
-      }
-      logger.error(
-        `multi-sig number:${signatures.length} less than multiSignThreshold:${ForceBridgeCore.config.eth.multiSignThreshold}`,
-      );
-      await asyncSleep(3000);
-    }
+    const rawData = buildSigRawData(domainSeparator, typeHash, records, nonce);
+    return await this.multisigMgr.collectSignatures({
+      rawData: rawData,
+      payload: {
+        domainSeparator: domainSeparator,
+        typeHash: typeHash,
+        unlockRecords: records,
+        nonce: nonce.toNumber(),
+      },
+    });
   }
 }

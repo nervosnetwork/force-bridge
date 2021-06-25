@@ -21,7 +21,7 @@ async function verifyDuplicateEthTx(pubKey: string, payload: ethCollectSignature
   });
   const lastNonceRow = await SigServer.signedDb.getMaxNonceByRefTxHashes(pubKey, refTxHashes);
   const lastNonce = lastNonceRow.nonce;
-  if (!lastNonce) {
+  if (lastNonce === null) {
     return SigErrorOk;
   }
   if (lastNonce === payload.nonce) {
