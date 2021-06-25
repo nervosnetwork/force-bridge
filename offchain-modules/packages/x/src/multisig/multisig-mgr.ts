@@ -6,10 +6,12 @@ import { logger } from '../utils/logger';
 import { EthUnlockRecord } from '../xchain/eth';
 import { httpRequest } from './client';
 
-const SigErrorTxUnconfirmed = 1003;
+const SigErrorTxNotFound = 1003;
+const SigErrorTxUnconfirmed = 1004;
 const SigErrorCodeUnknownError = 9999;
 
 const retryErrorCode = new Map<number, boolean>([
+  [SigErrorTxNotFound, true],
   [SigErrorTxUnconfirmed, true],
   [SigErrorCodeUnknownError, true],
 ]);
