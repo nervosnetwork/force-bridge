@@ -58,7 +58,7 @@ ethCmd
   .action(getTxSummaries)
   .description(`get transaction summaries`);
 
-async function doLock(command: commander.Command, args: any) {
+async function doLock(command: commander.Command, args: string[]) {
   const opts = command.opts();
   const options = parseOptions(opts, args);
   const privateKey = nonNullable(options.get('privateKey'));
@@ -112,7 +112,7 @@ async function doLock(command: commander.Command, args: any) {
   }
 }
 
-async function doUnlock(command: commander.Command, args: any) {
+async function doUnlock(command: commander.Command, args: string[]) {
   const opts = command.opts();
   const options = parseOptions(opts, args);
   const recipientAddress = nonNullable(options.get('recipient'));
@@ -122,10 +122,13 @@ async function doUnlock(command: commander.Command, args: any) {
   const ckbRpc = nonNullable(options.get('ckbRpcUrl') || CkbNodeRpc);
   const forceBridgeRpc = nonNullable(options.get('forceBridgeRpcUrl') || ForceBridgeRpc);
 
-  const ckb = new CKB(ckbRpc);
-  const ckbAddress = ckbPrivateKeyToAddress(ckb, privateKey);
+  const forceClient = new ForceBridgeAPIV1Client(forceBridgeRpc);
+  const forceConfig = await forceClient.getBridgeConfig();
 
-  const assetList = await new ForceBridgeAPIV1Client(forceBridgeRpc).getAssetList();
+  const ckb = new CKB(ckbRpc);
+  const ckbAddress = ckbPrivateKeyToAddress(privateKey, forceConfig.nervos.network);
+
+  const assetList = await forceClient.getAssetList();
   const assetInfo = assetList.find((asset) => {
     return asset.info.symbol === tokenSymbol;
   });
@@ -155,7 +158,7 @@ async function doUnlock(command: commander.Command, args: any) {
   }
 }
 
-async function doBalanceOf(command: commander.Command, args: any) {
+async function doBalanceOf(command: commander.Command, args: string[]) {
   const opts = command.opts();
   const options = parseOptions(opts, args);
   const address = nonNullable(options.get('address'));
@@ -187,7 +190,7 @@ async function doBalanceOf(command: commander.Command, args: any) {
   });
 }
 
-async function getAssetList(command: commander.Command, args: any) {
+async function getAssetList(command: commander.Command, args: string[]) {
   const opts = command.opts();
   const options = parseOptions(opts, args);
   const forceBridgeRpc = nonNullable(options.get('forceBridgeRpcUrl') || ForceBridgeRpc);
@@ -202,21 +205,7 @@ async function getAssetList(command: commander.Command, args: any) {
   });
 }
 
-async function getTxStatus(command: commander.Command, args: any) {
-  const opts = command.opts();
-  const options = parseOptions(opts, args);
-  const txHash = nonNullable(options.get('txHash'));
-  const forceBridgeRpc = nonNullable(options.get('forceBridgeRpcUrl') || ForceBridgeRpc);
-  const txStatus = nonNullable(
-    await new ForceBridgeAPIV1Client(forceBridgeRpc).getBridgeTransactionStatus({
-      network: 'Ethereum',
-      txId: txHash,
-    }),
-  );
-  console.log('TxStatus:', JSON.stringify(txStatus, undefined, 2));
-}
-
-async function getTxSummaries(command: commander.Command, args: any) {
+async function getTxSummaries(command: commander.Command, args: string[]) {
   const opts = command.opts();
   const options = parseOptions(opts, args);
   const tokenSymbol = nonNullable(options.get('symbol') || 'ETH');
