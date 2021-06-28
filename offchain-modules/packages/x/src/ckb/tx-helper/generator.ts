@@ -1,19 +1,33 @@
 import { Cell, Script as LumosScript, Indexer, WitnessArgs, core } from '@ckb-lumos/base';
 import { common } from '@ckb-lumos/common-scripts';
 import { TransactionSkeleton, TransactionSkeletonType } from '@ckb-lumos/helpers';
-import { Address, Amount, DepType, Script } from '@lay2/pw-core';
+import { Address, Amount, DepType, Script, HashType } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import { Reader, normalizers } from 'ckb-js-toolkit';
 import { ForceBridgeCore } from '../../core';
 import { asserts } from '../../errors';
-import { asyncSleep, bigintToSudtAmount, fromHexString, stringToUint8Array, toHexString } from '../../utils';
+import { asyncSleep, fromHexString, stringToUint8Array, toHexString } from '../../utils';
 import { logger } from '../../utils/logger';
 import { Asset } from '../model/asset';
 import { IndexerCollector } from './collector';
 import { SerializeRecipientCellData } from './generated/eth_recipient_cell';
 import { SerializeMintWitness } from './generated/mint_witness';
-import { CkbIndexer, ScriptType } from './indexer';
-import { getFromAddr, getMultisigLock, getOwnerTypeHash } from './multisig/multisig_helper';
+import { CkbIndexer, ScriptType, IndexerCell } from './indexer';
+import { getFromAddr, getOwnerTypeHash } from './multisig/multisig_helper';
+
+interface OutPutCell {
+  lock: {
+    codeHash: string;
+    hashType: HashType;
+    args: string;
+  };
+  type?: {
+    codeHash: string;
+    hashType: HashType;
+    args: string;
+  };
+  capacity: string;
+}
 
 export interface MintAssetRecord {
   lockTxHash: string;
@@ -86,94 +100,112 @@ export class CkbTxGenerator {
   }
 
   async createBridgeCell(scripts: Script[], indexer: Indexer): Promise<TransactionSkeletonType> {
-    const fromAddress = getFromAddr();
-    let txSkeleton = TransactionSkeleton({ cellProvider: indexer });
-    const multisig_cell = await this.fetchMultisigCell();
-    txSkeleton = await common.setupInputCell(txSkeleton, multisig_cell!, ForceBridgeCore.config.ckb.multisigScript);
-    const bridgeCellCapacity = 200n * 10n ** 8n;
-    const bridgeOutputs = scripts.map((script) => {
-      return <Cell>{
-        cell_output: {
-          capacity: `0x${bridgeCellCapacity.toString(16)}`,
-          lock: {
-            code_hash: script.codeHash,
-            hash_type: script.hashType,
-            args: script.args,
-          },
-        },
-        data: '0x',
-      };
-    });
-    logger.debug('bridgeOutputs:', JSON.stringify(bridgeOutputs, null, 2));
-    txSkeleton = txSkeleton.update('outputs', (outputs) => {
-      return outputs.push(...bridgeOutputs);
-    });
-    //TODO fix fee calculate
-    const needCapacity = bridgeCellCapacity * BigInt(scripts.length) + bridgeCellCapacity;
-    if (needCapacity !== 0n) {
-      txSkeleton = await common.injectCapacity(txSkeleton, [fromAddress], needCapacity);
+    for (;;) {
+      try {
+        const fromAddress = getFromAddr();
+        let txSkeleton = TransactionSkeleton({ cellProvider: indexer });
+        const multisig_cell = await this.fetchMultisigCell();
+        txSkeleton = await common.setupInputCell(txSkeleton, multisig_cell!, ForceBridgeCore.config.ckb.multisigScript);
+        const bridgeCellCapacity = 200n * 10n ** 8n;
+        const bridgeOutputs = scripts.map((script) => {
+          return <Cell>{
+            cell_output: {
+              capacity: `0x${bridgeCellCapacity.toString(16)}`,
+              lock: {
+                code_hash: script.codeHash,
+                hash_type: script.hashType,
+                args: script.args,
+              },
+            },
+            data: '0x',
+          };
+        });
+        logger.debug('bridgeOutputs:', JSON.stringify(bridgeOutputs, null, 2));
+        txSkeleton = txSkeleton.update('outputs', (outputs) => {
+          return outputs.push(...bridgeOutputs);
+        });
+        //TODO fix fee calculate
+        const needCapacity = bridgeCellCapacity * BigInt(scripts.length) + bridgeCellCapacity;
+        if (needCapacity !== 0n) {
+          txSkeleton = await common.injectCapacity(txSkeleton, [fromAddress], needCapacity);
+        }
+        const feeRate = BigInt(1000);
+        txSkeleton = await common.payFeeByFeeRate(txSkeleton, [fromAddress], feeRate);
+        txSkeleton = common.prepareSigningEntries(txSkeleton);
+        return txSkeleton;
+      } catch (e) {
+        logger.error(`CkbHandler createBridgeCell exception error:${e.message}`);
+        await asyncSleep(3000);
+      }
     }
-    const feeRate = BigInt(1000);
-    txSkeleton = await common.payFeeByFeeRate(txSkeleton, [fromAddress], feeRate);
-    txSkeleton = common.prepareSigningEntries(txSkeleton);
-    return txSkeleton;
   }
 
   async mint(records: MintAssetRecord[], indexer: Indexer): Promise<TransactionSkeletonType> {
-    const fromAddress = getFromAddr();
-    let txSkeleton = TransactionSkeleton({ cellProvider: indexer });
-    const multisigCell = await this.fetchMultisigCell();
-    if (multisigCell === undefined) {
-      throw Error('multisig cell not found');
+    for (;;) {
+      try {
+        const fromAddress = getFromAddr();
+        let txSkeleton = TransactionSkeleton({ cellProvider: indexer });
+        const multisigCell = await this.fetchMultisigCell();
+        if (multisigCell === undefined) {
+          logger.error(`CkbHandler mint fetchMultiSigCell failed: cannot found multiSig cell`);
+          await asyncSleep(3000);
+          continue;
+        }
+        txSkeleton = await common.setupInputCell(txSkeleton, multisigCell, ForceBridgeCore.config.ckb.multisigScript);
+        txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
+          return cellDeps.push(this.sudtDep);
+        });
+        txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
+          return cellDeps.push(this.bridgeLockDep);
+        });
+        // add owner cell as cell dep
+        const ownerCell = await this.fetchOwnerCell();
+        if (ownerCell === undefined) {
+          logger.error(`CkbHandler mint fetchMultiSigCell failed: cannot found owner cell`);
+          await asyncSleep(3000);
+          continue;
+        }
+        txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
+          return cellDeps.push({
+            out_point: ownerCell.out_point!,
+            dep_type: DepType.code,
+          });
+        });
+
+        const mintWitness = this.getMintWitness(records);
+        const mintWitnessArgs = core.SerializeWitnessArgs({ lock: null, input_type: mintWitness, output_type: null });
+        txSkeleton = txSkeleton.update('witnesses', (witnesses) => {
+          if (witnesses.isEmpty()) {
+            return witnesses.push(`0x${toHexString(new Uint8Array(mintWitnessArgs))}`);
+          }
+          const witnessArgs = new core.WitnessArgs(new Reader(witnesses.get(0) as string));
+          const newWitnessArgs: WitnessArgs = {
+            input_type: `0x${toHexString(new Uint8Array(mintWitness))}`,
+          };
+          if (witnessArgs.getLock().hasValue()) {
+            newWitnessArgs.lock = new Reader(witnessArgs.getLock().value().raw()).serializeJson();
+          }
+          if (witnessArgs.getOutputType().hasValue()) {
+            newWitnessArgs.output_type = new Reader(witnessArgs.getOutputType().value().raw()).serializeJson();
+          }
+          return witnesses.set(
+            0,
+            new Reader(core.SerializeWitnessArgs(normalizers.NormalizeWitnessArgs(newWitnessArgs))).serializeJson(),
+          );
+        });
+
+        txSkeleton = await this.buildSudtOutput(txSkeleton, records);
+        txSkeleton = await this.buildBridgeCellOutput(txSkeleton, records, indexer);
+
+        const feeRate = BigInt(1000);
+        txSkeleton = await common.payFeeByFeeRate(txSkeleton, [fromAddress], feeRate);
+        txSkeleton = common.prepareSigningEntries(txSkeleton);
+        return txSkeleton;
+      } catch (e) {
+        logger.error(`CkbHandler mint exception error:${e.message}`);
+        await asyncSleep(3000);
+      }
     }
-    txSkeleton = await common.setupInputCell(txSkeleton, multisigCell, ForceBridgeCore.config.ckb.multisigScript);
-    txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
-      return cellDeps.push(this.sudtDep);
-    });
-    txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
-      return cellDeps.push(this.bridgeLockDep);
-    });
-    // add owner cell as cell dep
-    const ownerCell = await this.fetchOwnerCell();
-    if (ownerCell === undefined) {
-      throw Error('owner cell not found');
-    }
-    txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
-      return cellDeps.push({
-        out_point: ownerCell.out_point!,
-        dep_type: DepType.code,
-      });
-    });
-
-    const mintWitness = this.getMintWitness(records);
-    const mintWitnessArgs = core.SerializeWitnessArgs({ lock: null, input_type: mintWitness, output_type: null });
-    txSkeleton = txSkeleton.update('witnesses', (witnesses) => {
-      if (witnesses.isEmpty()) {
-        return witnesses.push(`0x${toHexString(new Uint8Array(mintWitnessArgs))}`);
-      }
-      const witnessArgs = new core.WitnessArgs(new Reader(witnesses.get(0) as string));
-      const newWitnessArgs: WitnessArgs = {
-        input_type: `0x${toHexString(new Uint8Array(mintWitness))}`,
-      };
-      if (witnessArgs.getLock().hasValue()) {
-        newWitnessArgs.lock = new Reader(witnessArgs.getLock().value().raw()).serializeJson();
-      }
-      if (witnessArgs.getOutputType().hasValue()) {
-        newWitnessArgs.output_type = new Reader(witnessArgs.getOutputType().value().raw()).serializeJson();
-      }
-      return witnesses.set(
-        0,
-        new Reader(core.SerializeWitnessArgs(normalizers.NormalizeWitnessArgs(newWitnessArgs))).serializeJson(),
-      );
-    });
-
-    txSkeleton = await this.buildSudtOutput(txSkeleton, records);
-    txSkeleton = await this.buildBridgeCellOutput(txSkeleton, records, indexer);
-
-    const feeRate = BigInt(1000);
-    txSkeleton = await common.payFeeByFeeRate(txSkeleton, [fromAddress], feeRate);
-    txSkeleton = common.prepareSigningEntries(txSkeleton);
-    return txSkeleton;
   }
 
   getMintWitness(records: MintAssetRecord[]): ArrayBuffer {
@@ -297,7 +329,6 @@ export class CkbTxGenerator {
     asset: Asset,
     amount: Amount,
   ): Promise<CKBComponents.RawTransactionToSign> {
-    const multisigLockScript = getMultisigLock(ForceBridgeCore.config.ckb.multisigScript);
     if (amount.eq(Amount.ZERO)) {
       throw new Error('amount should larger then zero!');
     }
@@ -394,6 +425,10 @@ export class CkbTxGenerator {
         recipientTypeScript.codeHash,
         new Amount(`0x${needSupplyCap.toString(16)}`, 0),
       );
+      const suppliedCap = needSupplyCapCells.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
+      if (suppliedCap - needSupplyCap < 0) {
+        throw new Error('need supply amount is not enough!');
+      }
       inputCells = inputCells.concat(needSupplyCapCells);
     }
 
@@ -436,7 +471,13 @@ export class CkbTxGenerator {
     return rawTx as CKBComponents.RawTransactionToSign;
   }
 
-  handleChangeCell(inputCells, outputs, outputsData, userLockscript, fee): void {
+  handleChangeCell(
+    inputCells: IndexerCell[],
+    outputs: Array<OutPutCell>,
+    outputsData: Array<string>,
+    userLockscript: Script,
+    fee: bigint,
+  ): void {
     const inputCap = inputCells.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
     const outputCap = outputs.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
     const changeCellCapacity = inputCap - outputCap - fee;
@@ -455,35 +496,5 @@ export class CkbTxGenerator {
       outputs.push(changeCell);
       outputsData.push('0x');
     }
-  }
-
-  async supplyCap(lockscript, inputsCell, outputs, outputsData, fee) {
-    let inputCap = inputsCell.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
-    const outputCap = outputs.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
-    const needSupplyCapCells = await this.collector.getCellsByLockscriptAndCapacity(
-      lockscript,
-      Amount.fromUInt128LE(bigintToSudtAmount(outputCap - inputCap + fee)),
-    );
-    inputsCell = inputsCell.concat(needSupplyCapCells);
-    inputCap = inputsCell.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
-    const changeCellCapacity = inputCap - outputCap - fee;
-    if (changeCellCapacity > 64n * 10n ** 8n) {
-      const changeLockScript = {
-        codeHash: lockscript.codeHash,
-        hashType: lockscript.hashType,
-        args: lockscript.args,
-      };
-      const changeCell = {
-        lock: changeLockScript,
-        capacity: `0x${changeCellCapacity.toString(16)}`,
-      };
-      outputs.push(changeCell);
-      outputsData.push('0x');
-    }
-    return {
-      inputsCell: inputsCell,
-      outputs: outputs,
-      outputsData: outputsData,
-    };
   }
 }

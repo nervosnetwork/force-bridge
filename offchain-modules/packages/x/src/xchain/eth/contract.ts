@@ -143,6 +143,23 @@ export class EthChain {
     });
   }
 
+  async isLogForked(logs: Log[]): Promise<boolean> {
+    let block: ethers.providers.Block | null = null;
+    for (const log of logs) {
+      if (block != null && log.blockHash === block.hash) {
+        continue;
+      }
+      block = await this.provider.getBlock(log.blockNumber);
+      if (block.hash != log.blockHash) {
+        logger.error(
+          `log fork occured in block ${log.blockNumber}, log.blockHash ${log.blockHash}, block.hash ${block.hash}`,
+        );
+        return true;
+      }
+    }
+    return false;
+  }
+
   // TODO marks the type @JacobDenver007
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async sendUnlockTxs(records: EthUnlock[]): Promise<any> {
@@ -158,15 +175,14 @@ export class EthChain {
     const domainSeparator = await this.bridge.DOMAIN_SEPARATOR();
     const typeHash = await this.bridge.UNLOCK_TYPEHASH();
     const nonce: BigNumber = await this.bridge.latestUnlockNonce_();
-    const signatures = this.signUnlockRecords(domainSeparator, typeHash, params, nonce);
-    logger.info(
-      `sendUnlockTxs params:${JSON.stringify(params, undefined, 2)} signatures:${JSON.stringify(
-        signatures,
-        undefined,
-        2,
-      )}`,
-    );
-    return this.bridge.unlock(params, nonce, signatures);
+    const signatures = await this.signUnlockRecords(domainSeparator, typeHash, params, nonce);
+    if (signatures.length < ForceBridgeCore.config.eth.multiSignThreshold) {
+      return new Error(
+        `sig number:${signatures.length} less than multiSignThreshold:${ForceBridgeCore.config.eth.multiSignThreshold}`,
+      );
+    }
+    const signature = '0x' + signatures.join('');
+    return this.bridge.unlock(params, nonce, signature);
   }
 
   public async getUnlockMessageToSign(records: EthUnlockRecord[]): Promise<string> {
@@ -189,9 +205,9 @@ export class EthChain {
     typeHash: string,
     records: EthUnlockRecord[],
     nonce: BigNumber,
-  ) {
+  ): Promise<string[]> {
     const rawData = buildSigRawData(domainSeparator, typeHash, records, nonce);
-    const sigs = await this.multisigMgr.collectSignatures({
+    return await this.multisigMgr.collectSignatures({
       rawData: rawData,
       payload: {
         domainSeparator: domainSeparator,
@@ -200,6 +216,5 @@ export class EthChain {
         nonce: nonce.toNumber(),
       },
     });
-    return '0x' + sigs.join('');
   }
 }

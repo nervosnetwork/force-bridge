@@ -14,7 +14,7 @@ import { logger } from '../utils/logger';
 import { BTCChain } from '../xchain/btc';
 import { EthChain } from '../xchain/eth';
 
-export async function startHandlers(conn: Connection) {
+export function startHandlers(conn: Connection): void {
   if (ForceBridgeCore.config.common.role === undefined) {
     ForceBridgeCore.config.common.role = 'watcher';
   }

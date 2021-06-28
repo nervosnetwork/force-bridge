@@ -7,7 +7,7 @@ import { EthDb, KVDb, BridgeFeeDB } from '../db';
 import { EthUnlockStatus } from '../db/entity/EthUnlock';
 import { EthUnlock } from '../db/model';
 import { BridgeMetricSingleton, txTokenInfo } from '../monitor/bridge-metric';
-import { asyncSleep, foreverPromise, fromHexString, uint8ArrayToString } from '../utils';
+import { asyncSleep, foreverPromise, fromHexString, retryPromise, uint8ArrayToString } from '../utils';
 import { logger } from '../utils/logger';
 import { EthChain, WithdrawBridgeFeeTopic, Log, ParsedLog } from '../xchain/eth';
 
@@ -112,11 +112,27 @@ export class EthHandler {
   }
 
   watchNewBlock(): void {
-    this.ethChain.watchNewBlock(this.lastHandledBlockHeight, async (newBlock: ethers.providers.Block) => {
-      await this.onBlock(newBlock);
-      const currentBlockHeight = await this.ethChain.getCurrentBlockNumber();
-      BridgeMetricSingleton.getInstance(this.role).setBlockHeightMetrics('eth', newBlock.number, currentBlockHeight);
-    });
+    void (async () => {
+      await this.init();
+      this.ethChain.watchNewBlock(this.lastHandledBlockHeight, async (newBlock: ethers.providers.Block) => {
+        await retryPromise(
+          async () => {
+            await this.onBlock(newBlock);
+            const currentBlockHeight = await this.ethChain.getCurrentBlockNumber();
+            BridgeMetricSingleton.getInstance(this.role).setBlockHeightMetrics(
+              'eth',
+              newBlock.number,
+              currentBlockHeight,
+            );
+          },
+          {
+            onRejectedInterval: 3000,
+            maxRetryTimes: MAX_RETRY_TIMES,
+            onRejected: (e: Error) => logger.error(`Eth watchNewBlock blockHeight:${newBlock} error:${e.message}`),
+          },
+        );
+      });
+    })();
   }
 
   isForked(confirmNumber: number, block: ethers.providers.Block): boolean {
@@ -129,37 +145,48 @@ export class EthHandler {
   }
 
   async onBlock(block: ethers.providers.Block): Promise<void> {
-    for (let i = 1; i <= MAX_RETRY_TIMES; i++) {
-      try {
-        const confirmNumber = ForceBridgeCore.config.eth.confirmNumber;
-        if (this.isForked(confirmNumber, block)) {
-          logger.warn(
-            `EthHandler onBlock blockHeight:${block.number} parentHash:${block.parentHash} != lastHandledBlockHash:${
-              this.lastHandledBlockHash
-            } fork occur removeUnconfirmedLock events from:${block.number - confirmNumber}`,
-          );
-          const confirmedBlockHeight = block.number - confirmNumber;
-          await this.ethDb.removeUnconfirmedLocks(confirmedBlockHeight);
-          const logs = await this.ethChain.getLockLogs(confirmedBlockHeight + 1, block.number);
-          for (const log of logs) {
-            await this.onLockLogs(log.log, log.parsedLog);
-          }
-        }
+    const confirmNumber = ForceBridgeCore.config.eth.confirmNumber;
+    if (this.isForked(confirmNumber, block)) {
+      logger.warn(
+        `EthHandler onBlock blockHeight:${block.number} parentHash:${block.parentHash} != lastHandledBlockHash:${
+          this.lastHandledBlockHash
+        } fork occur removeUnconfirmedLock events from:${block.number - confirmNumber}`,
+      );
+      const confirmedBlockHeight = block.number - confirmNumber;
+      await this.ethDb.removeUnconfirmedLocks(confirmedBlockHeight);
+      const logs = await this.ethChain.getLockLogs(confirmedBlockHeight + 1, block.number);
 
-        await this.confirmEthLocks(block.number, confirmNumber);
-        await this.setLastHandledBlock(block.number, block.hash);
-        logger.info(`EthHandler onBlock blockHeight:${block.number} blockHash:${block.hash}`);
-        break;
-      } catch (e) {
-        logger.error(
-          `EthHandler onBlock error, blockHeight:${block.number} blockHash:${block.hash} error:${e.toString()}`,
-        );
-        if (i == MAX_RETRY_TIMES) {
-          throw e;
-        }
-        await asyncSleep(3000);
+      if (
+        await this.ethChain.isLogForked(
+          logs.map((log) => {
+            return log.log;
+          }),
+        )
+      ) {
+        throw new Error(`log fork occured when reorg block ${block.number}`);
+      }
+      for (const log of logs) {
+        await this.onLockLogs(log.log, log.parsedLog);
       }
     }
+
+    // onLockLogs
+    const lockLogs = await this.ethChain.getLockLogs(block.number, block.number);
+    for (const log of lockLogs) {
+      await this.onLockLogs(log.log, log.parsedLog);
+    }
+
+    // onUnlockLogs
+    if (this.role !== 'collector') {
+      const unlockLogs = await this.ethChain.getUnlockLogs(block.number, block.number);
+      for (const log of unlockLogs) {
+        await this.onUnlockLogs(log.log, log.parsedLog);
+      }
+    }
+
+    await this.confirmEthLocks(block.number, confirmNumber);
+    await this.setLastHandledBlock(block.number, block.hash);
+    logger.info(`EthHandler onBlock blockHeight:${block.number} blockHash:${block.hash}`);
   }
 
   async confirmEthLocks(currentBlockHeight: number, confirmNumber: number): Promise<void> {
@@ -344,7 +371,34 @@ export class EthHandler {
     if (this.role !== 'collector') {
       return;
     }
-    // todo: get and handle pending and error records
+
+    this.handlePendingUnlockRecords().then(
+      () => {
+        this.handleTodoUnlockRecords();
+      },
+      (err) => {
+        logger.error(`handlePendingUnlockRecords error:${err.message}`);
+      },
+    );
+  }
+
+  async handlePendingUnlockRecords(): Promise<void> {
+    for (;;) {
+      try {
+        const records = await this.getUnlockRecords('pending');
+        if (records.length === 0) {
+          break;
+        }
+        await this.doHandleUnlockRecords(records);
+        break;
+      } catch (e) {
+        logger.error(`doHandlePendingUnlockRecords error:${e.message}`);
+        await asyncSleep(3000);
+      }
+    }
+  }
+
+  handleTodoUnlockRecords(): void {
     foreverPromise(
       async () => {
         await asyncSleep(15000);
@@ -355,69 +409,100 @@ export class EthHandler {
           return;
         }
         logger.info('EthHandler watchUnlockEvents unlock records', records);
-
-        const unlockTxHashes = records
-          .map((unlockRecord) => {
-            return unlockRecord.ckbTxHash;
-          })
-          .join(', ');
-        logger.info(
-          `EthHandler watchUnlockEvents start process unlock Record, ckbTxHashes:${unlockTxHashes} num:${records.length}`,
-        );
-
-        try {
-          // write db first, avoid send tx success and fail to write db
-          records.map((r) => {
-            r.status = 'pending';
-          });
-          await this.ethDb.saveEthUnlock(records);
-          const txRes = await this.ethChain.sendUnlockTxs(records);
-          records.map((r) => {
-            r.status = 'pending';
-            r.ethTxHash = txRes.hash;
-          });
-          await this.ethDb.saveEthUnlock(records);
-          logger.debug('sendUnlockTxs res', txRes);
-          const receipt = await txRes.wait();
-          logger.info(`EthHandler watchUnlockEvents sendUnlockTxs receipt:${JSON.stringify(receipt.logs, null, 2)}`);
-          if (receipt.status === 1) {
-            records.map((r) => {
-              r.status = 'success';
-            });
-            const unlockTokens = records.map((r) => {
-              const tokenInfo: txTokenInfo = {
-                amount: Number(r.amount),
-                token: r.asset,
-              };
-              return tokenInfo;
-            });
-            BridgeMetricSingleton.getInstance(this.role).addBridgeTokenMetrics('eth_unlock', unlockTokens);
-            BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_unlock', 'success');
-          } else {
-            records.map((r) => {
-              r.status = 'error';
-              r.message = 'unlock tx failed';
-            });
-            BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_unlock', 'failed');
-            logger.error('EthHandler watchUnlockEvents unlock execute failed:', receipt);
-          }
-          await this.ethDb.saveEthUnlock(records);
-          logger.info('EthHandler watchUnlockEvents process unlock Record completed');
-        } catch (e) {
-          records.map((r) => {
-            r.status = 'error';
-            r.message = e.message;
-          });
-          await this.ethDb.saveEthUnlock(records);
-
-          logger.error(`EthHandler watchUnlockEvents error:${e.toString()}, ${e.message}`);
-        }
+        await this.doHandleUnlockRecords(records);
       },
       {
         onRejectedInterval: 0,
         onResolvedInterval: 0,
       },
     );
+  }
+
+  async doHandleUnlockRecords(records: EthUnlock[]): Promise<void> {
+    if (records.length === 0) {
+      return;
+    }
+
+    const unlockTxHashes = records
+      .map((unlockRecord) => {
+        return unlockRecord.ckbTxHash;
+      })
+      .join(', ');
+    logger.info(
+      `EthHandler doHandleUnlockRecords start process unlock Record, ckbTxHashes:${unlockTxHashes} num:${records.length}`,
+    );
+
+    for (;;) {
+      try {
+        // write db first, avoid send tx success and fail to write db
+        records.map((r) => {
+          r.status = 'pending';
+        });
+        await this.ethDb.saveEthUnlock(records);
+        const txRes = await this.ethChain.sendUnlockTxs(records);
+        if (txRes instanceof Error) {
+          records.map((r) => {
+            r.status = 'error';
+            r.message = (txRes as Error).message;
+          });
+          BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_unlock', 'failed');
+          logger.error(
+            `EthHandler doHandleUnlockRecords ckbTxHashes:${unlockTxHashes}  sendUnlockTxs error:${txRes as Error}`,
+          );
+          break;
+        }
+
+        records.map((r) => {
+          r.status = 'pending';
+          r.ethTxHash = txRes.hash;
+        });
+        await this.ethDb.saveEthUnlock(records);
+        logger.debug('sendUnlockTxs res', txRes);
+        const receipt = await txRes.wait();
+        logger.info(`EthHandler doHandleUnlockRecords sendUnlockTxs receipt:${JSON.stringify(receipt.logs, null, 2)}`);
+        if (receipt.status === 1) {
+          records.map((r) => {
+            r.status = 'success';
+          });
+          const unlockTokens = records.map((r) => {
+            const tokenInfo: txTokenInfo = {
+              amount: Number(r.amount),
+              token: r.asset,
+            };
+            return tokenInfo;
+          });
+          BridgeMetricSingleton.getInstance(this.role).addBridgeTokenMetrics('eth_unlock', unlockTokens);
+          BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_unlock', 'success');
+        } else {
+          records.map((r) => {
+            r.status = 'error';
+            r.message = 'unlock tx failed';
+          });
+          BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_unlock', 'failed');
+          logger.error(
+            `EthHandler doHandleUnlockRecords ckbTxHashes:${unlockTxHashes} unlock execute failed:${receipt}`,
+          );
+        }
+        break;
+      } catch (e) {
+        logger.error(
+          `EthHandler doHandleUnlockRecords ckbTxHashes:${unlockTxHashes} error:${e.toString()}, ${e.message}`,
+        );
+        await asyncSleep(5000);
+      }
+    }
+    for (;;) {
+      try {
+        await this.ethDb.saveEthUnlock(records);
+        logger.info(`EthHandler doHandleUnlockRecords process unlock Record completed ckbTxHashes:${unlockTxHashes}`);
+        break;
+      } catch (e) {
+        logger.error(
+          `EthHandler doHandleUnlockRecords db.saveEthUnlock ckbTxHashes:${unlockTxHashes} error:${e.message}`,
+        );
+        await asyncSleep(3000);
+      }
+    }
   }
 
   waitForBatch(records: EthUnlock[]): boolean {
@@ -434,12 +519,9 @@ export class EthHandler {
   }
 
   start(): void {
-    this.init().then(() => {
-      this.watchNewBlock();
-      this.watchLockEvents();
-      this.watchUnlockEvents();
-      this.handleUnlockRecords();
-      logger.info('eth handler started  🚀');
-    });
+    this.watchNewBlock();
+
+    this.handleUnlockRecords();
+    logger.info('eth handler started  🚀');
   }
 }
