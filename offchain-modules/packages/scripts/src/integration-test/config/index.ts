@@ -1,4 +1,5 @@
 import { Config } from '@force-bridge/x/dist/config';
+import { bootstrapKeyStore } from '@force-bridge/x/dist/core';
 import nconf from 'nconf';
 import { resolveCurrentPackagePath, resolveOffChainModulesPath } from '../../resolvePath';
 
@@ -77,11 +78,12 @@ function updateETHCollectorConfig(cfgPath: string, cfg: Config) {
 function updateETHVerifier1Config(cfgPath: string, cfg: Config) {
   nconf.env().file({ file: cfgPath });
   nconf.set('forceBridge:eth:multiSignAddresses', cfg.eth.multiSignAddresses);
+  const keystore = bootstrapKeyStore();
 
   const multiSignKeys = [
     {
       address: cfg.eth.multiSignAddresses[0],
-      privKey: 'privkeys/eth-multisig-1',
+      privKey: keystore.getDecryptedByKeyID('eth-multisig-1'),
     },
   ];
   nconf.set('forceBridge:eth:multiSignKeys', multiSignKeys);
@@ -89,7 +91,7 @@ function updateETHVerifier1Config(cfgPath: string, cfg: Config) {
   const ckbmultiSignKeys = [
     {
       address: firstCkbMultiSigAddr,
-      privKey: 'privkeys/ckb-multisig-1',
+      privKey: keystore.getDecryptedByKeyID('ckb-multisig-1'),
     },
   ];
   nconf.set('forceBridge:ckb:multiSignKeys', ckbmultiSignKeys);
@@ -99,11 +101,12 @@ function updateETHVerifier1Config(cfgPath: string, cfg: Config) {
 function updateETHVerifier2Config(cfgPath: string, cfg: Config) {
   nconf.env().file({ file: cfgPath });
   nconf.set('forceBridge:eth:multiSignAddresses', cfg.eth.multiSignAddresses);
+  const keystore = bootstrapKeyStore();
 
   const multiSignKeys = [
     {
       address: cfg.eth.multiSignAddresses[1],
-      privKey: 'privkeys/eth-multisig-2',
+      privKey: keystore.getDecryptedByKeyID('eth-multisig-2'),
     },
   ];
   nconf.set('forceBridge:eth:multiSignKeys', multiSignKeys);
@@ -111,7 +114,7 @@ function updateETHVerifier2Config(cfgPath: string, cfg: Config) {
   const ckbmultiSignKeys = [
     {
       address: secondCkbMultiSigAddr,
-      privKey: 'privkeys/ckb-multisig-2',
+      privKey: keystore.getDecryptedByKeyID('ckb-multisig-2'),
     },
   ];
   nconf.set('forceBridge:ckb:multiSignKeys', ckbmultiSignKeys);

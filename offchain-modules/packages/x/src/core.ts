@@ -8,9 +8,10 @@ import { Config } from './config';
 import { asserts } from './errors';
 import { logger } from './utils/logger';
 
-type KeyID = 'ckb' | 'eth';
-function bootstrapKeyStore(
-  keystorePath: string,
+// type KeyID = 'ckb' | 'eth' | `ckb-multisig-${number}` | `eth-multisig-${number}`;
+type KeyID = string;
+export function bootstrapKeyStore(
+  keystorePath = 'keystore.json',
   password = process.env.FORCE_BRIDGE_KEYSTORE_PASSWORD || '',
 ): KeyStore<KeyID> {
   const encrypted = JSON.parse(fs.readFileSync(keystorePath, 'utf8').toString());
@@ -71,7 +72,10 @@ export class ForceBridgeCore {
     config: Config,
     keystore: KeyStore<KeyID> = bootstrapKeyStore('./keystore.json'),
   ): Promise<ForceBridgeCore> {
-    if (has(config, 'ckb.fromPrivateKey')) logger.warn('config.ckb.fromPrivateKey is deprecated.');
+    if (has(config, 'ckb.fromPrivateKey')) {
+      logger.warn('config.ckb.fromPrivateKey is deprecated, please use keystore instead');
+    }
+    if (has(config, 'eth.privateKey')) logger.warn('config.eth.privateKey is deprecated, please use keystore instead');
 
     ForceBridgeCore._config = config;
     ForceBridgeCore._ckb = new CKB(config.ckb.ckbRpcUrl);

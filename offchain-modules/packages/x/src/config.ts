@@ -35,6 +35,9 @@ export class MultiSignHost {
 }
 
 export class MultiSignKey {
+  /**
+   * @deprecated migrate to {@link KeyStore}
+   */
   privKey: string;
   address: string;
 }
@@ -89,6 +92,9 @@ export interface EosConfig {
   bridgerAccount: string;
   bridgerAccountPermission: string;
   publicKeys: string[];
+  /**
+   * @deprecated migrate to {@link KeyStore}
+   */
   privateKeys: string[];
   latestGlobalActionSeq: number;
   onlyWatchIrreversibleBlock: boolean;
@@ -112,6 +118,9 @@ export interface BtcConfig {
     port: number;
     timeout?: number;
   };
+  /**
+   * @deprecated migrate to {@link KeyStore}
+   */
   privateKeys: string[];
   lockAddress: string;
   startBlockHeight: number;
