@@ -207,7 +207,7 @@ const deploy = async () => {
   const signedTx = ckb.signTransaction(PRI_KEY)(rawTx);
   const deployTxHash = await ckb.rpc.sendTransaction(signedTx);
   console.log(`Transaction has been sent with tx hash ${deployTxHash}`);
-  const txStatus = await waitUntilCommitted(deployTxHash);
+  await waitUntilCommitted(deployTxHash);
   // console.dir({ txStatus }, {depth: null})
   // nconf.set('deployTxHash', deployTxHash);
   const scriptsInfo = {

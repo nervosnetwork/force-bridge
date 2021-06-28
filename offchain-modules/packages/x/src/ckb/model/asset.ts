@@ -1,4 +1,5 @@
 import { Amount } from '@lay2/pw-core';
+import { BigNumber } from 'bignumber.js';
 import { ForceBridgeCore } from '../../core';
 import { fromHexString, stringToUint8Array, toHexString } from '../../utils';
 import { SerializeForceBridgeLockscriptArgs } from '../tx-helper/generated/force_bridge_lockscript';
@@ -55,6 +56,35 @@ export abstract class Asset {
       case ChainType.TRON:
       case ChainType.POLKADOT:
         return '0';
+    }
+  }
+  public getHumanizedDescription(amount: string): string {
+    switch (this.chainType) {
+      case ChainType.ETH: {
+        const asset = ForceBridgeCore.config.eth.assetWhiteList.find((asset) => asset.address === this.getAddress());
+        if (!asset) throw new Error('asset not in white list');
+        const humanizedAmount = new BigNumber(amount).times(10 ** -asset.decimal).toString();
+        return `${humanizedAmount} ${asset.symbol}`;
+      }
+      case ChainType.BTC:
+      case ChainType.EOS:
+      case ChainType.TRON:
+      case ChainType.POLKADOT:
+        throw new Error('unimplement');
+    }
+  }
+  public parseAmount(amount: string): string {
+    switch (this.chainType) {
+      case ChainType.ETH: {
+        const asset = ForceBridgeCore.config.eth.assetWhiteList.find((asset) => asset.address === this.getAddress());
+        if (!asset) throw new Error('asset not in white list');
+        return new BigNumber(amount).times(10 ** asset.decimal).toString();
+      }
+      case ChainType.BTC:
+      case ChainType.EOS:
+      case ChainType.TRON:
+      case ChainType.POLKADOT:
+        throw new Error('unimplement');
     }
   }
   public abstract toBridgeLockscriptArgs(): string;

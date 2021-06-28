@@ -65,27 +65,29 @@ async function main() {
   let verifierIndex = 1;
   for (const verifier of verifiers) {
     let verifierConfig: Config = lodash.cloneDeep(config);
-    collectorConfig.common.role = 'verifier';
-    collectorConfig.common.orm.database = `verifier${verifierIndex}`;
-    collectorConfig.eth.multiSignKeys = [
+    verifierConfig.common.role = 'verifier';
+    verifierConfig.common.orm.database = `verifier${verifierIndex}`;
+    verifierConfig.eth.multiSignKeys = [
       {
         privKey: `${generatedConfigPath}/privkeys/eth-multisig-${verifierIndex}`,
         address: verifier.eth.address,
       },
     ];
-    collectorConfig.ckb.multiSignKeys = [
+    verifierConfig.ckb.multiSignKeys = [
       {
         privKey: `${generatedConfigPath}/privkeys/ckb-multisig-${verifierIndex}`,
         address: verifier.ckb.address,
       },
     ];
-    writeJsonToFile({ forceBridge: collectorConfig }, `${generatedConfigPath}/verifier${verifierIndex}.json`);
+    verifierConfig.common.port = verifier.port;
+    writeJsonToFile({ forceBridge: verifierConfig }, `${generatedConfigPath}/verifier${verifierIndex}.json`);
     verifierIndex++;
   }
   // generate watcher config
-  collectorConfig.common.role = 'watcher';
-  collectorConfig.common.orm.database = 'watcher';
-  writeJsonToFile({ forceBridge: collectorConfig }, `${generatedConfigPath}/watcher.json`);
+  let watcherConfig: Config = lodash.cloneDeep(config);
+  watcherConfig.common.role = 'watcher';
+  watcherConfig.common.orm.database = 'collector';
+  writeJsonToFile({ forceBridge: watcherConfig }, `${generatedConfigPath}/watcher.json`);
 }
 
 main()

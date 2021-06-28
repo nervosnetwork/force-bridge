@@ -22,5 +22,6 @@ module.exports = {
     'import/order': ['warn', { alphabetize: { order: 'asc' } }],
     'no-console': 'warn',
     'no-constant-condition': 'warn',
+    '@typescript-eslint/no-floating-promises': ['warn'],
   },
 };

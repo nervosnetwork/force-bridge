@@ -15,7 +15,7 @@
     "@force-bridge/ckb-indexer-client": "*",
     "@force-bridge/reconc": "*",
     "@force-bridge/internal": "*",
-    "lodash": "^4.17.20"
+    "node-fetch": "^1.7.3"
   },
   "version": "0.0.0"
 }

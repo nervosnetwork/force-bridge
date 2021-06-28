@@ -15,6 +15,7 @@ import { EthUnlock } from '../db/entity/EthUnlock';
 import { SignedTx } from '../db/entity/SignedTx';
 import { TronLock } from '../db/entity/TronLock';
 import { TronUnlock } from '../db/entity/TronUnlock';
+import { WithdrawedBridgeFee } from '../db/entity/WithdrawedBridgeFee';
 import { KV } from '../db/entity/kv';
 import { nonNullable } from '../errors';
 import path from 'path';
@@ -116,6 +117,7 @@ export async function getDBConnection(): Promise<Connection> {
       SignedTx,
       TronLock,
       TronUnlock,
+      WithdrawedBridgeFee,
     ],
     namingStrategy: new SnakeNamingStrategy(),
   });

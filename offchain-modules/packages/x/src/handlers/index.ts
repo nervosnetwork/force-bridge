@@ -1,6 +1,6 @@
-import { Connection, createConnection, getConnectionManager, getConnectionOptions } from 'typeorm';
+import { Connection } from 'typeorm';
 import { ForceBridgeCore } from '../core';
-import { CkbDb, EthDb, KVDb, TronDb } from '../db';
+import { BridgeFeeDB, CkbDb, EthDb, KVDb, TronDb } from '../db';
 import { BtcDb } from '../db/btc';
 import { EosDb } from '../db/eos';
 import { BtcHandler } from '../handlers/btc';
@@ -8,12 +8,13 @@ import { CkbHandler } from '../handlers/ckb';
 import { EosHandler } from '../handlers/eos';
 import { EthHandler } from '../handlers/eth';
 import { TronHandler } from '../handlers/tron';
+import { BridgeMetricSingleton } from '../monitor/bridge-metric';
 import { parsePrivateKey } from '../utils';
 import { logger } from '../utils/logger';
 import { BTCChain } from '../xchain/btc';
 import { EthChain } from '../xchain/eth';
 
-export async function startHandlers(conn: Connection) {
+export function startHandlers(conn: Connection): void {
   if (ForceBridgeCore.config.common.role === undefined) {
     ForceBridgeCore.config.common.role = 'watcher';
   }
@@ -22,6 +23,12 @@ export async function startHandlers(conn: Connection) {
 
   const role = ForceBridgeCore.config.common.role;
   const isCollector = ForceBridgeCore.config.common.role === 'collector';
+
+  let metricsPort = -1;
+  if (ForceBridgeCore.config.common.monitor) {
+    metricsPort = ForceBridgeCore.config.common.monitor.metricPort;
+  }
+  BridgeMetricSingleton.getInstance(role).init(metricsPort);
 
   // init db and start handlers
   const ckbDb = new CkbDb(conn);
@@ -38,8 +45,9 @@ export async function startHandlers(conn: Connection) {
       ForceBridgeCore.config.eth.privateKey = parsePrivateKey(ForceBridgeCore.config.eth.privateKey);
     }
     const ethDb = new EthDb(conn);
+    const feeDb = new BridgeFeeDB(conn);
     const ethChain = new EthChain(role);
-    const ethHandler = new EthHandler(ethDb, kvDb, ethChain, role);
+    const ethHandler = new EthHandler(ethDb, feeDb, kvDb, ethChain, role);
     ethHandler.start();
   }
   if (ForceBridgeCore.config.eos !== undefined) {

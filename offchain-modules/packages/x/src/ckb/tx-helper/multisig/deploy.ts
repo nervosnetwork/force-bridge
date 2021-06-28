@@ -64,13 +64,13 @@ function getMultiSigCellCapacity(lock: Script) {
 async function deploy(ckbPrivateKey: string, multisigItem: MultisigItem) {
   const fromPrivateKey = parsePrivateKey(ckbPrivateKey);
   const fromAddress = privateKeyToAddress(fromPrivateKey);
-  const multisigLockScript = getMultisigLock(multisigItem);
-  console.log(`multisigLockScript: ${JSON.stringify(multisigLockScript, null, 2)}`);
-  const multisigAddress = generateAddress(multisigLockScript);
+  const multisigLockscript = getMultisigLock(multisigItem);
+  console.log(`multisigLockscript: ${JSON.stringify(multisigLockscript, null, 2)}`);
+  const multisigAddress = generateAddress(multisigLockscript);
 
   let txSkeleton = TransactionSkeleton({ cellProvider: indexer });
-  const ownerCellCapacity = getOwnerCellCapacity(multisigLockScript);
-  const multiSigCellCapacity = getMultiSigCellCapacity(multisigLockScript);
+  const ownerCellCapacity = getOwnerCellCapacity(multisigLockscript);
+  const multiSigCellCapacity = getMultiSigCellCapacity(multisigLockscript);
   const capacity = ownerCellCapacity + multiSigCellCapacity;
   txSkeleton = await common.transfer(txSkeleton, [fromAddress], multisigAddress, capacity);
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -104,10 +104,10 @@ async function deploy(ckbPrivateKey: string, multisigItem: MultisigItem) {
   console.log('tx:', JSON.stringify(tx, null, 2));
   const txHash = await transactionManager.send_transaction(tx);
   await waitUntilCommitted(ckb, txHash, 60);
-  console.log('multi lockscript:', JSON.stringify(multisigLockScript, null, 2));
+  console.log('multi lockscript:', JSON.stringify(multisigLockscript, null, 2));
   const rpcTipNumber = parseInt((await ckbRpc.get_tip_header()).number, 16);
   return {
-    multisigLockScript,
+    multisigLockscript,
     ownerCellTypescript: typeIDScript,
     startBlockHeight: rpcTipNumber,
   };

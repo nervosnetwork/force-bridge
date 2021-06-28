@@ -22,20 +22,20 @@ const secpTemplate = nonNullable(getConfig().SCRIPTS.SECP256K1_BLAKE160);
 export function getMultisigLock(multisigScript: MultisigItem) {
   const serializedMultisigScript = serializeMultisigScript(multisigScript);
   const args = multisigArgs(serializedMultisigScript);
-  const multisigLockScript = {
+  const multisigLockscript = {
     code_hash: multisigTemplate.CODE_HASH,
     hash_type: multisigTemplate.HASH_TYPE,
     args,
   };
-  return multisigLockScript;
+  return multisigLockscript;
 }
 
 export function getOwnLockHash(multisigScript: MultisigItem): string {
-  const multisigLockScript = getMultisigLock(multisigScript);
+  const multisigLockscript = getMultisigLock(multisigScript);
   const ownLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>{
-    codeHash: multisigLockScript.code_hash,
-    hashType: multisigLockScript.hash_type,
-    args: multisigLockScript.args,
+    codeHash: multisigLockscript.code_hash,
+    hashType: multisigLockscript.hash_type,
+    args: multisigLockscript.args,
   });
   return ownLockHash;
 }
@@ -50,8 +50,8 @@ export function getOwnerTypeHash(): string {
 }
 
 export function getMultisigAddr(multisigScript: MultisigItem): string {
-  const multisigLockScript = getMultisigLock(multisigScript);
-  return generateAddress(multisigLockScript);
+  const multisigLockscript = getMultisigLock(multisigScript);
+  return generateAddress(multisigLockscript);
 }
 
 export function privateKeyToAddress(privateKey: string): string {
