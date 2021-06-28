@@ -17,6 +17,7 @@ import { TronLock } from '../db/entity/TronLock';
 import { TronUnlock } from '../db/entity/TronUnlock';
 import { KV } from '../db/entity/kv';
 import { nonNullable } from '../errors';
+import path from 'path';
 
 export { asyncSleep, retryPromise, foreverPromise } from './promise';
 
@@ -67,6 +68,27 @@ export function parsePrivateKey(path: string): string {
   } else {
     return path;
   }
+}
+
+export function getFromEnv(key: string, defaultValue?: string): string {
+  let value = process.env[key];
+  if (value !== undefined) {
+    return value;
+  }
+  if (defaultValue !== undefined) {
+    return defaultValue;
+  } else {
+    throw new Error(`${key} not provided in ENV`);
+  }
+}
+
+export function writeJsonToFile(obj: Object, writePath: string) {
+  const data = JSON.stringify(obj, null, 2);
+  const dir = path.dirname(writePath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  fs.writeFileSync(writePath, data);
 }
 
 export async function getDBConnection(): Promise<Connection> {

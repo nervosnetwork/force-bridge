@@ -1,6 +1,6 @@
 version: "3.3"
 services:
-  mysql-relayer:
+  mysql:
     image: mysql:5.7
     environment:
       MYSQL_ROOT_PASSWORD: root
@@ -12,30 +12,6 @@ services:
         ipv4_address: 10.5.0.100
         aliases:
           - mysql-relayer
-  mysql-verifier1:
-    image: mysql:5.7
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: forcebridge
-    ports:
-      - 3307:3306
-    networks:
-      forcenet:
-        ipv4_address: 10.5.0.101
-        aliases:
-          - mysql-verifier1
-  mysql-verifier2:
-    image: mysql:5.7
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: forcebridge
-    ports:
-      - 3308:3306
-    networks:
-      forcenet:
-        ipv4_address: 10.5.0.102
-        aliases:
-          - mysql-verifier2
   ckb:
     image: tockb/ckb-dev:v0.39.2
     ports:

@@ -139,6 +139,7 @@ export interface commonConfig {
   role: forceBridgeRole;
   log: logConfig;
   network: 'mainnet' | 'testnet';
+  port?: number;
   orm: ormConfig;
 }
 

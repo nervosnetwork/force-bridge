@@ -6,6 +6,7 @@ import { startRelayer } from './relayer';
 async function main() {
   const configPath = process.env.CONFIG_PATH || './config.json';
   nconf.env().file({ file: configPath });
+  console.log(configPath);
   const config: Config = nconf.get('forceBridge');
   await startRelayer(config);
 }

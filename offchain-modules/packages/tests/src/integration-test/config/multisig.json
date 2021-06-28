@@ -1,0 +1,25 @@
+{
+  "forceBridge": {
+    "eth": {
+      "multiSignAddresses": [
+        "0xB026351cD0c62aC89e488A840b7205730E8476bd",
+        "0x27EE444d5D96094EACecC00194b7026Eb4fD979c",
+        "0x0C2207536768EcFFeB11744AdbCC90428a0EE83B"
+      ],
+      "multiSignThreshold": 2
+    },
+    "ckb": {
+      "multisigScript": {
+        "R": 0,
+        "M": 2,
+        "publicKeyHashes": [
+          "0x40dcec2ef1ffc2340ea13ff4dd9671d2f9787e95",
+          "0xc8328aabcd9b9e8e64fbc566c4385c3bdeb219d7",
+          "0x470dcdc5e44064909650113a274b3b36aecb6dc7",
+          "0xd9a188cc1985a7d4a31f141f4ebb61f241aec182",
+          "0xebf9befcd8396e88cab8fcb920ab149231658f4b"
+        ]
+      }
+    }
+  }
+}

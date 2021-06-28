@@ -157,7 +157,9 @@ export class CkbHandler {
         },
         {
           onRejectedInterval: 3000,
-          onResolvedInterval: 5000,
+          // we will wait 5s when there is no new block. But onResolved, it means it executes successfully, we should
+          // make it fast in case we never catch up with latest block.
+          onResolvedInterval: 100,
           onRejected: (e: Error) => {
             logger.error(`CKB watchNewBlock blockHeight:${this.lastHandledBlockHeight + 1} error:${e.message}`);
           },

@@ -54,13 +54,17 @@ export function getMultisigAddr(multisigScript: MultisigItem): string {
   return generateAddress(multisigLockScript);
 }
 
-export function getFromAddr(): string {
-  const fromPrivateKey = parsePrivateKey(ForceBridgeCore.config.ckb.fromPrivateKey);
-  const fromBlake160 = key.publicKeyToBlake160(key.privateToPublic(fromPrivateKey as HexString));
+export function privateKeyToAddress(privateKey: string): string {
+  const fromBlake160 = key.publicKeyToBlake160(key.privateToPublic(privateKey as HexString));
   const fromLockScript = {
     code_hash: secpTemplate.CODE_HASH,
     hash_type: secpTemplate.HASH_TYPE,
     args: fromBlake160,
   };
   return generateAddress(fromLockScript);
+}
+
+export function getFromAddr(): string {
+  const fromPrivateKey = parsePrivateKey(ForceBridgeCore.config.ckb.fromPrivateKey);
+  return privateKeyToAddress(fromPrivateKey);
 }

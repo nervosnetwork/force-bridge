@@ -1,27 +1,23 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
-// todo: remove lumos indexer dep, use collector in packages/ckb/tx-helper/collector
 import { promises as fs } from 'fs';
 import path from 'path';
 import { asserts, nonNullable } from '@force-bridge/x';
 import { BtcAsset, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
 import { generateTypeIDScript } from '@force-bridge/x/dist/ckb/tx-helper/multisig/typeid';
-import { asyncSleep as sleep, blake2b, parsePrivateKey } from '@force-bridge/x/dist/utils';
+import { asyncSleep as sleep, blake2b, getFromEnv, parsePrivateKey, writeJsonToFile } from '@force-bridge/x/dist/utils';
 import { OutPoint, Script } from '@lay2/pw-core';
 import RawTransactionParams from '@nervosnetwork/ckb-sdk-core';
 import * as utils from '@nervosnetwork/ckb-sdk-utils';
 import axios from 'axios';
-import nconf from 'nconf';
-import { RPCClient } from 'rpc-bitcoin';
+// import nconf from 'nconf';
+// import { RPCClient } from 'rpc-bitcoin';
 
-const configPath = './config.json';
-nconf.env().file({ file: configPath });
-const CKB_URL = nconf.get('forceBridge:ckb:ckbRpcUrl');
-const CKB_IndexerURL = nconf.get('forceBridge:ckb:ckbIndexerUrl');
-const PRI_KEY = parsePrivateKey(nconf.get('forceBridge:ckb:fromPrivateKey'));
+const CKB_URL = getFromEnv('CKB_URL', 'http://127.0.0.1:8114');
+const CKB_INDEXER_URL = getFromEnv('CKB_INDEXER_URL', 'http://127.0.0.1:8116');
+const PRI_KEY = parsePrivateKey(getFromEnv('CKB_PRIV_KEY'));
 const ckb = new RawTransactionParams(CKB_URL);
-const ckbIndexer = new CkbIndexer(CKB_URL, CKB_IndexerURL);
-// const generator = new CkbTxGenerator(ckb, new IndexerCollector(ckbIndexer));
+const ckbIndexer = new CkbIndexer(CKB_URL, CKB_INDEXER_URL);
 const PUB_KEY = ckb.utils.privateKeyToPublicKey(PRI_KEY);
 const ARGS = `0x${ckb.utils.blake160(PUB_KEY, 'hex')}`;
 const ADDRESS = ckb.utils.pubkeyToAddress(PUB_KEY);
@@ -82,15 +78,15 @@ async function getCells(script_args: string, indexerUrl: string): Promise<RawTra
   return cells.filter((c) => c.data === '0x' && !c.type);
 }
 
-function getPreDeployedAssets() {
-  const ownerLockHash = nconf.get('forceBridge:ckb:ownerLockHash');
-  return [
-    new BtcAsset('btc', ownerLockHash),
-    new EthAsset('0x0000000000000000000000000000000000000000', ownerLockHash),
-    new TronAsset('trx', ownerLockHash),
-    new EosAsset('EOS', ownerLockHash),
-  ];
-}
+// function getPreDeployedAssets() {
+//   const ownerLockHash = nconf.get('forceBridge:ckb:ownerLockHash');
+//   return [
+//     new BtcAsset('btc', ownerLockHash),
+//     new EthAsset('0x0000000000000000000000000000000000000000', ownerLockHash),
+//     new TronAsset('trx', ownerLockHash),
+//     new EosAsset('EOS', ownerLockHash),
+//   ];
+// }
 
 // async function createBridgeCell(assets: Asset[]) {
 //   const { secp256k1Dep } = await ckb.loadDeps();
@@ -130,7 +126,7 @@ const deploy = async () => {
   const contractBinLength = BigInt(lockscriptBin.length);
   console.log({ contractBinLength });
   const { secp256k1Dep } = await ckb.loadDeps();
-  const unspentCells = await getCells(ARGS, CKB_IndexerURL);
+  const unspentCells = await getCells(ARGS, CKB_INDEXER_URL);
   console.log('unspentCells', unspentCells);
 
   const emptyCells: RawTransactionParams.Cell[] = [];
@@ -255,8 +251,9 @@ const deploy = async () => {
       },
     },
   };
-  nconf.set('forceBridge:ckb:deps', scriptsInfo);
-  nconf.save();
+  return scriptsInfo;
+  // nconf.set('forceBridge:ckb:deps', scriptsInfo);
+  // nconf.save();
 };
 
 const waitUntilCommitted = async (txHash) => {
@@ -271,51 +268,62 @@ const waitUntilCommitted = async (txHash) => {
     waitTime += 1;
   }
 };
-const setStartTime = async () => {
-  const currentBlock = await ckb.rpc.getTipHeader();
-  console.debug(`ckb start height is ${Number(currentBlock.number)}`);
-  nconf.set('forceBridge:ckb:startBlockHeight', Number(currentBlock.number));
-  nconf.save();
-};
 
-async function setOwnerLockHash() {
-  const { secp256k1Dep } = await ckb.loadDeps();
-  asserts(secp256k1Dep);
+// const setStartTime = async () => {
+//   const currentBlock = await ckb.rpc.getTipHeader();
+//   console.debug(`ckb start height is ${Number(currentBlock.number)}`);
+//   nconf.set('forceBridge:ckb:startBlockHeight', Number(currentBlock.number));
+//   nconf.save();
+// };
 
-  const lockscript = Script.fromRPC({
-    code_hash: secp256k1Dep.codeHash,
-    args: ARGS,
-    hash_type: secp256k1Dep.hashType,
-  });
-  const ownerLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>lockscript);
-  console.log('ownerLockHash', ownerLockHash);
-  nconf.set('forceBridge:ckb:ownerLockHash', ownerLockHash);
-  nconf.save();
-}
+// async function setOwnerLockHash() {
+//   const { secp256k1Dep } = await ckb.loadDeps();
+//   asserts(secp256k1Dep);
+//
+//   const lockscript = Script.fromRPC({
+//     code_hash: secp256k1Dep.codeHash,
+//     args: ARGS,
+//     hash_type: secp256k1Dep.hashType,
+//   });
+//   const ownerLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>lockscript);
+//   console.log('ownerLockHash', ownerLockHash);
+//   nconf.set('forceBridge:ckb:ownerLockHash', ownerLockHash);
+//   nconf.save();
+// }
 
-const setXChainStartTime = async () => {
-  const btcRPCParams = nconf.get('forceBridge:btc:clientParams');
-  const btcRPCClient = new RPCClient(btcRPCParams);
-  const height = await btcRPCClient.getchaintips();
-  console.log(`btc start block is ${height[0].height}`);
-  nconf.set('forceBridge:btc:startBlockHeight', height[0].height);
-  nconf.save();
-};
+// const setXChainStartTime = async () => {
+//   const btcRPCParams = nconf.get('forceBridge:btc:clientParams');
+//   const btcRPCClient = new RPCClient(btcRPCParams);
+//   const height = await btcRPCClient.getchaintips();
+//   console.log(`btc start block is ${height[0].height}`);
+//   nconf.set('forceBridge:btc:startBlockHeight', height[0].height);
+//   nconf.save();
+// };
 
 const main = async () => {
   console.log('\n\n\n---------start deploy -----------\n');
-  await deploy();
-  await setStartTime();
-  await setOwnerLockHash();
+  const deps = await deploy();
+  console.dir(deps, { depth: null });
+  const ckbDepsPath = getFromEnv('CKB_DEPS_PATH', '/tmp/force-bridge/ckb_deps.json');
+  const obj = {
+    forceBridge: {
+      ckb: {
+        deps,
+      },
+    },
+  };
+  writeJsonToFile(obj, ckbDepsPath);
+  console.log(`ckb contracts deps written to ${ckbDepsPath}`);
+  // await setStartTime();
+  // await setOwnerLockHash();
 
   // const assets = getPreDeployedAssets();
-  await ckbIndexer.waitForSync();
+  // await ckbIndexer.waitForSync();
   // await createBridgeCell(assets);
 
-  await setXChainStartTime();
+  // await setXChainStartTime();
 
   console.log('\n\n\n---------end deploy -----------\n');
-  process.exit(0);
 };
 
 main()

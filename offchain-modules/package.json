@@ -29,6 +29,7 @@
     "prepare-xchain-test": "sleep 5",
     "btc-test": "ts-node ./packages/scripts/src/integration-test/btc.ts",
     "integration-test": "run-p -r relayer-test sign-server1 sign-server2 xchain-test",
+    "start-all": "run-p relayer-test sign-server1 sign-server2",
     "docker:build": "docker run --rm -v `pwd`:/app -v `pwd`/node_modules_docker:/app/node_modules node:14 bash -c 'cd /app && yarn install && yarn clean && yarn build'",
     "docker:start": "cd ../tests/integration && docker-compose up",
     "docker:stop": "cd ../tests/integration && docker-compose down",
@@ -47,8 +48,8 @@
     "deploy": "ts-node-dev ./packages/scripts/src/deploy_ckb.ts",
     "prepare": "cd .. && husky install offchain-modules/.husky",
     "init-multisig": "ts-node ./packages/x/src/ckb/tx-helper/multisig/deploy.ts",
-    "sign-server1": "CONFIG_PATH=./packages/scripts/src/integration-test/config/verifier1.json ts-node ./packages/app-multisign-server/src/index.ts --port 8090",
-    "sign-server2": "CONFIG_PATH=./packages/scripts/src/integration-test/config/verifier2.json ts-node ./packages/app-multisign-server/src/index.ts --port 8091"
+    "sign-server1": "CONFIG_PATH=./packages/scripts/src/integration-test/config/verifier1.json ts-node ./packages/app-multisign-server/src/index.ts",
+    "sign-server2": "CONFIG_PATH=./packages/scripts/src/integration-test/config/verifier2.json ts-node ./packages/app-multisign-server/src/index.ts"
   },
   "author": "",
   "license": "MIT",

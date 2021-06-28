@@ -1,5 +1,5 @@
 {
-  "name": "@force-bridge/scripts",
+  "name": "@force-bridge/tests",
   "main": "dist",
   "private": true,
   "scripts": {
@@ -14,8 +14,7 @@
     "@force-bridge/xchain-eth": "*",
     "@force-bridge/ckb-indexer-client": "*",
     "@force-bridge/reconc": "*",
-    "@force-bridge/internal": "*",
-    "lodash": "^4.17.20"
+    "@force-bridge/internal": "*"
   },
   "version": "0.0.0"
 }
