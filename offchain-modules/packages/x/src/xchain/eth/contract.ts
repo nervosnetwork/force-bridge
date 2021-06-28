@@ -142,6 +142,23 @@ export class EthChain {
     });
   }
 
+  async isLogForked(logs: Log[]): Promise<boolean> {
+    let block: ethers.providers.Block | null = null;
+    for (const log of logs) {
+      if (block != null && log.blockHash === block.hash) {
+        continue;
+      }
+      block = await this.provider.getBlock(log.blockNumber);
+      if (block.hash != log.blockHash) {
+        logger.error(
+          `log fork occured in block ${log.blockNumber}, log.blockHash ${log.blockHash}, block.hash ${block.hash}`,
+        );
+        return true;
+      }
+    }
+    return false;
+  }
+
   // TODO marks the type @JacobDenver007
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async sendUnlockTxs(records: EthUnlock[]): Promise<any> {

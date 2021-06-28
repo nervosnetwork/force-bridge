@@ -7,7 +7,7 @@ import { EthDb, KVDb } from '../db';
 import { EthUnlockStatus } from '../db/entity/EthUnlock';
 import { EthUnlock } from '../db/model';
 import { BridgeMetricSingleton, txTokenInfo } from '../monitor/bridge-metric';
-import { asyncSleep, foreverPromise, fromHexString, uint8ArrayToString } from '../utils';
+import { asyncSleep, foreverPromise, fromHexString, retryPromise, uint8ArrayToString } from '../utils';
 import { logger } from '../utils/logger';
 import { EthChain, Log, ParsedLog } from '../xchain/eth';
 
@@ -106,11 +106,27 @@ export class EthHandler {
   }
 
   watchNewBlock(): void {
-    this.ethChain.watchNewBlock(this.lastHandledBlockHeight, async (newBlock: ethers.providers.Block) => {
-      await this.onBlock(newBlock);
-      const currentBlockHeight = await this.ethChain.getCurrentBlockNumber();
-      BridgeMetricSingleton.getInstance(this.role).setBlockHeightMetrics('eth', newBlock.number, currentBlockHeight);
-    });
+    void (async () => {
+      await this.init();
+      this.ethChain.watchNewBlock(this.lastHandledBlockHeight, async (newBlock: ethers.providers.Block) => {
+        await retryPromise(
+          async () => {
+            await this.onBlock(newBlock);
+            const currentBlockHeight = await this.ethChain.getCurrentBlockNumber();
+            BridgeMetricSingleton.getInstance(this.role).setBlockHeightMetrics(
+              'eth',
+              newBlock.number,
+              currentBlockHeight,
+            );
+          },
+          {
+            onRejectedInterval: 3000,
+            maxRetryTimes: MAX_RETRY_TIMES,
+            onRejected: (e: Error) => logger.error(`Eth watchNewBlock blockHeight:${newBlock} error:${e.message}`),
+          },
+        );
+      });
+    })();
   }
 
   isForked(confirmNumber: number, block: ethers.providers.Block): boolean {
@@ -123,37 +139,48 @@ export class EthHandler {
   }
 
   async onBlock(block: ethers.providers.Block): Promise<void> {
-    for (let i = 1; i <= MAX_RETRY_TIMES; i++) {
-      try {
-        const confirmNumber = ForceBridgeCore.config.eth.confirmNumber;
-        if (this.isForked(confirmNumber, block)) {
-          logger.warn(
-            `EthHandler onBlock blockHeight:${block.number} parentHash:${block.parentHash} != lastHandledBlockHash:${
-              this.lastHandledBlockHash
-            } fork occur removeUnconfirmedLock events from:${block.number - confirmNumber}`,
-          );
-          const confirmedBlockHeight = block.number - confirmNumber;
-          await this.db.removeUnconfirmedLocks(confirmedBlockHeight);
-          const logs = await this.ethChain.getLockLogs(confirmedBlockHeight + 1, block.number);
-          for (const log of logs) {
-            await this.onLockLogs(log.log, log.parsedLog);
-          }
-        }
+    const confirmNumber = ForceBridgeCore.config.eth.confirmNumber;
+    if (this.isForked(confirmNumber, block)) {
+      logger.warn(
+        `EthHandler onBlock blockHeight:${block.number} parentHash:${block.parentHash} != lastHandledBlockHash:${
+          this.lastHandledBlockHash
+        } fork occur removeUnconfirmedLock events from:${block.number - confirmNumber}`,
+      );
+      const confirmedBlockHeight = block.number - confirmNumber;
+      await this.db.removeUnconfirmedLocks(confirmedBlockHeight);
+      const logs = await this.ethChain.getLockLogs(confirmedBlockHeight + 1, block.number);
 
-        await this.confirmEthLocks(block.number, confirmNumber);
-        await this.setLastHandledBlock(block.number, block.hash);
-        logger.info(`EthHandler onBlock blockHeight:${block.number} blockHash:${block.hash}`);
-        break;
-      } catch (e) {
-        logger.error(
-          `EthHandler onBlock error, blockHeight:${block.number} blockHash:${block.hash} error:${e.toString()}`,
-        );
-        if (i == MAX_RETRY_TIMES) {
-          throw e;
-        }
-        await asyncSleep(3000);
+      if (
+        await this.ethChain.isLogForked(
+          logs.map((log) => {
+            return log.log;
+          }),
+        )
+      ) {
+        throw new Error(`log fork occured when reorg block ${block.number}`);
+      }
+      for (const log of logs) {
+        await this.onLockLogs(log.log, log.parsedLog);
       }
     }
+
+    // onLockLogs
+    const lockLogs = await this.ethChain.getLockLogs(block.number, block.number);
+    for (const log of lockLogs) {
+      await this.onLockLogs(log.log, log.parsedLog);
+    }
+
+    // onUnlockLogs
+    if (this.role !== 'collector') {
+      const unlockLogs = await this.ethChain.getUnlockLogs(block.number, block.number);
+      for (const log of unlockLogs) {
+        await this.onUnlockLogs(log.log, log.parsedLog);
+      }
+    }
+
+    await this.confirmEthLocks(block.number, confirmNumber);
+    await this.setLastHandledBlock(block.number, block.hash);
+    logger.info(`EthHandler onBlock blockHeight:${block.number} blockHash:${block.hash}`);
   }
 
   async confirmEthLocks(currentBlockHeight: number, confirmNumber: number): Promise<void> {
@@ -474,19 +501,9 @@ export class EthHandler {
   }
 
   start(): void {
-    this.init().then(
-      () => {
-        this.watchNewBlock();
-        this.watchLockEvents();
+    this.watchNewBlock();
 
-        if (this.role !== 'collector') this.watchUnlockEvents();
-
-        this.handleUnlockRecords();
-        logger.info('eth handler started  🚀');
-      },
-      (err) => {
-        logger.error(`eth handler exit with error:${err.message}`);
-      },
-    );
+    this.handleUnlockRecords();
+    logger.info('eth handler started  🚀');
   }
 }

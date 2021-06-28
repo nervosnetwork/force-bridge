@@ -425,6 +425,10 @@ export class CkbTxGenerator {
         recipientTypeScript.codeHash,
         new Amount(`0x${needSupplyCap.toString(16)}`, 0),
       );
+      const suppliedCap = needSupplyCapCells.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
+      if (suppliedCap - needSupplyCap < 0) {
+        throw new Error('need supply amount is not enough!');
+      }
       inputCells = inputCells.concat(needSupplyCapCells);
     }
 
