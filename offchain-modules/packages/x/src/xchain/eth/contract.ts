@@ -19,6 +19,7 @@ export type HandleLogFn = (log: Log, parsedLog: ParsedLog) => Promise<void> | vo
 
 export const lockTopic = ethers.utils.id('Locked(address,address,uint256,bytes,bytes)');
 export const unlockTopic = ethers.utils.id('Unlocked(address,address,address,uint256,bytes)');
+export const WithdrawBridgeFeeTopic = '0xff';
 
 export interface EthUnlockRecord {
   token: string;
@@ -182,6 +183,21 @@ export class EthChain {
     }
     const signature = '0x' + signatures.join('');
     return this.bridge.unlock(params, nonce, signature);
+  }
+
+  public async getUnlockMessageToSign(records: EthUnlockRecord[]): Promise<string> {
+    const bridge = new ethers.Contract(this.bridgeContractAddr, abi, this.provider);
+    const domainSeparator = await bridge.DOMAIN_SEPARATOR();
+    const typeHash = await bridge.UNLOCK_TYPEHASH();
+    const nonce: BigNumber = await bridge.latestUnlockNonce_();
+    logger.info('sign with nonce: ', nonce.toString());
+    return buildSigRawData(domainSeparator, typeHash, records, nonce);
+  }
+
+  public async sendWithdrawBridgeFeeTx(records: EthUnlockRecord[], signatures: string[]): Promise<any> {
+    const nonce: BigNumber = await this.bridge.latestUnlockNonce_();
+    logger.info('send withdraw fee tx with nonce: ', nonce.toString());
+    return this.bridge.unlock(records, nonce, '0x' + signatures.join(''));
   }
 
   private async signUnlockRecords(
