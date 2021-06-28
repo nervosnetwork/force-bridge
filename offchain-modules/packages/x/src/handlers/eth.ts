@@ -353,7 +353,34 @@ export class EthHandler {
     if (this.role !== 'collector') {
       return;
     }
-    // todo: get and handle pending and error records
+
+    this.handlePendingUnlockRecords().then(
+      () => {
+        this.handleTodoUnlockRecords();
+      },
+      (err) => {
+        logger.error(`handlePendingUnlockRecords error:${err.message}`);
+      },
+    );
+  }
+
+  async handlePendingUnlockRecords(): Promise<void> {
+    for (;;) {
+      try {
+        const records = await this.getUnlockRecords('pending');
+        if (records.length === 0) {
+          break;
+        }
+        await this.doHandleUnlockRecords(records);
+        break;
+      } catch (e) {
+        logger.error(`doHandlePendingUnlockRecords error:${e.message}`);
+        await asyncSleep(3000);
+      }
+    }
+  }
+
+  handleTodoUnlockRecords(): void {
     foreverPromise(
       async () => {
         await asyncSleep(15000);
@@ -364,69 +391,100 @@ export class EthHandler {
           return;
         }
         logger.info('EthHandler watchUnlockEvents unlock records', records);
-
-        const unlockTxHashes = records
-          .map((unlockRecord) => {
-            return unlockRecord.ckbTxHash;
-          })
-          .join(', ');
-        logger.info(
-          `EthHandler watchUnlockEvents start process unlock Record, ckbTxHashes:${unlockTxHashes} num:${records.length}`,
-        );
-
-        try {
-          // write db first, avoid send tx success and fail to write db
-          records.map((r) => {
-            r.status = 'pending';
-          });
-          await this.db.saveEthUnlock(records);
-          const txRes = await this.ethChain.sendUnlockTxs(records);
-          records.map((r) => {
-            r.status = 'pending';
-            r.ethTxHash = txRes.hash;
-          });
-          await this.db.saveEthUnlock(records);
-          logger.debug('sendUnlockTxs res', txRes);
-          const receipt = await txRes.wait();
-          logger.info(`EthHandler watchUnlockEvents sendUnlockTxs receipt:${JSON.stringify(receipt.logs, null, 2)}`);
-          if (receipt.status === 1) {
-            records.map((r) => {
-              r.status = 'success';
-            });
-            const unlockTokens = records.map((r) => {
-              const tokenInfo: txTokenInfo = {
-                amount: Number(r.amount),
-                token: r.asset,
-              };
-              return tokenInfo;
-            });
-            BridgeMetricSingleton.getInstance(this.role).addBridgeTokenMetrics('eth_unlock', unlockTokens);
-            BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_unlock', 'success');
-          } else {
-            records.map((r) => {
-              r.status = 'error';
-              r.message = 'unlock tx failed';
-            });
-            BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_unlock', 'failed');
-            logger.error('EthHandler watchUnlockEvents unlock execute failed:', receipt);
-          }
-          await this.db.saveEthUnlock(records);
-          logger.info('EthHandler watchUnlockEvents process unlock Record completed');
-        } catch (e) {
-          records.map((r) => {
-            r.status = 'error';
-            r.message = e.message;
-          });
-          await this.db.saveEthUnlock(records);
-
-          logger.error(`EthHandler watchUnlockEvents error:${e.toString()}, ${e.message}`);
-        }
+        await this.doHandleUnlockRecords(records);
       },
       {
         onRejectedInterval: 0,
         onResolvedInterval: 0,
       },
     );
+  }
+
+  async doHandleUnlockRecords(records: EthUnlock[]): Promise<void> {
+    if (records.length === 0) {
+      return;
+    }
+
+    const unlockTxHashes = records
+      .map((unlockRecord) => {
+        return unlockRecord.ckbTxHash;
+      })
+      .join(', ');
+    logger.info(
+      `EthHandler doHandleUnlockRecords start process unlock Record, ckbTxHashes:${unlockTxHashes} num:${records.length}`,
+    );
+
+    for (;;) {
+      try {
+        // write db first, avoid send tx success and fail to write db
+        records.map((r) => {
+          r.status = 'pending';
+        });
+        await this.db.saveEthUnlock(records);
+        const txRes = await this.ethChain.sendUnlockTxs(records);
+        if (txRes instanceof Error) {
+          records.map((r) => {
+            r.status = 'error';
+            r.message = (txRes as Error).message;
+          });
+          BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_unlock', 'failed');
+          logger.error(
+            `EthHandler doHandleUnlockRecords ckbTxHashes:${unlockTxHashes}  sendUnlockTxs error:${txRes as Error}`,
+          );
+          break;
+        }
+
+        records.map((r) => {
+          r.status = 'pending';
+          r.ethTxHash = txRes.hash;
+        });
+        await this.db.saveEthUnlock(records);
+        logger.debug('sendUnlockTxs res', txRes);
+        const receipt = await txRes.wait();
+        logger.info(`EthHandler doHandleUnlockRecords sendUnlockTxs receipt:${JSON.stringify(receipt.logs, null, 2)}`);
+        if (receipt.status === 1) {
+          records.map((r) => {
+            r.status = 'success';
+          });
+          const unlockTokens = records.map((r) => {
+            const tokenInfo: txTokenInfo = {
+              amount: Number(r.amount),
+              token: r.asset,
+            };
+            return tokenInfo;
+          });
+          BridgeMetricSingleton.getInstance(this.role).addBridgeTokenMetrics('eth_unlock', unlockTokens);
+          BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_unlock', 'success');
+        } else {
+          records.map((r) => {
+            r.status = 'error';
+            r.message = 'unlock tx failed';
+          });
+          BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_unlock', 'failed');
+          logger.error(
+            `EthHandler doHandleUnlockRecords ckbTxHashes:${unlockTxHashes} unlock execute failed:${receipt}`,
+          );
+        }
+        break;
+      } catch (e) {
+        logger.error(
+          `EthHandler doHandleUnlockRecords ckbTxHashes:${unlockTxHashes} error:${e.toString()}, ${e.message}`,
+        );
+        await asyncSleep(5000);
+      }
+    }
+    for (;;) {
+      try {
+        await this.db.saveEthUnlock(records);
+        logger.info(`EthHandler doHandleUnlockRecords process unlock Record completed ckbTxHashes:${unlockTxHashes}`);
+        break;
+      } catch (e) {
+        logger.error(
+          `EthHandler doHandleUnlockRecords db.saveEthUnlock ckbTxHashes:${unlockTxHashes} error:${e.message}`,
+        );
+        await asyncSleep(3000);
+      }
+    }
   }
 
   waitForBatch(records: EthUnlock[]): boolean {

@@ -39,7 +39,7 @@
       "multiSignThreshold": 2,
       "contractAddress": "0x8326e1d621Cd32752920ed2A44B49bB1a96c7391",
       "confirmNumber": 1,
-      "startBlockHeight": 5,
+      "startBlockHeight": 2,
       "batchUnlock": {
         "batchNumber": 100,
         "maxWaitTime": 86400000
@@ -116,12 +116,12 @@
           "cellDep": {
             "depType": "code",
             "outPoint": {
-              "txHash": "0x8b42fd0e607dc70cf15f72782a44154197b2beb6c581e24e9888081e66506ad4",
+              "txHash": "0xa971faeabb549897a0292552127442ab2957e339dfbd38fa05a32a62380bd9f4",
               "index": "0x0"
             }
           },
           "script": {
-            "codeHash": "0x098fc87ba45ca95d7904f04c9921e4315e074537294c4cd794dd5237721bf640",
+            "codeHash": "0xdf37272de30a650a360b7a0db8c417b14246416008c9d15b964b69050a3fa23e",
             "hashType": "data"
           }
         },
@@ -129,7 +129,7 @@
           "cellDep": {
             "depType": "code",
             "outPoint": {
-              "txHash": "0x8b42fd0e607dc70cf15f72782a44154197b2beb6c581e24e9888081e66506ad4",
+              "txHash": "0xa971faeabb549897a0292552127442ab2957e339dfbd38fa05a32a62380bd9f4",
               "index": "0x2"
             }
           },
@@ -142,7 +142,7 @@
           "cellDep": {
             "depType": "code",
             "outPoint": {
-              "txHash": "0x8b42fd0e607dc70cf15f72782a44154197b2beb6c581e24e9888081e66506ad4",
+              "txHash": "0xa971faeabb549897a0292552127442ab2957e339dfbd38fa05a32a62380bd9f4",
               "index": "0x3"
             }
           },
@@ -152,7 +152,7 @@
           }
         }
       },
-      "startBlockHeight": 0,
+      "startBlockHeight": 16,
       "confirmNumber": 1,
       "multisigType": {
         "code_hash": "0x00000000000000000000000000000000000000000000000000545950455f4944",
@@ -172,7 +172,7 @@
       "ownerCellTypescript": {
         "code_hash": "0x00000000000000000000000000000000000000000000000000545950455f4944",
         "hash_type": "type",
-        "args": "0x50726c38a50f3c39d7fa02debf6bcad8f04db5fb2a54e52974c8e260f640a20e"
+        "args": "0x9e299206e0924026cbc283a37de3908172dc68fdd6e96c403de11156b92527bd"
       },
       "multisigLockscript": {
         "code_hash": "0x5c5069eb0857efc65e1bca0c07df34c31663b3622fd3876c876320fc9634e2a8",
