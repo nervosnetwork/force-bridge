@@ -86,7 +86,8 @@ async function main() {
   // generate watcher config
   const watcherConfig: Config = lodash.cloneDeep(config);
   watcherConfig.common.role = 'watcher';
-  watcherConfig.common.orm.database = 'watcher';
+  // fixme: the test only pass when using the collector db
+  watcherConfig.common.orm.database = 'collector';
   collectorConfig.common.log.logFile = `${configPath}/logs/watcher.log`;
   writeJsonToFile({ forceBridge: watcherConfig }, `${configPath}/watcher.json`);
 }
