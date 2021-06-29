@@ -304,7 +304,8 @@ const main = async () => {
   console.log('\n\n\n---------start deploy -----------\n');
   const deps = await deploy();
   console.dir(deps, { depth: null });
-  const ckbDepsPath = getFromEnv('CKB_DEPS_PATH', '/tmp/force-bridge/ckb_deps.json');
+  const outputConfigPath = getFromEnv("CONFIG_PATH", '/tmp/force-bridge');
+  const ckbDepsPath = `${outputConfigPath}/ckb_deps.json`;
   const obj = {
     forceBridge: {
       ckb: {

@@ -31,8 +31,7 @@ function writeJsonToFile(obj, writePath) {
 }
 
 async function main() {
-  const configPath =
-    process.env.MULTISIG_CONFIG_PATH || '../offchain-modules/config.json';
+  const configPath = getFromEnv("MULTISIG_CONFIG_PATH");
   nconf.file({ file: configPath });
 
   const validators = nconf.get('forceBridge:eth:multiSignAddresses');
@@ -52,7 +51,8 @@ async function main() {
       }
     }
   }
-  const ethContractConfig = getFromEnv("ETH_CONTRACT_CONFIG", "/tmp/force-bridge/eth_contract_config.json");
+  const outputConfigPath = getFromEnv("CONFIG_PATH", '/tmp/force-bridge');
+  const ethContractConfig = `${outputConfigPath}/eth_contract_config.json`;
   writeJsonToFile(obj, ethContractConfig);
 
   console.log(`ForceBridge deployed to: ${bridge.address}`);

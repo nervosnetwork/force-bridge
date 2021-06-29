@@ -1,8 +1,8 @@
 import nconf from 'nconf';
-import { resolveCurrentPackagePath, resolveOffChainModulesPath } from '../resolvePath';
+import { resolveCurrentPackagePath, resolveOffChainModulesPath } from './resolvePath';
 import { Config } from '@force-bridge/x/dist/config';
 import * as lodash from 'lodash';
-import { writeJsonToFile } from '@force-bridge/x/dist/utils';
+import {getFromEnv, writeJsonToFile} from '@force-bridge/x/dist/utils';
 
 const verifiers = [
   {
@@ -30,24 +30,23 @@ const verifiers = [
 ];
 
 async function main() {
+  const configPath = getFromEnv("CONFIG_PATH");
   nconf
     .env()
-    .file('ckb_deps', '/tmp/force-bridge/ckb_deps.json')
-    .file('ckb_owner_cell_config', '/tmp/force-bridge/ckb_owner_cell_config.json')
-    .file('eth_contract_config', '/tmp/force-bridge/eth_contract_config.json')
-    .file('multisig', resolveCurrentPackagePath('src/integration-test/config/multisig.json'))
-    .file('asset-white-list', resolveCurrentPackagePath('src/integration-test/config/asset-white-list.json'))
-    .file('init', resolveCurrentPackagePath('src/integration-test/config/init.json'));
+    .file('ckb_deps', `${configPath}/ckb_deps.json`)
+    .file('ckb_owner_cell_config', `${configPath}/ckb_owner_cell_config.json`)
+    .file('eth_contract_config', `${configPath}/eth_contract_config.json`)
+    .file('multisig', `${configPath}/multisig.json`)
+    .file('asset-white-list', `${configPath}/asset-white-list.json`)
+    .file('init', `${configPath}/init.json`)
   let config: Config = nconf.get('forceBridge');
   console.dir(config, { depth: null });
-  const generatedConfigPath = resolveCurrentPackagePath('generated/ci');
-  console.log(`generatedConfigPath: ${generatedConfigPath}`);
   // generate collector config
   let collectorConfig: Config = lodash.cloneDeep(config);
   collectorConfig.common.role = 'collector';
   collectorConfig.common.orm.database = 'collector';
-  collectorConfig.eth.privateKey = `${generatedConfigPath}/privkeys/eth`;
-  collectorConfig.ckb.fromPrivateKey = `${generatedConfigPath}/privkeys/ckb`;
+  collectorConfig.eth.privateKey = `${configPath}/privkeys/eth`;
+  collectorConfig.ckb.fromPrivateKey = `${configPath}/privkeys/ckb`;
   collectorConfig.eth.multiSignHosts = verifiers.map((v) => {
     return {
       address: v.eth.address,
@@ -60,7 +59,7 @@ async function main() {
       host: `http://127.0.0.1:${v.port}/force-bridge/sign-server/api/v1`,
     };
   });
-  writeJsonToFile({ forceBridge: collectorConfig }, `${generatedConfigPath}/collector.json`);
+  writeJsonToFile({ forceBridge: collectorConfig }, `${configPath}/collector.json`);
   // generate verifier config
   let verifierIndex = 1;
   for (const verifier of verifiers) {
@@ -69,25 +68,25 @@ async function main() {
     verifierConfig.common.orm.database = `verifier${verifierIndex}`;
     verifierConfig.eth.multiSignKeys = [
       {
-        privKey: `${generatedConfigPath}/privkeys/eth-multisig-${verifierIndex}`,
+        privKey: `${configPath}/privkeys/eth-multisig-${verifierIndex}`,
         address: verifier.eth.address,
       },
     ];
     verifierConfig.ckb.multiSignKeys = [
       {
-        privKey: `${generatedConfigPath}/privkeys/ckb-multisig-${verifierIndex}`,
+        privKey: `${configPath}/privkeys/ckb-multisig-${verifierIndex}`,
         address: verifier.ckb.address,
       },
     ];
     verifierConfig.common.port = verifier.port;
-    writeJsonToFile({ forceBridge: verifierConfig }, `${generatedConfigPath}/verifier${verifierIndex}.json`);
+    writeJsonToFile({ forceBridge: verifierConfig }, `${configPath}/verifier${verifierIndex}.json`);
     verifierIndex++;
   }
   // generate watcher config
   let watcherConfig: Config = lodash.cloneDeep(config);
   watcherConfig.common.role = 'watcher';
   watcherConfig.common.orm.database = 'collector';
-  writeJsonToFile({ forceBridge: watcherConfig }, `${generatedConfigPath}/watcher.json`);
+  writeJsonToFile({ forceBridge: watcherConfig }, `${configPath}/watcher.json`);
 }
 
 main()

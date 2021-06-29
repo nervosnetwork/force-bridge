@@ -4,7 +4,6 @@ import { key } from '@ckb-lumos/hd';
 import {
   TransactionSkeleton,
   sealTransaction,
-  parseAddress,
   minimalCellCapacity,
   generateAddress,
 } from '@ckb-lumos/helpers';
@@ -14,7 +13,6 @@ import CKB from '@nervosnetwork/ckb-sdk-core';
 import * as lodash from 'lodash';
 import nconf from 'nconf';
 import { Config, MultisigItem } from '../../../config';
-// import { ForceBridgeCore } from '../../../core';
 import { getFromEnv, asyncSleep as sleep, parsePrivateKey, writeJsonToFile } from '../../../utils';
 import { CkbIndexer } from '../indexer';
 import { init } from './init_config';
@@ -165,10 +163,8 @@ const main = async () => {
   const res = await deploy(ckbPrivateKey, multisigScript);
   const obj = { forceBridge: { ckb: res } };
   console.dir(obj, { depth: null });
-  const ckbOwnerCellConfigPath = getFromEnv(
-    'CKB_OWNER_CELL_CONFIG_PATH',
-    '/tmp/force-bridge/ckb_owner_cell_config.json',
-  );
+  const outputConfigPath = getFromEnv("CONFIG_PATH", '/tmp/force-bridge');
+  const ckbOwnerCellConfigPath = `${outputConfigPath}/ckb_owner_cell_config.json`;
   writeJsonToFile(obj, ckbOwnerCellConfigPath);
   console.log(`ckb owner cell config written to ${ckbOwnerCellConfigPath}`);
   console.log('\n\n\n---------end init multisig address -----------\n');
