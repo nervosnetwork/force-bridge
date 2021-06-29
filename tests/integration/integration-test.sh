@@ -15,7 +15,7 @@ export MULTISIG_CONFIG_PATH="${CURRENT_DIR}/config/multisig.json"
 export CONFIG_PATH="${INTEGRATION_TEST_WORKDIR}"
 
 function clean_db {
-  docker exec -it docker_mysql_1 bash -c "mysql -uroot -proot -e 'drop database if exists collector; drop database if exists verifier1; drop database if exists verifier2; drop database if exists watcher;'"
+  docker exec docker_mysql_1 bash -c "mysql -uroot -proot -e 'drop database if exists collector; drop database if exists verifier1; drop database if exists verifier2; drop database if exists watcher;'"
 }
 
 # clean
@@ -47,7 +47,7 @@ function generate_configs {
 
 function create_db {
   # create database
-  docker exec -it docker_mysql_1 bash -c "mysql -uroot -proot -e 'create database collector; create database verifier1; create database verifier2; create database watcher; show databases;'"
+  docker exec docker_mysql_1 bash -c "mysql -uroot -proot -e 'create database collector; create database verifier1; create database verifier2; create database watcher; show databases;'"
 }
 
 function start_service {
