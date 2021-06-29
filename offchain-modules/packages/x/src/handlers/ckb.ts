@@ -186,6 +186,7 @@ export class CkbHandler {
       this.lastHandledBlockHash !== '' &&
       block.header.parentHash !== this.lastHandledBlockHash
     ) {
+      BridgeMetricSingleton.getInstance(this.role).setForkEventHeightMetrics('ckb', this.lastHandledBlockHeight);
       logger.warn(
         `CkbHandler onBlock blockHeight:${blockNumber} parentHash:${block.header.parentHash} != lastHandledBlockHash:${this.lastHandledBlockHash} fork occur removeUnconfirmedLock events from:${confirmedBlockHeight}`,
       );

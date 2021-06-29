@@ -69,6 +69,7 @@ export class EthHandler {
     const confirmNumber = ForceBridgeCore.config.eth.confirmNumber;
     const nextBlock = await this.ethChain.getBlock(this.lastHandledBlockHeight + 1);
     if (this.isForked(confirmNumber, nextBlock)) {
+      BridgeMetricSingleton.getInstance(this.role).setForkEventHeightMetrics('eth', this.lastHandledBlockHeight);
       logger.warn(
         `EthHandler init nextBlock blockHeight:${nextBlock.number} parentHash:${
           nextBlock.parentHash
@@ -147,6 +148,7 @@ export class EthHandler {
   async onBlock(block: ethers.providers.Block): Promise<void> {
     const confirmNumber = ForceBridgeCore.config.eth.confirmNumber;
     if (this.isForked(confirmNumber, block)) {
+      BridgeMetricSingleton.getInstance(this.role).setForkEventHeightMetrics('eth', this.lastHandledBlockHeight);
       logger.warn(
         `EthHandler onBlock blockHeight:${block.number} parentHash:${block.parentHash} != lastHandledBlockHash:${
           this.lastHandledBlockHash
