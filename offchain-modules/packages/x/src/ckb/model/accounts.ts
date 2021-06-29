@@ -9,8 +9,10 @@ export class Account {
   public lockscript?: Script;
   public address: string;
 
-  static scriptToAddress(script: CKBComponents.Script): string {
-    const network = ForceBridgeCore.config.common.network;
+  static scriptToAddress(
+    script: CKBComponents.Script,
+    network: string = ForceBridgeCore.config.common.network,
+  ): string {
     if (script.codeHash === utils.systemScripts.SECP256K1_BLAKE160.codeHash) {
       if (network === 'mainnet')
         return utils.bech32Address(script.args, {
@@ -38,9 +40,21 @@ export class Account {
     }
   }
 
-  constructor(public privateKey: string) {
-    this.publicKey = ForceBridgeCore.ckb.utils.privateKeyToPublicKey(privateKey);
-    this.address = ForceBridgeCore.ckb.utils.pubkeyToAddress(this.publicKey);
+  constructor(public privateKey: string, network: string = ForceBridgeCore.config.common.network) {
+    this.publicKey = utils.privateKeyToPublicKey(privateKey);
+    if (network === 'mainnet') {
+      this.address = utils.pubkeyToAddress(this.publicKey, {
+        prefix: AddressPrefix.Mainnet,
+        type: utils.AddressType.HashIdx,
+        codeHashOrCodeHashIndex: '0x00',
+      });
+    } else {
+      this.address = utils.pubkeyToAddress(this.publicKey, {
+        prefix: AddressPrefix.Testnet,
+        type: utils.AddressType.HashIdx,
+        codeHashOrCodeHashIndex: '0x00',
+      });
+    }
   }
 
   async getLockscript(): Promise<Script> {
@@ -49,7 +63,7 @@ export class Account {
 
       asserts(secp256k1Dep);
 
-      const args = `0x${ForceBridgeCore.ckb.utils.blake160(this.publicKey, 'hex')}`;
+      const args = `0x${utils.blake160(this.publicKey, 'hex')}`;
       const lockScript = Script.fromRPC({
         code_hash: secp256k1Dep.codeHash,
         args,

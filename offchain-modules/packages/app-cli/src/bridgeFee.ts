@@ -7,7 +7,7 @@ import { getDBConnection, parsePrivateKey } from '@force-bridge/x/dist/utils';
 import { EthChain, WithdrawBridgeFeeTopic } from '@force-bridge/x/dist/xchain/eth';
 import { Amount } from '@lay2/pw-core';
 import commander from 'commander';
-import { ecsign, toRpcSig } from 'ethereumjs-util';
+// import { ecsign, toRpcSig } from 'ethereumjs-util';
 import nconf from 'nconf';
 
 const defaultConfig = './config.json';
@@ -88,17 +88,20 @@ async function getTotalWithdrawed(command: commander.Command) {
   const asset = nonNullable(opts.asset);
   if (xchain !== 'ethereum') throw new Error('only support ethereum currently');
   const configPath = nonNullable(opts.config);
-
-  nconf.env().file({ file: configPath });
-  const cfg: Config = nconf.get('forceBridge');
-  await new ForceBridgeCore().init(cfg);
-  const conn = await getDBConnection();
-  const bridgeFeeDB = new BridgeFeeDB(conn);
-  const ethAsset = new EthAsset(asset);
-
-  const withdrawedBridgeFee = await bridgeFeeDB.getEthTotalWithdrawedBridgeFee(asset);
-  const humanizedWithdrawedBridgeFee = ethAsset.getHumanizedDescription(withdrawedBridgeFee);
-  console.log('total withdrawed bridge fee:', humanizedWithdrawedBridgeFee);
+  console.log(JSON.stringify(opts, undefined, 2));
+  console.log(JSON.stringify(xchain, undefined, 2));
+  console.log(JSON.stringify(asset, undefined, 2));
+  console.log(JSON.stringify(configPath, undefined, 2));
+  // nconf.env().file({ file: configPath });
+  // const cfg: Config = nconf.get('forceBridge');
+  // await new ForceBridgeCore().init(cfg);
+  // const conn = await getDBConnection();
+  // const bridgeFeeDB = new BridgeFeeDB(conn);
+  // const ethAsset = new EthAsset(asset);
+  //
+  // const withdrawedBridgeFee = await bridgeFeeDB.getEthTotalWithdrawedBridgeFee(asset);
+  // const humanizedWithdrawedBridgeFee = ethAsset.getHumanizedDescription(withdrawedBridgeFee);
+  // console.log('total withdrawed bridge fee:', humanizedWithdrawedBridgeFee);
 }
 
 async function getTotalAvailable(command: commander.Command) {
@@ -132,24 +135,31 @@ async function generateWithdrawTxSignature(command: commander.Command) {
   const amount = nonNullable(opts.amount);
   if (recipient.length !== amount.length) throw new Error('recipient number should equal amount number');
   const configPath = nonNullable(opts.config);
-  nconf.env().file({ file: configPath });
-  const cfg: Config = nconf.get('forceBridge');
-  await new ForceBridgeCore().init(cfg);
 
-  const withdrawRecords = recipient.map((r, i) => {
-    return {
-      ckbTxHash: WithdrawBridgeFeeTopic,
-      token: asset,
-      amount: ethAsset.parseAmount(amount[i]),
-      recipient: r,
-    };
-  });
-  const ethChain = new EthChain('verifier');
-  const message = await ethChain.getUnlockMessageToSign(withdrawRecords);
-  const privKeyPath = ForceBridgeCore.config.eth.multiSignKeys[0].privKey;
-  const privKey = parsePrivateKey(privKeyPath);
-  const { v, r, s } = ecsign(Buffer.from(message.slice(2), 'hex'), Buffer.from(privKey.slice(2), 'hex'));
-  console.log(`signature of withdraw tx: ${toRpcSig(v, r, s)}`);
+  console.log(JSON.stringify(opts, undefined, 2));
+  console.log(JSON.stringify(xchain, undefined, 2));
+  console.log(JSON.stringify(asset, undefined, 2));
+  console.log(JSON.stringify(ethAsset, undefined, 2));
+  console.log(JSON.stringify(configPath, undefined, 2));
+
+  // nconf.env().file({ file: configPath });
+  // const cfg: Config = nconf.get('forceBridge');
+  // await new ForceBridgeCore().init(cfg);
+  //
+  // const withdrawRecords = recipient.map((r, i) => {
+  //   return {
+  //     ckbTxHash: WithdrawBridgeFeeTopic,
+  //     token: asset,
+  //     amount: ethAsset.parseAmount(amount[i]),
+  //     recipient: r,
+  //   };
+  // });
+  // const ethChain = new EthChain('verifier');
+  // const message = await ethChain.getUnlockMessageToSign(withdrawRecords);
+  // const privKeyPath = ForceBridgeCore.config.eth.multiSignKeys[0].privKey;
+  // const privKey = parsePrivateKey(privKeyPath);
+  // const { v, r, s } = ecsign(Buffer.from(message.slice(2), 'hex'), Buffer.from(privKey.slice(2), 'hex'));
+  // console.log(`signature of withdraw tx: ${toRpcSig(v, r, s)}`);
 }
 
 async function sendWithdrawTx(command: commander.Command) {
