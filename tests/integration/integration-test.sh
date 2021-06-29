@@ -60,8 +60,9 @@ function start_service {
   CONFIG_PATH=${CONFIG_PATH}/watcher.json ts-node ./packages/scripts/src/integration-test/eth.ts
 }
 
-#deploy
-#generate_configs
-clean_db
+#clean_all
+deploy
+generate_configs
+#clean_db
 create_db
 start_service

@@ -1,7 +1,7 @@
 local-ci: clean-dev-env install-node-modules github-ci
 
 github-ci: build-ckb-contracts start-docker
-	bash offchain-modules/packages/tests/src/integration-test/integration-test.sh
+	bash tests/integration/integration-test.sh
 
 install-node-modules:
 	cd offchain-modules && yarn --frozen-lockfile
@@ -20,6 +20,4 @@ deploy-eth-contracts:
 	cd eth-contracts && yarn ci
 
 clean-dev-env: stop-docker
-	bash offchain-modules/packages/tests/src/integration-test/integration-test-clean.sh
-
-
+#	bash tests/integration/integration-test-clean.sh

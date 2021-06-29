@@ -218,7 +218,11 @@ async function main() {
     assert(lockReconc.checkBalanced(), 'the amount of lock and mint should be balanced');
 
     const unlockReconc = await builder
-      .buildUnlockReconciler(uint8ArrayToString(recipientLockscript), '0x0000000000000000000000000000000000000000')
+      .buildUnlockReconciler(
+        uint8ArrayToString(recipientLockscript),
+        '0x0000000000000000000000000000000000000000',
+        ownerTypeHash,
+      )
       .fetchReconciliation();
 
     logger.info('all burned', unlockReconc.from);
