@@ -1,4 +1,5 @@
 import fs from 'fs';
+import path from 'path';
 import * as utils from '@nervosnetwork/ckb-sdk-utils';
 import * as lodash from 'lodash';
 import { Connection, createConnection } from 'typeorm';
@@ -18,7 +19,6 @@ import { TronUnlock } from '../db/entity/TronUnlock';
 import { WithdrawedBridgeFee } from '../db/entity/WithdrawedBridgeFee';
 import { KV } from '../db/entity/kv';
 import { nonNullable } from '../errors';
-import path from 'path';
 
 export { asyncSleep, retryPromise, foreverPromise } from './promise';
 
@@ -72,7 +72,7 @@ export function parsePrivateKey(path: string): string {
 }
 
 export function getFromEnv(key: string, defaultValue?: string): string {
-  let value = process.env[key];
+  const value = process.env[key];
   if (value !== undefined) {
     return value;
   }
@@ -83,7 +83,7 @@ export function getFromEnv(key: string, defaultValue?: string): string {
   }
 }
 
-export function writeJsonToFile(obj: Object, writePath: string) {
+export function writeJsonToFile(obj: unknown, writePath: string): void {
   const data = JSON.stringify(obj, null, 2);
   const dir = path.dirname(writePath);
   if (!fs.existsSync(dir)) {

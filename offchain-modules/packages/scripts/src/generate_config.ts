@@ -1,8 +1,7 @@
-import nconf from 'nconf';
-import { resolveCurrentPackagePath, resolveOffChainModulesPath } from './resolvePath';
 import { Config } from '@force-bridge/x/dist/config';
-import * as lodash from 'lodash';
 import { getFromEnv, writeJsonToFile } from '@force-bridge/x/dist/utils';
+import * as lodash from 'lodash';
+import nconf from 'nconf';
 
 const verifiers = [
   {
@@ -39,10 +38,10 @@ async function main() {
     .file('multisig', `${configPath}/multisig.json`)
     .file('asset-white-list', `${configPath}/asset-white-list.json`)
     .file('init', `${configPath}/init.json`);
-  let config: Config = nconf.get('forceBridge');
+  const config: Config = nconf.get('forceBridge');
   console.dir(config, { depth: null });
   // generate collector config
-  let collectorConfig: Config = lodash.cloneDeep(config);
+  const collectorConfig: Config = lodash.cloneDeep(config);
   collectorConfig.common.role = 'collector';
   collectorConfig.common.orm.database = 'collector';
   collectorConfig.eth.privateKey = `${configPath}/privkeys/eth`;
@@ -63,7 +62,7 @@ async function main() {
   // generate verifier config
   let verifierIndex = 1;
   for (const verifier of verifiers) {
-    let verifierConfig: Config = lodash.cloneDeep(config);
+    const verifierConfig: Config = lodash.cloneDeep(config);
     verifierConfig.common.role = 'verifier';
     verifierConfig.common.orm.database = `verifier${verifierIndex}`;
     verifierConfig.eth.multiSignKeys = [
@@ -83,7 +82,7 @@ async function main() {
     verifierIndex++;
   }
   // generate watcher config
-  let watcherConfig: Config = lodash.cloneDeep(config);
+  const watcherConfig: Config = lodash.cloneDeep(config);
   watcherConfig.common.role = 'watcher';
   watcherConfig.common.orm.database = 'collector';
   writeJsonToFile({ forceBridge: watcherConfig }, `${configPath}/watcher.json`);

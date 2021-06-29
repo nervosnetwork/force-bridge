@@ -7,9 +7,14 @@ async function main() {
   nconf.env().file({ file: configPath });
   const cfg: Config = nconf.get('forceBridge');
 
-  let defaultPort = 80;
-  let port = cfg.common.port || defaultPort;
+  const defaultPort = 80;
+  const port = cfg.common.port || defaultPort;
   await startSigServer(cfg, port);
 }
 
-main();
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
