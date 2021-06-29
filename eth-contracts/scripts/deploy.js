@@ -11,10 +11,10 @@ const fs = require('fs');
 
 function getFromEnv(key, defaultValue) {
   let value = process.env[key];
-  if(value !== undefined) {
+  if (value !== undefined) {
     return value;
   }
-  if(defaultValue !== undefined) {
+  if (defaultValue !== undefined) {
     return defaultValue;
   } else {
     throw new Error(`${key} not provided in ENV`);
@@ -24,20 +24,20 @@ function getFromEnv(key, defaultValue) {
 function writeJsonToFile(obj, writePath) {
   const data = JSON.stringify(obj, null, 2);
   const dir = path.dirname(writePath);
-  if(!fs.existsSync(dir)) {
+  if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
   fs.writeFileSync(writePath, data);
 }
 
 async function main() {
-  const configPath = getFromEnv("MULTISIG_CONFIG_PATH");
+  const configPath = getFromEnv('MULTISIG_CONFIG_PATH');
   nconf.file({ file: configPath });
 
   const validators = nconf.get('forceBridge:eth:multiSignAddresses');
   const multiSignThreshold = nconf.get('forceBridge:eth:multiSignThreshold');
   const ForceBridge = await ethers.getContractFactory('ForceBridge');
-  console.dir({validators, multiSignThreshold});
+  console.dir({ validators, multiSignThreshold });
   const bridge = await ForceBridge.deploy(validators, multiSignThreshold);
   await bridge.deployed();
   const eth_node = process.env.ETH_URL || 'http://127.0.0.1:8545';
@@ -47,16 +47,16 @@ async function main() {
     forceBridge: {
       eth: {
         startBlockHeight: blockNumber,
-        contractAddress: bridge.address,
+        contractAddress: bridge.address
       }
     }
-  }
-  const outputConfigPath = getFromEnv("CONFIG_PATH", '/tmp/force-bridge');
+  };
+  const outputConfigPath = getFromEnv('CONFIG_PATH', '/tmp/force-bridge');
   const ethContractConfig = `${outputConfigPath}/eth_contract_config.json`;
   writeJsonToFile(obj, ethContractConfig);
 
   console.log(`ForceBridge deployed to: ${bridge.address}`);
-  console.log(`config wriiten to: ${ethContractConfig}`)
+  console.log(`config wriiten to: ${ethContractConfig}`);
 }
 
 main()
