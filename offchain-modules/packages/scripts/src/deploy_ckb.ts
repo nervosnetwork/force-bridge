@@ -197,7 +197,7 @@ const deploy = async () => {
       };
     }
   }
-  console.dir({ rawTx }, { depth: null });
+  // console.dir({ rawTx }, { depth: null });
 
   const signedTx = ckb.signTransaction(PRI_KEY)(rawTx);
   const deployTxHash = await ckb.rpc.sendTransaction(signedTx);
