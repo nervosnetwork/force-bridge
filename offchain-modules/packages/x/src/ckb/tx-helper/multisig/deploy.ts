@@ -1,12 +1,7 @@
 import { HashType, Script } from '@ckb-lumos/base';
 import { common } from '@ckb-lumos/common-scripts';
 import { key } from '@ckb-lumos/hd';
-import {
-  TransactionSkeleton,
-  sealTransaction,
-  minimalCellCapacity,
-  generateAddress,
-} from '@ckb-lumos/helpers';
+import { TransactionSkeleton, sealTransaction, minimalCellCapacity, generateAddress } from '@ckb-lumos/helpers';
 import { RPC } from '@ckb-lumos/rpc';
 import TransactionManager from '@ckb-lumos/transaction-manager';
 import CKB from '@nervosnetwork/ckb-sdk-core';
@@ -163,7 +158,7 @@ const main = async () => {
   const res = await deploy(ckbPrivateKey, multisigScript);
   const obj = { forceBridge: { ckb: res } };
   console.dir(obj, { depth: null });
-  const outputConfigPath = getFromEnv("CONFIG_PATH", '/tmp/force-bridge');
+  const outputConfigPath = getFromEnv('CONFIG_PATH', '/tmp/force-bridge');
   const ckbOwnerCellConfigPath = `${outputConfigPath}/ckb_owner_cell_config.json`;
   writeJsonToFile(obj, ckbOwnerCellConfigPath);
   console.log(`ckb owner cell config written to ${ckbOwnerCellConfigPath}`);

@@ -2,7 +2,7 @@ import nconf from 'nconf';
 import { resolveCurrentPackagePath, resolveOffChainModulesPath } from './resolvePath';
 import { Config } from '@force-bridge/x/dist/config';
 import * as lodash from 'lodash';
-import {getFromEnv, writeJsonToFile} from '@force-bridge/x/dist/utils';
+import { getFromEnv, writeJsonToFile } from '@force-bridge/x/dist/utils';
 
 const verifiers = [
   {
@@ -30,7 +30,7 @@ const verifiers = [
 ];
 
 async function main() {
-  const configPath = getFromEnv("CONFIG_PATH");
+  const configPath = getFromEnv('CONFIG_PATH');
   nconf
     .env()
     .file('ckb_deps', `${configPath}/ckb_deps.json`)
@@ -38,7 +38,7 @@ async function main() {
     .file('eth_contract_config', `${configPath}/eth_contract_config.json`)
     .file('multisig', `${configPath}/multisig.json`)
     .file('asset-white-list', `${configPath}/asset-white-list.json`)
-    .file('init', `${configPath}/init.json`)
+    .file('init', `${configPath}/init.json`);
   let config: Config = nconf.get('forceBridge');
   console.dir(config, { depth: null });
   // generate collector config
