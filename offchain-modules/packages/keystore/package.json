@@ -1,5 +1,5 @@
 {
-  "name": "@force-bridge/internal",
+  "name": "@force-bridge/keystore",
   "version": "0.0.0",
   "main": "dist",
   "scripts": {
@@ -10,6 +10,6 @@
     "test": "yarn run build"
   },
   "dependencies": {
-    "@force-bridge/keystore": "*"
+    "key-store": "^1.2.0"
   }
 }
