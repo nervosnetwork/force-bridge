@@ -54,10 +54,10 @@ function start_service {
   trap 'kill $(jobs -p)' EXIT
   cd "${OFFCHAIN_MODULES_DIR}"
   mkdir -p ${INTEGRATION_TEST_WORKDIR}/logs
-  CONFIG_PATH=${CONFIG_PATH}/verifier1.json ts-node ./packages/app-multisign-server/src/index.ts &
-  CONFIG_PATH=${CONFIG_PATH}/verifier2.json ts-node ./packages/app-multisign-server/src/index.ts &
-  CONFIG_PATH=${CONFIG_PATH}/collector.json ts-node ./packages/app-relayer/src/index.ts &
-  CONFIG_PATH=${CONFIG_PATH}/watcher.json ts-node ./packages/scripts/src/integration-test/eth.ts
+  CONFIG_PATH=${CONFIG_PATH}/verifier1.json npx ts-node ./packages/app-multisign-server/src/index.ts &
+  CONFIG_PATH=${CONFIG_PATH}/verifier2.json npx ts-node ./packages/app-multisign-server/src/index.ts &
+  CONFIG_PATH=${CONFIG_PATH}/collector.json npx ts-node ./packages/app-relayer/src/index.ts &
+  CONFIG_PATH=${CONFIG_PATH}/watcher.json npx ts-node ./packages/scripts/src/integration-test/eth.ts
 }
 
 #clean_all
