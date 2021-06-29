@@ -164,7 +164,7 @@ export class CkbHandler {
         },
         {
           onRejectedInterval: 3000,
-          onResolvedInterval: 5000,
+          onResolvedInterval: 0,
           onRejected: (e: Error) => {
             logger.error(`CKB watchNewBlock blockHeight:${this.lastHandledBlockHeight + 1} error:${e.message}`);
           },

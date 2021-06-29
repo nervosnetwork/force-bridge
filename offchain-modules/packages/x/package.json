@@ -25,6 +25,7 @@
     "@force-bridge/keystore": "*",
     "@lay2/pw-core": "^0.3.22",
     "@nervosnetwork/ckb-sdk-core": "^0.39.0",
+    "@nervosnetwork/ckb-sdk-utils": "^0.41.1",
     "@types/lodash": "^4.14.170",
     "@types/node": "^14.14.31",
     "axios": "^0.21.1",

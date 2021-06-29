@@ -1,25 +1,23 @@
 import { startRpcServer } from '@force-bridge/app-rpc-server/dist/server';
+import { nonNullable } from '@force-bridge/x';
 import { Config } from '@force-bridge/x/dist/config';
 import commander from 'commander';
 import nconf from 'nconf';
-import { parseOptions } from './utils';
 
 const defaultPort = '8080';
 const defaultCorsOrigin = '*';
 const defaultConfig = './config.json';
 
 export const rpcCmd = new commander.Command('rpc')
-  .option('-p, --port', `Rpc server listen port default:${defaultPort}`, defaultPort)
-  .option('-co, --corsOrigin', `cors options of origin default:${defaultCorsOrigin}`, defaultCorsOrigin)
-  .option('-cfg, --config', `config path of rpc server default:${defaultConfig}`, defaultConfig)
+  .option('-p, --port <port>', 'Rpc server listen port', defaultPort)
+  .option('-co, --corsOrigin <corsOrigin>', 'cors options of origin', defaultCorsOrigin)
+  .option('-cfg, --config <config>', 'config path of rpc server', defaultConfig)
   .action(rpc);
 
-async function rpc(command: commander.Command, args: any) {
-  const opts = command.opts();
-  const options = parseOptions(opts, args);
-  const port = options.get('port') !== undefined ? options.get('port') : defaultPort;
-  const corsOrigin = options.get('corsOrigin') || defaultCorsOrigin;
-  const configPath = options.get('config') !== undefined ? options.get('config') : defaultConfig;
+async function rpc(opts: Record<string, string>) {
+  const port = nonNullable(opts.port || defaultPort);
+  const corsOrigin = nonNullable(opts.corsOrigin || defaultCorsOrigin);
+  const configPath = nonNullable(opts.config || defaultConfig);
   nconf.env().file({ file: configPath });
   const cfg: Config = nconf.get('forceBridge');
 
