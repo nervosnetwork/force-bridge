@@ -2,7 +2,7 @@ import { Config } from '@force-bridge/x/dist/config';
 import nconf from 'nconf';
 import { startSigServer } from './sigServer';
 
-async function main() {
+async function main(): Promise<void> {
   const configPath = process.env.CONFIG_PATH || './config.json';
   nconf.env().file({ file: configPath });
   const cfg: Config = nconf.get('forceBridge');
@@ -12,9 +12,4 @@ async function main() {
   await startSigServer(cfg, port);
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
+void main();

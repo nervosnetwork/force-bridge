@@ -20,3 +20,4 @@ deploy-eth-contracts:
 	cd eth-contracts && yarn ci
 
 clean-dev-env: stop-docker
+	rm -rf workdir/integration

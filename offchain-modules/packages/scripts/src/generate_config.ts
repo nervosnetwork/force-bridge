@@ -58,6 +58,7 @@ async function main() {
       host: `http://127.0.0.1:${v.port}/force-bridge/sign-server/api/v1`,
     };
   });
+  collectorConfig.common.log.logFile = `${configPath}/logs/collector.log`;
   writeJsonToFile({ forceBridge: collectorConfig }, `${configPath}/collector.json`);
   // generate verifier config
   let verifierIndex = 1;
@@ -78,13 +79,15 @@ async function main() {
       },
     ];
     verifierConfig.common.port = verifier.port;
+    verifierConfig.common.log.logFile = `${configPath}/logs/verifier${verifierIndex}.log`;
     writeJsonToFile({ forceBridge: verifierConfig }, `${configPath}/verifier${verifierIndex}.json`);
     verifierIndex++;
   }
   // generate watcher config
   const watcherConfig: Config = lodash.cloneDeep(config);
   watcherConfig.common.role = 'watcher';
-  watcherConfig.common.orm.database = 'collector';
+  watcherConfig.common.orm.database = 'watcher';
+  collectorConfig.common.log.logFile = `${configPath}/logs/watcher.log`;
   writeJsonToFile({ forceBridge: watcherConfig }, `${configPath}/watcher.json`);
 }
 
