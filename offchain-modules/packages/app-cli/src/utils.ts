@@ -5,17 +5,6 @@ import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { asyncSleep } from '@force-bridge/x/dist/utils';
 import { Amount, HashType, Script } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
-import commander from 'commander';
-
-export function parseOptions(args: Record<string, string | boolean>, command: commander.Command): Map<string, string> {
-  const values = command.args;
-  const optionMap = new Map();
-  const options = Object.keys(args);
-  for (const i in options) {
-    optionMap.set(options[i], values[i]);
-  }
-  return optionMap;
-}
 
 export async function getSudtBalance(address: string, asset: Asset): Promise<Amount> {
   const bridgeCellLockscript = {
