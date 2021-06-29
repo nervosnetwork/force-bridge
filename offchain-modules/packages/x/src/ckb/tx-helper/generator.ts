@@ -70,7 +70,6 @@ export class CkbTxGenerator {
 
   // fixme: if not find multisig cell, create it
   async fetchMultisigCell(): Promise<Cell | undefined> {
-    logger.info(`fetchMultisigCell, config: ${JSON.stringify(ForceBridgeCore.config.ckb, null, 2)}`);
     const cellCollector = this.ckbIndexer.collector({
       lock: ForceBridgeCore.config.ckb.multisigLockscript,
     });

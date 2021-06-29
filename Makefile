@@ -20,4 +20,3 @@ deploy-eth-contracts:
 	cd eth-contracts && yarn ci
 
 clean-dev-env: stop-docker
-#	bash tests/integration/integration-test-clean.sh

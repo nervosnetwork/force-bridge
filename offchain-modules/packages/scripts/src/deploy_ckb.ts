@@ -2,7 +2,6 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { asserts, nonNullable } from '@force-bridge/x';
-import { BtcAsset, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
 import { generateTypeIDScript } from '@force-bridge/x/dist/ckb/tx-helper/multisig/typeid';
 import { asyncSleep as sleep, blake2b, getFromEnv, parsePrivateKey, writeJsonToFile } from '@force-bridge/x/dist/utils';
@@ -10,14 +9,11 @@ import { OutPoint, Script } from '@lay2/pw-core';
 import RawTransactionParams from '@nervosnetwork/ckb-sdk-core';
 import * as utils from '@nervosnetwork/ckb-sdk-utils';
 import axios from 'axios';
-// import nconf from 'nconf';
-// import { RPCClient } from 'rpc-bitcoin';
 
 const CKB_URL = getFromEnv('CKB_URL', 'http://127.0.0.1:8114');
 const CKB_INDEXER_URL = getFromEnv('CKB_INDEXER_URL', 'http://127.0.0.1:8116');
 const PRI_KEY = parsePrivateKey(getFromEnv('CKB_PRIV_KEY'));
 const ckb = new RawTransactionParams(CKB_URL);
-const ckbIndexer = new CkbIndexer(CKB_URL, CKB_INDEXER_URL);
 const PUB_KEY = ckb.utils.privateKeyToPublicKey(PRI_KEY);
 const ARGS = `0x${ckb.utils.blake160(PUB_KEY, 'hex')}`;
 const ADDRESS = ckb.utils.pubkeyToAddress(PUB_KEY);
@@ -203,13 +199,11 @@ const deploy = async () => {
   }
   console.dir({ rawTx }, { depth: null });
 
-  // return
   const signedTx = ckb.signTransaction(PRI_KEY)(rawTx);
   const deployTxHash = await ckb.rpc.sendTransaction(signedTx);
   console.log(`Transaction has been sent with tx hash ${deployTxHash}`);
   await waitUntilCommitted(deployTxHash);
   // console.dir({ txStatus }, {depth: null})
-  // nconf.set('deployTxHash', deployTxHash);
   const scriptsInfo = {
     bridgeLock: {
       cellDep: {
@@ -252,8 +246,6 @@ const deploy = async () => {
     },
   };
   return scriptsInfo;
-  // nconf.set('forceBridge:ckb:deps', scriptsInfo);
-  // nconf.save();
 };
 
 const waitUntilCommitted = async (txHash) => {
