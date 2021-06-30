@@ -5,7 +5,7 @@ export const logger = getLogger('@force-bridge/core');
 const logPattern = '%[[%d %p %f{2}:%l]%] %m%n';
 
 export const initLog = (cfg: logConfig) => {
-  let config = {
+  const config = {
     appenders: {
       out: {
         type: 'stdout',

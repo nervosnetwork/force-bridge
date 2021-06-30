@@ -1,7 +1,7 @@
 import { startRpcServer } from '@force-bridge/app-rpc-server/dist/server';
 import { nonNullable } from '@force-bridge/x';
-import commander from 'commander';
 import { bootstrap, ForceBridgeCore } from '@force-bridge/x/dist/core';
+import commander from 'commander';
 
 const defaultPort = '8080';
 const defaultCorsOrigin = '*';

@@ -1,9 +1,9 @@
+import fs from 'fs';
 import { KeyStore } from '@force-bridge/keystore/dist';
 import { Config } from '@force-bridge/x/dist/config';
 import { getFromEnv, writeJsonToFile } from '@force-bridge/x/dist/utils';
 import * as lodash from 'lodash';
 import nconf from 'nconf';
-import fs from 'fs';
 
 const verifiers = [
   {

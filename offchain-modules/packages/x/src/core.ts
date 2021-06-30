@@ -41,7 +41,7 @@ export async function bootstrap(configPath: string | Config): Promise<void> {
 // make global config and var static,
 // which can be import from ForceBridgeCore
 export class ForceBridgeCore {
-  public static initiated: boolean = false;
+  public static initiated = false;
   private static _config: Config;
   private static _ckb: CKB;
   private static _ckbIndexer: CkbIndexer;
