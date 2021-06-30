@@ -6,19 +6,6 @@ import { asyncSleep } from '@force-bridge/x/dist/utils';
 import { Amount, HashType, Script } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 
-export function parseOptions(opts: Record<string, boolean>, args: string[]): Map<string, string> {
-  const optionMap = new Map<string, string>();
-  let index = 0;
-  for (const o in opts) {
-    if (opts[o] === undefined) {
-      continue;
-    }
-    optionMap.set(o, args[index]);
-    index++;
-  }
-  return optionMap;
-}
-
 export async function getSudtBalance(address: string, asset: Asset): Promise<Amount> {
   const bridgeCellLockscript = {
     codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
@@ -34,10 +21,11 @@ export async function getSudtBalance(address: string, asset: Asset): Promise<Amo
 
   const userScript = ForceBridgeCore.ckb.utils.addressToScript(address);
   const collector = new IndexerCollector(ForceBridgeCore.ckbIndexer);
-  return await collector.getSUDTBalance(
+  const amount = await collector.getSUDTBalance(
     new Script(sudtType.codeHash, sudtType.args, sudtType.hashType),
     new Script(userScript.codeHash, userScript.args, userScript.hashType as HashType),
   );
+  return amount;
 }
 
 export async function waitUnlockCompleted(ckb: CKB, txhash: string): Promise<void> {

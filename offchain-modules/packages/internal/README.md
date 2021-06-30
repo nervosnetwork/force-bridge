@@ -1,3 +1,3 @@
 # @force-bridge/internal
 
-An internal package for providing default config path
+An internal package for providing convenient utils for development
