@@ -1,5 +1,5 @@
 import { rpcConfig, Config } from '@force-bridge/x/dist/config';
-import { ForceBridgeCore } from '@force-bridge/x/dist/core';
+import { bootstrap, ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { startHandlers } from '@force-bridge/x/dist/handlers';
 import { responseStatus, RpcMetric } from '@force-bridge/x/dist/monitor/rpc-metric';
 import { getDBConnection } from '@force-bridge/x/dist/utils';
@@ -13,20 +13,12 @@ import { GetBalancePayload, GetBridgeTransactionSummariesPayload, XChainNetWork 
 
 const version = '0.0.1';
 const forceBridgePath = '/force-bridge/api/v1';
-const defaultLogFile = './log/force-bridge-rpc.log';
 
-export async function startRpcServer(config: Config): Promise<void> {
-  const rpcConfig: rpcConfig = config.rpc;
-  if (!config.common.log.logFile) {
-    config.common.log.logFile = defaultLogFile;
-  }
-
-  initLog(config.common.log);
-  config.common.role = 'watcher';
-
-  const metrics = new RpcMetric(config.common.role);
-
-  await new ForceBridgeCore().init(config);
+export async function startRpcServer(configPath: string): Promise<void> {
+  await bootstrap(configPath);
+  ForceBridgeCore.config.common.role = 'watcher';
+  const rpcConfig: rpcConfig = ForceBridgeCore.config.rpc;
+  const metrics = new RpcMetric(ForceBridgeCore.config.common.role);
   const conn = await getDBConnection();
   //start chain handlers
   void startHandlers(conn);
@@ -78,7 +70,7 @@ export async function startRpcServer(config: Config): Promise<void> {
   const app = express();
   app.use(bodyParser.json());
 
-  app.post(forceBridgePath, cors(config.rpc.corsOptions), (req, res) => {
+  app.post(forceBridgePath, cors(ForceBridgeCore.config.rpc.corsOptions), (req, res) => {
     logger.info('request', req.method, req.body);
     const jsonRPCRequest = req.body;
     const startTime = Date.now();

@@ -1,8 +1,7 @@
 import { startRpcServer } from '@force-bridge/app-rpc-server/dist/server';
 import { nonNullable } from '@force-bridge/x';
-import { Config } from '@force-bridge/x/dist/config';
 import commander from 'commander';
-import nconf from 'nconf';
+import { bootstrap, ForceBridgeCore } from '@force-bridge/x/dist/core';
 
 const defaultPort = '8080';
 const defaultCorsOrigin = '*';
@@ -18,10 +17,8 @@ async function rpc(opts: Record<string, string>) {
   const port = nonNullable(opts.port || defaultPort);
   const corsOrigin = nonNullable(opts.corsOrigin || defaultCorsOrigin);
   const configPath = nonNullable(opts.config || defaultConfig);
-  nconf.env().file({ file: configPath });
-  const cfg: Config = nconf.get('forceBridge');
-
-  cfg.rpc = {
+  await bootstrap(configPath);
+  ForceBridgeCore.config.rpc = {
     port: Number(port),
     corsOptions: {
       origin: corsOrigin,
@@ -30,5 +27,5 @@ async function rpc(opts: Record<string, string>) {
       optionsSuccessStatus: 200,
     },
   };
-  await startRpcServer(cfg);
+  await startRpcServer(configPath);
 }

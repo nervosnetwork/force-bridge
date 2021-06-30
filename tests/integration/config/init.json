@@ -20,7 +20,7 @@
     },
     "eth": {
       "rpcUrl": "http://127.0.0.1:8545",
-      "privateKey": "privkeys/eth",
+      "privateKey": "eth",
       "confirmNumber": 1,
       "startBlockHeight": 1,
       "batchUnlock": {
@@ -31,7 +31,7 @@
     "ckb": {
       "ckbRpcUrl": "http://127.0.0.1:8114",
       "ckbIndexerUrl": "http://127.0.0.1:8116",
-      "fromPrivateKey": "privkeys/ckb",
+      "fromPrivateKey": "ckb",
       "startBlockHeight": 1,
       "confirmNumber": 1
     }

@@ -1,7 +1,9 @@
+import { KeyStore } from '@force-bridge/keystore/dist';
 import { Config } from '@force-bridge/x/dist/config';
 import { getFromEnv, writeJsonToFile } from '@force-bridge/x/dist/utils';
 import * as lodash from 'lodash';
 import nconf from 'nconf';
+import fs from 'fs';
 
 const verifiers = [
   {
@@ -28,8 +30,20 @@ const verifiers = [
   },
 ];
 
+function generateKeystore(configPath: string): string {
+  const password = getFromEnv('FORCE_BRIDGE_KEYSTORE_PASSWORD');
+  const privkeys = JSON.parse(fs.readFileSync(`${configPath}/privkeys.json`, 'utf8').toString());
+  const store = KeyStore.createFromPairs(privkeys, password);
+
+  const encrypted = store.getEncryptedData();
+  const keystorePath = `${configPath}/keystore.json`;
+  writeJsonToFile(encrypted, keystorePath);
+  return keystorePath;
+}
+
 async function main() {
   const configPath = getFromEnv('CONFIG_PATH');
+  const keystorePath = generateKeystore(configPath);
   nconf
     .env()
     .file('ckb_deps', `${configPath}/ckb_deps.json`)
@@ -39,13 +53,14 @@ async function main() {
     .file('asset-white-list', `${configPath}/asset-white-list.json`)
     .file('init', `${configPath}/init.json`);
   const config: Config = nconf.get('forceBridge');
+  config.common.keystorePath = keystorePath;
   console.dir(config, { depth: null });
   // generate collector config
   const collectorConfig: Config = lodash.cloneDeep(config);
   collectorConfig.common.role = 'collector';
   collectorConfig.common.orm.database = 'collector';
-  collectorConfig.eth.privateKey = `${configPath}/privkeys/eth`;
-  collectorConfig.ckb.fromPrivateKey = `${configPath}/privkeys/ckb`;
+  collectorConfig.eth.privateKey = `eth`;
+  collectorConfig.ckb.fromPrivateKey = `ckb`;
   collectorConfig.eth.multiSignHosts = verifiers.map((v) => {
     return {
       address: v.eth.address,
@@ -68,13 +83,13 @@ async function main() {
     verifierConfig.common.orm.database = `verifier${verifierIndex}`;
     verifierConfig.eth.multiSignKeys = [
       {
-        privKey: `${configPath}/privkeys/eth-multisig-${verifierIndex}`,
+        privKey: `eth-multisig-${verifierIndex}`,
         address: verifier.eth.address,
       },
     ];
     verifierConfig.ckb.multiSignKeys = [
       {
-        privKey: `${configPath}/privkeys/ckb-multisig-${verifierIndex}`,
+        privKey: `ckb-multisig-${verifierIndex}`,
         address: verifier.ckb.address,
       },
     ];

@@ -6,7 +6,7 @@ import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
 import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
 import { getMultisigLock } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { Config, TronConfig } from '@force-bridge/x/dist/config';
-import { ForceBridgeCore } from '@force-bridge/x/dist/core';
+import { bootstrap, ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { CkbMint, TronLock, TronUnlock } from '@force-bridge/x/dist/db/model';
 import { asyncSleep, getDBConnection } from '@force-bridge/x/dist/utils';
 import { initLog, logger } from '@force-bridge/x/dist/utils/logger';
@@ -74,10 +74,8 @@ async function main() {
   nconf.env().file({ file: configPath });
   const config: TronConfig = nconf.get('forceBridge:tron');
   const conf: Config = nconf.get('forceBridge');
-  // init bridge force core
-  await new ForceBridgeCore().init(conf);
   conf.common.log.logFile = './log/tron-ci.log';
-  initLog(conf.common.log);
+  await bootstrap(conf);
 
   const tronWeb = new TronWeb({
     fullHost: config.tronGridUrl,

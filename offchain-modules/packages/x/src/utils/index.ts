@@ -19,6 +19,7 @@ import { TronUnlock } from '../db/entity/TronUnlock';
 import { WithdrawedBridgeFee } from '../db/entity/WithdrawedBridgeFee';
 import { KV } from '../db/entity/kv';
 import { nonNullable } from '../errors';
+import { KeyStore } from '@force-bridge/keystore/dist';
 
 export { asyncSleep, retryPromise, foreverPromise } from './promise';
 

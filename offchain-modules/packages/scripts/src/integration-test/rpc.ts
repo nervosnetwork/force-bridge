@@ -1,5 +1,5 @@
 import { Config } from '@force-bridge/x/dist/config';
-import { ForceBridgeCore } from '@force-bridge/x/dist/core';
+import { bootstrap, ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { asyncSleep } from '@force-bridge/x/dist/utils';
 import { initLog, logger } from '@force-bridge/x/dist/utils/logger';
 import { ethers } from 'ethers';
@@ -115,10 +115,8 @@ async function main() {
   const configPath = process.env.CONFIG_PATH || './config.json';
   nconf.env().file({ file: configPath });
   const config: Config = nconf.get('forceBridge');
-  // init bridge force core
-  await new ForceBridgeCore().init(config);
   config.common.log.logFile = './log/rpc-ci.log';
-  initLog(config.common.log);
+  await bootstrap(config);
 
   const ckbAddress = 'ckt1qyqyph8v9mclls35p6snlaxajeca97tc062sa5gahk';
 

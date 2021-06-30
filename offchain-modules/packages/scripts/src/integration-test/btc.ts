@@ -6,7 +6,7 @@ import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
 import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
 import { getMultisigLock } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { Config } from '@force-bridge/x/dist/config';
-import { ForceBridgeCore } from '@force-bridge/x/dist/core';
+import { bootstrap, ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { BtcDb } from '@force-bridge/x/dist/db/btc';
 import { BtcLock } from '@force-bridge/x/dist/db/entity/BtcLock';
 import { BtcUnlock } from '@force-bridge/x/dist/db/entity/BtcUnlock';
@@ -41,10 +41,7 @@ async function main() {
   nconf.env().file({ file: configPath });
   const config: Config = nconf.get('forceBridge');
   config.common.log.logFile = './log/btc-ci.log';
-  initLog(config.common.log);
-
-  // init bridge force core
-  await new ForceBridgeCore().init(config);
+  await bootstrap(config);
   const PRI_KEY = parsePrivateKey(ForceBridgeCore.config.ckb.fromPrivateKey);
   const client = new RPCClient(config.btc.clientParams);
   const btcChain = new BTCChain();

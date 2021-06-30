@@ -1,13 +1,12 @@
-import { Config } from '@force-bridge/x/dist/config';
-import { ForceBridgeCore } from '@force-bridge/x/dist/core';
+import { bootstrap, ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { CkbDb, EthDb } from '@force-bridge/x/dist/db';
 import { SignedDb } from '@force-bridge/x/dist/db/signed';
 import { startHandlers } from '@force-bridge/x/dist/handlers';
 import { responseStatus } from '@force-bridge/x/dist/monitor/rpc-metric';
 import { SigserverMetric } from '@force-bridge/x/dist/monitor/sigserver-metric';
 import { collectSignaturesParams } from '@force-bridge/x/dist/multisig/multisig-mgr';
-import { getDBConnection } from '@force-bridge/x/dist/utils';
-import { initLog, logger } from '@force-bridge/x/dist/utils/logger';
+import { getDBConnection, parsePrivateKey } from '@force-bridge/x/dist/utils';
+import { logger } from '@force-bridge/x/dist/utils/logger';
 import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
 import bodyParser from 'body-parser';
 import { ethers } from 'ethers';
@@ -17,10 +16,9 @@ import { Connection } from 'typeorm';
 import { signCkbTx } from './ckbSigner';
 import { SigError, SigErrorCode } from './error';
 import { signEthTx } from './ethSigner';
-import { loadKeys } from './utils';
 
 const apiPath = '/force-bridge/sign-server/api/v1';
-const defaultLogFile = './log/force-bridge-sigsvr.log';
+const defaultPort = 80;
 
 export class SigResponse {
   Data?: string;
@@ -93,15 +91,10 @@ export class SigServer {
   }
 }
 
-export async function startSigServer(config: Config, port: number): Promise<void> {
-  if (!config.common.log.logFile) {
-    config.common.log.logFile = defaultLogFile;
-  }
-  initLog(config.common.log);
-  config.common.role = 'watcher';
-  await new ForceBridgeCore().init(config);
-  //load multi-sig keys
-  loadKeys();
+export async function startSigServer(configPath: string): Promise<void> {
+  await bootstrap(configPath);
+  ForceBridgeCore.config.common.role = 'watcher';
+  const port = ForceBridgeCore.config.common.port || defaultPort;
   const conn = await getDBConnection();
   //start chain handlers
   startHandlers(conn);

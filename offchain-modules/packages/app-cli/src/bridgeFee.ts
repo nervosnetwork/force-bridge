@@ -1,7 +1,7 @@
 import { nonNullable } from '@force-bridge/x';
 import { EthAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { Config } from '@force-bridge/x/dist/config';
-import { ForceBridgeCore } from '@force-bridge/x/dist/core';
+import { bootstrap, ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { BridgeFeeDB } from '@force-bridge/x/dist/db';
 import { getDBConnection, parsePrivateKey } from '@force-bridge/x/dist/utils';
 import { EthChain, WithdrawBridgeFeeTopic } from '@force-bridge/x/dist/xchain/eth';
@@ -61,10 +61,7 @@ async function getTotalGenerated(opts: Record<string, string>) {
   const asset = nonNullable(opts.asset);
   if (xchain !== 'ethereum') throw new Error('only support ethereum currently');
   const configPath = nonNullable(opts.config);
-
-  nconf.env().file({ file: configPath });
-  const cfg: Config = nconf.get('forceBridge');
-  await new ForceBridgeCore().init(cfg);
+  await bootstrap(configPath);
   const conn = await getDBConnection();
   const bridgeFeeDB = new BridgeFeeDB(conn);
   const ethAsset = new EthAsset(asset);
@@ -87,10 +84,7 @@ async function getTotalWithdrawed(opts: Record<string, string>) {
   const asset = nonNullable(opts.asset);
   if (xchain !== 'ethereum') throw new Error('only support ethereum currently');
   const configPath = nonNullable(opts.config);
-
-  nconf.env().file({ file: configPath });
-  const cfg: Config = nconf.get('forceBridge');
-  await new ForceBridgeCore().init(cfg);
+  await bootstrap(configPath);
   const conn = await getDBConnection();
   const bridgeFeeDB = new BridgeFeeDB(conn);
   const ethAsset = new EthAsset(asset);
@@ -105,10 +99,7 @@ async function getTotalAvailable(opts: Record<string, string>) {
   const asset = nonNullable(opts.asset);
   if (xchain !== 'ethereum') throw new Error('only support ethereum currently');
   const configPath = nonNullable(opts.config);
-
-  nconf.env().file({ file: configPath });
-  const cfg: Config = nconf.get('forceBridge');
-  await new ForceBridgeCore().init(cfg);
+  await bootstrap(configPath);
   const conn = await getDBConnection();
   const bridgeFeeDB = new BridgeFeeDB(conn);
   const ethAsset = new EthAsset(asset);
@@ -128,11 +119,8 @@ async function generateWithdrawTxSignature(opts: Record<string, string | string[
   const recipient = nonNullable(opts.recipient) as string[];
   const amount = nonNullable(opts.amount) as string[];
   if (recipient.length !== amount.length) throw new Error('recipient number should equal amount number');
-  const configPath = nonNullable(opts.config);
-
-  nconf.env().file({ file: configPath });
-  const cfg: Config = nconf.get('forceBridge');
-  await new ForceBridgeCore().init(cfg);
+  const configPath = nonNullable(opts.config) as string;
+  await bootstrap(configPath);
 
   const withdrawRecords = recipient.map((r, i) => {
     return {
@@ -160,9 +148,7 @@ async function sendWithdrawTx(opts: Record<string, string | string[] | boolean>)
   const signature = nonNullable(opts.signature) as string[];
   if (recipient.length !== amount.length) throw new Error('recipient number should equal amount number');
   const configPath = nonNullable(opts.config) as string;
-  nconf.env().file({ file: configPath });
-  const cfg: Config = nconf.get('forceBridge');
-  await new ForceBridgeCore().init(cfg);
+  await bootstrap(configPath);
   ForceBridgeCore.config.eth.privateKey = parsePrivateKey(ForceBridgeCore.config.eth.privateKey);
 
   const withdrawRecords = recipient.map((r, i) => {

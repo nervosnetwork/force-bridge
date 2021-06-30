@@ -5,7 +5,7 @@ export const logger = getLogger('@force-bridge/core');
 const logPattern = '%[[%d %p %f{2}:%l]%] %m%n';
 
 export const initLog = (cfg: logConfig) => {
-  configure({
+  let config = {
     appenders: {
       out: {
         type: 'stdout',
@@ -15,19 +15,23 @@ export const initLog = (cfg: logConfig) => {
           pattern: logPattern,
         },
       },
-      app: {
-        type: 'file',
-        filename: cfg.logFile,
-        maxLogSize: 100 * 1024 * 1024, //100M
-        backups: 100,
-        layout: {
-          type: 'pattern',
-          pattern: logPattern,
-        },
-      },
     },
     categories: {
-      default: { appenders: ['out', 'app'], level: cfg.level, enableCallStack: true },
+      default: { appenders: ['out'], level: cfg.level, enableCallStack: true },
     },
-  });
+  };
+  if (cfg.logFile !== undefined) {
+    config.appenders['app'] = {
+      type: 'file',
+      filename: cfg.logFile,
+      maxLogSize: 100 * 1024 * 1024, //100M
+      backups: 100,
+      layout: {
+        type: 'pattern',
+        pattern: logPattern,
+      },
+    };
+    config.categories.default.appenders.push('app');
+  }
+  configure(config);
 };

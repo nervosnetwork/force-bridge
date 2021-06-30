@@ -15,6 +15,7 @@
     "@force-bridge/ckb-indexer-client": "*",
     "@force-bridge/reconc": "*",
     "@force-bridge/internal": "*",
+    "@force-bridge/keystore": "*",
     "node-fetch": "^1.7.3"
   },
   "version": "0.0.0"

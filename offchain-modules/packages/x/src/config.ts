@@ -139,7 +139,7 @@ export interface rpcConfig {
 
 export interface logConfig {
   level: string;
-  logFile: string;
+  logFile?: string;
 }
 
 export type ormDBType = 'mysql';
@@ -163,6 +163,7 @@ export interface commonConfig {
   port?: number;
   orm: ormConfig;
   monitor?: promConfig;
+  keystorePath?: string;
 }
 
 export interface promConfig {
