@@ -40,7 +40,7 @@ async function main() {
   console.dir({ validators, multiSignThreshold });
   const bridge = await ForceBridge.deploy(validators, multiSignThreshold);
   await bridge.deployed();
-  const eth_node = process.env.ETH_URL || 'http://127.0.0.1:8545';
+  const eth_node = getFromEnv('ETH_URL', 'http://127.0.0.1:8545');
   const provider = ethers.getDefaultProvider(eth_node);
   const blockNumber = await provider.getBlockNumber();
   const obj = {
