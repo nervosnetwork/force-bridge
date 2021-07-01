@@ -1,6 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import * as utils from '@nervosnetwork/ckb-sdk-utils';
+import { AddressPrefix } from '@nervosnetwork/ckb-sdk-utils';
+import { ethers } from 'ethers';
 import * as lodash from 'lodash';
 import { Connection, createConnection } from 'typeorm';
 import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
@@ -90,6 +92,20 @@ export function writeJsonToFile(obj: unknown, writePath: string): void {
     fs.mkdirSync(dir, { recursive: true });
   }
   fs.writeFileSync(writePath, data);
+}
+
+export function privateKeyToCkbPubkeyHash(privkey: string): string {
+  const pubkey = utils.privateKeyToPublicKey(privkey);
+  const hash = utils.blake160(pubkey, 'hex');
+  return `0x${hash}`;
+}
+
+export function privateKeyToEthAddress(privkey: string): string {
+  return ethers.utils.computeAddress(privkey);
+}
+
+export function privateKeyToCkbAddress(privkey: string, prefix: AddressPrefix = AddressPrefix.Testnet): string {
+  return utils.privateKeyToAddress(privkey, { prefix });
 }
 
 export async function getDBConnection(): Promise<Connection> {

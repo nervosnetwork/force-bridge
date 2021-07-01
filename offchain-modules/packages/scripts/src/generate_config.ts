@@ -1,60 +1,50 @@
 import fs from 'fs';
 import { KeyStore } from '@force-bridge/keystore/dist';
 import { Config } from '@force-bridge/x/dist/config';
-import { getFromEnv, writeJsonToFile } from '@force-bridge/x/dist/utils';
+import {
+  getFromEnv,
+  writeJsonToFile,
+  privateKeyToCkbPubkeyHash,
+  privateKeyToEthAddress,
+  privateKeyToCkbAddress,
+} from '@force-bridge/x/dist/utils';
 import * as lodash from 'lodash';
 import nconf from 'nconf';
 
-const verifiers = [
-  {
-    eth: {
-      address: '0xB026351cD0c62aC89e488A840b7205730E8476bd',
-      privKey: 'privkeys/eth-multisig-1',
-    },
-    ckb: {
-      address: 'ckt1qyqvsv5240xeh85wvnau2eky8pwrhh4jr8ts8vyj37',
-      privKey: 'privkeys/ckb-multisig-1',
-    },
-    port: 8090,
-  },
-  {
-    eth: {
-      address: '0x27EE444d5D96094EACecC00194b7026Eb4fD979c',
-      privKey: 'privkeys/eth-multisig-2',
-    },
-    ckb: {
-      address: 'ckt1qyqywrwdchjyqeysjegpzw38fvandtktdhrs0zaxl4',
-      privKey: 'privkeys/ckb-multisig-2',
-    },
-    port: 8091,
-  },
-];
-
-function generateKeystore(configPath: string): string {
-  const password = getFromEnv('FORCE_BRIDGE_KEYSTORE_PASSWORD');
-  const privkeys = JSON.parse(fs.readFileSync(`${configPath}/privkeys.json`, 'utf8').toString());
-  const store = KeyStore.createFromPairs(privkeys, password);
-
-  const encrypted = store.getEncryptedData();
-  const keystorePath = `${configPath}/keystore.json`;
-  writeJsonToFile(encrypted, keystorePath);
-  return keystorePath;
-}
-
-async function main() {
+async function generateConfig(multisigNumber: number, threshold: number) {
   const configPath = getFromEnv('CONFIG_PATH');
-  const keystorePath = generateKeystore(configPath);
   nconf
     .env()
     .file('ckb_deps', `${configPath}/ckb_deps.json`)
     .file('ckb_owner_cell_config', `${configPath}/ckb_owner_cell_config.json`)
     .file('eth_contract_config', `${configPath}/eth_contract_config.json`)
-    .file('multisig', `${configPath}/multisig.json`)
     .file('asset-white-list', `${configPath}/asset-white-list.json`)
+    .file('multisig', `${configPath}/multisig.json`)
     .file('init', `${configPath}/init.json`);
   const config: Config = nconf.get('forceBridge');
-  config.common.keystorePath = keystorePath;
   console.dir(config, { depth: null });
+  // keystore
+  const password = getFromEnv('FORCE_BRIDGE_KEYSTORE_PASSWORD');
+  const privkeys = JSON.parse(fs.readFileSync(`${configPath}/privkeys.json`, 'utf8').toString());
+  const store = KeyStore.createFromPairs(privkeys, password);
+  const encrypted = store.getEncryptedData();
+  const keystorePath = `${configPath}/keystore.json`;
+  writeJsonToFile(encrypted, keystorePath);
+  config.common.keystorePath = keystorePath;
+  const verifiers = lodash.range(multisigNumber).map((i) => {
+    const privkey = privkeys[`multisig-${i}`];
+    return {
+      eth: {
+        address: privateKeyToEthAddress(privkey),
+        privKey: `multisig-${i}`,
+      },
+      ckb: {
+        address: privateKeyToCkbAddress(privkey),
+        privKey: `multisig-${i}`,
+      },
+      port: 8000 + i,
+    };
+  });
   // generate collector config
   const collectorConfig: Config = lodash.cloneDeep(config);
   collectorConfig.common.role = 'collector';
@@ -83,13 +73,13 @@ async function main() {
     verifierConfig.common.orm.database = `verifier${verifierIndex}`;
     verifierConfig.eth.multiSignKeys = [
       {
-        privKey: `eth-multisig-${verifierIndex}`,
+        privKey: `multisig-${verifierIndex}`,
         address: verifier.eth.address,
       },
     ];
     verifierConfig.ckb.multiSignKeys = [
       {
-        privKey: `ckb-multisig-${verifierIndex}`,
+        privKey: `multisig-${verifierIndex}`,
         address: verifier.ckb.address,
       },
     ];
@@ -105,6 +95,12 @@ async function main() {
   watcherConfig.common.orm.database = 'collector';
   collectorConfig.common.log.logFile = `${configPath}/logs/watcher.log`;
   writeJsonToFile({ forceBridge: watcherConfig }, `${configPath}/watcher.json`);
+}
+
+async function main() {
+  const multisigNumber = parseInt(getFromEnv('MULTISIG_NUMBER'));
+  const threshold = parseInt(getFromEnv('THRESHOLD'));
+  await generateConfig(multisigNumber, threshold);
 }
 
 main()
