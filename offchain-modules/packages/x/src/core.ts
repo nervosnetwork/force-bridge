@@ -91,8 +91,11 @@ export class ForceBridgeCore {
     ForceBridgeCore._keystore = keystore;
 
     // TODO remove private key in ForceBridgeCore
-    ForceBridgeCore.config.ckb.fromPrivateKey = keystore.getDecryptedByKeyID('ckb');
-    ForceBridgeCore.config.eth.privateKey = keystore.getDecryptedByKeyID('eth');
+    keystore.listKeyIDs().forEach((id) => {
+      if (id === 'ckb') ForceBridgeCore.config.ckb.fromPrivateKey = keystore.getDecryptedByKeyID('ckb');
+      if (id === 'eth') ForceBridgeCore.config.eth.privateKey = keystore.getDecryptedByKeyID('eth');
+    });
+
     return this;
   }
 }
