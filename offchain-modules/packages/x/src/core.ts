@@ -47,6 +47,7 @@ export class ForceBridgeCore {
   private static _config: Config;
   private static _ckb: CKB;
   private static _ckbIndexer: CkbIndexer;
+  private static _keystore: KeyStore;
 
   static get config(): Config {
     asserts(ForceBridgeCore._config, 'ForceBridgeCore is not init yet');
@@ -63,11 +64,18 @@ export class ForceBridgeCore {
     return ForceBridgeCore._ckbIndexer;
   }
 
+  static get keystore(): KeyStore {
+    asserts(ForceBridgeCore._keystore, 'ForceBridgeCore is not init yet');
+    return ForceBridgeCore._keystore;
+  }
+
   /**
    * @deprecated migrate to {@link bootstrap}
-   * @param config
-   * @returns
    */
+  constructor() {
+    // TODO make constructor to be private
+  }
+
   async init(
     config: Config,
     keystore: KeyStore<KeyID> = bootstrapKeyStore('./keystore.json'),
@@ -80,6 +88,7 @@ export class ForceBridgeCore {
     ForceBridgeCore._config = config;
     ForceBridgeCore._ckb = new CKB(config.ckb.ckbRpcUrl);
     ForceBridgeCore._ckbIndexer = new CkbIndexer(config.ckb.ckbRpcUrl, config.ckb.ckbIndexerUrl);
+    ForceBridgeCore._keystore = keystore;
 
     // TODO remove private key in ForceBridgeCore
     ForceBridgeCore.config.ckb.fromPrivateKey = keystore.getDecryptedByKeyID('ckb');
