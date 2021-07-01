@@ -17,6 +17,12 @@ export FORCE_BRIDGE_KEYSTORE_PASSWORD=123456
 export MULTISIG_NUMBER=5
 export THRESHOLD=3
 
+function install_and_build {
+  cd "${OFFCHAIN_MODULES_DIR}"
+  yarn install
+  yarn build
+}
+
 function clean_db {
   for i in `seq 1 ${MULTISIG_NUMBER}`
   do
@@ -86,6 +92,7 @@ function start_service {
 #clean_all
 #clean_config
 #clean_db
+install_and_build
 generate_multisig
 deploy
 generate_configs
