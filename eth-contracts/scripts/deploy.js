@@ -52,7 +52,7 @@ async function main() {
     }
   };
   const outputConfigPath = getFromEnv('CONFIG_PATH', '/tmp/force-bridge');
-  const ethContractConfig = `${outputConfigPath}/eth_contract_config.json`;
+  const ethContractConfig = path.join(outputConfigPath, 'eth_contract_config.json');
   writeJsonToFile(obj, ethContractConfig);
 
   console.log(`ForceBridge deployed to: ${bridge.address}`);

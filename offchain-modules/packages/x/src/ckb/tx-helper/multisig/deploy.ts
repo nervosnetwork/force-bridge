@@ -1,3 +1,4 @@
+import path from 'path';
 import { HashType, Script } from '@ckb-lumos/base';
 import { common } from '@ckb-lumos/common-scripts';
 import { key } from '@ckb-lumos/hd';
@@ -159,7 +160,7 @@ const main = async () => {
   const obj = { forceBridge: { ckb: res } };
   console.dir(obj, { depth: null });
   const outputConfigPath = getFromEnv('CONFIG_PATH', '/tmp/force-bridge');
-  const ckbOwnerCellConfigPath = `${outputConfigPath}/ckb_owner_cell_config.json`;
+  const ckbOwnerCellConfigPath = path.join(outputConfigPath, 'ckb_owner_cell_config.json');
   writeJsonToFile(obj, ckbOwnerCellConfigPath);
   console.log(`ckb owner cell config written to ${ckbOwnerCellConfigPath}`);
   console.log('\n\n\n---------end init multisig address -----------\n');
