@@ -1,6 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-import { KeyStore } from '@force-bridge/keystore/dist';
 import * as utils from '@nervosnetwork/ckb-sdk-utils';
 import * as lodash from 'lodash';
 import { Connection, createConnection } from 'typeorm';
