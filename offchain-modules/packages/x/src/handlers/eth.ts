@@ -173,14 +173,14 @@ export class EthHandler {
     }
 
     // onLockLogs
-    const lockLogs = await this.ethChain.getLockLogs(block.number, block.number);
+    const lockLogs = await this.ethChain.getLockLogsByBlockHash(block.hash);
     for (const log of lockLogs) {
       await this.onLockLogs(log.log, log.parsedLog);
     }
 
     // onUnlockLogs
     if (this.role !== 'collector') {
-      const unlockLogs = await this.ethChain.getUnlockLogs(block.number, block.number);
+      const unlockLogs = await this.ethChain.getUnlockLogsByBlockHash(block.hash);
       for (const log of unlockLogs) {
         await this.onUnlockLogs(log.log, log.parsedLog);
       }
@@ -416,6 +416,9 @@ export class EthHandler {
       {
         onRejectedInterval: 0,
         onResolvedInterval: 0,
+        onRejected: (e: Error) => {
+          logger.error(`ETH handleTodoUnlockRecords error:${e.message}`);
+        },
       },
     );
   }

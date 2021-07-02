@@ -407,7 +407,13 @@ export class CkbHandler {
         await this.ckbIndexer.waitForSync();
         await this.doHandleMintRecords(mintRecords, ownerTypeHash, generator);
       },
-      { onRejectedInterval: 0, onResolvedInterval: 0 },
+      {
+        onRejectedInterval: 0,
+        onResolvedInterval: 0,
+        onRejected: (e: Error) => {
+          logger.error(`CKB handleTodoMintRecords error:${e.message}`);
+        },
+      },
     );
   }
 
