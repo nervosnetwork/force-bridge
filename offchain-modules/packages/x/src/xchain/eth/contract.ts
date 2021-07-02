@@ -127,6 +127,18 @@ export class EthChain {
     });
   }
 
+  async getLockLogsByBlockHash(blockHash: string): Promise<{ log; parsedLog }[]> {
+    const logs = await this.provider.getLogs({
+      blockHash: blockHash,
+      address: ForceBridgeCore.config.eth.contractAddress,
+      topics: [lockTopic],
+    });
+    return logs.map((log) => {
+      const parsedLog = this.iface.parseLog(log);
+      return { log, parsedLog };
+    });
+  }
+
   async getUnlockLogs(
     fromBlock: ethers.providers.BlockTag,
     toBlock: ethers.providers.BlockTag,
@@ -136,6 +148,18 @@ export class EthChain {
       address: ForceBridgeCore.config.eth.contractAddress,
       topics: [unlockTopic],
       toBlock: toBlock,
+    });
+    return logs.map((log) => {
+      const parsedLog = this.iface.parseLog(log);
+      return { log, parsedLog };
+    });
+  }
+
+  async getUnlockLogsByBlockHash(blockHash: string): Promise<{ log; parsedLog }[]> {
+    const logs = await this.provider.getLogs({
+      blockHash: blockHash,
+      address: ForceBridgeCore.config.eth.contractAddress,
+      topics: [unlockTopic],
     });
     return logs.map((log) => {
       const parsedLog = this.iface.parseLog(log);
@@ -160,9 +184,7 @@ export class EthChain {
     return false;
   }
 
-  // TODO marks the type @JacobDenver007
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async sendUnlockTxs(records: EthUnlock[]): Promise<any> {
+  async sendUnlockTxs(records: EthUnlock[]): Promise<ethers.providers.TransactionResponse | Error> {
     logger.debug('contract balance', await this.provider.getBalance(this.bridgeContractAddr));
     const params: EthUnlockRecord[] = records.map((r) => {
       return {
@@ -194,7 +216,10 @@ export class EthChain {
     return buildSigRawData(domainSeparator, typeHash, records, nonce);
   }
 
-  public async sendWithdrawBridgeFeeTx(records: EthUnlockRecord[], signatures: string[]): Promise<any> {
+  public async sendWithdrawBridgeFeeTx(
+    records: EthUnlockRecord[],
+    signatures: string[],
+  ): Promise<ethers.providers.TransactionResponse> {
     const nonce: BigNumber = await this.bridge.latestUnlockNonce_();
     logger.info('send withdraw fee tx with nonce: ', nonce.toString());
     return this.bridge.unlock(records, nonce, '0x' + signatures.join(''));
