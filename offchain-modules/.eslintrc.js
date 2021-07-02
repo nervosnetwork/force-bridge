@@ -1,4 +1,5 @@
 module.exports = {
+  root: true,
   extends: [
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended',
@@ -7,7 +8,11 @@ module.exports = {
     'plugin:import/typescript',
   ],
   env: { jest: true, node: true },
-  plugins: ['@typescript-eslint', 'import', 'prettier'],
+  parserOptions: {
+    tsconfigRootDir: __dirname,
+    project: ['./tsconfig.json', './packages/*/tsconfig.json'],
+  },
+  plugins: ['@typescript-eslint', 'import', 'prettier', 'deprecation'],
   rules: {
     '@typescript-eslint/member-ordering': 'warn',
     '@typescript-eslint/no-explicit-any': 'warn',
@@ -18,5 +23,6 @@ module.exports = {
     'import/order': ['warn', { alphabetize: { order: 'asc' } }],
     'no-console': 'warn',
     'no-constant-condition': 'warn',
+    'deprecation/deprecation': 'warn'
   },
 };
