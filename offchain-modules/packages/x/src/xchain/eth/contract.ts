@@ -184,9 +184,7 @@ export class EthChain {
     return false;
   }
 
-  // TODO marks the type @JacobDenver007
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async sendUnlockTxs(records: EthUnlock[]): Promise<any> {
+  async sendUnlockTxs(records: EthUnlock[]): Promise<ethers.providers.TransactionResponse | Error> {
     logger.debug('contract balance', await this.provider.getBalance(this.bridgeContractAddr));
     const params: EthUnlockRecord[] = records.map((r) => {
       return {
