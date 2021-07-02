@@ -1,7 +1,6 @@
 import fs from 'fs';
 import { KeyStore } from '@force-bridge/keystore';
 import CKB from '@nervosnetwork/ckb-sdk-core';
-import { has } from 'lodash';
 import nconf from 'nconf';
 import { CkbIndexer } from './ckb/tx-helper/indexer';
 import { Config } from './config';
@@ -45,6 +44,7 @@ export class ForceBridgeCore {
   private static _config: Config;
   private static _ckb: CKB;
   private static _ckbIndexer: CkbIndexer;
+  private static _keystore: KeyStore;
 
   static get config(): Config {
     asserts(ForceBridgeCore._config, 'ForceBridgeCore is not init yet');
@@ -61,6 +61,18 @@ export class ForceBridgeCore {
     return ForceBridgeCore._ckbIndexer;
   }
 
+  static get keystore(): KeyStore {
+    asserts(ForceBridgeCore._keystore, 'ForceBridgeCore is not init yet');
+    return ForceBridgeCore._keystore;
+  }
+
+  /**
+   * @deprecated migrate to {@link bootstrap}
+   */
+  constructor() {
+    // TODO make constructor to be private
+  }
+
   async init(config: Config): Promise<ForceBridgeCore> {
     ForceBridgeCore.initiated = true;
     ForceBridgeCore._config = config;
@@ -72,6 +84,7 @@ export class ForceBridgeCore {
 
     // decrypt private key
     const keystore = bootstrapKeyStore(config.common.keystorePath);
+    ForceBridgeCore._keystore = keystore;
     // ForceBridgeCore._keystore = keystore;
     ForceBridgeCore.config.ckb.fromPrivateKey = keystore.getDecryptedByKeyID(config.ckb.fromPrivateKey);
     if (config.ckb.multiSignKeys !== undefined) {
