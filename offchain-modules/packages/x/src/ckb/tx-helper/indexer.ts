@@ -112,7 +112,9 @@ export class CkbIndexer implements Indexer {
           script_type: ScriptType.type,
         };
       } else {
-        throw new Error(`should specify either type or lock in queries, queries now: ${queries}`);
+        throw new Error(
+          `should specify either type or lock in queries, queries now: ${JSON.stringify(queries, null, 2)}`,
+        );
       }
     }
     const queryData = queries.data || '0x';

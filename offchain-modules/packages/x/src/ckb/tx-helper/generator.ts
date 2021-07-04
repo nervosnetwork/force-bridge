@@ -134,7 +134,7 @@ export class CkbTxGenerator {
         txSkeleton = common.prepareSigningEntries(txSkeleton);
         return txSkeleton;
       } catch (e) {
-        logger.error(`CkbHandler createBridgeCell exception error:${e.message}`);
+        logger.error(`CkbHandler createBridgeCell exception error:${e.message}, stack: ${e.stack}`);
         await asyncSleep(3000);
       }
     }

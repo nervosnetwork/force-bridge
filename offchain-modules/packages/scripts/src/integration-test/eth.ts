@@ -8,7 +8,7 @@ import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
 import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
 import { getMultisigLock, getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { Config, EthConfig } from '@force-bridge/x/dist/config';
-import { ForceBridgeCore } from '@force-bridge/x/dist/core';
+import { bootstrap, ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { EthDb } from '@force-bridge/x/dist/db/eth';
 import { CkbMint, EthLock, EthUnlock } from '@force-bridge/x/dist/db/model';
 import {
@@ -48,12 +48,9 @@ async function main() {
   const conf: Config = nconf.get('forceBridge');
   const config: EthConfig = conf.eth;
   conf.common.log.logFile = './log/eth-ci.log';
-  initLog(conf.common.log);
-
+  await bootstrap(conf);
   logger.info('config', config);
 
-  // init bridge force core
-  await new ForceBridgeCore().init(conf);
   const conn = await getDBConnection();
 
   const provider = new ethers.providers.JsonRpcProvider(config.rpcUrl);
@@ -218,7 +215,11 @@ async function main() {
     assert(lockReconc.checkBalanced(), 'the amount of lock and mint should be balanced');
 
     const unlockReconc = await builder
-      .buildUnlockReconciler(uint8ArrayToString(recipientLockscript), '0x0000000000000000000000000000000000000000')
+      .buildUnlockReconciler(
+        uint8ArrayToString(recipientLockscript),
+        '0x0000000000000000000000000000000000000000',
+        ownerTypeHash,
+      )
       .fetchReconciliation();
 
     logger.info('all burned', unlockReconc.from);

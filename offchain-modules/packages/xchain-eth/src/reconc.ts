@@ -63,17 +63,21 @@ export class EthUnlockReconciler implements Reconciler {
 
   readonly asset: string;
 
+  readonly ownerCellTypeHash: string;
+
   // private indexer: CKBIndexerClient;
 
   constructor(
     nervosLockscriptAddress: string,
     ethAssetAddress: string,
+    ownerCellTypeHash: string,
     private ckbIndexer: CKBIndexerClient,
     private ckbRpc: CKB['rpc'],
     private ethDb: EthDb,
   ) {
     this.account = nervosLockscriptAddress;
     this.asset = ethAssetAddress;
+    this.ownerCellTypeHash = ownerCellTypeHash;
   }
 
   async getFromRecordsByOnChainState(): Promise<FromRecord[]> {
@@ -97,7 +101,11 @@ export class EthUnlockReconciler implements Reconciler {
           filter((tx) => {
             const assetBuffer = tx.recipientCellData.getAsset().raw();
             const assetAddress = uint8ArrayToString(new Uint8Array(assetBuffer));
-            return this.asset.toLowerCase() === assetAddress.toLowerCase();
+            const ownerCellTypeHash = Buffer.from(tx.recipientCellData.getOwnerCellTypeHash().raw()).toString('hex');
+            return (
+              this.asset.toLowerCase() === assetAddress.toLowerCase() &&
+              ownerCellTypeHash === this.ownerCellTypeHash.slice(2)
+            );
           }),
           map((item) => {
             const u128leBuf = new Uint8Array(item.recipientCellData.getAmount().raw());
@@ -158,7 +166,18 @@ export class EthReconcilerBuilder {
     return new EthLockReconciler(ethAccountAddress, ethAssetAddress, this.provider, this.contract, this.ethDb);
   }
 
-  buildUnlockReconciler(nervosLockscriptAddress: string, ethAssetAddress: string): EthUnlockReconciler {
-    return new EthUnlockReconciler(nervosLockscriptAddress, ethAssetAddress, this.ckbIndexer, this.ckbRpc, this.ethDb);
+  buildUnlockReconciler(
+    nervosLockscriptAddress: string,
+    ethAssetAddress: string,
+    ownerCellTypeHash: string,
+  ): EthUnlockReconciler {
+    return new EthUnlockReconciler(
+      nervosLockscriptAddress,
+      ethAssetAddress,
+      ownerCellTypeHash,
+      this.ckbIndexer,
+      this.ckbRpc,
+      this.ethDb,
+    );
   }
 }

@@ -7,7 +7,7 @@ import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
 import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
 import { getMultisigLock } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { Config, EosConfig } from '@force-bridge/x/dist/config';
-import { ForceBridgeCore } from '@force-bridge/x/dist/core';
+import { bootstrap, ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { CkbMint } from '@force-bridge/x/dist/db/entity/CkbMint';
 import { EosLock, getEosLockId } from '@force-bridge/x/dist/db/entity/EosLock';
 import { EosUnlock } from '@force-bridge/x/dist/db/entity/EosUnlock';
@@ -33,11 +33,8 @@ async function main() {
   const config: EosConfig = nconf.get('forceBridge:eos');
   const conf: Config = nconf.get('forceBridge');
   conf.common.log.logFile = './log/eos-ci.log';
-  initLog(conf.common.log);
+  await bootstrap(conf);
   logger.debug('EosConfig:', config);
-
-  // init bridge force core
-  await new ForceBridgeCore().init(conf);
 
   const rpcUrl = config.rpcUrl;
   const PRI_KEY = parsePrivateKey(ForceBridgeCore.config.ckb.fromPrivateKey);
