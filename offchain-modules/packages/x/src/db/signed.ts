@@ -1,4 +1,4 @@
-import { Connection, In, Repository } from 'typeorm';
+import { Connection, Repository } from 'typeorm';
 import { SignedTx } from './entity/SignedTx';
 import { ISigned } from './model';
 
@@ -22,7 +22,7 @@ export class SignedDb {
       .getMany();
   }
 
-  async getMaxNonceByRefTxHashes(pubKey: string, refTxHashes: string[]): Promise<any | undefined> {
+  async getMaxNonceByRefTxHashes(pubKey: string, refTxHashes: string[]): Promise<{ nonce: number | null }> {
     return this.signedRepository
       .createQueryBuilder()
       .select('max(nonce) as nonce')
@@ -30,10 +30,10 @@ export class SignedDb {
       .getRawOne();
   }
 
-  async getDistinctSignedTxByRefTxHashes(pubKey: string, refTxHashes: string[]): Promise<string[] | undefined> {
+  async getDistinctRawDataByRefTxHashes(pubKey: string, refTxHashes: string[]): Promise<string[] | null> {
     return this.signedRepository
       .createQueryBuilder()
-      .select('distinct(tx_hash)')
+      .select('distinct(raw_data)')
       .where('pub_key = :pubKey and ref_tx_hash in (:refTxHashes)', { pubKey: pubKey, refTxHashes: refTxHashes })
       .getRawMany();
   }

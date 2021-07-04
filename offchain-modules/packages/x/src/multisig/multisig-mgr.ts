@@ -1,4 +1,4 @@
-import { TransactionSkeletonType } from '@ckb-lumos/helpers';
+import { TransactionSkeletonObject } from '@ckb-lumos/helpers';
 import { JSONRPCResponse } from 'json-rpc-2.0';
 import { MultiSignHost } from '../config';
 import { asyncSleep } from '../utils';
@@ -42,7 +42,7 @@ export interface ckbCollectSignaturesPayload {
   sigType: SigType;
   mintRecords?: mintRecord[];
   createAssets?: createAsset[];
-  txSkeleton: TransactionSkeletonType;
+  txSkeleton: TransactionSkeletonObject;
 }
 
 export interface collectSignaturesParams {

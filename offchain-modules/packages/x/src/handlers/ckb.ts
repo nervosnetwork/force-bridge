@@ -538,7 +538,7 @@ export class CkbHandler {
             recipientLockscript: r.recipientLockscript,
           };
         }),
-        txSkeleton,
+        txSkeleton: txSkeleton.toJS(),
       },
     });
   }
@@ -633,7 +633,7 @@ export class CkbHandler {
       payload: {
         sigType: 'create_cell',
         createAssets: assets,
-        txSkeleton,
+        txSkeleton: txSkeleton.toJS(),
       },
     });
     content1 += sigs.join('');

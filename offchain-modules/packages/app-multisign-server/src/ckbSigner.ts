@@ -1,5 +1,7 @@
 import { Cell } from '@ckb-lumos/base';
+import { common } from '@ckb-lumos/common-scripts';
 import { key } from '@ckb-lumos/hd';
+import { objectToTransactionSkeleton, TransactionSkeleton, TransactionSkeletonType } from '@ckb-lumos/helpers';
 import { BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
@@ -91,23 +93,22 @@ async function verifyDuplicateMintTx(pubKey: string, mintRecords: mintRecord[], 
   const mintTxHashes = mintRecords.map((mintRecord) => {
     return mintRecord.id;
   });
-  const signedTxHashes = await SigServer.signedDb.getDistinctSignedTxByRefTxHashes(pubKey, mintTxHashes);
-  asserts(signedTxHashes);
+  const signedRawDatas = await SigServer.signedDb.getDistinctRawDataByRefTxHashes(pubKey, mintTxHashes);
+  asserts(signedRawDatas);
 
-  if (signedTxHashes.length === 0) {
+  if (signedRawDatas.length === 0) {
     return SigErrorOk;
   }
 
   if (
-    !signedTxHashes.some((signedTxHash) => {
-      return signedTxHash != sigData;
+    signedRawDatas.some((signedRawData) => {
+      return signedRawData === sigData;
     })
   ) {
-    return SigErrorOk;
+    return new SigError(SigErrorCode.DuplicateSign, `duplicate mint tx in ${mintTxHashes.join(',')}`);
   }
 
-  //TODO check whether signedTx failed
-  return new SigError(SigErrorCode.DuplicateSign, `duplicate mint tx in ${mintTxHashes.join(',')}`);
+  return SigErrorOk;
 }
 
 async function verifyMintTx(pubKey: string, rawData: string, payload: ckbCollectSignaturesPayload): Promise<SigError> {
@@ -284,6 +285,45 @@ async function verifyEthMintTx(mintRecord: mintRecord, output: Cell): Promise<Si
   return SigErrorOk;
 }
 
+function verifyTxSkeleton(txSkeleton: TransactionSkeletonType): SigError {
+  let newTxSkeleton = TransactionSkeleton({
+    cellProvider: txSkeleton.get('cellProvider'),
+    cellDeps: txSkeleton.get('cellDeps'),
+    headerDeps: txSkeleton.get('headerDeps'),
+    inputs: txSkeleton.get('inputs'),
+    outputs: txSkeleton.get('outputs'),
+    witnesses: txSkeleton.get('witnesses'),
+    fixedEntries: txSkeleton.get('fixedEntries'),
+    inputSinces: txSkeleton.get('inputSinces'),
+  });
+  newTxSkeleton = common.prepareSigningEntries(newTxSkeleton);
+  const newSigningEntries = newTxSkeleton.get('signingEntries');
+
+  if (newSigningEntries.size !== txSkeleton.get('signingEntries').size) {
+    return new SigError(
+      SigErrorCode.InvalidParams,
+      `invalid signingEntries size:${txSkeleton.get('signingEntries').size}`,
+    );
+  }
+
+  txSkeleton.get('signingEntries').forEach((entry, key) => {
+    const newEntry = newSigningEntries.get(key)!;
+    if (entry.message !== newEntry.message) {
+      return new SigError(
+        SigErrorCode.InvalidParams,
+        `invalid signingEntrie message:${entry.message} index:${entry.index}`,
+      );
+    }
+    if (entry.type !== newEntry.type) {
+      return new SigError(SigErrorCode.InvalidParams, `invalid signingEntrie type:${entry.type} index:${entry.index}`);
+    }
+    if (entry.index !== newEntry.index) {
+      return new SigError(SigErrorCode.InvalidParams, `invalid signingEntrie index:${entry.index}`);
+    }
+  });
+  return SigErrorOk;
+}
+
 export async function signCkbTx(params: collectSignaturesParams): Promise<SigResponse> {
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const privKey = SigServer.getKey('ckb', params.requestAddress!);
@@ -293,8 +333,12 @@ export async function signCkbTx(params: collectSignaturesParams): Promise<SigRes
   const pubKey = ForceBridgeCore.ckb.utils.privateKeyToPublicKey(privKey);
 
   const payload = params.payload as ckbCollectSignaturesPayload;
-  const txSkeleton = payload.txSkeleton;
-  let err: SigError;
+  const txSkeleton = objectToTransactionSkeleton(payload.txSkeleton);
+  let err: SigError = verifyTxSkeleton(txSkeleton);
+  if (err.Code !== SigErrorCode.Ok) {
+    return new SigResponse(err);
+  }
+
   switch (payload.sigType) {
     case 'mint':
       err = await verifyMintTx(pubKey, params.rawData, payload);
@@ -312,7 +356,7 @@ export async function signCkbTx(params: collectSignaturesParams): Promise<SigRes
       return SigResponse.fromSigError(SigErrorCode.InvalidParams, `invalid sigType:${payload.sigType}`);
   }
 
-  const message = txSkeleton.signingEntries[1].message;
+  const message = txSkeleton.signingEntries.get(1)!.message;
   const sig = key.signRecoverable(message, privKey).slice(2);
 
   if (payload.sigType === 'mint') {
@@ -327,7 +371,6 @@ export async function signCkbTx(params: collectSignaturesParams): Promise<SigRes
           receiver: mintRecord.recipientLockscript,
           asset: mintRecord.asset,
           refTxHash: mintRecord.id,
-          txHash: params.rawData,
           pubKey: pubKey,
           rawData: params.rawData,
           signature: sig,

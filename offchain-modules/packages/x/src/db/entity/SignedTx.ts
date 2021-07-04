@@ -34,6 +34,7 @@ export class SignedTx {
   @Column()
   pubKey: string;
 
+  @Index()
   @Column()
   rawData: string;
 
