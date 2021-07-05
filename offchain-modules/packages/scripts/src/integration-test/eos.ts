@@ -3,7 +3,6 @@ import { Account } from '@force-bridge/x/dist/ckb/model/accounts';
 import { ChainType, EosAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
-
 import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
 import { getMultisigLock } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { Config, EosConfig } from '@force-bridge/x/dist/config';
@@ -12,13 +11,12 @@ import { CkbMint } from '@force-bridge/x/dist/db/entity/CkbMint';
 import { EosLock, getEosLockId } from '@force-bridge/x/dist/db/entity/EosLock';
 import { EosUnlock } from '@force-bridge/x/dist/db/entity/EosUnlock';
 import { getDBConnection, parsePrivateKey } from '@force-bridge/x/dist/utils';
-import { initLog, logger } from '@force-bridge/x/dist/utils/logger';
+import { logger } from '@force-bridge/x/dist/utils/logger';
 import { EosChain } from '@force-bridge/x/dist/xchain/eos/eosChain';
 import { Amount, Script } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import { JsSignatureProvider } from 'eosjs/dist/eosjs-jssig';
 import nconf from 'nconf';
-import { createConnection } from 'typeorm';
 import { waitFnCompleted, waitUntilCommitted } from './util';
 
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
@@ -37,7 +35,7 @@ async function main() {
   logger.debug('EosConfig:', config);
 
   const rpcUrl = config.rpcUrl;
-  const PRI_KEY = parsePrivateKey(ForceBridgeCore.config.ckb.fromPrivateKey);
+  const PRI_KEY = parsePrivateKey(ForceBridgeCore.config.ckb.privateKey);
   const lockAccount = 'alice';
   const lockAccountPri = ['5KQG4541B1FtDC11gu3NrErWniqTaPHBpmikSztnX8m36sK5px5'];
   const chain = new EosChain(rpcUrl, new JsSignatureProvider(lockAccountPri));

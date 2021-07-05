@@ -472,7 +472,7 @@ export class CkbHandler {
 
         const content0 = key.signRecoverable(
           txSkeleton.get('signingEntries').get(0)!.message,
-          ForceBridgeCore.config.ckb.fromPrivateKey,
+          ForceBridgeCore.config.ckb.privateKey,
         );
         let content1 = serializeMultisigScript(ForceBridgeCore.config.ckb.multisigScript);
         content1 += sigs.join('');
@@ -626,7 +626,7 @@ export class CkbHandler {
 
     const txSkeleton = await generator.createBridgeCell(scripts, this.ckbIndexer);
     const message0 = txSkeleton.get('signingEntries').get(0)!.message;
-    const content0 = key.signRecoverable(message0, ForceBridgeCore.config.ckb.fromPrivateKey);
+    const content0 = key.signRecoverable(message0, ForceBridgeCore.config.ckb.privateKey);
     let content1 = serializeMultisigScript(ForceBridgeCore.config.ckb.multisigScript);
     const sigs = await this.multisigMgr.collectSignatures({
       rawData: txSkeleton.get('signingEntries').get(1)!.message,

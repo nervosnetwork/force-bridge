@@ -5,7 +5,7 @@ import { startHandlers } from '@force-bridge/x/dist/handlers';
 import { responseStatus } from '@force-bridge/x/dist/monitor/rpc-metric';
 import { SigserverMetric } from '@force-bridge/x/dist/monitor/sigserver-metric';
 import { collectSignaturesParams } from '@force-bridge/x/dist/multisig/multisig-mgr';
-import { getDBConnection, parsePrivateKey } from '@force-bridge/x/dist/utils';
+import { getDBConnection, privateKeyToCkbAddress, privateKeyToEthAddress } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
 import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
 import bodyParser from 'body-parser';
@@ -68,18 +68,19 @@ export class SigServer {
 
     if (ForceBridgeCore.config.ckb !== undefined) {
       const ckbKeys = new Map<string, string>();
-      ForceBridgeCore.config.ckb.multiSignKeys.forEach((key) => {
-        ckbKeys[key.address] = key.privKey;
-      });
+      const ckbPrivateKey = ForceBridgeCore.config.ckb.privateKey;
+      const ckbAddress = privateKeyToCkbAddress(ckbPrivateKey);
+      ckbKeys[ckbAddress] = ckbPrivateKey;
       SigServer.keys['ckb'] = ckbKeys;
     }
-    if (ForceBridgeCore.config.eth.multiSignKeys !== undefined) {
+    if (ForceBridgeCore.config.eth !== undefined) {
       const ethKeys = new Map<string, string>();
-      ForceBridgeCore.config.eth.multiSignKeys.forEach((key) => {
-        ethKeys[key.address] = key.privKey;
-      });
+      const ethPrivateKey = ForceBridgeCore.config.eth.privateKey;
+      const ethAddress = privateKeyToEthAddress(ethPrivateKey);
+      ethKeys[ethAddress] = ethPrivateKey;
       SigServer.keys['eth'] = ethKeys;
     }
+    logger.info(`sigKeys: ${JSON.stringify(SigServer.keys, null, 2)}`);
   }
 
   static getKey(chain: string, address: string): string | undefined {

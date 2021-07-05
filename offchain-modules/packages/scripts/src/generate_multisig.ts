@@ -19,14 +19,14 @@ async function generateMultisig(multisigNumber: number, threshold: number) {
     ckb: CKB_PRIVATE_KEY,
   };
   lodash.range(multisigNumber).map((i) => {
-    privkeys[`multisig-${i}`] = '0x' + genRanHex(64);
+    privkeys[`multisig-${i + 1}`] = '0x' + genRanHex(64);
   });
   writeJsonToFile(privkeys, path.join(configPath, 'privkeys.json'));
   const config = {
     eth: {
       multiSignThreshold: threshold,
       multiSignAddresses: lodash.range(multisigNumber).map((i) => {
-        const privkey = privkeys[`multisig-${i}`];
+        const privkey = privkeys[`multisig-${i + 1}`];
         return privateKeyToEthAddress(privkey);
       }),
     },
@@ -34,7 +34,9 @@ async function generateMultisig(multisigNumber: number, threshold: number) {
       multisigScript: {
         R: 0,
         M: threshold,
-        publicKeyHashes: lodash.range(multisigNumber).map((i) => privateKeyToCkbPubkeyHash(privkeys[`multisig-${i}`])),
+        publicKeyHashes: lodash
+          .range(multisigNumber)
+          .map((i) => privateKeyToCkbPubkeyHash(privkeys[`multisig-${i + 1}`])),
       },
     },
   };

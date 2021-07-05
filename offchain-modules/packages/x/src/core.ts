@@ -74,38 +74,23 @@ export class ForceBridgeCore {
   }
 
   async init(config: Config): Promise<ForceBridgeCore> {
-    ForceBridgeCore.initiated = true;
-    ForceBridgeCore._config = config;
-    ForceBridgeCore._ckb = new CKB(config.ckb.ckbRpcUrl);
-    ForceBridgeCore._ckbIndexer = new CkbIndexer(config.ckb.ckbRpcUrl, config.ckb.ckbIndexerUrl);
-
     // init log
     initLog(config.common.log);
 
     // decrypt private key
+    console.log('keystorePath', config.common.keystorePath);
     const keystore = bootstrapKeyStore(config.common.keystorePath);
-    ForceBridgeCore._keystore = keystore;
-    // ForceBridgeCore._keystore = keystore;
-    ForceBridgeCore.config.ckb.fromPrivateKey = keystore.getDecryptedByKeyID(config.ckb.fromPrivateKey);
-    if (config.ckb.multiSignKeys !== undefined) {
-      ForceBridgeCore.config.ckb.multiSignKeys = config.ckb.multiSignKeys.map((v) => {
-        return {
-          address: v.address,
-          privKey: keystore.getDecryptedByKeyID(v.privKey),
-        };
-      });
-    }
+    config.ckb.privateKey = keystore.getDecryptedByKeyID(config.ckb.privateKey);
     if (config.eth !== undefined) {
-      ForceBridgeCore.config.eth.privateKey = keystore.getDecryptedByKeyID(config.eth.privateKey);
-      if (config.eth.multiSignKeys !== undefined) {
-        ForceBridgeCore.config.eth.multiSignKeys = config.eth.multiSignKeys.map((v) => {
-          return {
-            address: v.address,
-            privKey: keystore.getDecryptedByKeyID(v.privKey),
-          };
-        });
-      }
+      config.eth.privateKey = keystore.getDecryptedByKeyID(config.eth.privateKey);
     }
+
+    // write static
+    ForceBridgeCore.initiated = true;
+    ForceBridgeCore._ckb = new CKB(config.ckb.ckbRpcUrl);
+    ForceBridgeCore._ckbIndexer = new CkbIndexer(config.ckb.ckbRpcUrl, config.ckb.ckbIndexerUrl);
+    ForceBridgeCore._config = config;
+    ForceBridgeCore._keystore = keystore;
     return this;
   }
 }

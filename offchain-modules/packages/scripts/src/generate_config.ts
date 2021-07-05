@@ -11,7 +11,7 @@ import {
 import * as lodash from 'lodash';
 import nconf from 'nconf';
 
-async function generateConfig(multisigNumber: number, threshold: number) {
+async function generateConfig(multisigNumber: number) {
   const configPath = getFromEnv('CONFIG_PATH');
   nconf
     .env()
@@ -32,15 +32,15 @@ async function generateConfig(multisigNumber: number, threshold: number) {
   writeJsonToFile(encrypted, keystorePath);
   config.common.keystorePath = keystorePath;
   const verifiers = lodash.range(multisigNumber).map((i) => {
-    const privkey = privkeys[`multisig-${i}`];
+    const privkey = privkeys[`multisig-${i + 1}`];
     return {
       eth: {
         address: privateKeyToEthAddress(privkey),
-        privKey: `multisig-${i}`,
+        privKey: `multisig-${i + 1}`,
       },
       ckb: {
         address: privateKeyToCkbAddress(privkey),
-        privKey: `multisig-${i}`,
+        privKey: `multisig-${i + 1}`,
       },
       port: 8000 + i,
     };
@@ -50,7 +50,7 @@ async function generateConfig(multisigNumber: number, threshold: number) {
   collectorConfig.common.role = 'collector';
   collectorConfig.common.orm.database = 'collector';
   collectorConfig.eth.privateKey = `eth`;
-  collectorConfig.ckb.fromPrivateKey = `ckb`;
+  collectorConfig.ckb.privateKey = `ckb`;
   collectorConfig.eth.multiSignHosts = verifiers.map((v) => {
     return {
       address: v.eth.address,
@@ -71,18 +71,8 @@ async function generateConfig(multisigNumber: number, threshold: number) {
     const verifierConfig: Config = lodash.cloneDeep(config);
     verifierConfig.common.role = 'verifier';
     verifierConfig.common.orm.database = `verifier${verifierIndex}`;
-    verifierConfig.eth.multiSignKeys = [
-      {
-        privKey: `multisig-${verifierIndex}`,
-        address: verifier.eth.address,
-      },
-    ];
-    verifierConfig.ckb.multiSignKeys = [
-      {
-        privKey: `multisig-${verifierIndex}`,
-        address: verifier.ckb.address,
-      },
-    ];
+    verifierConfig.eth.privateKey = `multisig-${verifierIndex}`;
+    verifierConfig.ckb.privateKey = `multisig-${verifierIndex}`;
     verifierConfig.common.port = verifier.port;
     verifierConfig.common.log.logFile = path.join(configPath, `logs/verifier${verifierIndex}.log`);
     writeJsonToFile({ forceBridge: verifierConfig }, path.join(configPath, `verifier${verifierIndex}.json`));
@@ -99,8 +89,7 @@ async function generateConfig(multisigNumber: number, threshold: number) {
 
 async function main() {
   const multisigNumber = parseInt(getFromEnv('MULTISIG_NUMBER'));
-  const threshold = parseInt(getFromEnv('THRESHOLD'));
-  await generateConfig(multisigNumber, threshold);
+  await generateConfig(multisigNumber);
 }
 
 main()
