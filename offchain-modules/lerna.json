@@ -1,11 +1,13 @@
 {
-  "version": "0.0.0",
-  "workspaces": ["packages/*"],
+  "version": "0.0.1",
+  "workspaces": [
+    "packages/*"
+  ],
   "npmClient": "yarn",
   "useWorkspaces": true,
   "command": {
     "publish": {
-      "registry": "http://127.0.0.1:4873"
+      "registry": "http://registry.npmjs.org"
     }
   }
 }

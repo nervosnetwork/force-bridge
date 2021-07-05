@@ -1,6 +1,6 @@
 {
   "name": "@force-bridge/x",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "main": "./dist/index.js",
   "license": "MIT",
   "scripts": {
@@ -21,8 +21,8 @@
     "@ckb-lumos/helpers": "^0.16.0",
     "@ckb-lumos/rpc": "^0.16.0",
     "@ckb-lumos/transaction-manager": "^0.16.0",
-    "@force-bridge/internal": "*",
-    "@force-bridge/keystore": "*",
+    "@force-bridge/internal": "^0.0.1",
+    "@force-bridge/keystore": "^0.0.1",
     "@lay2/pw-core": "^0.3.22",
     "@nervosnetwork/ckb-sdk-core": "^0.39.0",
     "@nervosnetwork/ckb-sdk-utils": "^0.41.1",
@@ -43,13 +43,16 @@
     "mysql2": "^2.2.5",
     "nconf": "^0.11.2",
     "node-fetch": "^1.7.3",
+    "prom-client": "^13.1.0",
     "reflect-metadata": "^0.1.13",
     "rpc-bitcoin": "^2.0.0",
     "sqlite3": "^5.0.2",
     "trongrid": "^1.2.6",
     "tronweb": "^3.2.3",
     "typeorm": "^0.2.31",
-    "typeorm-naming-strategies": "^2.0.0",
-    "prom-client": "^13.1.0"
+    "typeorm-naming-strategies": "^2.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
