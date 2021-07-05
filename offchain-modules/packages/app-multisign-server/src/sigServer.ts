@@ -80,7 +80,6 @@ export class SigServer {
       ethKeys[ethAddress] = ethPrivateKey;
       SigServer.keys['eth'] = ethKeys;
     }
-    logger.info(`sigKeys: ${JSON.stringify(SigServer.keys, null, 2)}`);
   }
 
   static getKey(chain: string, address: string): string | undefined {
