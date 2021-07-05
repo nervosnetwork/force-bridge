@@ -1,6 +1,6 @@
 {
   "name": "@force-bridge/reconc",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "main": "dist",
   "scripts": {
     "build": "yarn run clean && yarn run compile",
@@ -13,7 +13,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@force-bridge/x": "*",
+    "@force-bridge/x": "^0.0.1",
     "bignumber.js": "^9.0.1"
   }
 }

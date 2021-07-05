@@ -1,6 +1,6 @@
 {
   "name": "@force-bridge/xchain-eth",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "main": "dist",
   "scripts": {
     "build": "yarn run clean && yarn run compile",
@@ -13,9 +13,9 @@
     "patch-typechain": "node scripts/patch-typechain.js"
   },
   "dependencies": {
-    "@force-bridge/ckb-indexer-client": "*",
-    "@force-bridge/reconc": "*",
-    "@force-bridge/x": "*",
+    "@force-bridge/ckb-indexer-client": "^0.0.1",
+    "@force-bridge/reconc": "^0.0.1",
+    "@force-bridge/x": "^0.0.1",
     "rxjs": "^7.1.0"
   },
   "devDependencies": {
