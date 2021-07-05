@@ -5,6 +5,8 @@ import { multiSigNode, multisigPath, nodeConfigPath } from './types';
 async function generateMultisig(multisigNumber: number, threshold: number) {
   const nodeInfos: { nodes: multiSigNode[] } = JSON.parse(fs.readFileSync(nodeConfigPath, 'utf8').toString());
 
+  console.log(`sigserver infos : ${JSON.stringify(nodeInfos.nodes, null, 2)}`);
+
   const config = {
     eth: {
       multiSignThreshold: threshold,
