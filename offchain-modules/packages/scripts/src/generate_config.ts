@@ -20,8 +20,6 @@ async function generateConfig() {
   console.dir(config, { depth: null });
   // keystore
   config.common.keystorePath = getFromEnv('FORCE_BRIDGE_KEYSTORE_PATH');
-  getFromEnv('FORCE_BRIDGE_KEYSTORE_PASSWORD');
-  JSON.parse(fs.readFileSync(path.join(configPath, 'privkeys.json'), 'utf8').toString());
   const nodeInfos: { nodes: multiSigNode[] } = JSON.parse(fs.readFileSync(nodeConfigPath, 'utf8').toString());
 
   // generate collector config
