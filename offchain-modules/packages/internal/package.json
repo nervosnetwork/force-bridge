@@ -9,6 +9,9 @@
     "prepublishOnly": "yarn run build",
     "test": "yarn run build"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@force-bridge/keystore": "*"
   }

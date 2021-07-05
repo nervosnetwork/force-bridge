@@ -9,6 +9,9 @@
     "prepublishOnly": "yarn run build",
     "test": "yarn run build"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "key-store": "^1.2.0"
   }

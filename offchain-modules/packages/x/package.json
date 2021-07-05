@@ -51,5 +51,8 @@
     "typeorm": "^0.2.31",
     "typeorm-naming-strategies": "^2.0.0",
     "prom-client": "^13.1.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

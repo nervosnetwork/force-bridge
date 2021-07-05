@@ -18,5 +18,8 @@
     "@force-bridge/app-rpc-server": "*",
     "@force-bridge/keystore": "*",
     "@force-bridge/x": "*"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
