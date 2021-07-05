@@ -54,6 +54,7 @@ function deploy {
   cd "${PROJECT_DIR}/eth-contracts"
   yarn deploy
 
+  cd "${OFFCHAIN_MODULES_DIR}"
   # deploy ckb contracts
   npx ts-node ./packages/scripts/src/deploy_ckb.ts
   ## create owner cell
