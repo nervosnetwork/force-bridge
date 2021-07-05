@@ -41,6 +41,16 @@ export class EthHandler {
     await this.kvDb.set(lastHandleEthBlockKey, `${blockNumber},${blockHash}`);
   }
 
+  getHandledBlock(): { height: number; hash: string } {
+    return { height: this.lastHandledBlockHeight, hash: this.lastHandledBlockHash };
+  }
+
+  async getTipBlock(): Promise<{ height: number; hash: string }> {
+    const tipHeight = await this.ethChain.getCurrentBlockNumber();
+    const tipBlock = await this.ethChain.getBlock(tipHeight);
+    return { height: tipHeight, hash: tipBlock.hash };
+  }
+
   async init(): Promise<void> {
     const currentBlockHeight = await this.ethChain.getCurrentBlockNumber();
     const lastHandledBlock = await this.getLastHandledBlock();

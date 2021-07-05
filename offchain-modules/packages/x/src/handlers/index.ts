@@ -21,7 +21,6 @@ export function startHandlers(conn: Connection): void {
   logger.info(`startHandlers role:${ForceBridgeCore.config.common.role}`);
 
   const role = ForceBridgeCore.config.common.role;
-  const isCollector = ForceBridgeCore.config.common.role === 'collector';
 
   BridgeMetricSingleton.getInstance(role).init(ForceBridgeCore.config.common.openMetric);
 
@@ -29,6 +28,7 @@ export function startHandlers(conn: Connection): void {
   const ckbDb = new CkbDb(conn);
   const kvDb = new KVDb(conn);
   const ckbHandler = new CkbHandler(ckbDb, kvDb, role);
+  ForceBridgeCore.getXChainHandler().ckb = ckbHandler;
   ckbHandler.start();
 
   // start xchain handlers if config exists
@@ -37,6 +37,7 @@ export function startHandlers(conn: Connection): void {
     const feeDb = new BridgeFeeDB(conn);
     const ethChain = new EthChain(role);
     const ethHandler = new EthHandler(ethDb, feeDb, kvDb, ethChain, role);
+    ForceBridgeCore.getXChainHandler().eth = ethHandler;
     ethHandler.start();
   }
 

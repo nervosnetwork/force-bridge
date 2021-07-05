@@ -66,6 +66,15 @@ export class CkbHandler {
     await this.kvDb.set(lastHandleCkbBlockKey, `${blockNumber},${blockHash}`);
   }
 
+  getHandledBlock(): { height: number; hash: string } {
+    return { height: this.lastHandledBlockHeight, hash: this.lastHandledBlockHash };
+  }
+
+  async getTipBlock(): Promise<{ height: number; hash: string }> {
+    const tipHeader = await this.ckb.rpc.getTipHeader();
+    return { height: Number(tipHeader.number), hash: (this.lastHandledBlockHash = tipHeader.hash) };
+  }
+
   async onCkbBurnConfirmed(confirmedCkbBurns: ICkbBurn[]): Promise<void> {
     if (this.role !== 'collector') return;
     for (const burn of confirmedCkbBurns) {

@@ -8,11 +8,13 @@ import { httpRequest } from './client';
 
 const SigErrorTxNotFound = 1003;
 const SigErrorTxUnconfirmed = 1004;
+const SigErrorBlockSyncUncompleted = 1005;
 const SigErrorCodeUnknownError = 9999;
 
 const retryErrorCode = new Map<number, boolean>([
   [SigErrorTxNotFound, true],
   [SigErrorTxUnconfirmed, true],
+  [SigErrorBlockSyncUncompleted, true],
   [SigErrorCodeUnknownError, true],
 ]);
 

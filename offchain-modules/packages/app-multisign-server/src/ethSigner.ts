@@ -1,4 +1,5 @@
 import { ChainType, EthAsset } from '@force-bridge/x/dist/ckb/model/asset';
+import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { ICkbBurn } from '@force-bridge/x/dist/db/model';
 import { collectSignaturesParams, ethCollectSignaturesPayload } from '@force-bridge/x/dist/multisig/multisig-mgr';
 import { logger } from '@force-bridge/x/dist/utils/logger';
@@ -11,14 +12,27 @@ import { SigError, SigErrorCode, SigErrorOk } from './error';
 import { SigResponse, SigServer } from './sigServer';
 
 async function verifyDuplicateEthTx(pubKey: string, payload: ethCollectSignaturesPayload): Promise<SigError> {
+  const refTxHashes = payload.unlockRecords.map((record) => {
+    return record.ckbTxHash;
+  });
+
+  const unlocks = await SigServer.ethDb.getEthUnlockByCkbTxHashes(refTxHashes);
+  if (unlocks.length !== 0) {
+    logger.error(
+      `EthSigner verifyDuplicateEthTx ckbTxHashes:${unlocks
+        .map((unlock) => {
+          return unlock.ckbTxHash;
+        })
+        .join(',')} have already unlocked.`,
+    );
+    return new SigError(SigErrorCode.DuplicateSign);
+  }
+
   const nonce = await SigServer.ethBridgeContract.latestUnlockNonce_();
   if (nonce.toString() !== payload.nonce.toString()) {
     return new SigError(SigErrorCode.InvalidParams, `nonce:${payload.nonce} doesn't match with:${nonce.toString()}`);
   }
 
-  const refTxHashes = payload.unlockRecords.map((record) => {
-    return record.ckbTxHash;
-  });
   const lastNonceRow = await SigServer.signedDb.getMaxNonceByRefTxHashes(pubKey, refTxHashes);
   const lastNonce = lastNonceRow.nonce;
   if (lastNonce === null) {
@@ -66,6 +80,11 @@ export async function signEthTx(params: collectSignaturesParams): Promise<SigRes
   const privKey = SigServer.getKey('eth', params.requestAddress!);
   if (privKey === undefined) {
     return SigResponse.fromSigError(SigErrorCode.InvalidParams, `cannot found key by address:${params.requestAddress}`);
+  }
+
+  const ethHandler = ForceBridgeCore.getXChainHandler().eth!;
+  if ((await ethHandler.getTipBlock()).height - ethHandler.getHandledBlock().height >= 10) {
+    return SigResponse.fromSigError(SigErrorCode.BlockSyncUncompleted);
   }
 
   const pubKey = privateKeyToPublicKey(privKey);

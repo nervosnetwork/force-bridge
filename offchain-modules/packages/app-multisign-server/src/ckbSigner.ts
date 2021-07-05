@@ -12,6 +12,7 @@ import {
   collectSignaturesParams,
   mintRecord,
 } from '@force-bridge/x/dist/multisig/multisig-mgr';
+import { logger } from '@force-bridge/x/dist/utils/logger';
 import { Address, AddressType, Amount } from '@lay2/pw-core';
 import { BigNumber } from 'ethers';
 import { SigError, SigErrorCode, SigErrorOk } from './error';
@@ -90,10 +91,23 @@ async function verifyCreateCellTx(rawData: string, payload: ckbCollectSignatures
 }
 
 async function verifyDuplicateMintTx(pubKey: string, mintRecords: mintRecord[], sigData: string): Promise<SigError> {
-  const mintTxHashes = mintRecords.map((mintRecord) => {
+  const refTxHashes = mintRecords.map((mintRecord) => {
     return mintRecord.id;
   });
-  const signedRawDatas = await SigServer.signedDb.getDistinctRawDataByRefTxHashes(pubKey, mintTxHashes);
+
+  const mints = await SigServer.ckbDb.getCkbMintByLockTxHashes(refTxHashes);
+  if (mints.length !== 0) {
+    logger.error(
+      `CkbSigner verifyDuplicateMintTx lockTxHashes:${mints
+        .map((mint) => {
+          return mint.id;
+        })
+        .join(',')} have already mint.`,
+    );
+    return new SigError(SigErrorCode.DuplicateSign);
+  }
+
+  const signedRawDatas = await SigServer.signedDb.getDistinctRawDataByRefTxHashes(pubKey, refTxHashes);
   asserts(signedRawDatas);
 
   if (signedRawDatas.length === 0) {
@@ -105,7 +119,7 @@ async function verifyDuplicateMintTx(pubKey: string, mintRecords: mintRecord[], 
       return signedRawData === sigData;
     })
   ) {
-    return new SigError(SigErrorCode.DuplicateSign, `duplicate mint tx in ${mintTxHashes.join(',')}`);
+    return new SigError(SigErrorCode.DuplicateSign, `duplicate mint tx in ${refTxHashes.join(',')}`);
   }
 
   return SigErrorOk;
@@ -330,8 +344,13 @@ export async function signCkbTx(params: collectSignaturesParams): Promise<SigRes
   if (privKey === undefined) {
     return SigResponse.fromSigError(SigErrorCode.InvalidParams, `cannot found key by address:${params.requestAddress}`);
   }
-  const pubKey = ForceBridgeCore.ckb.utils.privateKeyToPublicKey(privKey);
 
+  const ckbHandler = ForceBridgeCore.getXChainHandler().ckb!;
+  if ((await ckbHandler.getTipBlock()).height - ckbHandler.getHandledBlock().height >= 20) {
+    return SigResponse.fromSigError(SigErrorCode.BlockSyncUncompleted);
+  }
+
+  const pubKey = ForceBridgeCore.ckb.utils.privateKeyToPublicKey(privKey);
   const payload = params.payload as ckbCollectSignaturesPayload;
   const txSkeleton = objectToTransactionSkeleton(payload.txSkeleton);
   let err: SigError = verifyTxSkeleton(txSkeleton);
