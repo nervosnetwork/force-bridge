@@ -1,4 +1,4 @@
-import { HexString } from '@ckb-lumos/base';
+import { HexString, Script } from '@ckb-lumos/base';
 import { multisigArgs, serializeMultisigScript } from '@ckb-lumos/common-scripts/lib/from_info';
 import { getConfig } from '@ckb-lumos/config-manager';
 import { key } from '@ckb-lumos/hd';
@@ -19,7 +19,7 @@ if (!multisigTemplate) {
 
 const secpTemplate = nonNullable(getConfig().SCRIPTS.SECP256K1_BLAKE160);
 
-export function getMultisigLock(multisigScript: MultisigItem) {
+export function getMultisigLock(multisigScript: MultisigItem): Script {
   const serializedMultisigScript = serializeMultisigScript(multisigScript);
   const args = multisigArgs(serializedMultisigScript);
   const multisigLockscript = {
@@ -65,6 +65,6 @@ export function privateKeyToAddress(privateKey: string): string {
 }
 
 export function getFromAddr(): string {
-  const fromPrivateKey = parsePrivateKey(ForceBridgeCore.config.ckb.fromPrivateKey);
+  const fromPrivateKey = parsePrivateKey(ForceBridgeCore.config.ckb.privateKey);
   return privateKeyToAddress(fromPrivateKey);
 }

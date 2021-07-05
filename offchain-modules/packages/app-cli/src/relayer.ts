@@ -4,7 +4,7 @@ import commander from 'commander';
 
 const defaultConfig = './config.json';
 
-export const relayerCmd = new commander.Command('relayer')
+export const relayerCmd = new commander.Command('collector')
   .option('-cfg, --config <config>', 'config path of replayer', defaultConfig)
   .action(sigServer);
 

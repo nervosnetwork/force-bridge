@@ -34,25 +34,10 @@ export class MultiSignHost {
   host: string;
 }
 
-export class MultiSignKey {
-  /**
-   * @deprecated migrate to {@link KeyStore}
-   */
-  privKey: string;
-  address: string;
-}
-
 export interface CkbConfig {
   ckbRpcUrl: string;
   ckbIndexerUrl: string;
-  /**
-   * @deprecated migrate to {@link ForceBridgeCore}.keystore.get('ckb')
-   */
-  fromPrivateKey: string;
-  /**
-   * @deprecated migrate to {@link ForceBridgeCore}.keystore.get('ckb-multisig') or {@link ForceBridgeCore}.keystore.get('ckb-multisig-n')
-   */
-  multiSignKeys: MultiSignKey[];
+  privateKey: string;
   multiSignHosts: MultiSignHost[];
   multisigScript: MultisigItem;
   multisigLockscript: ScriptItem;
@@ -69,14 +54,7 @@ export interface CkbConfig {
 export interface EthConfig {
   rpcUrl: string;
   contractAddress: string;
-  /**
-   * @deprecated migrate to {@link KeyStore}.keystore.get('eth')
-   */
   privateKey: string;
-  /**
-   * @deprecated migrate to {@link KeyStore}.keystore.get('eth-multisig') or {@link ForceBridgeCore}.keystore.get('eth-multisig-n')
-   */
-  multiSignKeys: MultiSignKey[];
   multiSignAddresses: string[];
   multiSignHosts: MultiSignHost[];
   multiSignThreshold: number;
