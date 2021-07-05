@@ -4,7 +4,7 @@ import commander from 'commander';
 
 const defaultConfig = './config.json';
 
-export const sigCmd = new commander.Command('signer')
+export const sigCmd = new commander.Command('verifier')
   .option('-cfg, --config <config>', 'config path of sig server', defaultConfig)
   .action(sigServer);
 
