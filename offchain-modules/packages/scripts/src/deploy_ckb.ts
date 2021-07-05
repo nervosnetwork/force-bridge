@@ -135,7 +135,6 @@ const deploy = async () => {
   console.log('emptyCells', JSON.stringify(emptyCells, null, 2));
 
   const typeIdLength = 126n;
-  // const typeIdLength = 0n;
   console.dir({ emptyCells }, { depth: null });
   const rawTx = ckb.generateRawTransaction({
     fromAddress: ADDRESS,
@@ -237,7 +236,7 @@ const deploy = async () => {
       },
       script: {
         codeHash: sudtCodeHash,
-        hashType: 'code',
+        hashType: 'data',
       },
     },
     recipientType: {
