@@ -21,7 +21,7 @@ function install_and_build {
   cd "${OFFCHAIN_MODULES_DIR}"
   yarn build
   yarn install
-  chmod +x node_modules/.bin/forcecli
+  # chmod +x node_modules/.bin/forcecli
 }
 
 function clean_db {
