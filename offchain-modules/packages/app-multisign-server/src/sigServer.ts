@@ -1,5 +1,5 @@
 import { bootstrap, ForceBridgeCore } from '@force-bridge/x/dist/core';
-import { CkbDb, EthDb } from '@force-bridge/x/dist/db';
+import { CkbDb, EthDb, KVDb } from '@force-bridge/x/dist/db';
 import { SignedDb } from '@force-bridge/x/dist/db/signed';
 import { startHandlers } from '@force-bridge/x/dist/handlers';
 import { responseStatus } from '@force-bridge/x/dist/monitor/rpc-metric';
@@ -16,12 +16,13 @@ import { Connection } from 'typeorm';
 import { signCkbTx } from './ckbSigner';
 import { SigError, SigErrorCode } from './error';
 import { signEthTx } from './ethSigner';
+import { serverStatus } from './status';
 
 const apiPath = '/force-bridge/sign-server/api/v1';
 const defaultPort = 80;
 
 export class SigResponse {
-  Data?: string;
+  Data?: any;
   Error: SigError;
 
   constructor(err: SigError, data?: string) {
@@ -34,7 +35,7 @@ export class SigResponse {
   static fromSigError(code: SigErrorCode, message?: string): SigResponse {
     return new SigResponse(new SigError(code, message));
   }
-  static fromData(data: string): SigResponse {
+  static fromData(data: any): SigResponse {
     return new SigResponse(new SigError(SigErrorCode.Ok), data);
   }
 }
@@ -47,6 +48,7 @@ export class SigServer {
   static signedDb: SignedDb;
   static ckbDb: CkbDb;
   static ethDb: EthDb;
+  static kvDb: KVDb;
   static keys: Map<string, Map<string, string>>;
   static metrics: SigserverMetric;
 
@@ -62,6 +64,7 @@ export class SigServer {
     SigServer.signedDb = new SignedDb(conn);
     SigServer.ckbDb = new CkbDb(conn);
     SigServer.ethDb = new EthDb(conn);
+    SigServer.kvDb = new KVDb(conn);
     SigServer.keys = new Map<string, Map<string, string>>();
 
     SigServer.metrics = new SigserverMetric(ForceBridgeCore.config.common.role);
@@ -117,6 +120,14 @@ export async function startSigServer(configPath: string): Promise<void> {
       return SigResponse.fromSigError(SigErrorCode.UnknownError, e.message);
     }
   });
+  server.addMethod('status', async () => {
+    try {
+      return await serverStatus();
+    } catch (e) {
+      logger.error(`status error:${e.message}`);
+      return SigResponse.fromSigError(SigErrorCode.UnknownError, e.message);
+    }
+  });
 
   const app = express();
   app.use(bodyParser.json());
@@ -154,12 +165,14 @@ export async function startSigServer(configPath: string): Promise<void> {
         }
 
         res.json(jsonRPCResponse);
-        SigServer.metrics.setSigServerRequestMetric(
-          jsonRPCRequest.params.requestAddress!,
-          jsonRPCRequest.method,
-          status,
-          Date.now() - startTime,
-        );
+        if (jsonRPCRequest.params && jsonRPCRequest.method && jsonRPCRequest.params.requestAddress) {
+          SigServer.metrics.setSigServerRequestMetric(
+            jsonRPCRequest.params.requestAddress!,
+            jsonRPCRequest.method,
+            status,
+            Date.now() - startTime,
+          );
+        }
         logger.info('response', jsonRPCResponse, ' status :', status);
       },
       (reason) => {
