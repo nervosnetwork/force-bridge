@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import { promises as fs } from 'fs';
 import path from 'path';
-import { asserts, nonNullable } from '@force-bridge/x';
+import { nonNullable } from '@force-bridge/x';
 import { generateTypeIDScript } from '@force-bridge/x/dist/ckb/tx-helper/multisig/typeid';
 import { asyncSleep as sleep, blake2b, getFromEnv, parsePrivateKey, writeJsonToFile } from '@force-bridge/x/dist/utils';
 import { OutPoint, Script } from '@lay2/pw-core';
