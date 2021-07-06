@@ -87,6 +87,11 @@ export async function signEthTx(params: collectSignaturesParams): Promise<SigRes
     return SigResponse.fromSigError(SigErrorCode.BlockSyncUncompleted);
   }
 
+  const signed = await SigServer.signedDb.getSignedByRawData(params.rawData);
+  if (signed) {
+    return SigResponse.fromData(signed.signature);
+  }
+
   const pubKey = privateKeyToPublicKey(privKey);
   const payload = params.payload as ethCollectSignaturesPayload;
 
@@ -117,6 +122,7 @@ export async function signEthTx(params: collectSignaturesParams): Promise<SigRes
       };
     }),
   );
+
   return SigResponse.fromData(signature);
 }
 

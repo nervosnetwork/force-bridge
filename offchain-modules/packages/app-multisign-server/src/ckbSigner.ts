@@ -350,6 +350,11 @@ export async function signCkbTx(params: collectSignaturesParams): Promise<SigRes
     return SigResponse.fromSigError(SigErrorCode.BlockSyncUncompleted);
   }
 
+  const signed = await SigServer.signedDb.getSignedByRawData(params.rawData);
+  if (signed) {
+    return SigResponse.fromData(signed.signature);
+  }
+
   const pubKey = ForceBridgeCore.ckb.utils.privateKeyToPublicKey(privKey);
   const payload = params.payload as ckbCollectSignaturesPayload;
   const txSkeleton = objectToTransactionSkeleton(payload.txSkeleton);
