@@ -30,11 +30,11 @@ const CKB_PRI = process.env.CKB_PRIV_KEY || '0xa800c82df5461756ae99b5c6677d019c9
 // const FORCE_BRIDGE_URL = 'http://47.56.233.149:3083/force-bridge/api/v1';
 
 // const ETH_NODE_URL = 'https://rinkeby.infura.io/v3/48be8feb3f9c46c397ceae02a0dbc7ae';
-// const ETH_PRI = '0x59f202ac967ed2efb2aba3d99dd0375574fec015b4b3864215e99017c59e358a';
+// const ETH_PRI = 'XXX';
 
 // const CKB_NODE_URL = 'https://testnet.ckbapp.dev';
 // const CKB_INDEXER_URL = 'https://testnet.ckbapp.dev/indexer';
-// const CKB_PRI = '0x59f202ac967ed2efb2aba3d99dd0375574fec015b4b3864215e99017c59e358a';
+// const CKB_PRI = 'XXX';
 
 const ckb = new CKB(CKB_NODE_URL);
 
