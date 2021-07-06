@@ -1,7 +1,10 @@
+import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
+import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
 import { Config } from '@force-bridge/x/dist/config';
+import { asserts } from '@force-bridge/x/dist/errors';
 import { asyncSleep } from '@force-bridge/x/dist/utils';
 import { initLog, logger } from '@force-bridge/x/dist/utils/logger';
-
+import { Script, Amount } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core/';
 import { AddressPrefix } from '@nervosnetwork/ckb-sdk-utils';
 
@@ -21,6 +24,7 @@ const ETH_NODE_URL = process.env.ETH_URL || 'http://127.0.0.1:8545';
 const ETH_PRI = process.env.ETH_PRIV_KEY || '0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed37a';
 
 const CKB_NODE_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
+const CKB_INDEXER_URL = process.env.CKB_INDEXER_URL || 'http://127.0.0.1:8116';
 const CKB_PRI = process.env.CKB_PRIV_KEY || '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
 
 // const FORCE_BRIDGE_URL = 'http://47.56.233.149:3083/force-bridge/api/v1';
@@ -29,6 +33,7 @@ const CKB_PRI = process.env.CKB_PRIV_KEY || '0xa800c82df5461756ae99b5c6677d019c9
 // const ETH_PRI = '0x59f202ac967ed2efb2aba3d99dd0375574fec015b4b3864215e99017c59e358a';
 
 // const CKB_NODE_URL = 'https://testnet.ckbapp.dev';
+// const CKB_INDEXER_URL = 'https://testnet.ckbapp.dev/indexer';
 // const CKB_PRI = '0x59f202ac967ed2efb2aba3d99dd0375574fec015b4b3864215e99017c59e358a';
 
 const ckb = new CKB(CKB_NODE_URL);
@@ -173,14 +178,14 @@ async function checkTx(assetIdent: string, txId: string, userIdent: string) {
 async function lock(
   provider: ethers.providers.JsonRpcProvider,
   ethWallet: ethers.Wallet,
-  recipient: string,
+  recipients: Array<string>,
 ): Promise<Array<string>> {
   const signedLockTxs = new Array<string>();
   const lockTxHashes = new Array<string>();
   const startNonce = await ethWallet.getTransactionCount();
 
   for (let i = 0; i < BATCH_NUM; i++) {
-    const signedLockTx = await generateLockTx(ethWallet, ETH_TOKEN_ADDRESS, startNonce + i, recipient, LOCK_AMOUNT);
+    const signedLockTx = await generateLockTx(ethWallet, ETH_TOKEN_ADDRESS, startNonce + i, recipients[i], LOCK_AMOUNT);
     signedLockTxs.push(signedLockTx);
   }
 
@@ -192,12 +197,12 @@ async function lock(
   return lockTxHashes;
 }
 
-async function burn(ckbPriv: string, sender: string, recipient: string): Promise<Array<string>> {
+async function burn(ckbPrivs: Array<string>, senders: Array<string>, recipient: string): Promise<Array<string>> {
   const burnTxHashes = new Array<string>();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const signedBurnTxs = new Array<any>();
   for (let i = 0; i < BATCH_NUM; i++) {
-    const burnTx = await generateBurnTx(ETH_TOKEN_ADDRESS, ckbPriv, sender, recipient, BURN_AMOUNT);
+    const burnTx = await generateBurnTx(ETH_TOKEN_ADDRESS, ckbPrivs[i], senders[i], recipient, BURN_AMOUNT);
     signedBurnTxs.push(burnTx);
   }
 
@@ -209,10 +214,99 @@ async function burn(ckbPriv: string, sender: string, recipient: string): Promise
   return burnTxHashes;
 }
 
-async function check(txHashes: Array<string>, address: string) {
+async function check(txHashes: Array<string>, addresses: Array<string>) {
   for (let i = 0; i < BATCH_NUM; i++) {
-    await checkTx(ETH_TOKEN_ADDRESS, txHashes[i], address);
+    await checkTx(ETH_TOKEN_ADDRESS, txHashes[i], addresses[i]);
   }
+}
+
+function prepareCkbPrivateKeys(): Array<string> {
+  const privateKeys = new Array<string>();
+  for (let i = 0; i < BATCH_NUM; i++) {
+    privateKeys.push(ethers.Wallet.createRandom().privateKey);
+  }
+  return privateKeys;
+}
+
+async function prepareCkbAddresses(privateKeys: Array<string>): Promise<Array<string>> {
+  const { secp256k1Dep } = await ckb.loadDeps();
+  asserts(secp256k1Dep);
+  const cellDeps = [
+    {
+      outPoint: secp256k1Dep.outPoint,
+      depType: secp256k1Dep.depType,
+    },
+  ];
+
+  const publicKey = ckb.utils.privateKeyToPublicKey(CKB_PRI);
+  const args = `0x${ckb.utils.blake160(publicKey, 'hex')}`;
+  const fromLockscript = Script.fromRPC({
+    code_hash: secp256k1Dep.codeHash,
+    args,
+    hash_type: secp256k1Dep.hashType,
+  });
+  asserts(fromLockscript);
+  const needSupplyCap = BATCH_NUM * 600 * 100000000 + 100000;
+  const collector = new IndexerCollector(new CkbIndexer(CKB_NODE_URL, CKB_INDEXER_URL));
+
+  const needSupplyCapCells = await collector.getCellsByLockscriptAndCapacity(
+    fromLockscript,
+    new Amount(`0x${needSupplyCap.toString(16)}`, 0),
+  );
+  console.log(needSupplyCapCells);
+  const inputs = needSupplyCapCells.map((cell) => {
+    return { previousOutput: cell.outPoint, since: '0x0' };
+  });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const outputs = new Array<any>();
+  const outputsData = new Array<string>();
+  const addresses = new Array<string>();
+  for (const key of privateKeys) {
+    const toPublicKey = ckb.utils.privateKeyToPublicKey(key);
+    addresses.push(ckb.utils.pubkeyToAddress(toPublicKey, { prefix: AddressPrefix.Testnet }));
+
+    const toArgs = `0x${ckb.utils.blake160(toPublicKey, 'hex')}`;
+    const toScript = Script.fromRPC({
+      code_hash: secp256k1Dep.codeHash,
+      args: toArgs,
+      hash_type: secp256k1Dep.hashType,
+    });
+    const capacity = 600 * 100000000;
+    const toScriptCell = {
+      lock: toScript,
+      capacity: `0x${capacity.toString(16)}`,
+    };
+    outputs.push(toScriptCell);
+    outputsData.push('0x');
+  }
+
+  const inputCap = needSupplyCapCells.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
+  const outputCap = outputs.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
+  const changeCellCapacity = inputCap - outputCap - 100000n;
+  console.log(changeCellCapacity);
+  outputs.push({
+    lock: fromLockscript,
+    capacity: `0x${changeCellCapacity.toString(16)}`,
+  });
+  outputsData.push('0x');
+
+  const rawTx = {
+    version: '0x0',
+    cellDeps,
+    headerDeps: [],
+    inputs,
+    outputs,
+    witnesses: [{ lock: '', inputType: '', outputType: '' }],
+    outputsData,
+  };
+
+  const signedTx = ckb.signTransaction(CKB_PRI)(rawTx);
+  logger.info('signedTx', signedTx);
+
+  const burnTxHash = await ckb.rpc.sendTransaction(signedTx);
+  logger.info('tx', burnTxHash);
+  return addresses;
 }
 
 async function main() {
@@ -222,18 +316,18 @@ async function main() {
   conf.common.log.logFile = './log/rpc-ci.log';
   initLog(conf.common.log);
 
-  const ckbPublicKey = ckb.utils.privateKeyToPublicKey(CKB_PRI);
-  const ckbAddress = ckb.utils.pubkeyToAddress(ckbPublicKey, { prefix: AddressPrefix.Testnet });
-
   const provider = new ethers.providers.JsonRpcProvider(ETH_NODE_URL);
   const ethWallet = new ethers.Wallet(ETH_PRI, provider);
   const ethAddress = ethWallet.address;
 
-  const lockTxs = await lock(provider, ethWallet, ckbAddress);
-  await check(lockTxs, ckbAddress);
+  const ckbPrivs = await prepareCkbPrivateKeys();
+  const ckbAddresses = await prepareCkbAddresses(ckbPrivs);
 
-  const burnTxs = await burn(CKB_PRI, ckbAddress, ethAddress);
-  await check(burnTxs, ckbAddress);
+  const lockTxs = await lock(provider, ethWallet, ckbAddresses);
+  await check(lockTxs, ckbAddresses);
+
+  const burnTxs = await burn(ckbPrivs, ckbAddresses, ethAddress);
+  await check(burnTxs, ckbAddresses);
 }
 
 main().catch((error) => {
