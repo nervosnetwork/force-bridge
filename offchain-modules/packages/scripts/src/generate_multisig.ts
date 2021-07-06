@@ -1,46 +1,26 @@
-import path from 'path';
-import {
-  getFromEnv,
-  privateKeyToCkbPubkeyHash,
-  privateKeyToEthAddress,
-  writeJsonToFile,
-} from '@force-bridge/x/dist/utils';
+import fs from 'fs';
+import { getFromEnv, writeJsonToFile } from '@force-bridge/x/dist/utils';
 import * as lodash from 'lodash';
-
-const ETH_PRIVATE_KEY = '0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed37a';
-const CKB_PRIVATE_KEY = '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
-
-const genRanHex = (size) => [...Array(size)].map(() => Math.floor(Math.random() * 16).toString(16)).join('');
-
+import { multiSigNode, multisigPath, nodeConfigPath } from './types';
 async function generateMultisig(multisigNumber: number, threshold: number) {
-  const configPath = getFromEnv('CONFIG_PATH');
-  const privkeys = {
-    eth: ETH_PRIVATE_KEY,
-    ckb: CKB_PRIVATE_KEY,
-  };
-  lodash.range(multisigNumber).map((i) => {
-    privkeys[`multisig-${i + 1}`] = '0x' + genRanHex(64);
-  });
-  writeJsonToFile(privkeys, path.join(configPath, 'privkeys.json'));
+  const nodeInfos: { nodes: multiSigNode[] } = JSON.parse(fs.readFileSync(nodeConfigPath, 'utf8').toString());
+
+  console.log(`sigserver infos : ${JSON.stringify(nodeInfos.nodes, null, 2)}`);
+
   const config = {
     eth: {
       multiSignThreshold: threshold,
-      multiSignAddresses: lodash.range(multisigNumber).map((i) => {
-        const privkey = privkeys[`multisig-${i + 1}`];
-        return privateKeyToEthAddress(privkey);
-      }),
+      multiSignAddresses: lodash.range(multisigNumber).map((i) => nodeInfos.nodes[i].ethAddress),
     },
     ckb: {
       multisigScript: {
         R: 0,
         M: threshold,
-        publicKeyHashes: lodash
-          .range(multisigNumber)
-          .map((i) => privateKeyToCkbPubkeyHash(privkeys[`multisig-${i + 1}`])),
+        publicKeyHashes: lodash.range(multisigNumber).map((i) => nodeInfos.nodes[i].ckbPubkeyHash),
       },
     },
   };
-  writeJsonToFile({ forceBridge: config }, `${configPath}/multisig.json`);
+  writeJsonToFile({ forceBridge: config }, multisigPath);
 }
 
 async function main() {
