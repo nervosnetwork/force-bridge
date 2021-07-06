@@ -13,7 +13,7 @@ import {
   nodeConfigPath,
   privkeysPath,
   verifierMetricBasePort,
-  verifierServerBasePort
+  verifierServerBasePort,
 } from './types';
 
 const ETH_PRIVATE_KEY = '0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed37a';

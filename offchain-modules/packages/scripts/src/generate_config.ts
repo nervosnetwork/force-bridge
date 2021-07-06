@@ -36,7 +36,7 @@ async function generateConfig() {
   });
   collectorConfig.ckb.multiSignHosts = nodeInfos.nodes.map((v) => {
     return {
-      address: v.ethAddress,
+      address: v.ckbAddress,
       host: `${v.serverLink}/force-bridge/sign-server/api/v1`,
     };
   });
