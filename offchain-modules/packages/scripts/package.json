@@ -10,13 +10,13 @@
     "test": "yarn run build"
   },
   "dependencies": {
-    "@force-bridge/ckb-indexer-client": "^0.0.1",
-    "@force-bridge/internal": "^0.0.1",
-    "@force-bridge/keystore": "^0.0.1",
-    "@force-bridge/reconc": "^0.0.1",
-    "@force-bridge/x": "^0.0.1",
-    "@force-bridge/xchain-eth": "^0.0.1",
+    "@force-bridge/ckb-indexer-client": "^0.0.2",
+    "@force-bridge/internal": "^0.0.2",
+    "@force-bridge/keystore": "^0.0.2",
+    "@force-bridge/reconc": "^0.0.2",
+    "@force-bridge/x": "^0.0.2",
+    "@force-bridge/xchain-eth": "^0.0.2",
     "node-fetch": "^1.7.3"
   },
-  "version": "0.0.1"
+  "version": "0.0.2"
 }
