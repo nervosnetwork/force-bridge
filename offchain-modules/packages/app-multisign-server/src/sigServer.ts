@@ -1,11 +1,11 @@
 import { bootstrap, ForceBridgeCore } from '@force-bridge/x/dist/core';
-import { CkbDb, EthDb } from '@force-bridge/x/dist/db';
+import { CkbDb, EthDb, KVDb } from '@force-bridge/x/dist/db';
 import { SignedDb } from '@force-bridge/x/dist/db/signed';
 import { startHandlers } from '@force-bridge/x/dist/handlers';
 import { responseStatus } from '@force-bridge/x/dist/monitor/rpc-metric';
 import { SigserverMetric } from '@force-bridge/x/dist/monitor/sigserver-metric';
 import { collectSignaturesParams } from '@force-bridge/x/dist/multisig/multisig-mgr';
-import { getDBConnection, parsePrivateKey } from '@force-bridge/x/dist/utils';
+import { getDBConnection, privateKeyToCkbAddress, privateKeyToEthAddress } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
 import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
 import bodyParser from 'body-parser';
@@ -16,12 +16,13 @@ import { Connection } from 'typeorm';
 import { signCkbTx } from './ckbSigner';
 import { SigError, SigErrorCode } from './error';
 import { signEthTx } from './ethSigner';
+import { serverStatus } from './status';
 
 const apiPath = '/force-bridge/sign-server/api/v1';
 const defaultPort = 80;
 
 export class SigResponse {
-  Data?: string;
+  Data?: any;
   Error: SigError;
 
   constructor(err: SigError, data?: string) {
@@ -34,7 +35,7 @@ export class SigResponse {
   static fromSigError(code: SigErrorCode, message?: string): SigResponse {
     return new SigResponse(new SigError(code, message));
   }
-  static fromData(data: string): SigResponse {
+  static fromData(data: any): SigResponse {
     return new SigResponse(new SigError(SigErrorCode.Ok), data);
   }
 }
@@ -47,6 +48,7 @@ export class SigServer {
   static signedDb: SignedDb;
   static ckbDb: CkbDb;
   static ethDb: EthDb;
+  static kvDb: KVDb;
   static keys: Map<string, Map<string, string>>;
   static metrics: SigserverMetric;
 
@@ -62,22 +64,23 @@ export class SigServer {
     SigServer.signedDb = new SignedDb(conn);
     SigServer.ckbDb = new CkbDb(conn);
     SigServer.ethDb = new EthDb(conn);
+    SigServer.kvDb = new KVDb(conn);
     SigServer.keys = new Map<string, Map<string, string>>();
 
     SigServer.metrics = new SigserverMetric(ForceBridgeCore.config.common.role);
 
     if (ForceBridgeCore.config.ckb !== undefined) {
       const ckbKeys = new Map<string, string>();
-      ForceBridgeCore.config.ckb.multiSignKeys.forEach((key) => {
-        ckbKeys[key.address] = key.privKey;
-      });
+      const ckbPrivateKey = ForceBridgeCore.config.ckb.privateKey;
+      const ckbAddress = privateKeyToCkbAddress(ckbPrivateKey);
+      ckbKeys[ckbAddress] = ckbPrivateKey;
       SigServer.keys['ckb'] = ckbKeys;
     }
-    if (ForceBridgeCore.config.eth.multiSignKeys !== undefined) {
+    if (ForceBridgeCore.config.eth !== undefined) {
       const ethKeys = new Map<string, string>();
-      ForceBridgeCore.config.eth.multiSignKeys.forEach((key) => {
-        ethKeys[key.address] = key.privKey;
-      });
+      const ethPrivateKey = ForceBridgeCore.config.eth.privateKey;
+      const ethAddress = privateKeyToEthAddress(ethPrivateKey);
+      ethKeys[ethAddress] = ethPrivateKey;
       SigServer.keys['eth'] = ethKeys;
     }
   }
@@ -114,6 +117,14 @@ export async function startSigServer(configPath: string): Promise<void> {
       return await signEthTx(params);
     } catch (e) {
       logger.error(`signEthTx params:${JSON.stringify(params, undefined, 2)} error:${e.message}`);
+      return SigResponse.fromSigError(SigErrorCode.UnknownError, e.message);
+    }
+  });
+  server.addMethod('status', async () => {
+    try {
+      return await serverStatus();
+    } catch (e) {
+      logger.error(`status error:${e.message}`);
       return SigResponse.fromSigError(SigErrorCode.UnknownError, e.message);
     }
   });
@@ -154,12 +165,14 @@ export async function startSigServer(configPath: string): Promise<void> {
         }
 
         res.json(jsonRPCResponse);
-        SigServer.metrics.setSigServerRequestMetric(
-          jsonRPCRequest.params.requestAddress!,
-          jsonRPCRequest.method,
-          status,
-          Date.now() - startTime,
-        );
+        if (jsonRPCRequest.params && jsonRPCRequest.method && jsonRPCRequest.params.requestAddress) {
+          SigServer.metrics.setSigServerRequestMetric(
+            jsonRPCRequest.params.requestAddress!,
+            jsonRPCRequest.method,
+            status,
+            Date.now() - startTime,
+          );
+        }
         logger.info('response', jsonRPCResponse, ' status :', status);
       },
       (reason) => {

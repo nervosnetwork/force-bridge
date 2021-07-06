@@ -1,6 +1,5 @@
 import { nonNullable } from '@force-bridge/x';
 import { EthAsset } from '@force-bridge/x/dist/ckb/model/asset';
-import { Config } from '@force-bridge/x/dist/config';
 import { bootstrap, ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { BridgeFeeDB } from '@force-bridge/x/dist/db';
 import { getDBConnection, parsePrivateKey } from '@force-bridge/x/dist/utils';
@@ -9,7 +8,6 @@ import { Amount } from '@lay2/pw-core';
 import commander from 'commander';
 import { ecsign, toRpcSig } from 'ethereumjs-util';
 import { BigNumber } from 'ethers';
-import nconf from 'nconf';
 
 const defaultConfig = './config.json';
 
@@ -132,7 +130,7 @@ async function generateWithdrawTxSignature(opts: Record<string, string | string[
   });
   const ethChain = new EthChain('verifier');
   const message = await ethChain.getUnlockMessageToSign(withdrawRecords);
-  const privKeyPath = ForceBridgeCore.config.eth.multiSignKeys[0].privKey;
+  const privKeyPath = ForceBridgeCore.config.eth.privateKey;
   const privKey = parsePrivateKey(privKeyPath);
   const { v, r, s } = ecsign(Buffer.from(message.slice(2), 'hex'), Buffer.from(privKey.slice(2), 'hex'));
   console.log(`signature of withdraw tx: ${toRpcSig(v, r, s)}`);

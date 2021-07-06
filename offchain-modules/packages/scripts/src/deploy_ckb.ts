@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import { promises as fs } from 'fs';
 import path from 'path';
-import { asserts, nonNullable } from '@force-bridge/x';
-import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
+import { nonNullable } from '@force-bridge/x';
 import { generateTypeIDScript } from '@force-bridge/x/dist/ckb/tx-helper/multisig/typeid';
 import { asyncSleep as sleep, blake2b, getFromEnv, parsePrivateKey, writeJsonToFile } from '@force-bridge/x/dist/utils';
 import { OutPoint, Script } from '@lay2/pw-core';
@@ -135,11 +134,12 @@ const deploy = async () => {
   }
   console.log('emptyCells', JSON.stringify(emptyCells, null, 2));
 
+  const typeIdLength = 126n;
   console.dir({ emptyCells }, { depth: null });
   const rawTx = ckb.generateRawTransaction({
     fromAddress: ADDRESS,
     toAddress: ADDRESS,
-    capacity: (contractBinLength + 200n) * 10n ** 8n,
+    capacity: (contractBinLength + typeIdLength) * 10n ** 8n,
     fee: 10000000n,
     safeMode: true,
     cells: emptyCells,
@@ -148,14 +148,14 @@ const deploy = async () => {
     deps: secp256k1Dep!,
   });
   // add sudt
-  const sudtCodeCellCapacity = (BigInt(sudtBin.length) + 200n) * 10n ** 8n;
+  const sudtCodeCellCapacity = (BigInt(sudtBin.length) + typeIdLength) * 10n ** 8n;
   rawTx.outputs.push({
     ...rawTx.outputs[0],
     capacity: `0x${sudtCodeCellCapacity.toString(16)}`,
   });
   rawTx.outputsData.push(utils.bytesToHex(sudtBin));
   // add recipient typescript
-  const recipientTypescriptCodeCellCapacity = (BigInt(recipientTypescriptBin.length) + 200n) * 10n ** 8n;
+  const recipientTypescriptCodeCellCapacity = (BigInt(recipientTypescriptBin.length) + typeIdLength) * 10n ** 8n;
   rawTx.outputs.push({
     ...rawTx.outputs[0],
     capacity: `0x${recipientTypescriptCodeCellCapacity.toString(16)}`,
@@ -187,9 +187,17 @@ const deploy = async () => {
     since: '0x0',
   };
 
+  const typescriptHashes: string[] = [];
   for (let i = 0; i < rawTx.outputs.length; i++) {
     if (i != 1) {
       const typeIDScript = generateTypeIDScript(firstInput, `0x${i}`);
+      typescriptHashes.push(
+        ckb.utils.scriptToHash(<CKBComponents.Script>{
+          codeHash: typeIDScript.code_hash,
+          hashType: typeIDScript.hash_type,
+          args: typeIDScript.args,
+        }),
+      );
       rawTx.outputs[i].type = {
         codeHash: typeIDScript.code_hash,
         hashType: typeIDScript.hash_type,
@@ -214,8 +222,8 @@ const deploy = async () => {
         },
       },
       script: {
-        codeHash: lockscriptCodeHash,
-        hashType: 'data',
+        codeHash: typescriptHashes[0],
+        hashType: 'type',
       },
     },
     sudtType: {
@@ -240,8 +248,8 @@ const deploy = async () => {
         },
       },
       script: {
-        codeHash: recipientTypescriptCodeHash,
-        hashType: 'data',
+        codeHash: typescriptHashes[2],
+        hashType: 'type',
       },
     },
   };

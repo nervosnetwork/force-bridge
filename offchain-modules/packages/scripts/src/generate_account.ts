@@ -7,7 +7,14 @@ import {
   privateKeyToCkbAddress,
 } from '@force-bridge/x/dist/utils';
 import * as lodash from 'lodash';
-import { keystorePath, multiSigNode, nodeConfigPath, privkeysPath } from './types';
+import {
+  keystorePath,
+  multiSigNode,
+  nodeConfigPath,
+  privkeysPath,
+  verifierMetricBasePort,
+  verifierServerBasePort
+} from './types';
 
 const ETH_PRIVATE_KEY = '0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed37a';
 const CKB_PRIVATE_KEY = '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
@@ -20,19 +27,19 @@ async function generateMultisig(multisigNumber: number) {
     ckb: CKB_PRIVATE_KEY,
   };
   lodash.range(multisigNumber).map((i) => {
-    privkeys[`multisig-${i}`] = '0x' + genRanHex(64);
+    privkeys[`multisig-${i + 1}`] = '0x' + genRanHex(64);
   });
   writeJsonToFile(privkeys, privkeysPath);
 
   const nodeInfos: multiSigNode[] = [];
 
   lodash.range(multisigNumber).map((i) => {
-    const privkey = privkeys[`multisig-${i}`];
+    const privkey = privkeys[`multisig-${i + 1}`];
     nodeInfos.push({
-      serverLink: `http://127.0.0.1:${8000 + i + 1}`,
-      metricLink: `http://127.0.0.1:${9000 + i + 1}`,
+      serverLink: `http://127.0.0.1:${verifierServerBasePort + i + 1}`,
+      metricLink: `http://127.0.0.1:${verifierMetricBasePort + i + 1}`,
       ckbAddress: privateKeyToCkbAddress(privkey),
-      ckbPubkeyHash: privateKeyToCkbPubkeyHash(privkeys[`multisig-${i}`]),
+      ckbPubkeyHash: privateKeyToCkbPubkeyHash(privkeys[`multisig-${i + 1}`]),
       ethAddress: privateKeyToEthAddress(privkey),
     });
   });

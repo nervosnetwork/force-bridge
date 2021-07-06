@@ -12,15 +12,13 @@ import { BtcLock } from '@force-bridge/x/dist/db/entity/BtcLock';
 import { BtcUnlock } from '@force-bridge/x/dist/db/entity/BtcUnlock';
 import { CkbMint } from '@force-bridge/x/dist/db/entity/CkbMint';
 import { asyncSleep, getDBConnection, parsePrivateKey } from '@force-bridge/x/dist/utils';
-import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
+import { logger } from '@force-bridge/x/dist/utils/logger';
 import { BTCChain, getBtcMainnetFee } from '@force-bridge/x/dist/xchain/btc';
-
 import { Amount, Script } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import bitcore from 'bitcore-lib';
 import nconf from 'nconf';
 import { RPCClient } from 'rpc-bitcoin';
-import { createConnection } from 'typeorm';
 import { waitFnCompleted, waitUntilCommitted } from './util';
 
 // const CKB = require('@nervosnetwork/ckb-sdk-core').default;
@@ -42,7 +40,7 @@ async function main() {
   const config: Config = nconf.get('forceBridge');
   config.common.log.logFile = './log/btc-ci.log';
   await bootstrap(config);
-  const PRI_KEY = parsePrivateKey(ForceBridgeCore.config.ckb.fromPrivateKey);
+  const PRI_KEY = parsePrivateKey(ForceBridgeCore.config.ckb.privateKey);
   const client = new RPCClient(config.btc.clientParams);
   const btcChain = new BTCChain();
 

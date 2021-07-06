@@ -4,7 +4,7 @@ import { Config } from '@force-bridge/x/dist/config';
 import { getFromEnv, writeJsonToFile } from '@force-bridge/x/dist/utils';
 import * as lodash from 'lodash';
 import nconf from 'nconf';
-import { multiSigNode, nodeConfigPath } from './types';
+import { multiSigNode, nodeConfigPath, verifierServerBasePort } from './types';
 
 async function generateConfig() {
   const configPath = getFromEnv('CONFIG_PATH');
@@ -27,8 +27,7 @@ async function generateConfig() {
   collectorConfig.common.role = 'collector';
   collectorConfig.common.orm.database = 'collector';
   collectorConfig.eth.privateKey = `eth`;
-  collectorConfig.ckb.fromPrivateKey = `ckb`;
-
+  collectorConfig.ckb.privateKey = `ckb`;
   collectorConfig.eth.multiSignHosts = nodeInfos.nodes.map((v) => {
     return {
       address: v.ethAddress,
@@ -44,27 +43,16 @@ async function generateConfig() {
   collectorConfig.common.log.logFile = path.join(configPath, 'logs/collector.log');
   writeJsonToFile({ forceBridge: collectorConfig }, path.join(configPath, 'collector.json'));
   // generate verifier config
-  let verifierIndex = 1;
-  for (const verifier of nodeInfos.nodes) {
+
+  for (let verifierIndex = 1; verifierIndex <= nodeInfos.nodes.length; verifierIndex++) {
     const verifierConfig: Config = lodash.cloneDeep(config);
     verifierConfig.common.role = 'verifier';
     verifierConfig.common.orm.database = `verifier${verifierIndex}`;
-    verifierConfig.eth.multiSignKeys = [
-      {
-        privKey: `multisig-${verifierIndex}`,
-        address: verifier.ethAddress,
-      },
-    ];
-    verifierConfig.ckb.multiSignKeys = [
-      {
-        privKey: `multisig-${verifierIndex}`,
-        address: verifier.ckbAddress,
-      },
-    ];
-    verifierConfig.common.port = 8000 + verifierIndex;
+    verifierConfig.eth.privateKey = `multisig-${verifierIndex}`;
+    verifierConfig.ckb.privateKey = `multisig-${verifierIndex}`;
+    verifierConfig.common.port = verifierServerBasePort + verifierIndex;
     verifierConfig.common.log.logFile = path.join(configPath, `logs/verifier${verifierIndex}.log`);
     writeJsonToFile({ forceBridge: verifierConfig }, path.join(configPath, `verifier${verifierIndex}.json`));
-    verifierIndex++;
   }
   // generate watcher config
   const watcherConfig: Config = lodash.cloneDeep(config);

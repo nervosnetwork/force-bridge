@@ -20,8 +20,9 @@ export FORCE_BRIDGE_KEYSTORE_PATH="${INTEGRATION_TEST_WORKDIR}/configs/keystore.
 
 function install_and_build {
   cd "${OFFCHAIN_MODULES_DIR}"
-  yarn install
   yarn build
+  yarn install
+  # chmod +x node_modules/.bin/forcecli
 }
 
 function clean_db {
@@ -56,7 +57,6 @@ function deploy {
   yarn deploy
 
   cd "${OFFCHAIN_MODULES_DIR}"
-  yarn build
   # deploy ckb contracts
   npx ts-node ./packages/scripts/src/deploy_ckb.ts
   ## create owner cell
@@ -85,8 +85,10 @@ function start_service {
   for i in `seq 1 ${MULTISIG_NUMBER}`
   do
     CONFIG_PATH=${CONFIG_PATH}/verifier${i}.json npx ts-node ./packages/app-multisign-server/src/index.ts &
+    # npx forcecli verifier -cfg ${CONFIG_PATH}/verifier${i}.json &
   done
   CONFIG_PATH=${CONFIG_PATH}/collector.json npx ts-node ./packages/app-relayer/src/index.ts &
+  # npx forcecli collector -cfg ${CONFIG_PATH}/collector.json &
   sleep 5
   CONFIG_PATH=${CONFIG_PATH}/watcher.json npx ts-node ./packages/scripts/src/integration-test/eth.ts
 }

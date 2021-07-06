@@ -12,3 +12,6 @@ export const nodeConfigPath = `${configPath}/nodes.json`;
 export const keystorePath = `${configPath}/keystore.json`;
 export const privkeysPath = `${configPath}/privkeys.json`;
 export const multisigPath = `${configPath}/multisig.json`;
+
+export const verifierServerBasePort = 8000;
+export const verifierMetricBasePort = 9000;
