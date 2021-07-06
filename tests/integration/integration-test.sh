@@ -89,9 +89,8 @@ function start_service {
   done
   CONFIG_PATH=${CONFIG_PATH}/collector.json npx ts-node ./packages/app-relayer/src/index.ts &
   # npx forcecli collector -cfg ${CONFIG_PATH}/collector.json &
-  sleep 5
-
   CONFIG_PATH=${CONFIG_PATH}/watcher.json npx ts-node ./packages/app-rpc-server/src/index.ts &
+
   sleep 20
 
   CONFIG_PATH=${CONFIG_PATH}/watcher.json npx ts-node ./packages/scripts/src/integration-test/eth_batch_test.ts
