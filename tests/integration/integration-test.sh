@@ -21,7 +21,7 @@ function install_and_build {
   cd "${OFFCHAIN_MODULES_DIR}"
   yarn build
   yarn install
-  chmod +x node_modules/.bin/forcecli
+  # chmod +x node_modules/.bin/forcecli
 }
 
 function clean_db {
@@ -82,11 +82,11 @@ function start_service {
   mkdir -p ${INTEGRATION_TEST_WORKDIR}/logs
   for i in `seq 1 ${MULTISIG_NUMBER}`
   do
-    # CONFIG_PATH=${CONFIG_PATH}/verifier${i}.json npx ts-node ./packages/app-multisign-server/src/index.ts &
-    npx forcecli verifier -cfg ${CONFIG_PATH}/verifier${i}.json &
+    CONFIG_PATH=${CONFIG_PATH}/verifier${i}.json npx ts-node ./packages/app-multisign-server/src/index.ts &
+    # npx forcecli verifier -cfg ${CONFIG_PATH}/verifier${i}.json &
   done
-  # CONFIG_PATH=${CONFIG_PATH}/collector.json npx ts-node ./packages/app-relayer/src/index.ts &
-  npx forcecli collector -cfg ${CONFIG_PATH}/collector.json &
+  CONFIG_PATH=${CONFIG_PATH}/collector.json npx ts-node ./packages/app-relayer/src/index.ts &
+  # npx forcecli collector -cfg ${CONFIG_PATH}/collector.json &
   sleep 5
   CONFIG_PATH=${CONFIG_PATH}/watcher.json npx ts-node ./packages/scripts/src/integration-test/eth.ts
 }
