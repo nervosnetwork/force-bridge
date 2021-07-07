@@ -90,7 +90,7 @@ http://localhost:8117/indexer
 
 ## Generate Private Key and Associated Configs
 
-Generate your own private key. The private key is used to sign the cross chain transactions, keep it safe.
+Generate your own private key. The private key is used to sign the cross-chain transactions, keep them **SAFE**.
 
 ```bash
 # generate the multiConfig
