@@ -8,7 +8,7 @@ The **collector** will watch the Ethereum chain, compose mint transactions on CK
 Ethereum, send the raw transaction to all verifiers to collect their signatures.
 **Verifiers** will watch both chains, verify the sign request sent by the collector, provide their signature if it is a legal
 cross-chain transaction.
-When collector gets signatures more than multi-signature threshold, it will send the transaction to CKB Chain.
+When the collector gets signatures more than multi-signature threshold, it will send the transaction to CKB Chain.
 The process is similar to compose unlock transactions on Ethereum when it sees new confirmed burn transactions on CKB.
 
 So all the verifiers have to run a service to watch Ethereum and CKB chain, verify the sign request and provide
