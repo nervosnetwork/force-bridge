@@ -43,8 +43,8 @@ export class EthDb implements IQuery {
     await ethUnlockRepo.save(dbRecords);
   }
 
-  async saveEthUnlock(records: EthUnlock[]): Promise<void> {
-    await this.ethUnlockRepository.save(records);
+  async saveEthUnlock(records: IEthUnlock[]): Promise<void> {
+    await this.ethUnlockRepository.save(records.map((r) => this.ethUnlockRepository.create(r)));
   }
 
   async createEthLock(records: IEthLock[]): Promise<void> {

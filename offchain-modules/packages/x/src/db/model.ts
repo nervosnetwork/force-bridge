@@ -50,6 +50,7 @@ export interface ICkbMint {
   sudtExtraData?: string;
   status?: CkbMintStatus;
   mintHash?: string;
+  message?: string;
 }
 
 export interface IEthLock {

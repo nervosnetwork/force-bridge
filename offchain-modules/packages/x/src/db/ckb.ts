@@ -59,8 +59,13 @@ export class CkbDb {
   }
 
   // update mint status
-  async updateCkbMint(records: CkbMint[]): Promise<void> {
-    await this.connection.manager.save(records);
+  async updateCkbMint(records: ICkbMint[]): Promise<void> {
+    const mintRepo = this.connection.getRepository(CkbMint);
+    await mintRepo.save(
+      records.map((record) => {
+        return mintRepo.create(record);
+      }),
+    );
   }
 
   async watcherCreateMint(mints: MintedRecords): Promise<void> {

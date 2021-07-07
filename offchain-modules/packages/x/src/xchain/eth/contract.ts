@@ -2,7 +2,7 @@ import { BigNumber, ethers } from 'ethers';
 import { Interface } from 'ethers/lib/utils';
 import { EthConfig, forceBridgeRole } from '../../config';
 import { ForceBridgeCore } from '../../core';
-import { EthUnlock } from '../../db/entity/EthUnlock';
+import { IEthUnlock } from '../../db/model';
 import { MultiSigMgr } from '../../multisig/multisig-mgr';
 import { asyncSleep, retryPromise } from '../../utils';
 import { logger } from '../../utils/logger';
@@ -188,7 +188,7 @@ export class EthChain {
     return false;
   }
 
-  async sendUnlockTxs(records: EthUnlock[]): Promise<ethers.providers.TransactionResponse | boolean | Error> {
+  async sendUnlockTxs(records: IEthUnlock[]): Promise<ethers.providers.TransactionResponse | boolean | Error> {
     logger.debug('contract balance', await this.provider.getBalance(this.bridgeContractAddr));
     const params: EthUnlockRecord[] = records.map((r) => {
       return {

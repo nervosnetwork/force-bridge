@@ -5,8 +5,9 @@ import { forceBridgeRole } from '../config';
 import { ForceBridgeCore } from '../core';
 import { EthDb, KVDb, BridgeFeeDB } from '../db';
 import { EthUnlockStatus } from '../db/entity/EthUnlock';
-import { EthUnlock } from '../db/model';
+import { EthUnlock, IEthUnlock } from '../db/model';
 import { BridgeMetricSingleton, txTokenInfo } from '../monitor/bridge-metric';
+import { ethCollectSignaturesPayload } from '../multisig/multisig-mgr';
 import { asyncSleep, foreverPromise, fromHexString, retryPromise, uint8ArrayToString } from '../utils';
 import { logger } from '../utils/logger';
 import { EthChain, WithdrawBridgeFeeTopic, Log, ParsedLog } from '../xchain/eth';
@@ -398,10 +399,38 @@ export class EthHandler {
     for (;;) {
       try {
         const records = await this.getUnlockRecords('pending');
-        if (records.length === 0) {
+        const pendingTx = await this.ethChain.getMultiSigMgr().getPendingTx({ chain: 'eth' });
+        if (pendingTx === undefined && records.length !== 0) {
+          //pendingTx has already completed
+          records.map((record) => {
+            record.status = 'success';
+          });
+          const unlockTxHashes = records.map((record) => {
+            return record.ckbTxHash;
+          });
+          await this.ethDb.saveEthUnlock(records);
+          logger.info(`EthHandler handlePendingUnlockRecords set Record to complete ckbTxHashes:${unlockTxHashes}`);
           break;
         }
-        await this.doHandleUnlockRecords(records);
+        if (records.length !== 0) {
+          await this.doHandleUnlockRecords(records);
+          break;
+        }
+        if (pendingTx !== undefined) {
+          await this.doHandleUnlockRecords(
+            (pendingTx.payload as ethCollectSignaturesPayload).unlockRecords.map((ethUnlock) => {
+              return {
+                ckbTxHash: ethUnlock.ckbTxHash,
+                asset: ethUnlock.token,
+                recipientAddress: ethUnlock.recipient,
+                amount: ethUnlock.amount.toString(),
+                ethTxHash: '',
+                status: 'pending',
+                message: '',
+              };
+            }),
+          );
+        }
         break;
       } catch (e) {
         logger.error(`doHandlePendingUnlockRecords error:${e.message}`);
@@ -433,7 +462,7 @@ export class EthHandler {
     );
   }
 
-  async doHandleUnlockRecords(records: EthUnlock[]): Promise<void> {
+  async doHandleUnlockRecords(records: IEthUnlock[]): Promise<void> {
     if (records.length === 0) {
       return;
     }

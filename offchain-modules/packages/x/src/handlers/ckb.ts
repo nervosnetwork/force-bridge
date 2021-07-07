@@ -18,10 +18,10 @@ import { getOwnerTypeHash } from '../ckb/tx-helper/multisig/multisig_helper';
 import { forceBridgeRole } from '../config';
 import { ForceBridgeCore } from '../core';
 import { CkbDb, KVDb } from '../db';
-import { CkbMint, ICkbBurn, MintedRecords } from '../db/model';
+import { ICkbBurn, ICkbMint, MintedRecords } from '../db/model';
 import { asserts, nonNullable } from '../errors';
 import { BridgeMetricSingleton, txTokenInfo } from '../monitor/bridge-metric';
-import { createAsset, MultiSigMgr } from '../multisig/multisig-mgr';
+import { ckbCollectSignaturesPayload, createAsset, MultiSigMgr } from '../multisig/multisig-mgr';
 import { asyncSleep, foreverPromise, fromHexString, toHexString, uint8ArrayToString } from '../utils';
 import { logger } from '../utils/logger';
 import { getAssetTypeByAsset } from '../xchain/tron/utils';
@@ -394,8 +394,38 @@ export class CkbHandler {
     for (;;) {
       try {
         const mintRecords = await this.db.getCkbMintRecordsToMint('pending');
-
-        await this.doHandleMintRecords(mintRecords, ownerTypeHash, generator);
+        const pendingTx = await this.multisigMgr.getPendingTx({ chain: 'ckb' });
+        if (pendingTx === undefined && mintRecords.length !== 0) {
+          //pendingTx has already completed
+          mintRecords.map((record) => {
+            record.status = 'success';
+          });
+          const lockTxHashes = mintRecords.map((record) => {
+            return record.id;
+          });
+          await this.db.updateCkbMint(mintRecords);
+          logger.info(`CkbHandler handlePendingUnlockRecords set Record to complete lockIds:${lockTxHashes}`);
+          break;
+        }
+        if (pendingTx !== undefined) {
+          const ckbSignaturePayload = pendingTx.payload as ckbCollectSignaturesPayload;
+          const mintRecords = ckbSignaturePayload.mintRecords;
+          await this.doHandleMintRecords(
+            mintRecords!.map((record) => {
+              return {
+                id: record.id,
+                chain: record.chain,
+                asset: record.asset,
+                amount: record.amount,
+                recipientLockscript: record.recipientLockscript,
+                status: 'pending',
+                mintHash: '',
+              };
+            }),
+            ownerTypeHash,
+            generator,
+          );
+        }
         break;
       } catch (e) {
         logger.error(`handlePendingMintRecords getUnlockRecords error:${e.message}`);
@@ -427,7 +457,7 @@ export class CkbHandler {
     );
   }
 
-  async doHandleMintRecords(mintRecords: CkbMint[], ownerTypeHash: string, generator: CkbTxGenerator): Promise<void> {
+  async doHandleMintRecords(mintRecords: ICkbMint[], ownerTypeHash: string, generator: CkbTxGenerator): Promise<void> {
     if (mintRecords.length === 0) {
       return;
     }
@@ -543,7 +573,7 @@ export class CkbHandler {
 
   async collectMintSignatures(
     txSkeleton: TransactionSkeletonType,
-    mintRecords: CkbMint[],
+    mintRecords: ICkbMint[],
   ): Promise<string[] | boolean> {
     return await this.multisigMgr.collectSignatures({
       rawData: txSkeleton.get('signingEntries').get(1)!.message,
@@ -563,7 +593,7 @@ export class CkbHandler {
     });
   }
 
-  filterMintRecords(r: CkbMint, ownerTypeHash: string): MintAssetRecord {
+  filterMintRecords(r: ICkbMint, ownerTypeHash: string): MintAssetRecord {
     switch (r.chain) {
       case ChainType.BTC:
         return {
