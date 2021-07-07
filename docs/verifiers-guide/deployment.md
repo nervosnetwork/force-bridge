@@ -4,7 +4,7 @@ In Force Bridge, the assets of users are guarded by the multi-signature of the c
 will be signed by the committee to take effect on the counter-party chain.
 
 There will be two roles in the architecture, **collector** and **verifier**.
-Collector will watch the Ethereum chain, compose mint transaction on CKB when it sees new confirmed lock transactions on
+The **collector** will watch the Ethereum chain, compose mint transactions on CKB when it sees newly confirmed lock transactions on
 Ethereum, send the raw transaction to all verifiers to collect their signatures.
 Verifiers will watch both chains, verify the sign request sent by collector, provide their signature if it is a legal
 cross chain transaction.
