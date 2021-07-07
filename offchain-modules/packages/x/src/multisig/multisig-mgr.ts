@@ -9,6 +9,7 @@ import { httpRequest } from './client';
 const SigErrorTxNotFound = 1003;
 const SigErrorTxUnconfirmed = 1004;
 const SigErrorBlockSyncUncompleted = 1005;
+const SigErrorTxCompleted = 1006;
 const SigErrorCodeUnknownError = 9999;
 
 const retryErrorCode = new Map<number, boolean>([
@@ -53,6 +54,10 @@ export interface collectSignaturesParams {
   payload: ethCollectSignaturesPayload | ckbCollectSignaturesPayload;
 }
 
+export interface getPendingTxParams {
+  chain: string;
+}
+
 export class MultiSigMgr {
   private chainType: string;
   private sigServerHosts: MultiSignHost[];
@@ -63,7 +68,7 @@ export class MultiSigMgr {
     this.threshold = threshold;
   }
 
-  public async collectSignatures(params: collectSignaturesParams): Promise<string[]> {
+  public async collectSignatures(params: collectSignaturesParams): Promise<string[] | boolean> {
     logger.info(
       `collectSignatures chain:${this.chainType} rawData:${params.rawData} payload:${JSON.stringify(
         params.payload,
@@ -74,6 +79,7 @@ export class MultiSigMgr {
     const successSigSvr: string[] = [];
     const sigs: string[] = [];
     let sigServerHosts = this.sigServerHosts;
+    const txCompletedMap = new Map<string, boolean>();
     for (;;) {
       if (sigServerHosts.length === 0) {
         break;
@@ -87,13 +93,27 @@ export class MultiSigMgr {
             if (retryErrorCode.get(sigResp.error.code)) {
               failedSigServerHosts.push(svrHost);
             }
-            logger.error(
-              `MultiSigMgr collectSignatures chain:${this.chainType} address:${svrHost.address} rawData:${
-                params.rawData
-              } payload:${JSON.stringify(params.payload, null, 2)} sigServer:${svrHost.host}, errorCode:${
-                sigResp.error.code
-              } errorMessage:${sigResp.error.message}`,
-            );
+            if (sigResp.error.code === SigErrorTxCompleted) {
+              txCompletedMap.set(svrHost.host, true);
+              logger.warn(
+                `MultiSigMgr collectSignatures chain:${this.chainType} address:${svrHost.address} rawData:${
+                  params.rawData
+                } payload:${JSON.stringify(params.payload, null, 2)} sigServer:${svrHost.host}, errorCode:${
+                  sigResp.error.code
+                } errorMessage:${sigResp.error.message}`,
+              );
+              if (txCompletedMap.size >= this.threshold) {
+                return true;
+              }
+            } else {
+              logger.error(
+                `MultiSigMgr collectSignatures chain:${this.chainType} address:${svrHost.address} rawData:${
+                  params.rawData
+                } payload:${JSON.stringify(params.payload, null, 2)} sigServer:${svrHost.host}, errorCode:${
+                  sigResp.error.code
+                } errorMessage:${sigResp.error.message}`,
+              );
+            }
             continue;
           }
           const sig = sigResp.result as string;
@@ -140,5 +160,62 @@ export class MultiSigMgr {
         return Promise.reject(new Error(`chain type:${this.chainType} doesn't support`));
     }
     return httpRequest(host, method, params);
+  }
+
+  public async getPendingTx(params: getPendingTxParams): Promise<collectSignaturesParams | undefined> {
+    const pendingTxPromises = this.sigServerHosts.map((svr) => {
+      return new Promise((resolve) => {
+        httpRequest(svr.host, 'pendingTx', params).then(
+          (value) => {
+            const resp = value as JSONRPCResponse;
+            if (resp.error) {
+              logger.error(`getPendingTx host:${svr.host} response error:${resp.error}`);
+              return resolve(null);
+            } else {
+              if (resp.result) {
+                return resolve(value);
+              }
+              return resolve(null);
+            }
+          },
+          (err) => {
+            logger.error(`getPendingTx host:${svr.host} error:${err.message}`);
+            resolve(null);
+          },
+        );
+      });
+    });
+
+    const pendingTxs = (await Promise.all(pendingTxPromises)).filter((pendingTx) => {
+      return pendingTx !== null;
+    });
+    switch (pendingTxs.length) {
+      case 0:
+        return undefined;
+      case 1:
+        return (pendingTxs[0] as JSONRPCResponse).result;
+    }
+
+    const pendingMap = new Map<string, { count: number; pendingTx: collectSignaturesParams }>();
+    pendingTxs.forEach((pendingTx) => {
+      const pendingTxResp = pendingTx as JSONRPCResponse;
+      const pendingTxObj = pendingTxResp.result as collectSignaturesParams;
+      const pendingTxCount = pendingMap.get(pendingTxObj.rawData);
+      if (pendingTxCount) {
+        pendingTxCount.count++;
+        pendingMap.set(pendingTxObj.rawData, pendingTxCount);
+      } else {
+        pendingMap.set(pendingTxObj.rawData, { count: 0, pendingTx: pendingTxObj });
+      }
+    });
+
+    const maxCount = -1;
+    let pendingTx: collectSignaturesParams | undefined = undefined;
+    pendingMap.forEach((val) => {
+      if (val.count > maxCount) {
+        pendingTx = val.pendingTx;
+      }
+    });
+    return pendingTx;
   }
 }

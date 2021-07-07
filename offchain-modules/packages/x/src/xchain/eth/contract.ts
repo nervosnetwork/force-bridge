@@ -54,6 +54,10 @@ export class EthChain {
     }
   }
 
+  getMultiSigMgr(): MultiSigMgr {
+    return this.multisigMgr;
+  }
+
   watchLockEvents(startHeight = 1, handleLogFunc: HandleLogFn): void {
     const filter = {
       address: this.bridgeContractAddr,
@@ -184,7 +188,7 @@ export class EthChain {
     return false;
   }
 
-  async sendUnlockTxs(records: EthUnlock[]): Promise<ethers.providers.TransactionResponse | Error> {
+  async sendUnlockTxs(records: EthUnlock[]): Promise<ethers.providers.TransactionResponse | boolean | Error> {
     logger.debug('contract balance', await this.provider.getBalance(this.bridgeContractAddr));
     const params: EthUnlockRecord[] = records.map((r) => {
       return {
@@ -197,7 +201,11 @@ export class EthChain {
     const domainSeparator = await this.bridge.DOMAIN_SEPARATOR();
     const typeHash = await this.bridge.UNLOCK_TYPEHASH();
     const nonce: BigNumber = await this.bridge.latestUnlockNonce_();
-    const signatures = await this.signUnlockRecords(domainSeparator, typeHash, params, nonce);
+    const signResult = await this.signUnlockRecords(domainSeparator, typeHash, params, nonce);
+    if (typeof signResult === 'boolean') {
+      return true;
+    }
+    const signatures = signResult as string[];
     if (signatures.length < ForceBridgeCore.config.eth.multiSignThreshold) {
       return new Error(
         `sig number:${signatures.length} less than multiSignThreshold:${ForceBridgeCore.config.eth.multiSignThreshold}`,
@@ -230,7 +238,7 @@ export class EthChain {
     typeHash: string,
     records: EthUnlockRecord[],
     nonce: BigNumber,
-  ): Promise<string[]> {
+  ): Promise<string[] | boolean> {
     const rawData = buildSigRawData(domainSeparator, typeHash, records, nonce);
     return await this.multisigMgr.collectSignatures({
       rawData: rawData,

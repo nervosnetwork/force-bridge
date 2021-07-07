@@ -23,6 +23,7 @@ export enum SigErrorCode {
   TxUnconfirmed,
   TxNotFound,
   BlockSyncUncompleted,
+  TxCompleted,
   UnknownError = 9999,
 }
 
@@ -34,6 +35,7 @@ const errMessages = new Map([
   [SigErrorCode.TxNotFound, 'tx not found'],
   [SigErrorCode.TxUnconfirmed, 'tx unconfirmed'],
   [SigErrorCode.BlockSyncUncompleted, 'block sync uncompleted'],
+  [SigErrorCode.TxCompleted, 'tx has already completed'],
   [SigErrorCode.UnknownError, 'unknown error'],
 ]);
 

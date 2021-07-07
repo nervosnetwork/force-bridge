@@ -4,7 +4,7 @@ import { SignedDb } from '@force-bridge/x/dist/db/signed';
 import { startHandlers } from '@force-bridge/x/dist/handlers';
 import { responseStatus } from '@force-bridge/x/dist/monitor/rpc-metric';
 import { SigserverMetric } from '@force-bridge/x/dist/monitor/sigserver-metric';
-import { collectSignaturesParams } from '@force-bridge/x/dist/multisig/multisig-mgr';
+import { collectSignaturesParams, getPendingTxParams } from '@force-bridge/x/dist/multisig/multisig-mgr';
 import { ServerSingleton } from '@force-bridge/x/dist/server/serverSingleton';
 import { getDBConnection, privateKeyToCkbAddress, privateKeyToEthAddress } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
@@ -16,16 +16,19 @@ import { Connection } from 'typeorm';
 import { signCkbTx } from './ckbSigner';
 import { SigError, SigErrorCode } from './error';
 import { signEthTx } from './ethSigner';
-import { serverStatus } from './status';
+import { getPendingTx, getPendingTxResult } from './pendingTx';
+import { serverStatus, serverStatusResult } from './status';
 
 const apiPath = '/force-bridge/sign-server/api/v1';
 const defaultPort = 80;
 
+export type SigResponseData = string | serverStatusResult | getPendingTxResult;
+
 export class SigResponse {
-  Data?: any;
+  Data?: SigResponseData;
   Error: SigError;
 
-  constructor(err: SigError, data?: string) {
+  constructor(err: SigError, data?: SigResponseData) {
     this.Error = err;
     if (data) {
       this.Data = data;
@@ -35,7 +38,7 @@ export class SigResponse {
   static fromSigError(code: SigErrorCode, message?: string): SigResponse {
     return new SigResponse(new SigError(code, message));
   }
-  static fromData(data: any): SigResponse {
+  static fromData(data: SigResponseData): SigResponse {
     return new SigResponse(new SigError(SigErrorCode.Ok), data);
   }
 }
@@ -124,6 +127,14 @@ export async function startSigServer(configPath: string): Promise<void> {
       return await serverStatus();
     } catch (e) {
       logger.error(`status error:${e.message}`);
+      return SigResponse.fromSigError(SigErrorCode.UnknownError, e.message);
+    }
+  });
+  server.addMethod('pendingTx', async (params: getPendingTxParams) => {
+    try {
+      return await getPendingTx(params);
+    } catch (e) {
+      logger.error(`get getPendingTx params:${JSON.stringify(params, undefined, 2)} error:${e.message}`);
       return SigResponse.fromSigError(SigErrorCode.UnknownError, e.message);
     }
   });

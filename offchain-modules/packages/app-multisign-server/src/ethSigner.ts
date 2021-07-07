@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import path from 'path';
 import { ChainType, EthAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { ICkbBurn } from '@force-bridge/x/dist/db/model';
@@ -11,6 +13,8 @@ import { publicKeyCreate } from 'secp256k1';
 import { SigError, SigErrorCode, SigErrorOk } from './error';
 import { SigResponse, SigServer } from './sigServer';
 
+export const ethPendingTxFileName = path.join('./', './.eth_pending_tx.json');
+
 async function verifyDuplicateEthTx(pubKey: string, payload: ethCollectSignaturesPayload): Promise<SigError> {
   const refTxHashes = payload.unlockRecords.map((record) => {
     return record.ckbTxHash;
@@ -18,14 +22,7 @@ async function verifyDuplicateEthTx(pubKey: string, payload: ethCollectSignature
 
   const unlocks = await SigServer.ethDb.getEthUnlockByCkbTxHashes(refTxHashes);
   if (unlocks.length !== 0) {
-    logger.error(
-      `EthSigner verifyDuplicateEthTx ckbTxHashes:${unlocks
-        .map((unlock) => {
-          return unlock.ckbTxHash;
-        })
-        .join(',')} have already unlocked.`,
-    );
-    return new SigError(SigErrorCode.DuplicateSign);
+    return new SigError(SigErrorCode.TxCompleted);
   }
 
   const nonce = await SigServer.ethBridgeContract.latestUnlockNonce_();
@@ -123,6 +120,7 @@ export async function signEthTx(params: collectSignaturesParams): Promise<SigRes
     }),
   );
 
+  fs.writeFileSync(ethPendingTxFileName, JSON.stringify(params.payload, undefined, 2), { mode: '0644' });
   return SigResponse.fromData(signature);
 }
 

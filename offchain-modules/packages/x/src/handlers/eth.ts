@@ -455,6 +455,12 @@ export class EthHandler {
         });
         await this.ethDb.saveEthUnlock(records);
         const txRes = await this.ethChain.sendUnlockTxs(records);
+        if (typeof txRes === 'boolean') {
+          records.map((r) => {
+            r.status = 'success';
+          });
+          break;
+        }
         if (txRes instanceof Error) {
           records.map((r) => {
             r.status = 'error';

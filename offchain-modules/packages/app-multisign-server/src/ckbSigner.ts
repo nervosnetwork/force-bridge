@@ -1,3 +1,5 @@
+import fs from 'fs';
+import * as path from 'path';
 import { Cell } from '@ckb-lumos/base';
 import { common } from '@ckb-lumos/common-scripts';
 import { key } from '@ckb-lumos/hd';
@@ -12,11 +14,12 @@ import {
   collectSignaturesParams,
   mintRecord,
 } from '@force-bridge/x/dist/multisig/multisig-mgr';
-import { logger } from '@force-bridge/x/dist/utils/logger';
 import { Address, AddressType, Amount } from '@lay2/pw-core';
 import { BigNumber } from 'ethers';
 import { SigError, SigErrorCode, SigErrorOk } from './error';
 import { SigResponse, SigServer } from './sigServer';
+
+export const ckbPendingTxFileName = path.join('./', './.ckb_pending_tx.json');
 
 async function verifyCreateCellTx(rawData: string, payload: ckbCollectSignaturesPayload): Promise<SigError> {
   const txSkeleton = payload.txSkeleton;
@@ -97,14 +100,7 @@ async function verifyDuplicateMintTx(pubKey: string, mintRecords: mintRecord[], 
 
   const mints = await SigServer.ckbDb.getCkbMintByLockTxHashes(refTxHashes);
   if (mints.length !== 0) {
-    logger.error(
-      `CkbSigner verifyDuplicateMintTx lockTxHashes:${mints
-        .map((mint) => {
-          return mint.id;
-        })
-        .join(',')} have already mint.`,
-    );
-    return new SigError(SigErrorCode.DuplicateSign);
+    return new SigError(SigErrorCode.TxCompleted);
   }
 
   const signedRawDatas = await SigServer.signedDb.getDistinctRawDataByRefTxHashes(pubKey, refTxHashes);
@@ -401,6 +397,8 @@ export async function signCkbTx(params: collectSignaturesParams): Promise<SigRes
         };
       }),
     );
+
+    fs.writeFileSync(ckbPendingTxFileName, JSON.stringify(params.payload, undefined, 2), { mode: '0644' });
   }
   return SigResponse.fromData(sig);
 }
