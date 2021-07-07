@@ -6,7 +6,7 @@ will be signed by the committee to take effect on the counter-party chain.
 There will be two roles in the architecture, **collector** and **verifier**.
 The **collector** will watch the Ethereum chain, compose mint transactions on CKB when it sees newly confirmed lock transactions on
 Ethereum, send the raw transaction to all verifiers to collect their signatures.
-Verifiers will watch both chains, verify the sign request sent by collector, provide their signature if it is a legal
+**Verifiers** will watch both chains, verify the sign request sent by the collector, provide their signature if it is a legal
 cross chain transaction.
 When collector gets signatures more than multi-signature threshold, it will send the transaction to CKB Chain.
 The process is similar to compose unlock transactions on Ethereum when it sees new confirmed burn transactions on CKB.
