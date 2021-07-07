@@ -167,6 +167,6 @@ http://127.0.0.1:80/force-bridge/sign-server/api/v1
 }
 ```
 
-You can use your own process manager(systemd, pm2, supervisor, etc) to restart it when the process exits accidentally.
+You can use your own process manager(systemd, [pm2](https://pm2.keymetrics.io/), [supervisor](https://github.com/petruisfan/node-supervisor), etc) to restart it when the process exits accidentally.
 
 If you run into any problem, feel free to [open an issue](https://github.com/nervosnetwork/force-bridge/issues/new).
