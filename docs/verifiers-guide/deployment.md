@@ -1,6 +1,6 @@
 # Deployment Guide For Verifiers
 
-In Force Bridge, assets of users are guarded by multi-signature of the committee. So every cross chain transaction
+In Force Bridge, the assets of users are guarded by the multi-signature of the committee. So every cross-chain transaction
 will be signed by the committee to take effect on the counter-party chain.
 
 There will be two roles in the architecture, collector and verifier.
