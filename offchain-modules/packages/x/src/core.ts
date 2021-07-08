@@ -5,6 +5,7 @@ import nconf from 'nconf';
 import { CkbIndexer } from './ckb/tx-helper/indexer';
 import { Config } from './config';
 import { asserts } from './errors';
+import { ServerSingleton } from './server/serverSingleton';
 import { initLog } from './utils/logger';
 
 export function bootstrapKeyStore(
@@ -77,6 +78,10 @@ export class ForceBridgeCore {
     // init log
     initLog(config.common.log);
 
+    // set server port
+    if (config.common.port) {
+      ServerSingleton.getInstance().start(config.common.port);
+    }
     // decrypt private key
     console.log('keystorePath', config.common.keystorePath);
     const keystore = bootstrapKeyStore(config.common.keystorePath);

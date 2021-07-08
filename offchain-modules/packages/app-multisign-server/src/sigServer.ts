@@ -2,16 +2,15 @@ import { bootstrap, ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { CkbDb, EthDb, KVDb } from '@force-bridge/x/dist/db';
 import { SignedDb } from '@force-bridge/x/dist/db/signed';
 import { startHandlers } from '@force-bridge/x/dist/handlers';
-import { BridgeMetricSingleton } from '@force-bridge/x/dist/monitor/bridge-metric';
 import { responseStatus } from '@force-bridge/x/dist/monitor/rpc-metric';
 import { SigserverMetric } from '@force-bridge/x/dist/monitor/sigserver-metric';
 import { collectSignaturesParams } from '@force-bridge/x/dist/multisig/multisig-mgr';
+import { ServerSingleton } from '@force-bridge/x/dist/server/serverSingleton';
 import { getDBConnection, privateKeyToCkbAddress, privateKeyToEthAddress } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
 import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
 import bodyParser from 'body-parser';
 import { ethers } from 'ethers';
-import express from 'express';
 import { JSONRPCServer } from 'json-rpc-2.0';
 import { Connection } from 'typeorm';
 import { signCkbTx } from './ckbSigner';
@@ -98,7 +97,6 @@ export class SigServer {
 export async function startSigServer(configPath: string): Promise<void> {
   await bootstrap(configPath);
   ForceBridgeCore.config.common.role = 'watcher';
-  const port = ForceBridgeCore.config.common.port || defaultPort;
   const conn = await getDBConnection();
   //start chain handlers
   startHandlers(conn);
@@ -129,23 +127,56 @@ export async function startSigServer(configPath: string): Promise<void> {
       return SigResponse.fromSigError(SigErrorCode.UnknownError, e.message);
     }
   });
-  let app = express();
-  if (ForceBridgeCore.config.common.openMetric) {
-    app = BridgeMetricSingleton.getInstance(ForceBridgeCore.config.common.role).getServer();
-  }
 
-  app.use(bodyParser.json());
+  ServerSingleton.getInstance().getServer().use(bodyParser.json());
 
-  app.post(apiPath, (req, res) => {
-    logger.info('request', req.method, req.body);
-    const startTime = Date.now();
-    const jsonRPCRequest = req.body;
-    // server.receive takes a JSON-RPC request and returns a promise of a JSON-RPC response.
-    // Alternatively, you can use server.receiveJSON, which takes JSON string as is (in this case req.body).
-    server.receive(jsonRPCRequest).then(
-      (jsonRPCResponse) => {
-        if (!jsonRPCResponse) {
-          logger.error('Sig Server Error: the jsonRPCResponse is null');
+  ServerSingleton.getInstance()
+    .getServer()
+    .post(apiPath, (req, res) => {
+      logger.info('request', req.method, req.body);
+      const startTime = Date.now();
+      const jsonRPCRequest = req.body;
+      // server.receive takes a JSON-RPC request and returns a promise of a JSON-RPC response.
+      // Alternatively, you can use server.receiveJSON, which takes JSON string as is (in this case req.body).
+      server.receive(jsonRPCRequest).then(
+        (jsonRPCResponse) => {
+          if (!jsonRPCResponse) {
+            logger.error('Sig Server Error: the jsonRPCResponse is null');
+            if (jsonRPCRequest.params && jsonRPCRequest.method && jsonRPCRequest.params.requestAddress) {
+              SigServer.metrics.setSigServerRequestMetric(
+                jsonRPCRequest.params.requestAddress!,
+                jsonRPCRequest.method,
+                'failed',
+                Date.now() - startTime,
+              );
+            }
+            res.sendStatus(204);
+            return;
+          }
+
+          let status: responseStatus = 'success';
+          const sigRsp = jsonRPCResponse.result as SigResponse;
+          if (sigRsp.Error.Code === SigErrorCode.Ok) {
+            jsonRPCResponse.result = sigRsp.Data;
+          } else {
+            status = 'failed';
+            jsonRPCResponse.result = undefined;
+            jsonRPCResponse.error = { code: sigRsp.Error.Code, message: sigRsp.Error.Message };
+          }
+
+          res.json(jsonRPCResponse);
+          if (jsonRPCRequest.params && jsonRPCRequest.method && jsonRPCRequest.params.requestAddress) {
+            SigServer.metrics.setSigServerRequestMetric(
+              jsonRPCRequest.params.requestAddress!,
+              jsonRPCRequest.method,
+              status,
+              Date.now() - startTime,
+            );
+          }
+          logger.info('response', jsonRPCResponse, ' status :', status);
+        },
+        (reason) => {
+          logger.error('Sig Server Error: the request is rejected by ', reason);
           if (jsonRPCRequest.params && jsonRPCRequest.method && jsonRPCRequest.params.requestAddress) {
             SigServer.metrics.setSigServerRequestMetric(
               jsonRPCRequest.params.requestAddress!,
@@ -154,47 +185,8 @@ export async function startSigServer(configPath: string): Promise<void> {
               Date.now() - startTime,
             );
           }
-          res.sendStatus(204);
-          return;
-        }
-
-        let status: responseStatus = 'success';
-        const sigRsp = jsonRPCResponse.result as SigResponse;
-        if (sigRsp.Error.Code === SigErrorCode.Ok) {
-          jsonRPCResponse.result = sigRsp.Data;
-        } else {
-          status = 'failed';
-          jsonRPCResponse.result = undefined;
-          jsonRPCResponse.error = { code: sigRsp.Error.Code, message: sigRsp.Error.Message };
-        }
-
-        res.json(jsonRPCResponse);
-        if (jsonRPCRequest.params && jsonRPCRequest.method && jsonRPCRequest.params.requestAddress) {
-          SigServer.metrics.setSigServerRequestMetric(
-            jsonRPCRequest.params.requestAddress!,
-            jsonRPCRequest.method,
-            status,
-            Date.now() - startTime,
-          );
-        }
-        logger.info('response', jsonRPCResponse, ' status :', status);
-      },
-      (reason) => {
-        logger.error('Sig Server Error: the request is rejected by ', reason);
-        if (jsonRPCRequest.params && jsonRPCRequest.method && jsonRPCRequest.params.requestAddress) {
-          SigServer.metrics.setSigServerRequestMetric(
-            jsonRPCRequest.params.requestAddress!,
-            jsonRPCRequest.method,
-            'failed',
-            Date.now() - startTime,
-          );
-        }
-        res.sendStatus(500);
-      },
-    );
-  });
-  if (!ForceBridgeCore.config.common.openMetric) {
-    app.listen(port);
-  }
-  logger.info(`sig server handler started on ${port}  🚀`);
+          res.sendStatus(500);
+        },
+      );
+    });
 }

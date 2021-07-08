@@ -1,7 +1,6 @@
-import express from 'express';
 import * as Prometheus from 'prom-client';
 import { forceBridgeRole } from '../config';
-import { logger } from '../utils/logger';
+import { ServerSingleton } from '../server/serverSingleton';
 
 export type chainType = 'ckb' | 'eth';
 export type txType = 'ckb_mint' | 'ckb_burn' | 'eth_lock' | 'eth_unlock';
@@ -20,8 +19,6 @@ export class BridgeMetricSingleton {
   private relayForkHeightNum: Prometheus.Gauge<any>;
 
   private register: Prometheus.Registry;
-
-  private server: express;
 
   constructor(role: forceBridgeRole) {
     this.register = new Prometheus.Registry();
@@ -51,38 +48,34 @@ export class BridgeMetricSingleton {
     this.register.registerMetric(this.relayForkHeightNum);
   }
 
-  init(metricsPort: number): void {
-    if (metricsPort != -1) {
-      this.server = express();
-      this.server.get('/metrics', async (req, res) => {
-        try {
-          res.set('Content-Type', this.register.contentType);
-          res.end(await this.register.metrics());
-        } catch (ex) {
-          res.status(500).end(ex);
-        }
-      });
+  init(openMetrics: boolean): void {
+    if (openMetrics) {
+      ServerSingleton.getInstance()
+        .getServer()
+        .get('/metrics', async (req, res) => {
+          try {
+            res.set('Content-Type', this.register.contentType);
+            res.end(await this.register.metrics());
+          } catch (ex) {
+            res.status(500).end(ex);
+          }
+        });
 
-      this.server.get('/metrics/counter', async (req, res) => {
-        try {
-          res.set('Content-Type', this.register.contentType);
-          res.end(await this.register.getSingleMetricAsString('test_counter'));
-        } catch (ex) {
-          res.status(500).end(ex);
-        }
-      });
-
-      this.server.listen(metricsPort);
-      logger.info(`Metric Server:  listening to ${metricsPort}, metrics exposed on /metrics endpoint`);
+      ServerSingleton.getInstance()
+        .getServer()
+        .server.get('/metrics/counter', async (req, res) => {
+          try {
+            res.set('Content-Type', this.register.contentType);
+            res.end(await this.register.getSingleMetricAsString('test_counter'));
+          } catch (ex) {
+            res.status(500).end(ex);
+          }
+        });
     }
   }
 
   public getRegister(): Prometheus.Registry {
     return this.register;
-  }
-
-  public getServer(): express {
-    return this.server;
   }
 
   public setBlockHeightMetrics(chain_type: chainType, sync_height: number, actual_height: number): void {
