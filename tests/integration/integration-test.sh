@@ -18,6 +18,7 @@ export FORCE_BRIDGE_KEYSTORE_PASSWORD=123456
 export MULTISIG_NUMBER=5
 export THRESHOLD=3
 export FORCE_BRIDGE_RPC_URL="http://127.0.0.1:8080/force-bridge/api/v1"
+export FORCE_BRIDGE_KEYSTORE_PATH="${INTEGRATION_TEST_WORKDIR}/configs/keystore.json"
 
 function install_and_build {
   cd "${OFFCHAIN_MODULES_DIR}"
@@ -48,6 +49,7 @@ function generate_multisig {
   cd "${OFFCHAIN_MODULES_DIR}"
   mkdir -p ${CONFIG_PATH}
   cp ${CURRENT_DIR}/config/* ${CONFIG_PATH}
+  npx ts-node "${OFFCHAIN_MODULES_DIR}"/packages/scripts/src/generate_account.ts
   npx ts-node "${OFFCHAIN_MODULES_DIR}"/packages/scripts/src/generate_multisig.ts
 }
 
