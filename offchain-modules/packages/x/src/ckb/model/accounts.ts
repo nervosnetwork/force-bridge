@@ -59,15 +59,11 @@ export class Account {
 
   async getLockscript(): Promise<Script> {
     if (this.lockscript === undefined) {
-      const { secp256k1Dep } = await ForceBridgeCore.ckb.loadDeps();
-
-      asserts(secp256k1Dep);
-
       const args = `0x${utils.blake160(this.publicKey, 'hex')}`;
       const lockScript = Script.fromRPC({
-        code_hash: secp256k1Dep.codeHash,
+        code_hash: ForceBridgeCore.secp256k1Dep.codeHash,
         args,
-        hash_type: secp256k1Dep.hashType,
+        hash_type: ForceBridgeCore.secp256k1Dep.hashType,
       });
 
       asserts(lockScript);

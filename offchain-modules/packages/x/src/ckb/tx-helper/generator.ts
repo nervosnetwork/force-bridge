@@ -444,8 +444,8 @@ export class CkbTxGenerator {
 
     const cellDeps = [
       {
-        outPoint: secp256k1Dep.outPoint,
-        depType: secp256k1Dep.depType,
+        outPoint: ForceBridgeCore.secp256k1Dep.outPoint,
+        depType: ForceBridgeCore.secp256k1Dep.depType,
       },
       // sudt dep
       {
