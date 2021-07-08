@@ -27,9 +27,9 @@ const CKB_NODE_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
 const CKB_INDEXER_URL = process.env.CKB_INDEXER_URL || 'http://127.0.0.1:8116';
 const CKB_PRI = process.env.CKB_PRIV_KEY || '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
 
-// const FORCE_BRIDGE_URL = 'http://47.56.233.149:3083/force-bridge/api/v1';
+// const FORCE_BRIDGE_URL = 'XXX';
 
-// const ETH_NODE_URL = 'https://rinkeby.infura.io/v3/48be8feb3f9c46c397ceae02a0dbc7ae';
+// const ETH_NODE_URL = 'XXX';
 // const ETH_PRI = 'XXX';
 
 // const CKB_NODE_URL = 'https://testnet.ckbapp.dev';
