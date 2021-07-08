@@ -18,7 +18,7 @@ signatures. This documentation is a deployment guide for the service.
 
 Install dependencies below.
 
-- NodeJS. The verifier process is a nodejs process.
+- Node.js. The verifier process is a Node.js process. Recommend to use Node.js 12.x version.
 - MySQL. Used to store data for the service. Recommended version is 5.7. You can deploy it yourself or use some database
   service.
 - Docker. Used to run CKB full node and indexer.
