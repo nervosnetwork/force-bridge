@@ -1,9 +1,9 @@
-import { rpcConfig, Config } from '@force-bridge/x/dist/config';
 import { bootstrap, ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { startHandlers } from '@force-bridge/x/dist/handlers';
+import { BridgeMetricSingleton } from '@force-bridge/x/dist/monitor/bridge-metric';
 import { responseStatus, RpcMetric } from '@force-bridge/x/dist/monitor/rpc-metric';
 import { getDBConnection } from '@force-bridge/x/dist/utils';
-import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
+import { logger } from '@force-bridge/x/dist/utils/logger';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import express from 'express';
@@ -13,11 +13,12 @@ import { GetBalancePayload, GetBridgeTransactionSummariesPayload, XChainNetWork 
 
 const version = '0.0.1';
 const forceBridgePath = '/force-bridge/api/v1';
+const defaultPort = 8080;
 
 export async function startRpcServer(configPath: string): Promise<void> {
   await bootstrap(configPath);
   ForceBridgeCore.config.common.role = 'watcher';
-  const rpcConfig: rpcConfig = ForceBridgeCore.config.rpc;
+  const port = ForceBridgeCore.config.common.port || defaultPort;
   const metrics = new RpcMetric(ForceBridgeCore.config.common.role);
   const conn = await getDBConnection();
   //start chain handlers
@@ -67,7 +68,10 @@ export async function startRpcServer(configPath: string): Promise<void> {
     return await forceBridgeRpc.getAssetList(payload);
   });
   server.addMethod('getBridgeConfig', () => forceBridgeRpc.getBridgeConfig());
-  const app = express();
+  let app = express();
+  if (ForceBridgeCore.config.common.openMetric) {
+    app = BridgeMetricSingleton.getInstance(ForceBridgeCore.config.common.role).getServer();
+  }
   app.use(bodyParser.json());
 
   app.post(forceBridgePath, cors(ForceBridgeCore.config.rpc.corsOptions), (req, res) => {
@@ -101,7 +105,8 @@ export async function startRpcServer(configPath: string): Promise<void> {
       },
     );
   });
-
-  app.listen(rpcConfig.port);
-  logger.debug(`rpc server handler started on ${rpcConfig.port}  🚀`);
+  if (!ForceBridgeCore.config.common.openMetric) {
+    app.listen(port);
+  }
+  logger.debug(`rpc server handler started on ${port}  🚀`);
 }

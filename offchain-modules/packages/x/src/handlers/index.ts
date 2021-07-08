@@ -24,8 +24,8 @@ export function startHandlers(conn: Connection): void {
   const isCollector = ForceBridgeCore.config.common.role === 'collector';
 
   let metricsPort = -1;
-  if (ForceBridgeCore.config.common.monitor) {
-    metricsPort = ForceBridgeCore.config.common.monitor.metricPort;
+  if (ForceBridgeCore.config.common.openMetric && ForceBridgeCore.config.common.port) {
+    metricsPort = ForceBridgeCore.config.common.port;
   }
   BridgeMetricSingleton.getInstance(role).init(metricsPort);
 

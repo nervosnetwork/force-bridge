@@ -21,6 +21,8 @@ export class BridgeMetricSingleton {
 
   private register: Prometheus.Registry;
 
+  private server: express;
+
   constructor(role: forceBridgeRole) {
     this.register = new Prometheus.Registry();
     this.relayBlockHeightNum = new Prometheus.Gauge({
@@ -51,8 +53,8 @@ export class BridgeMetricSingleton {
 
   init(metricsPort: number): void {
     if (metricsPort != -1) {
-      const server = express();
-      server.get('/metrics', async (req, res) => {
+      this.server = express();
+      this.server.get('/metrics', async (req, res) => {
         try {
           res.set('Content-Type', this.register.contentType);
           res.end(await this.register.metrics());
@@ -61,7 +63,7 @@ export class BridgeMetricSingleton {
         }
       });
 
-      server.get('/metrics/counter', async (req, res) => {
+      this.server.get('/metrics/counter', async (req, res) => {
         try {
           res.set('Content-Type', this.register.contentType);
           res.end(await this.register.getSingleMetricAsString('test_counter'));
@@ -70,13 +72,17 @@ export class BridgeMetricSingleton {
         }
       });
 
-      server.listen(metricsPort);
+      this.server.listen(metricsPort);
       logger.info(`Metric Server:  listening to ${metricsPort}, metrics exposed on /metrics endpoint`);
     }
   }
 
   public getRegister(): Prometheus.Registry {
     return this.register;
+  }
+
+  public getServer(): express {
+    return this.server;
   }
 
   public setBlockHeightMetrics(chain_type: chainType, sync_height: number, actual_height: number): void {

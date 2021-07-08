@@ -2,6 +2,7 @@ import { bootstrap, ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { CkbDb, EthDb, KVDb } from '@force-bridge/x/dist/db';
 import { SignedDb } from '@force-bridge/x/dist/db/signed';
 import { startHandlers } from '@force-bridge/x/dist/handlers';
+import { BridgeMetricSingleton } from '@force-bridge/x/dist/monitor/bridge-metric';
 import { responseStatus } from '@force-bridge/x/dist/monitor/rpc-metric';
 import { SigserverMetric } from '@force-bridge/x/dist/monitor/sigserver-metric';
 import { collectSignaturesParams } from '@force-bridge/x/dist/multisig/multisig-mgr';
@@ -128,8 +129,11 @@ export async function startSigServer(configPath: string): Promise<void> {
       return SigResponse.fromSigError(SigErrorCode.UnknownError, e.message);
     }
   });
+  let app = express();
+  if (ForceBridgeCore.config.common.openMetric) {
+    app = BridgeMetricSingleton.getInstance(ForceBridgeCore.config.common.role).getServer();
+  }
 
-  const app = express();
   app.use(bodyParser.json());
 
   app.post(apiPath, (req, res) => {
@@ -189,6 +193,8 @@ export async function startSigServer(configPath: string): Promise<void> {
       },
     );
   });
-  app.listen(port);
+  if (!ForceBridgeCore.config.common.openMetric) {
+    app.listen(port);
+  }
   logger.info(`sig server handler started on ${port}  🚀`);
 }
