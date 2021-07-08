@@ -92,7 +92,9 @@ function start_service {
   CONFIG_PATH=${CONFIG_PATH}/watcher.json npx ts-node ./packages/app-rpc-server/src/index.ts &
 
   sleep 20
+}
 
+function ci_test {
   CONFIG_PATH=${CONFIG_PATH}/watcher.json npx ts-node ./packages/scripts/src/integration-test/eth_batch_test.ts
   CONFIG_PATH=${CONFIG_PATH}/watcher.json npx ts-node ./packages/scripts/src/integration-test/rpc-ci.ts
 }
@@ -106,3 +108,4 @@ deploy
 generate_configs
 create_db
 start_service
+ci_test
