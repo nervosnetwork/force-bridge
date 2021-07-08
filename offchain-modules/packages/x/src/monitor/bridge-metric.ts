@@ -63,7 +63,7 @@ export class BridgeMetricSingleton {
 
       ServerSingleton.getInstance()
         .getServer()
-        .server.get('/metrics/counter', async (req, res) => {
+        .get('/metrics/counter', async (req, res) => {
           try {
             res.set('Content-Type', this.register.contentType);
             res.end(await this.register.getSingleMetricAsString('test_counter'));

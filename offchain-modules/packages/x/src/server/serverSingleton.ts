@@ -11,7 +11,7 @@ export class ServerSingleton {
 
   start(port: number): void {
     this.server.listen(port);
-    logger.info(`rpc server handler started on ${port}  🚀`);
+    logger.info(`server handler started on ${port}  🚀`);
   }
 
   public getServer(): express {
