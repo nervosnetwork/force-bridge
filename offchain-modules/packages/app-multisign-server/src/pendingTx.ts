@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import {
   ckbCollectSignaturesPayload,
+  collectSignaturesParams,
   ethCollectSignaturesPayload,
   getPendingTxParams,
 } from '@force-bridge/x/dist/multisig/multisig-mgr';
@@ -10,7 +11,7 @@ import { SigErrorCode } from './error';
 import { ethPendingTxFileName } from './ethSigner';
 import { SigResponse, SigServer } from './sigServer';
 
-export type getPendingTxResult = ethCollectSignaturesPayload | ckbCollectSignaturesPayload | undefined;
+export type getPendingTxResult = collectSignaturesParams | undefined;
 
 export async function getPendingTx(params: getPendingTxParams): Promise<SigResponse> {
   switch (params.chain) {
@@ -26,29 +27,29 @@ export async function getPendingTx(params: getPendingTxParams): Promise<SigRespo
 }
 
 async function getCkbPendingTx(): Promise<SigResponse> {
-  const payload = readPendingTx(ckbPendingTxFileName);
-  if (payload === undefined) {
+  const pendingTx = readPendingTx(ckbPendingTxFileName);
+  if (pendingTx === undefined) {
     return SigResponse.fromData(undefined);
   }
-  const ckbPayload = payload as ckbCollectSignaturesPayload;
+  const ckbPayload = (pendingTx as collectSignaturesParams).payload as ckbCollectSignaturesPayload;
   const mintRecords = await SigServer.ckbDb.getCkbMintByLockTxHashes([ckbPayload.mintRecords![0].id]);
   if (mintRecords.length > 0) {
     return SigResponse.fromData(undefined);
   }
-  return SigResponse.fromData(payload);
+  return SigResponse.fromData(pendingTx);
 }
 
 async function getEthPendingTx(): Promise<SigResponse> {
-  const payload = readPendingTx(ethPendingTxFileName);
-  if (payload === undefined) {
+  const pendingTx = readPendingTx(ethPendingTxFileName);
+  if (pendingTx === undefined) {
     return SigResponse.fromData(undefined);
   }
-  const ethPayload = payload as ethCollectSignaturesPayload;
+  const ethPayload = (pendingTx as collectSignaturesParams).payload as ethCollectSignaturesPayload;
   const nonce: BigNumber = await SigServer.ethBridgeContract.latestUnlockNonce_();
   if (nonce.toNumber() > ethPayload.nonce) {
     return SigResponse.fromData(undefined);
   }
-  return SigResponse.fromData(payload);
+  return SigResponse.fromData(pendingTx);
 }
 
 function readPendingTx(fileName: string): getPendingTxResult {

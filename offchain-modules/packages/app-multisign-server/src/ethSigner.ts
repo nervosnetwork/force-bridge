@@ -4,6 +4,7 @@ import { ChainType, EthAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { ICkbBurn } from '@force-bridge/x/dist/db/model';
 import { collectSignaturesParams, ethCollectSignaturesPayload } from '@force-bridge/x/dist/multisig/multisig-mgr';
+import { verifyCollector } from '@force-bridge/x/dist/multisig/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
 import { EthUnlockRecord } from '@force-bridge/x/dist/xchain/eth';
 import { buildSigRawData } from '@force-bridge/x/dist/xchain/eth/utils';
@@ -72,6 +73,9 @@ async function verifyEthTx(pubKey: string, params: collectSignaturesParams): Pro
 
 export async function signEthTx(params: collectSignaturesParams): Promise<SigResponse> {
   logger.info('signEthTx params: ', JSON.stringify(params, undefined, 2));
+  if (!verifyCollector(params)) {
+    return SigResponse.fromSigError(SigErrorCode.InvalidCollector);
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const privKey = SigServer.getKey('eth', params.requestAddress!);
@@ -120,7 +124,7 @@ export async function signEthTx(params: collectSignaturesParams): Promise<SigRes
     }),
   );
 
-  fs.writeFileSync(ethPendingTxFileName, JSON.stringify(params.payload, undefined, 2), { mode: '0644' });
+  fs.writeFileSync(ethPendingTxFileName, JSON.stringify(params, undefined, 2), { mode: '0644' });
   return SigResponse.fromData(signature);
 }
 

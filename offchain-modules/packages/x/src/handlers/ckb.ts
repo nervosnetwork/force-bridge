@@ -233,7 +233,7 @@ export class CkbHandler {
 
     const burnTxs = new Map();
     for (const tx of block.transactions) {
-      const parsedMintRecords = await this.parseMintTx(tx);
+      const parsedMintRecords = await this.parseMintTx(tx, block);
       if (parsedMintRecords) {
         await this.onMintTx(parsedMintRecords);
         BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('ckb_mint', 'success');
@@ -327,7 +327,7 @@ export class CkbHandler {
     logger.info(`CkbHandler processBurnTxs saveBurnEvent success, burnTxHashes:${burnTxHashes.join(', ')}`);
   }
 
-  async parseMintTx(tx: Transaction): Promise<null | MintedRecords> {
+  async parseMintTx(tx: Transaction, block: Block): Promise<null | MintedRecords> {
     let isInputsContainBridgeCell = false;
     for (const input of tx.inputs) {
       const previousOutput = nonNullable(input.previousOutput);
@@ -368,7 +368,7 @@ export class CkbHandler {
     mintedSudtCellIndexes.forEach((value, index) => {
       const amount = Amount.fromUInt128LE(tx.outputsData[value]);
       const lockTxHash = uint8ArrayToString(new Uint8Array(lockTxHashes.indexAt(index).raw()));
-      parsedResult.push({ amount: amount, lockTxHash: lockTxHash });
+      parsedResult.push({ amount: amount, lockTxHash: lockTxHash, lockBlockHeight: Number(block.header.number) });
     });
     return { txHash: tx.hash, records: parsedResult };
   }
@@ -404,10 +404,12 @@ export class CkbHandler {
             return record.id;
           });
           await this.db.updateCkbMint(mintRecords);
-          logger.info(`CkbHandler handlePendingUnlockRecords set Record to complete lockIds:${lockTxHashes}`);
+          logger.info(`CkbHandler handlePendingMintRecords set Record to complete lockIds:${lockTxHashes}`);
           break;
         }
         if (pendingTx !== undefined) {
+          logger.info(`CkbHandler handlePendingMintRecords pendingTx:${JSON.stringify(pendingTx, undefined, 2)}`);
+
           const ckbSignaturePayload = pendingTx.payload as ckbCollectSignaturesPayload;
           const mintRecords = ckbSignaturePayload.mintRecords;
           await this.doHandleMintRecords(
@@ -428,7 +430,7 @@ export class CkbHandler {
         }
         break;
       } catch (e) {
-        logger.error(`handlePendingMintRecords getUnlockRecords error:${e.message}`);
+        logger.error(`CkbHandler handlePendingMintRecords error:${e.stack}`);
         await asyncSleep(3000);
       }
     }
@@ -451,7 +453,7 @@ export class CkbHandler {
         onRejectedInterval: 0,
         onResolvedInterval: 0,
         onRejected: (e: Error) => {
-          logger.error(`CKB handleTodoMintRecords error:${e.message}`);
+          logger.error(`CKB handleTodoMintRecords error:${e.stack}`);
         },
       },
     );
@@ -487,7 +489,7 @@ export class CkbHandler {
         await this.waitUntilSync();
         break;
       } catch (e) {
-        logger.error(`CkbHandler doHandleMintRecords prepare error:${e.message}`);
+        logger.error(`CkbHandler doHandleMintRecords prepare error:${e.stack}`);
         await asyncSleep(3000);
       }
     }
@@ -555,7 +557,7 @@ export class CkbHandler {
         }
         break;
       } catch (e) {
-        logger.debug(`CkbHandler doHandleMintRecords mint error:${e.toString()}, mintIds:${mintIds}`);
+        logger.debug(`CkbHandler doHandleMintRecords mint mintIds:${mintIds} error:${e.stack()}`);
         await asyncSleep(3000);
       }
     }
@@ -566,7 +568,7 @@ export class CkbHandler {
         logger.info('CkbHandler doHandleMintRecords mint execute completed, mintIds:', mintIds);
         break;
       } catch (e) {
-        logger.error(`CkbHandler doHandleMintRecords db.updateCkbMint mintIds:${mintIds} error:${e.message}`);
+        logger.error(`CkbHandler doHandleMintRecords db.updateCkbMint mintIds:${mintIds} error:${e.stack}`);
       }
     }
   }
@@ -686,7 +688,13 @@ export class CkbHandler {
         txSkeleton: txSkeleton.toJS(),
       },
     });
-    content1 += (sigs as string[]).join('');
+    const signatures = sigs as string[];
+    if (signatures.length < ForceBridgeCore.config.ckb.multisigScript.M) {
+      throw new Error(
+        `createBridgeCell collect signatures failed, expected:${ForceBridgeCore.config.ckb.multisigScript.M}, collected:${signatures.length}`,
+      );
+    }
+    content1 += signatures.join('');
 
     const tx = sealTransaction(txSkeleton, [content0, content1]);
     logger.info('tx:', JSON.stringify(tx, null, 2));

@@ -1,5 +1,5 @@
 import { Amount } from '@lay2/pw-core';
-import { ethers } from 'ethers';
+import { BigNumber, ethers } from 'ethers';
 import { ChainType, EthAsset } from '../ckb/model/asset';
 import { forceBridgeRole } from '../config';
 import { ForceBridgeCore } from '../core';
@@ -233,6 +233,7 @@ export class EthHandler {
       const mintRecords = confirmedRecords.map((lockRecord) => {
         return {
           id: lockRecord.txHash,
+          lockBlockHeight: lockRecord.blockNumber,
           chain: ChainType.ETH,
           amount: new Amount(lockRecord.amount, 0).sub(new Amount(lockRecord.bridgeFee, 0)).toString(0),
           asset: lockRecord.token,
@@ -417,13 +418,14 @@ export class EthHandler {
           break;
         }
         if (pendingTx !== undefined) {
+          logger.info(`EthHandler handlePendingUnlockRecords pendingTx:${JSON.stringify(pendingTx, undefined, 2)}`);
           await this.doHandleUnlockRecords(
             (pendingTx.payload as ethCollectSignaturesPayload).unlockRecords.map((ethUnlock) => {
               return {
                 ckbTxHash: ethUnlock.ckbTxHash,
                 asset: ethUnlock.token,
                 recipientAddress: ethUnlock.recipient,
-                amount: ethUnlock.amount.toString(),
+                amount: BigNumber.from(ethUnlock.amount).toString(),
                 ethTxHash: '',
                 status: 'pending',
                 message: '',
@@ -433,7 +435,7 @@ export class EthHandler {
         }
         break;
       } catch (e) {
-        logger.error(`doHandlePendingUnlockRecords error:${e.message}`);
+        logger.error(`doHandlePendingUnlockRecords error:${e.message} stack:${e.stack}`);
         await asyncSleep(3000);
       }
     }
@@ -536,7 +538,7 @@ export class EthHandler {
         break;
       } catch (e) {
         logger.error(
-          `EthHandler doHandleUnlockRecords ckbTxHashes:${unlockTxHashes} error:${e.toString()}, ${e.message}`,
+          `EthHandler doHandleUnlockRecords ckbTxHashes:${unlockTxHashes} error:${e.toString()}, ${e.stack}`,
         );
         await asyncSleep(5000);
       }

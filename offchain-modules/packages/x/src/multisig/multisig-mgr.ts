@@ -1,10 +1,14 @@
+import { key } from '@ckb-lumos/hd';
 import { TransactionSkeletonObject } from '@ckb-lumos/helpers';
+import * as utils from '@nervosnetwork/ckb-sdk-utils';
 import { JSONRPCResponse } from 'json-rpc-2.0';
 import { MultiSignHost } from '../config';
+import { ForceBridgeCore } from '../core';
 import { asyncSleep } from '../utils';
 import { logger } from '../utils/logger';
 import { EthUnlockRecord } from '../xchain/eth';
 import { httpRequest } from './client';
+import { verifyCollector } from './utils';
 
 const SigErrorTxNotFound = 1003;
 const SigErrorTxUnconfirmed = 1004;
@@ -48,14 +52,25 @@ export interface ckbCollectSignaturesPayload {
   txSkeleton: TransactionSkeletonObject;
 }
 
+export type collectSignaturesParamsPayload = ethCollectSignaturesPayload | ckbCollectSignaturesPayload;
+
 export interface collectSignaturesParams {
   rawData: string;
   requestAddress?: string;
-  payload: ethCollectSignaturesPayload | ckbCollectSignaturesPayload;
+  payload: collectSignaturesParamsPayload;
+  collectorSig?: string;
 }
 
 export interface getPendingTxParams {
   chain: string;
+}
+
+function signToCollectSignaturesParams(params: collectSignaturesParams): void {
+  params.collectorSig = '';
+  const rawData = JSON.stringify(params, undefined);
+  const data = new Buffer(rawData).toString('hex');
+  const message = '0x' + utils.blake160('0x' + data, 'hex');
+  params.collectorSig = key.signRecoverable(message, ForceBridgeCore.config.ckb.privateKey);
 }
 
 export class MultiSigMgr {
@@ -76,6 +91,7 @@ export class MultiSigMgr {
         2,
       )}`,
     );
+
     const sigs: { svrHost: MultiSignHost; signature: string; timeCost: number }[] = [];
     let sigServerHosts = this.sigServerHosts;
     const txCompletedMap = new Map<string, boolean>();
@@ -88,6 +104,8 @@ export class MultiSigMgr {
       const sigPromises = sigServerHosts.map((svrHost) => {
         return new Promise((resolve) => {
           params.requestAddress = svrHost.address;
+          //collector sign to rawData;
+          signToCollectSignaturesParams(params);
           this.requestSig(svrHost.host, params).then(
             (value) => {
               resolve({ svrHost: svrHost, sigResp: value, timeCost: new Date().getTime() - startTime });
@@ -199,6 +217,10 @@ export class MultiSigMgr {
               return resolve(null);
             } else {
               if (resp.result) {
+                if (!verifyCollector(resp.result)) {
+                  logger.warn(`getPendingTx invalid pendingTx, pendingTx:${resp.result}`);
+                  return resolve(null);
+                }
                 return resolve(value);
               }
               return resolve(null);

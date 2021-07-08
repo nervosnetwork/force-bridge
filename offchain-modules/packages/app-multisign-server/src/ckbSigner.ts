@@ -14,6 +14,7 @@ import {
   collectSignaturesParams,
   mintRecord,
 } from '@force-bridge/x/dist/multisig/multisig-mgr';
+import { verifyCollector } from '@force-bridge/x/dist/multisig/utils';
 import { Address, AddressType, Amount } from '@lay2/pw-core';
 import { BigNumber } from 'ethers';
 import { SigError, SigErrorCode, SigErrorOk } from './error';
@@ -321,7 +322,7 @@ function verifyTxSkeleton(txSkeleton: TransactionSkeletonType): SigError {
     if (entry.message !== newEntry.message) {
       return new SigError(
         SigErrorCode.InvalidParams,
-        `invalid signingEntrie message:${entry.message} index:${entry.index}`,
+        `invalid signingEntries message:${entry.message} index:${entry.index}`,
       );
     }
     if (entry.type !== newEntry.type) {
@@ -335,6 +336,10 @@ function verifyTxSkeleton(txSkeleton: TransactionSkeletonType): SigError {
 }
 
 export async function signCkbTx(params: collectSignaturesParams): Promise<SigResponse> {
+  if (!verifyCollector(params)) {
+    return SigResponse.fromSigError(SigErrorCode.InvalidCollector);
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const privKey = SigServer.getKey('ckb', params.requestAddress!);
   if (privKey === undefined) {
@@ -398,7 +403,7 @@ export async function signCkbTx(params: collectSignaturesParams): Promise<SigRes
       }),
     );
 
-    fs.writeFileSync(ckbPendingTxFileName, JSON.stringify(params.payload, undefined, 2), { mode: '0644' });
+    fs.writeFileSync(ckbPendingTxFileName, JSON.stringify(params, undefined, 2), { mode: '0644' });
   }
   return SigResponse.fromData(sig);
 }
