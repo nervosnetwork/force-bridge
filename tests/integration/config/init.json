@@ -16,7 +16,8 @@
         "timezone": "Z",
         "synchronize": true,
         "logging": false
-      }
+      },
+      "openMetric": true
     },
     "eth": {
       "rpcUrl": "http://127.0.0.1:8545",

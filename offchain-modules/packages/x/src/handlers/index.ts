@@ -23,11 +23,7 @@ export function startHandlers(conn: Connection): void {
   const role = ForceBridgeCore.config.common.role;
   const isCollector = ForceBridgeCore.config.common.role === 'collector';
 
-  let metricsPort = -1;
-  if (ForceBridgeCore.config.common.monitor) {
-    metricsPort = ForceBridgeCore.config.common.monitor.metricPort;
-  }
-  BridgeMetricSingleton.getInstance(role).init(metricsPort);
+  BridgeMetricSingleton.getInstance(role).init(ForceBridgeCore.config.common.openMetric);
 
   // init db and start handlers
   const ckbDb = new CkbDb(conn);

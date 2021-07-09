@@ -106,7 +106,6 @@ export interface BtcConfig {
 }
 
 export interface rpcConfig {
-  port: number;
   corsOptions?: {
     origin: string;
     methods?: string;
@@ -140,7 +139,7 @@ export interface commonConfig {
   network: 'mainnet' | 'testnet';
   port?: number;
   orm: ormConfig;
-  monitor?: promConfig;
+  openMetric: boolean;
   keystorePath?: string;
 }
 
