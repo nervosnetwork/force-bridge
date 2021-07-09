@@ -5,7 +5,6 @@ import { Address, Amount, DepType, Script, HashType } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import { Reader, normalizers } from 'ckb-js-toolkit';
 import { ForceBridgeCore } from '../../core';
-import { asserts } from '../../errors';
 import { asyncSleep, fromHexString, stringToUint8Array, toHexString } from '../../utils';
 import { logger } from '../../utils/logger';
 import { Asset } from '../model/asset';
@@ -438,14 +437,10 @@ export class CkbTxGenerator {
       return { previousOutput: cell.outPoint, since: '0x0' };
     });
 
-    const { secp256k1Dep } = await this.ckb.loadDeps();
-
-    asserts(secp256k1Dep);
-
     const cellDeps = [
       {
-        outPoint: secp256k1Dep.outPoint,
-        depType: secp256k1Dep.depType,
+        outPoint: ForceBridgeCore.secp256k1Dep.outPoint,
+        depType: ForceBridgeCore.secp256k1Dep.depType,
       },
       // sudt dep
       {
