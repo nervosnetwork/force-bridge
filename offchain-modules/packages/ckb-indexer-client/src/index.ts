@@ -29,8 +29,24 @@ export type Script = {
   hash_type: ScriptHashType;
 };
 
+type Uint64 = string;
+type BlockNumber = string;
+
+export type SearchKeyFilter = {
+  script?: Script;
+  output_data_len_range?: [Uint64, Uint64];
+  output_capacity_range?: [Uint64, Uint64];
+  block_range?: [BlockNumber, BlockNumber];
+};
+
+export type SearchKey = {
+  script: Script;
+  script_type: ScriptType;
+  filter?: SearchKeyFilter;
+};
+
 export type GetTransactionParams = {
-  searchKey: { script: Script; script_type: ScriptType; filter: { script: Script } };
+  searchKey: SearchKey;
   order?: 'asc' | 'desc';
   limit?: string;
   cursor?: string;

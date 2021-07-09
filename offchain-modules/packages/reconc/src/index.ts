@@ -25,6 +25,7 @@ export type FromRecord = {
 
 export type ToRecord = FromRecord & {
   recipient: ID;
+  fromTxId?: ID;
   fee?: Amount;
 };
 
@@ -45,7 +46,7 @@ export class Reconciliation {
 }
 
 export interface Reconciler {
-  readonly account: ID;
+  readonly account?: ID;
   readonly asset: ID;
 
   fetchReconciliation(): Promise<Reconciliation>;

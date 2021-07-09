@@ -20,7 +20,7 @@ import {
   toHexString,
   uint8ArrayToString,
 } from '@force-bridge/x/dist/utils';
-import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
+import { logger } from '@force-bridge/x/dist/utils/logger';
 import { ETH_ADDRESS } from '@force-bridge/x/dist/xchain/eth';
 import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
 import { EthReconcilerBuilder, ForceBridgeContract } from '@force-bridge/xchain-eth';
@@ -195,13 +195,8 @@ async function main() {
     logger.info('parsedLog recipient', recipientParsedLog.args.recipient);
     assert(ethUnlockRecord.recipientAddress === recipientParsedLog.args.recipient);
 
-    const builder = new EthReconcilerBuilder(
-      provider,
-      bridge,
-      new EthDb(conn),
-      new CKBIndexerClient(CKB_INDEXER_URL),
-      ckb.rpc,
-    );
+    const builder = new EthReconcilerBuilder(provider, bridge, new CKBIndexerClient(CKB_INDEXER_URL), ckb.rpc);
+
     const lockReconc = await builder
       .buildLockReconciler(wallet.address, '0x0000000000000000000000000000000000000000')
       .fetchReconciliation();
@@ -211,18 +206,17 @@ async function main() {
 
     assert(lockReconc.checkBalanced(), 'the amount of lock and mint should be balanced');
 
-    const unlockReconc = await builder
-      .buildUnlockReconciler(
-        uint8ArrayToString(recipientLockscript),
-        '0x0000000000000000000000000000000000000000',
-        ownerTypeHash,
-      )
-      .fetchReconciliation();
+    const unlockReconciler = builder.buildUnlockReconciler(
+      uint8ArrayToString(recipientLockscript),
+      '0x0000000000000000000000000000000000000000',
+      ownerTypeHash,
+    );
+    const unlockBalancer = await unlockReconciler.fetchReconciliation();
 
-    logger.info('all burned', unlockReconc.from);
-    logger.info('all unlocked', unlockReconc.to);
+    logger.info('all burned', unlockBalancer.from);
+    logger.info('all unlocked', unlockBalancer.to);
 
-    assert(unlockReconc.checkBalanced(), 'the amount of burn and unlock should be balanced');
+    assert(unlockBalancer.checkBalanced(), 'the amount of burn and unlock should be balanced');
   };
 
   // try 100 times and wait for 3 seconds every time.

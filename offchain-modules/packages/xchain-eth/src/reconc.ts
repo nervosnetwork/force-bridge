@@ -1,17 +1,37 @@
 import type * as Indexer from '@force-bridge/ckb-indexer-client';
 import { CKBIndexerClient } from '@force-bridge/ckb-indexer-client';
 import { FromRecord, Reconciler, Reconciliation, ToRecord } from '@force-bridge/reconc';
-import { RecipientCellData } from '@force-bridge/x/dist/ckb/tx-helper/generated/eth_recipient_cell';
+import { Account } from '@force-bridge/x/dist/ckb/model/accounts';
+import { EthAsset } from '@force-bridge/x/dist/ckb/model/asset';
+import { ScriptLike } from '@force-bridge/x/dist/ckb/model/script';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
-import { fromHexString, uint8ArrayToString } from '@force-bridge/x/dist/utils';
+import { CKBRecordFetcher } from '@force-bridge/x/dist/reconc/CKBRecordFetcher';
+import { uint8ArrayToString } from '@force-bridge/x/dist/utils';
 import CKB from '@nervosnetwork/ckb-sdk-core';
+import { default as RPC } from '@nervosnetwork/ckb-sdk-rpc';
 import { ethers } from 'ethers';
-import { firstValueFrom, from, Observable } from 'rxjs';
-import { expand, filter, map, mergeMap, takeWhile, toArray } from 'rxjs/operators';
+import { firstValueFrom } from 'rxjs';
+import { toArray } from 'rxjs/operators';
 import { ForceBridge as ForceBridgeContract } from './generated/contract';
-import { EthDb } from './local';
 
-const CKB_GET_TRANSACTION_CONCURRENCY = 10;
+function getRecipientTypeScript(): Indexer.Script {
+  return {
+    code_hash: ForceBridgeCore.config.ckb.deps.recipientType.script.codeHash,
+    hash_type: ForceBridgeCore.config.ckb.deps.recipientType.script.hashType,
+    args: '0x',
+  };
+}
+
+export interface EthReconcilerAdapter {
+  readonly ckbIndexer: CKBIndexerClient;
+  readonly ckb: CKB;
+  readonly ethersProvider: ethers.providers.Provider;
+  readonly ethContract: ForceBridgeContract;
+}
+
+export interface EthLockReconcilerAdapter extends EthReconcilerAdapter {
+  bridgeLockScript: ScriptLike;
+}
 
 export class EthLockReconciler implements Reconciler {
   constructor(
@@ -19,43 +39,39 @@ export class EthLockReconciler implements Reconciler {
     readonly asset: string,
     private readonly provider: ethers.providers.Provider,
     private readonly contract: ForceBridgeContract,
-    private readonly db: EthDb,
+    private readonly ckbIndexer: CKBIndexerClient,
+    private readonly ckbRpc: RPC,
   ) {}
 
   async getFromRecordsByOnChainState(): Promise<FromRecord[]> {
-    const contractLogFilter = this.contract.filters.Locked(this.asset, this.account);
+    const { contract, provider } = this;
+    const contractLogFilter = contract.filters.Locked(this.asset, this.account);
 
-    const logs = await this.provider.getLogs({ ...contractLogFilter, fromBlock: 0 });
+    const logs = await provider.getLogs({ ...contractLogFilter, fromBlock: 0 });
     return logs.map((rawLog) => {
-      const parsedLog = this.contract.interface.parseLog(rawLog);
+      const parsedLog = contract.interface.parseLog(rawLog);
       return { amount: parsedLog.args.lockedAmount.toString(), txId: rawLog.transactionHash };
     });
   }
 
   async getToRecordsByLocalState(): Promise<ToRecord[]> {
-    const records = await this.db.getLockRecordsByXChainAddress(this.account, this.asset);
+    const observable = new CKBRecordFetcher({
+      indexer: this.ckbIndexer,
+      rpc: this.ckbRpc,
+      multiSigLock: ScriptLike.from(ForceBridgeCore.config.ckb.multisigLockscript),
+      recipientType: ScriptLike.from(getRecipientTypeScript()),
+      scriptToAddress: Account.scriptToAddress,
+    }).observeMintRecord({
+      asset: new EthAsset(this.asset),
+    });
 
-    return records.map<ToRecord>((record) => ({
-      txId: record.mint_hash,
-      amount: record.mint_amount,
-      recipient: record.recipient,
-      // TODO
-      fee: record.bridge_fee,
-    }));
+    return firstValueFrom(observable.pipe(toArray()));
   }
 
   async fetchReconciliation(): Promise<Reconciliation> {
     const [from, to] = await Promise.all([this.getFromRecordsByOnChainState(), this.getToRecordsByLocalState()]);
     return new Reconciliation(from, to);
   }
-}
-
-async function getRecipientTypeScript(): Promise<Indexer.Script> {
-  return {
-    code_hash: ForceBridgeCore.config.ckb.deps.recipientType.script.codeHash,
-    hash_type: ForceBridgeCore.config.ckb.deps.recipientType.script.hashType,
-    args: '0x',
-  };
 }
 
 export class EthUnlockReconciler implements Reconciler {
@@ -73,7 +89,8 @@ export class EthUnlockReconciler implements Reconciler {
     ownerCellTypeHash: string,
     private ckbIndexer: CKBIndexerClient,
     private ckbRpc: CKB['rpc'],
-    private ethDb: EthDb,
+    private provider: ethers.providers.Provider,
+    private contract: ForceBridgeContract,
   ) {
     this.account = nervosLockscriptAddress;
     this.asset = ethAssetAddress;
@@ -81,58 +98,40 @@ export class EthUnlockReconciler implements Reconciler {
   }
 
   async getFromRecordsByOnChainState(): Promise<FromRecord[]> {
-    const script = ForceBridgeCore.ckb.utils.addressToScript(this.account);
-    const searchKey: Indexer.GetTransactionParams['searchKey'] = {
-      script_type: 'lock',
-      script: { args: script.args, code_hash: script.codeHash, hash_type: script.hashType },
-      filter: { script: await getRecipientTypeScript() },
-    };
+    const fetcher = new CKBRecordFetcher({
+      indexer: this.ckbIndexer,
+      rpc: this.ckbRpc,
+      multiSigLock: ScriptLike.from(ForceBridgeCore.config.ckb.multisigLockscript),
+      recipientType: ScriptLike.from(getRecipientTypeScript()),
+      scriptToAddress: Account.scriptToAddress,
+    });
 
-    const indexerTx2FromRecord =
-      () =>
-      (txs$: Observable<Indexer.IndexerIterableResult<Indexer.GetTransactionsResult>>): Observable<FromRecord> => {
-        return txs$.pipe(
-          mergeMap((txs) => txs.objects.filter((indexerTx) => indexerTx.io_type === 'output')),
-          mergeMap((tx) => this.ckbRpc.getTransaction(tx.tx_hash), CKB_GET_TRANSACTION_CONCURRENCY),
-          map((tx) => {
-            const recipientCellData = new RecipientCellData(fromHexString(tx.transaction.outputsData[0]).buffer);
-            return { recipientCellData, txId: tx.transaction.hash };
-          }),
-          filter((tx) => {
-            const assetBuffer = tx.recipientCellData.getAsset().raw();
-            const assetAddress = uint8ArrayToString(new Uint8Array(assetBuffer));
-            const ownerCellTypeHash = Buffer.from(tx.recipientCellData.getOwnerCellTypeHash().raw()).toString('hex');
-            return (
-              this.asset.toLowerCase() === assetAddress.toLowerCase() &&
-              ownerCellTypeHash === this.ownerCellTypeHash.slice(2)
-            );
-          }),
-          map((item) => {
-            const u128leBuf = new Uint8Array(item.recipientCellData.getAmount().raw());
-            const amount = BigInt('0x' + Buffer.from(u128leBuf).reverse().toString('hex')).toString();
-            return { txId: item.txId, amount };
-          }),
+    const fromRecords$ = fetcher.observeBurnRecord({
+      filterRecipientData: (data) => {
+        const assetBuffer = data.getAsset().raw();
+        const assetAddress = uint8ArrayToString(new Uint8Array(assetBuffer));
+        const ownerCellTypeHash = Buffer.from(data.getOwnerCellTypeHash().raw()).toString('hex');
+        return (
+          this.asset.toLowerCase() === assetAddress.toLowerCase() &&
+          ownerCellTypeHash === this.ownerCellTypeHash.slice(2)
         );
-      };
+      },
+    });
 
-    return firstValueFrom(
-      from(this.ckbIndexer.get_transactions({ searchKey })).pipe(
-        expand((tx) => this.ckbIndexer.get_transactions({ searchKey, cursor: tx.last_cursor })),
-        takeWhile((tx) => tx.objects.length > 0),
-        indexerTx2FromRecord(),
-        toArray(),
-      ),
-    );
+    return firstValueFrom(fromRecords$.pipe(toArray()));
   }
 
   async getToRecordsByLocalState(): Promise<ToRecord[]> {
-    const records = await this.ethDb.getUnlockRecordsByCkbAddress(this.account, this.asset);
-    return records.map((record) => ({
-      txId: record.unlock_hash,
-      amount: record.unlock_amount,
-      recipient: record.recipient,
-      fee: record.bridge_fee,
-    }));
+    const filter = this.contract.filters.Unlocked(this.asset);
+    const logs = await this.provider.getLogs({ ...filter, fromBlock: 0 });
+
+    return logs.map<ToRecord>((rawLog) => {
+      const parsedLog = this.contract.interface.parseLog(rawLog);
+      const { token, receivedAmount, ckbTxHash: fromTxId, recipient } = parsedLog.args;
+      const txId = rawLog.transactionHash;
+      const fee = new EthAsset(token).getBridgeFee('out');
+      return { amount: String(receivedAmount), fromTxId, recipient, txId, fee };
+    });
   }
 
   async fetchReconciliation(): Promise<Reconciliation> {
@@ -157,13 +156,20 @@ export class EthReconcilerBuilder {
   constructor(
     private provider: ethers.providers.Provider,
     private contract: ForceBridgeContract,
-    private ethDb: EthDb,
     private ckbIndexer: CKBIndexerClient,
     private ckbRpc: CKB['rpc'],
   ) {}
 
   buildLockReconciler(ethAccountAddress: string, ethAssetAddress: string): EthLockReconciler {
-    return new EthLockReconciler(ethAccountAddress, ethAssetAddress, this.provider, this.contract, this.ethDb);
+    // return new EthLockReconciler(ethAccountAddress, ethAssetAddress, this.provider, this.contract, this.ethDb);
+    return new EthLockReconciler(
+      ethAccountAddress,
+      ethAssetAddress,
+      this.provider,
+      this.contract,
+      this.ckbIndexer,
+      this.ckbRpc,
+    );
   }
 
   buildUnlockReconciler(
@@ -177,7 +183,8 @@ export class EthReconcilerBuilder {
       ownerCellTypeHash,
       this.ckbIndexer,
       this.ckbRpc,
-      this.ethDb,
+      this.provider,
+      this.contract,
     );
   }
 }
