@@ -26,6 +26,7 @@ async function generateConfig() {
   const collectorConfig: Config = lodash.cloneDeep(config);
   collectorConfig.common.role = 'collector';
   collectorConfig.common.orm.database = 'collector';
+  collectorConfig.common.port = 8090;
   collectorConfig.eth.privateKey = `eth`;
   collectorConfig.ckb.privateKey = `ckb`;
   collectorConfig.eth.multiSignHosts = nodeInfos.nodes.map((v) => {
@@ -58,6 +59,7 @@ async function generateConfig() {
   const watcherConfig: Config = lodash.cloneDeep(config);
   watcherConfig.common.role = 'watcher';
   watcherConfig.common.orm.database = 'watcher';
+  watcherConfig.common.port = 8080;
   collectorConfig.common.log.logFile = path.join(configPath, 'logs/watcher.log');
   writeJsonToFile({ forceBridge: watcherConfig }, path.join(configPath, 'watcher.json'));
 }

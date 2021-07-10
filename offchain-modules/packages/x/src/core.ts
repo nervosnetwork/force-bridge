@@ -5,7 +5,16 @@ import nconf from 'nconf';
 import { CkbIndexer } from './ckb/tx-helper/indexer';
 import { Config } from './config';
 import { asserts } from './errors';
+import { ServerSingleton } from './server/serverSingleton';
 import { initLog } from './utils/logger';
+
+interface DepCellInfo {
+  hashType: CKBComponents.ScriptHashType;
+  codeHash: CKBComponents.Hash256;
+  typeHash?: CKBComponents.Hash256;
+  outPoint: CKBComponents.OutPoint;
+  depType: CKBComponents.DepType;
+}
 
 export function bootstrapKeyStore(
   keystorePath = 'keystore.json',
@@ -45,25 +54,31 @@ export class ForceBridgeCore {
   private static _ckb: CKB;
   private static _ckbIndexer: CkbIndexer;
   private static _keystore: KeyStore;
+  private static _secp256k1Dep: DepCellInfo;
 
   static get config(): Config {
-    asserts(ForceBridgeCore._config, 'ForceBridgeCore is not init yet');
+    asserts(ForceBridgeCore._config, 'ForceBridgeCore config is not init yet');
     return ForceBridgeCore._config;
   }
 
   static get ckb(): CKB {
-    asserts(ForceBridgeCore._config, 'ForceBridgeCore is not init yet');
+    asserts(ForceBridgeCore._ckb, 'ForceBridgeCore ckb is not init yet');
     return ForceBridgeCore._ckb;
   }
 
   static get ckbIndexer(): CkbIndexer {
-    asserts(ForceBridgeCore._config, 'ForceBridgeCore is not init yet');
+    asserts(ForceBridgeCore._ckbIndexer, 'ForceBridgeCore ckbIndexer is not init yet');
     return ForceBridgeCore._ckbIndexer;
   }
 
   static get keystore(): KeyStore {
-    asserts(ForceBridgeCore._keystore, 'ForceBridgeCore is not init yet');
+    asserts(ForceBridgeCore._keystore, 'ForceBridgeCore keystore is not init yet');
     return ForceBridgeCore._keystore;
+  }
+
+  static get secp256k1Dep(): DepCellInfo {
+    asserts(ForceBridgeCore._secp256k1Dep, 'ForceBridgeCore secp256k1Dep is not init yet');
+    return ForceBridgeCore._secp256k1Dep;
   }
 
   /**
@@ -77,6 +92,10 @@ export class ForceBridgeCore {
     // init log
     initLog(config.common.log);
 
+    // set server port
+    if (config.common.port) {
+      ServerSingleton.getInstance().start(config.common.port);
+    }
     // decrypt private key
     console.log('keystorePath', config.common.keystorePath);
     const keystore = bootstrapKeyStore(config.common.keystorePath);
@@ -88,6 +107,9 @@ export class ForceBridgeCore {
     // write static
     ForceBridgeCore.initiated = true;
     ForceBridgeCore._ckb = new CKB(config.ckb.ckbRpcUrl);
+    const { secp256k1Dep } = await ForceBridgeCore._ckb.loadDeps();
+    asserts(secp256k1Dep);
+    ForceBridgeCore._secp256k1Dep = secp256k1Dep;
     ForceBridgeCore._ckbIndexer = new CkbIndexer(config.ckb.ckbRpcUrl, config.ckb.ckbIndexerUrl);
     ForceBridgeCore._config = config;
     ForceBridgeCore._keystore = keystore;

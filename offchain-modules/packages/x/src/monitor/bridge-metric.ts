@@ -1,7 +1,6 @@
-import express from 'express';
 import * as Prometheus from 'prom-client';
 import { forceBridgeRole } from '../config';
-import { logger } from '../utils/logger';
+import { ServerSingleton } from '../server/serverSingleton';
 
 export type chainType = 'ckb' | 'eth';
 export type txType = 'ckb_mint' | 'ckb_burn' | 'eth_lock' | 'eth_unlock';
@@ -49,29 +48,29 @@ export class BridgeMetricSingleton {
     this.register.registerMetric(this.relayForkHeightNum);
   }
 
-  init(metricsPort: number): void {
-    if (metricsPort != -1) {
-      const server = express();
-      server.get('/metrics', async (req, res) => {
-        try {
-          res.set('Content-Type', this.register.contentType);
-          res.end(await this.register.metrics());
-        } catch (ex) {
-          res.status(500).end(ex);
-        }
-      });
+  init(openMetrics: boolean): void {
+    if (openMetrics) {
+      ServerSingleton.getInstance()
+        .getServer()
+        .get('/metrics', async (req, res) => {
+          try {
+            res.set('Content-Type', this.register.contentType);
+            res.end(await this.register.metrics());
+          } catch (ex) {
+            res.status(500).end(ex);
+          }
+        });
 
-      server.get('/metrics/counter', async (req, res) => {
-        try {
-          res.set('Content-Type', this.register.contentType);
-          res.end(await this.register.getSingleMetricAsString('test_counter'));
-        } catch (ex) {
-          res.status(500).end(ex);
-        }
-      });
-
-      server.listen(metricsPort);
-      logger.info(`Metric Server:  listening to ${metricsPort}, metrics exposed on /metrics endpoint`);
+      ServerSingleton.getInstance()
+        .getServer()
+        .get('/metrics/counter', async (req, res) => {
+          try {
+            res.set('Content-Type', this.register.contentType);
+            res.end(await this.register.getSingleMetricAsString('test_counter'));
+          } catch (ex) {
+            res.status(500).end(ex);
+          }
+        });
     }
   }
 
