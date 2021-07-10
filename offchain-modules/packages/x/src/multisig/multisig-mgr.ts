@@ -16,12 +16,11 @@ const SigErrorBlockSyncUncompleted = 1005;
 const SigErrorTxCompleted = 1006;
 const SigErrorCodeUnknownError = 9999;
 
-const retryErrorCode = new Map<number, boolean>([
-  [SigErrorTxNotFound, true],
-  [SigErrorTxUnconfirmed, true],
-  [SigErrorBlockSyncUncompleted, true],
-  [SigErrorCodeUnknownError, true],
-]);
+const retryErrorCode = new Set<number>()
+  .add(SigErrorTxNotFound)
+  .add(SigErrorTxUnconfirmed)
+  .add(SigErrorBlockSyncUncompleted)
+  .add(SigErrorCodeUnknownError);
 
 export interface ethCollectSignaturesPayload {
   domainSeparator: string;
@@ -132,7 +131,7 @@ export class MultiSigMgr {
         const sigResp = promiseResult.sigResp;
         const svrHost = promiseResult.svrHost;
         if (sigResp.error) {
-          if (retryErrorCode.get(sigResp.error.code)) {
+          if (retryErrorCode.has(sigResp.error.code)) {
             failedSigServerHosts.push(svrHost);
           }
           if (sigResp.error.code === SigErrorTxCompleted) {

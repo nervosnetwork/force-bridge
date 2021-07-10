@@ -72,7 +72,7 @@ export class CkbHandler {
 
   async getTipBlock(): Promise<{ height: number; hash: string }> {
     const tipHeader = await this.ckb.rpc.getTipHeader();
-    return { height: Number(tipHeader.number), hash: (this.lastHandledBlockHash = tipHeader.hash) };
+    return { height: Number(tipHeader.number), hash: tipHeader.hash };
   }
 
   async onCkbBurnConfirmed(confirmedCkbBurns: ICkbBurn[]): Promise<void> {

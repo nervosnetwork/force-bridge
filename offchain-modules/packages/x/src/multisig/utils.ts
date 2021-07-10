@@ -28,7 +28,7 @@ export function verifyCollector(params: collectSignaturesParams): boolean {
   const cParams = lodash.cloneDeep(params);
   cParams.collectorSig = '';
   const rawData = JSON.stringify(cParams, undefined);
-  const data = new Buffer(rawData).toString('hex');
+  const data = Buffer.from(rawData, 'utf8').toString('hex');
   const message = '0x' + utils.blake160('0x' + data, 'hex');
   return ForceBridgeCore.config.common.collectorPubKeyHash.some((pkHash) => {
     return signVerify(message, params.collectorSig!, pkHash);
