@@ -13,6 +13,7 @@ import { ethers } from 'ethers';
 import { firstValueFrom } from 'rxjs';
 import { toArray } from 'rxjs/operators';
 import { ForceBridge as ForceBridgeContract } from './generated/contract';
+import { EthReconcObservable } from './reconc/EthRecordObservable';
 
 function getRecipientTypeScript(): Indexer.Script {
   return {
@@ -45,13 +46,16 @@ export class EthLockReconciler implements Reconciler {
 
   async getFromRecordsByOnChainState(): Promise<FromRecord[]> {
     const { contract, provider } = this;
-    const contractLogFilter = contract.filters.Locked(this.asset, this.account);
+    const ethObserver = new EthReconcObservable({ contract, provider });
+    return firstValueFrom(ethObserver.observeLockRecord({ token: this.asset }).pipe(toArray()));
 
-    const logs = await provider.getLogs({ ...contractLogFilter, fromBlock: 0 });
-    return logs.map((rawLog) => {
-      const parsedLog = contract.interface.parseLog(rawLog);
-      return { amount: parsedLog.args.lockedAmount.toString(), txId: rawLog.transactionHash };
-    });
+    // const contractLogFilter = contract.filters.Locked(this.asset, this.account);
+
+    // const logs = await provider.getLogs({ ...contractLogFilter, fromBlock: 0 });
+    // return logs.map((rawLog) => {
+    //   const parsedLog = contract.interface.parseLog(rawLog);
+    //   return { amount: parsedLog.args.lockedAmount.toString(), txId: rawLog.transactionHash };
+    // });
   }
 
   async getToRecordsByLocalState(): Promise<ToRecord[]> {
@@ -122,16 +126,20 @@ export class EthUnlockReconciler implements Reconciler {
   }
 
   async getToRecordsByLocalState(): Promise<ToRecord[]> {
-    const filter = this.contract.filters.Unlocked(this.asset);
-    const logs = await this.provider.getLogs({ ...filter, fromBlock: 0 });
+    const { provider, contract } = this;
+    const ethObserver = new EthReconcObservable({ provider, contract });
+    return firstValueFrom(ethObserver.observeUnlockRecord({ token: this.asset }).pipe(toArray()));
 
-    return logs.map<ToRecord>((rawLog) => {
-      const parsedLog = this.contract.interface.parseLog(rawLog);
-      const { token, receivedAmount, ckbTxHash: fromTxId, recipient } = parsedLog.args;
-      const txId = rawLog.transactionHash;
-      const fee = new EthAsset(token).getBridgeFee('out');
-      return { amount: String(receivedAmount), fromTxId, recipient, txId, fee };
-    });
+    // const filter = this.contract.filters.Unlocked(this.asset);
+    // const logs = await this.provider.getLogs({ ...filter, fromBlock: 0 });
+
+    // return logs.map<ToRecord>((rawLog) => {
+    //   const parsedLog = this.contract.interface.parseLog(rawLog);
+    //   const { token, receivedAmount, ckbTxHash: fromTxId, recipient } = parsedLog.args;
+    //   const txId = rawLog.transactionHash;
+    //   const fee = new EthAsset(token).getBridgeFee('out');
+    //   return { amount: String(receivedAmount), fromTxId, recipient, txId, fee };
+    // });
   }
 
   async fetchReconciliation(): Promise<Reconciliation> {
