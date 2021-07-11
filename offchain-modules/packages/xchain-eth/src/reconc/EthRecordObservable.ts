@@ -30,15 +30,16 @@ export class EthReconcObservable {
     const { provider, contract } = options;
     this.provider = provider;
     this.contract = (
-      contract instanceof Contract ? contract : new Contract(contract, ForceBridge__factory.createInterface())
+      contract instanceof Contract ? contract : new Contract(contract, ForceBridge__factory.createInterface(), provider)
     ) as ForceBridgeContract;
   }
 
   observeLockRecord(logFilter: EventTypeOf<'Locked'>, blockFilter: BlockFilter = {}): Observable<FromRecord> {
     const { provider, contract } = this;
     const contractLogFilter = contract.filters.Locked(logFilter.token, logFilter.sender);
+    const { fromBlock = 0, toBlock } = blockFilter;
 
-    return from(provider.getLogs({ ...contractLogFilter, ...blockFilter })).pipe(
+    return from(provider.getLogs({ ...contractLogFilter, fromBlock, toBlock })).pipe(
       mergeMap((res) => {
         return res.map((rawLog) => {
           const parsedLog = contract.interface.parseLog(rawLog);
@@ -51,9 +52,10 @@ export class EthReconcObservable {
   observeUnlockRecord(logFilter: EventTypeOf<'Unlocked'>, blockFilter: BlockFilter = {}): Observable<ToRecord> {
     const { contract, provider } = this;
 
-    const filter = contract.filters.Unlocked(logFilter.token, logFilter.recipient);
+    const contractLogFilter = contract.filters.Unlocked(logFilter.token, logFilter.recipient);
+    const { fromBlock = 0, toBlock } = blockFilter;
 
-    return from(provider.getLogs({ ...filter, ...blockFilter })).pipe(
+    return from(provider.getLogs({ ...contractLogFilter, fromBlock, toBlock })).pipe(
       concatMap((x) => x),
       map((rawLog) => {
         const parsedLog = contract.interface.parseLog(rawLog);
