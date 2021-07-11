@@ -96,13 +96,6 @@ export class ForceBridgeCore {
     if (config.common.port) {
       ServerSingleton.getInstance().start(config.common.port);
     }
-    // decrypt private key
-    console.log('keystorePath', config.common.keystorePath);
-    const keystore = bootstrapKeyStore(config.common.keystorePath);
-    config.ckb.privateKey = keystore.getDecryptedByKeyID(config.ckb.privateKey);
-    if (config.eth !== undefined) {
-      config.eth.privateKey = keystore.getDecryptedByKeyID(config.eth.privateKey);
-    }
 
     // write static
     ForceBridgeCore.initiated = true;
@@ -112,6 +105,18 @@ export class ForceBridgeCore {
     ForceBridgeCore._secp256k1Dep = secp256k1Dep;
     ForceBridgeCore._ckbIndexer = new CkbIndexer(config.ckb.ckbRpcUrl, config.ckb.ckbIndexerUrl);
     ForceBridgeCore._config = config;
+
+    // watcher run without keystore.json
+    if (config.common.role === 'watcher') {
+      return this;
+    }
+    // decrypt private key
+    console.log('keystorePath', config.common.keystorePath);
+    const keystore = bootstrapKeyStore(config.common.keystorePath);
+    config.ckb.privateKey = keystore.getDecryptedByKeyID(config.ckb.privateKey);
+    if (config.eth !== undefined) {
+      config.eth.privateKey = keystore.getDecryptedByKeyID(config.eth.privateKey);
+    }
     ForceBridgeCore._keystore = keystore;
     return this;
   }

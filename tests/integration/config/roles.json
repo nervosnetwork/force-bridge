@@ -1,0 +1,136 @@
+{
+  "roles": {
+    "verifier": [
+      {
+        "configPath": "~/work/force-bridge/workdir/integration/configs/verifier1.json",
+        "logPath": "~/work/force-bridge/workdir/integration/configs/logs/verifier1.log",
+        "orm": {
+          "type": "mysql",
+          "host": "localhost",
+          "port": 3306,
+          "username": "root",
+          "password": "root",
+          "database": "verifier1",
+          "timezone": "Z",
+          "synchronize": true,
+          "logging": false
+        },
+        "keystorePath": "~/work/force-bridge/workdir/integration/configs/keystore.json",
+        "ckbPrivateKey": "multisig-1",
+        "ethPrivateKey": "multisig-1",
+        "port": 8001
+      },
+      {
+        "configPath": "~/work/force-bridge/workdir/integration/configs/verifier2.json",
+        "logPath": "~/work/force-bridge/workdir/integration/configs/logs/verifier2.log",
+        "orm": {
+          "type": "mysql",
+          "host": "localhost",
+          "port": 3306,
+          "username": "root",
+          "password": "root",
+          "database": "verifier2",
+          "timezone": "Z",
+          "synchronize": true,
+          "logging": false
+        },
+        "keystorePath": "~/work/force-bridge/workdir/integration/configs/keystore.json",
+        "ckbPrivateKey": "multisig-2",
+        "ethPrivateKey": "multisig-2",
+        "port": 8002
+      },
+      {
+        "configPath": "~/work/force-bridge/workdir/integration/configs/verifier3.json",
+        "logPath": "~/work/force-bridge/workdir/integration/configs/logs/verifier3.log",
+        "orm": {
+          "type": "mysql",
+          "host": "localhost",
+          "port": 3306,
+          "username": "root",
+          "password": "root",
+          "database": "verifier3",
+          "timezone": "Z",
+          "synchronize": true,
+          "logging": false
+        },
+        "keystorePath": "~/work/force-bridge/workdir/integration/configs/keystore.json",
+        "ckbPrivateKey": "multisig-3",
+        "ethPrivateKey": "multisig-3",
+        "port": 8003
+      },
+      {
+        "configPath": "~/work/force-bridge/workdir/integration/configs/verifier4.json",
+        "logPath": "~/work/force-bridge/workdir/integration/configs/logs/verifier4.log",
+        "orm": {
+          "type": "mysql",
+          "host": "localhost",
+          "port": 3306,
+          "username": "root",
+          "password": "root",
+          "database": "verifier4",
+          "timezone": "Z",
+          "synchronize": true,
+          "logging": false
+        },
+        "keystorePath": "~/work/force-bridge/workdir/integration/configs/keystore.json",
+        "ckbPrivateKey": "multisig-4",
+        "ethPrivateKey": "multisig-4",
+        "port": 8004
+      },
+      {
+        "configPath": "~/work/force-bridge/workdir/integration/configs/verifier5.json",
+        "logPath": "~/work/force-bridge/workdir/integration/configs/logs/verifier5.log",
+        "orm": {
+          "type": "mysql",
+          "host": "localhost",
+          "port": 3306,
+          "username": "root",
+          "password": "root",
+          "database": "verifier5",
+          "timezone": "Z",
+          "synchronize": true,
+          "logging": false
+        },
+        "keystorePath": "~/work/force-bridge/workdir/integration/configs/keystore.json",
+        "ckbPrivateKey": "multisig-5",
+        "ethPrivateKey": "multisig-5",
+        "port": 8005
+      }
+    ],
+    "collector": {
+      "configPath": "~/work/force-bridge/workdir/integration/configs/collector.json",
+      "logPath": "~/work/force-bridge/workdir/integration/configs/logs/collector.log",
+      "orm": {
+        "type": "mysql",
+        "host": "localhost",
+        "port": 3306,
+        "username": "root",
+        "password": "root",
+        "database": "collector",
+        "timezone": "Z",
+        "synchronize": true,
+        "logging": false
+      },
+      "ethPrivateKey": "eth",
+      "ckbPrivateKey": "ckb",
+      "keystorePath": "~/work/force-bridge/workdir/integration/configs/keystore.json",
+      "port": 8090
+    },
+    "watcher": {
+      "configPath": "~/work/force-bridge/workdir/integration/configs/watcher.json",
+      "logPath": "~/work/force-bridge/workdir/integration/configs/logs/watcher.log",
+      "orm": {
+        "type": "mysql",
+        "host": "localhost",
+        "port": 3306,
+        "username": "root",
+        "password": "root",
+        "database": "collector",
+        "timezone": "Z",
+        "synchronize": true,
+        "logging": false
+      },
+      "port": 8080
+    }
+  }
+}

@@ -17,6 +17,7 @@ export FORCE_BRIDGE_KEYSTORE_PASSWORD=123456
 export MULTISIG_NUMBER=5
 export THRESHOLD=3
 export FORCE_BRIDGE_KEYSTORE_PATH="${INTEGRATION_TEST_WORKDIR}/configs/keystore.json"
+export IS_RUN_CI='Y'
 
 function install_and_build {
   cd "${OFFCHAIN_MODULES_DIR}"
@@ -94,11 +95,11 @@ function start_service {
 }
 
 #clean_all
-#clean_config
+clean_config
 #clean_db
-install_and_build
+#install_and_build
 generate_multisig
-deploy
+#deploy
 generate_configs
-create_db
-start_service
+#create_db
+#start_service

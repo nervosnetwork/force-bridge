@@ -1,0 +1,34 @@
+{
+  "nodes": [
+    {
+      "serverLink": "http://127.0.0.1:8001",
+      "ckbAddress": "ckt1qyqfuy346rjvnfswgq4xethg45zrvun6mljsqyn4q4",
+      "ckbPubkeyHash": "0x9e1235d0e4c9a60e402a6caee8ad0436727adfe5",
+      "ethAddress": "0x9157e4dC2E79E2EB40d65dE5Abe815092546Cf52"
+    },
+    {
+      "serverLink": "http://127.0.0.1:8002",
+      "ckbAddress": "ckt1qyqgcardx3l0n9gcq6y7a5nhaggnrt0ns6hqmg97er",
+      "ckbPubkeyHash": "0x8c746d347ef995180689eed277ea1131adf386ae",
+      "ethAddress": "0x2519a48150EBB63B589EBAc8632118067CfE979c"
+    },
+    {
+      "serverLink": "http://127.0.0.1:8003",
+      "ckbAddress": "ckt1qyqvx9qj72pc03fkt9fnq3rxd9ndwe6qpyzsh33unt",
+      "ckbPubkeyHash": "0xc31412f28387c53659533044666966d767400905",
+      "ethAddress": "0xe7c116d27dC0473Bb8BC6BB996C53dAB1403a1AE"
+    },
+    {
+      "serverLink": "http://127.0.0.1:8004",
+      "ckbAddress": "ckt1qyq8hnc9v63hrncrk5dv7mv2qu0sn5kqy3sshn8jcc",
+      "ckbPubkeyHash": "0x7bcf0566a371cf03b51acf6d8a071f09d2c02461",
+      "ethAddress": "0x1A8db2f1158B94d5f5B0d0b3A68204aAA8d84F13"
+    },
+    {
+      "serverLink": "http://127.0.0.1:8005",
+      "ckbAddress": "ckt1qyqd6z90nla06pu32u2v3fv07x9c0eahvc2s936dwa",
+      "ckbPubkeyHash": "0xdd08af9ffafd07915714c8a58ff18b87e7b76615",
+      "ethAddress": "0xcd1F860A32161277627C929535F2fC2882F8038F"
+    }
+  ]
+}
