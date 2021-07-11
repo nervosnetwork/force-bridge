@@ -1,10 +1,9 @@
-import { Script as LumosScript } from '@ckb-lumos/base';
-import { Amount, Script } from '@lay2/pw-core';
+import {Script, Cell, utils} from '@ckb-lumos/base';
 import { logger } from '../../utils/logger';
-import { CkbIndexer, IndexerCell, ScriptType, SearchKey, Terminator } from './indexer';
+import { CkbIndexer, ScriptType, SearchKey, Terminator } from './indexer';
 
 export abstract class Collector {
-  abstract getCellsByLockscriptAndCapacity(lockscript: Script, capacity: Amount): Promise<IndexerCell[]>;
+  abstract getCellsByLockscriptAndCapacity(lockscript: Script, capacity: BigInt): Promise<Cell[]>;
 }
 
 export class IndexerCollector extends Collector {
@@ -12,37 +11,37 @@ export class IndexerCollector extends Collector {
     super();
   }
 
-  async getCellsByLockscriptAndCapacity(lockscript: Script, needCapacity: Amount): Promise<IndexerCell[]> {
-    let accCapacity = Amount.ZERO;
+  async getCellsByLockscriptAndCapacity(lockscript: Script, needCapacity: BigInt): Promise<Cell[]> {
+    let accCapacity = 0n;
     const terminator: Terminator = (index, c) => {
       const cell = c;
-      if (accCapacity.gte(needCapacity)) {
+      if (accCapacity >= needCapacity) {
         return { stop: true, push: false };
       }
-      if (cell.data.length / 2 - 1 > 0 || cell.type !== undefined) {
+      if (cell.data.length / 2 - 1 > 0 || cell.cell_output.type !== undefined) {
         return { stop: false, push: false };
       } else {
-        accCapacity = accCapacity.add(new Amount(cell.capacity, 0));
+        accCapacity += BigInt(cell.cell_output.capacity);
         return { stop: false, push: true };
       }
     };
     const searchKey = {
-      script: lockscript.serializeJson() as LumosScript,
+      script: lockscript,
       script_type: ScriptType.lock,
     };
     const cells = await this.indexer.getCells(searchKey, terminator);
     return cells;
   }
 
-  async collectSudtByAmount(searchKey: SearchKey, amount: Amount): Promise<IndexerCell[]> {
-    let balance = Amount.ZERO;
+  async collectSudtByAmount(searchKey: SearchKey, amount: BigInt): Promise<Cell[]> {
+    let balance = 0n;
     const terminator: Terminator = (index, c) => {
       const cell = c;
-      if (balance.gte(amount)) {
+      if (balance >= amount) {
         return { stop: true, push: false };
       } else {
-        const cellAmount = Amount.fromUInt128LE(cell.data);
-        balance = balance.add(cellAmount);
+        const cellAmount = utils.readBigUInt128LE(cell.data)
+        balance += cellAmount;
         return { stop: false, push: true };
       }
     };
@@ -50,20 +49,20 @@ export class IndexerCollector extends Collector {
     return cells;
   }
 
-  async getSUDTBalance(sudtType: Script, userLock: Script): Promise<Amount> {
+  async getSUDTBalance(sudtType: Script, userLock: Script): Promise<BigInt> {
     const searchKey = {
-      script: userLock.serializeJson() as LumosScript,
+      script: userLock,
       script_type: ScriptType.lock,
       filter: {
-        script: sudtType.serializeJson() as LumosScript,
+        script: sudtType,
       },
     };
     const cells = await this.indexer.getCells(searchKey);
-    let balance = Amount.ZERO;
+    let balance = 0n;
     cells.forEach((cell) => {
       logger.debug('cell.data:', cell.data);
-      const amount = Amount.fromUInt128LE(cell.data);
-      balance = balance.add(amount);
+      const amount = utils.readBigUInt128LE(cell.data);
+      balance += amount;
     });
     return balance;
   }
@@ -71,27 +70,27 @@ export class IndexerCollector extends Collector {
   async getCellsByLockscriptAndCapacityWhenBurn(
     lockscript: Script,
     recipientTypeCodeHash: string,
-    needCapacity: Amount,
-  ): Promise<IndexerCell[]> {
-    let accCapacity = Amount.ZERO;
+    needCapacity: BigInt,
+  ): Promise<Cell[]> {
+    let accCapacity = 0n;
     const terminator: Terminator = (index, c) => {
       const cell = c;
-      if (accCapacity.gte(needCapacity)) {
+      if (accCapacity >= needCapacity) {
         return { stop: true, push: false };
       }
-      if (cell.type !== undefined && cell.type.codeHash == recipientTypeCodeHash) {
-        accCapacity = accCapacity.add(new Amount(cell.capacity, 0));
+      if (cell.cell_output.type !== undefined && cell.cell_output.type.code_hash == recipientTypeCodeHash) {
+        accCapacity += BigInt(cell.cell_output.capacity);
         return { stop: false, push: true };
       }
-      if (cell.data.length / 2 - 1 > 0 || cell.type !== undefined) {
+      if (cell.data.length / 2 - 1 > 0 || cell.cell_output.type !== undefined) {
         return { stop: false, push: false };
       } else {
-        accCapacity = accCapacity.add(new Amount(cell.capacity, 0));
+        accCapacity += BigInt(cell.cell_output.capacity);
         return { stop: false, push: true };
       }
     };
     const searchKey = {
-      script: lockscript.serializeJson() as LumosScript,
+      script: lockscript,
       script_type: ScriptType.lock,
     };
     const cells = await this.indexer.getCells(searchKey, terminator);

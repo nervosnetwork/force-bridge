@@ -11,13 +11,13 @@ import nconf from 'nconf';
 import { Config, MultisigItem } from '../../../config';
 import { getFromEnv, asyncSleep as sleep, parsePrivateKey, writeJsonToFile } from '../../../utils';
 import { CkbIndexer } from '../indexer';
-import { init } from './init_config';
+import { initLumosConfig } from '../init_lumos_config';
 import { getMultisigLock, privateKeyToAddress } from './multisig_helper';
 import { generateTypeIDScript } from './typeid';
 
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
 const CKB_INDEXER_URL = process.env.CKB_INDEXER_URL || 'http://127.0.0.1:8116';
-init();
+initLumosConfig();
 const acpData = '0x';
 const ckb = new CKB(CKB_URL);
 const ckbRpc = new RPC(CKB_URL);

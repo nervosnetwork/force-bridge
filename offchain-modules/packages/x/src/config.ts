@@ -1,4 +1,4 @@
-import { DepType, HashType } from '@lay2/pw-core';
+import { DepType, HashType } from '@ckb-lumos/base'
 
 export type forceBridgeRole = 'watcher' | 'collector' | 'verifier';
 

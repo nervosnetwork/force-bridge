@@ -1,7 +1,7 @@
-import { Cell, Script as LumosScript, Indexer, WitnessArgs, core } from '@ckb-lumos/base';
+import { Cell, Script, HashType, Indexer, WitnessArgs, core } from '@ckb-lumos/base';
 import { common } from '@ckb-lumos/common-scripts';
 import { TransactionSkeleton, TransactionSkeletonType } from '@ckb-lumos/helpers';
-import { Address, Amount, DepType, Script, HashType } from '@lay2/pw-core';
+// import { Address, Amount, DepType, Script, HashType } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import { Reader, normalizers } from 'ckb-js-toolkit';
 import { ForceBridgeCore } from '../../core';
@@ -11,28 +11,29 @@ import { Asset } from '../model/asset';
 import { IndexerCollector } from './collector';
 import { SerializeRecipientCellData } from './generated/eth_recipient_cell';
 import { SerializeMintWitness } from './generated/mint_witness';
-import { CkbIndexer, ScriptType, IndexerCell } from './indexer';
+import { CkbIndexer, ScriptType } from './indexer';
 import { getFromAddr, getOwnerTypeHash } from './multisig/multisig_helper';
 
-interface OutPutCell {
-  lock: {
-    codeHash: string;
-    hashType: HashType;
-    args: string;
-  };
-  type?: {
-    codeHash: string;
-    hashType: HashType;
-    args: string;
-  };
-  capacity: string;
-}
+// interface OutPutCell {
+//   lock: {
+//     codeHash: string;
+//     hashType: HashType;
+//     args: string;
+//   };
+//   type?: {
+//     codeHash: string;
+//     hashType: HashType;
+//     args: string;
+//   };
+//   capacity: string;
+// }
 
+export type Address = string;
 export interface MintAssetRecord {
   lockTxHash: string;
   asset: Asset;
-  amount: Amount;
-  recipient: Address;
+  amount: BigInt;
+  recipient: string;
 }
 
 export class CkbTxGenerator {
@@ -467,13 +468,13 @@ export class CkbTxGenerator {
   }
 
   handleChangeCell(
-    inputCells: IndexerCell[],
+    inputCells: Cell[],
     outputs: Array<OutPutCell>,
     outputsData: Array<string>,
     userLockscript: Script,
     fee: bigint,
   ): void {
-    const inputCap = inputCells.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
+    const inputCap = inputCells.map((cell) => BigInt(cell.cell_output.capacity)).reduce((a, b) => a + b);
     const outputCap = outputs.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
     const changeCellCapacity = inputCap - outputCap - fee;
     logger.debug('inputCap: ', inputCap, ' outputCap: ', outputCap, ' fee:', fee);
