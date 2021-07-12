@@ -279,7 +279,7 @@ async function prepareCkbAddresses(privateKeys: Array<string>): Promise<Array<st
   }
 
   const inputCap = needSupplyCapCells.map((cell) => BigInt(cell.cell_output.capacity)).reduce((a, b) => a + b);
-  const outputCap = outputs.map((cell) => BigInt(cell.cell_output.capacity)).reduce((a, b) => a + b);
+  const outputCap = outputs.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
   const changeCellCapacity = inputCap - outputCap - 100000n;
   console.log(changeCellCapacity);
   outputs.push({
