@@ -9,13 +9,15 @@ INTEGRATION_TEST_WORKDIR="${PROJECT_DIR}/workdir/integration"
 
 export CKB_URL='http://127.0.0.1:8114'
 export CKB_INDEXER_URL='http://127.0.0.1:8116';
-export ETH_URL='http://127.0.0.1:8545'
 export CKB_PRIV_KEY="0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe"
+export ETH_URL='http://127.0.0.1:8545'
+export ETH_PRIV_KEY="0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed37a"
 export CONFIG_PATH="${INTEGRATION_TEST_WORKDIR}/configs"
 export MULTISIG_CONFIG_PATH="${CONFIG_PATH}/multisig.json"
 export FORCE_BRIDGE_KEYSTORE_PASSWORD=123456
 export MULTISIG_NUMBER=5
 export THRESHOLD=3
+export FORCE_BRIDGE_RPC_URL="http://127.0.0.1:8080/force-bridge/api/v1"
 export FORCE_BRIDGE_KEYSTORE_PATH="${INTEGRATION_TEST_WORKDIR}/configs/keystore.json"
 
 function install_and_build {
@@ -89,8 +91,14 @@ function start_service {
   done
   CONFIG_PATH=${CONFIG_PATH}/collector.json npx ts-node ./packages/app-relayer/src/index.ts &
   # npx forcecli collector -cfg ${CONFIG_PATH}/collector.json &
-  sleep 5
-  CONFIG_PATH=${CONFIG_PATH}/watcher.json npx ts-node ./packages/scripts/src/integration-test/eth.ts
+  CONFIG_PATH=${CONFIG_PATH}/watcher.json npx ts-node ./packages/app-rpc-server/src/index.ts &
+
+  sleep 20
+}
+
+function ci_test {
+  CONFIG_PATH=${CONFIG_PATH}/watcher.json npx ts-node ./packages/scripts/src/integration-test/eth_batch_test.ts
+  CONFIG_PATH=${CONFIG_PATH}/watcher.json npx ts-node ./packages/scripts/src/integration-test/rpc-ci.ts
 }
 
 #clean_all
@@ -102,3 +110,4 @@ deploy
 generate_configs
 create_db
 start_service
+ci_test
