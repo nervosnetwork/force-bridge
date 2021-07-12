@@ -12,6 +12,7 @@ import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
 import bodyParser from 'body-parser';
 import { ethers } from 'ethers';
 import { JSONRPCServer } from 'json-rpc-2.0';
+import * as snappy from 'snappy';
 import { Connection } from 'typeorm';
 import { signCkbTx } from './ckbSigner';
 import { SigError, SigErrorCode } from './error';
@@ -20,7 +21,9 @@ import { getPendingTx, getPendingTxResult } from './pendingTx';
 import { serverStatus, serverStatusResult } from './status';
 
 const apiPath = '/force-bridge/sign-server/api/v1';
-const defaultPort = 80;
+
+const ethPendingTxKey = 'ethPendingTx';
+const ckbPendingTxKey = 'ckbPendingTx';
 
 export type SigResponseData = string | serverStatusResult | getPendingTxResult;
 
@@ -53,6 +56,7 @@ export class SigServer {
   static ethDb: EthDb;
   static kvDb: KVDb;
   static keys: Map<string, Map<string, string>>;
+  static pendingTxs: Map<string, getPendingTxResult>;
   static metrics: SigserverMetric;
 
   constructor(conn: Connection) {
@@ -69,7 +73,7 @@ export class SigServer {
     SigServer.ethDb = new EthDb(conn);
     SigServer.kvDb = new KVDb(conn);
     SigServer.keys = new Map<string, Map<string, string>>();
-
+    SigServer.pendingTxs = new Map<string, getPendingTxResult>();
     SigServer.metrics = new SigserverMetric(ForceBridgeCore.config.common.role);
 
     if (ForceBridgeCore.config.ckb !== undefined) {
@@ -94,6 +98,50 @@ export class SigServer {
       return;
     }
     return keys[address];
+  }
+
+  static async getPendingTx(chain: string): Promise<getPendingTxResult> {
+    let pendingTxKey = '';
+    switch (chain) {
+      case 'ckb':
+        pendingTxKey = ckbPendingTxKey;
+        break;
+      case 'eth':
+        pendingTxKey = ethPendingTxKey;
+        break;
+      default:
+        throw new Error(`invalid chain type:${chain}`);
+    }
+
+    let pendingTx = SigServer.pendingTxs.get(pendingTxKey);
+    if (pendingTx) {
+      return pendingTx;
+    }
+    const data = await SigServer.kvDb.get(pendingTxKey);
+    if (!data) {
+      return undefined;
+    }
+    const uncompressed = snappy.uncompressSync(Buffer.from(data as string, 'base64'), { asBuffer: false });
+    pendingTx = JSON.parse(uncompressed as string);
+    SigServer.pendingTxs.set(pendingTxKey, pendingTx);
+    return pendingTx;
+  }
+
+  static async setPendingTx(chain: string, pendingTx: getPendingTxResult): Promise<void> {
+    let pendingTxKey = '';
+    switch (chain) {
+      case 'ckb':
+        pendingTxKey = ckbPendingTxKey;
+        break;
+      case 'eth':
+        pendingTxKey = ethPendingTxKey;
+        break;
+      default:
+        throw new Error(`invalid chain type:${chain}`);
+    }
+    SigServer.pendingTxs.set(pendingTxKey, pendingTx);
+    const compressed = snappy.compressSync(JSON.stringify(pendingTx));
+    await SigServer.kvDb.set(pendingTxKey, compressed.toString('base64'));
   }
 }
 

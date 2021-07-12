@@ -9,6 +9,6 @@ export class KV {
   @Column()
   key: string;
 
-  @Column()
+  @Column({ type: 'mediumtext' })
   value: string;
 }

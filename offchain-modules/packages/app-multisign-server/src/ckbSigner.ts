@@ -1,4 +1,3 @@
-import fs from 'fs';
 import * as path from 'path';
 import { Cell } from '@ckb-lumos/base';
 import { common } from '@ckb-lumos/common-scripts';
@@ -402,8 +401,7 @@ export async function signCkbTx(params: collectSignaturesParams): Promise<SigRes
         };
       }),
     );
-
-    fs.writeFileSync(ckbPendingTxFileName, JSON.stringify(params, undefined, 2), { mode: '0644' });
+    await SigServer.setPendingTx('ckb', params);
   }
   return SigResponse.fromData(sig);
 }

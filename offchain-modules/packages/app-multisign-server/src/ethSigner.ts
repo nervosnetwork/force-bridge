@@ -1,5 +1,3 @@
-import * as fs from 'fs';
-import path from 'path';
 import { ChainType, EthAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { ICkbBurn } from '@force-bridge/x/dist/db/model';
@@ -13,8 +11,6 @@ import { BigNumber } from 'ethers';
 import { publicKeyCreate } from 'secp256k1';
 import { SigError, SigErrorCode, SigErrorOk } from './error';
 import { SigResponse, SigServer } from './sigServer';
-
-export const ethPendingTxFileName = path.join('./', './.eth_pending_tx.json');
 
 async function verifyDuplicateEthTx(pubKey: string, payload: ethCollectSignaturesPayload): Promise<SigError> {
   const refTxHashes = payload.unlockRecords.map((record) => {
@@ -124,7 +120,7 @@ export async function signEthTx(params: collectSignaturesParams): Promise<SigRes
     }),
   );
 
-  fs.writeFileSync(ethPendingTxFileName, JSON.stringify(params, undefined, 2), { mode: '0644' });
+  await SigServer.setPendingTx('eth', params);
   return SigResponse.fromData(signature);
 }
 

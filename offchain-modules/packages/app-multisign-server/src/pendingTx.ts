@@ -1,4 +1,3 @@
-import * as fs from 'fs';
 import {
   ckbCollectSignaturesPayload,
   collectSignaturesParams,
@@ -6,9 +5,7 @@ import {
   getPendingTxParams,
 } from '@force-bridge/x/dist/multisig/multisig-mgr';
 import { BigNumber } from 'ethers';
-import { ckbPendingTxFileName } from './ckbSigner';
 import { SigErrorCode } from './error';
-import { ethPendingTxFileName } from './ethSigner';
 import { SigResponse, SigServer } from './sigServer';
 
 export type getPendingTxResult = collectSignaturesParams | undefined;
@@ -27,7 +24,7 @@ export async function getPendingTx(params: getPendingTxParams): Promise<SigRespo
 }
 
 async function getCkbPendingTx(): Promise<SigResponse> {
-  const pendingTx = readPendingTx(ckbPendingTxFileName);
+  const pendingTx = await SigServer.getPendingTx('ckb');
   if (pendingTx === undefined) {
     return SigResponse.fromData(undefined);
   }
@@ -40,7 +37,7 @@ async function getCkbPendingTx(): Promise<SigResponse> {
 }
 
 async function getEthPendingTx(): Promise<SigResponse> {
-  const pendingTx = readPendingTx(ethPendingTxFileName);
+  const pendingTx = await SigServer.getPendingTx('eth');
   if (pendingTx === undefined) {
     return SigResponse.fromData(undefined);
   }
@@ -50,11 +47,4 @@ async function getEthPendingTx(): Promise<SigResponse> {
     return SigResponse.fromData(undefined);
   }
   return SigResponse.fromData(pendingTx);
-}
-
-function readPendingTx(fileName: string): getPendingTxResult {
-  if (!fs.existsSync(fileName)) {
-    return undefined;
-  }
-  return JSON.parse(fs.readFileSync(fileName, 'utf8'));
 }
