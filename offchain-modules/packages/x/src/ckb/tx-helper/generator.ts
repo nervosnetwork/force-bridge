@@ -447,12 +447,10 @@ export class CkbTxGenerator {
       });
     }
     // change cell
-    txSkeleton = addCellDep(txSkeleton, this.sudtDep);
-    txSkeleton = addCellDep(txSkeleton, this.recipientDep);
     const fromAddress = generateAddress(fromLockscript);
     txSkeleton = await this.completeTx(txSkeleton, fromAddress);
-    logger.debug(`txSkeleton: ${JSON.stringify(txSkeleton, null, 2)}`);
 
+    // convert to RawTransactionToSign
     const inputs = txSkeleton
       .get('inputs')
       .toArray()
