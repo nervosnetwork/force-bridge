@@ -283,7 +283,7 @@ async function prepareCkbAddresses(privateKeys: Array<string>): Promise<Array<st
   const changeCellCapacity = inputCap - outputCap - 100000n;
   console.log(changeCellCapacity);
   outputs.push({
-    lock: fromLockscript,
+    lock: Script.fromRPC(fromLockscript),
     capacity: `0x${changeCellCapacity.toString(16)}`,
   });
   outputsData.push('0x');
@@ -298,6 +298,7 @@ async function prepareCkbAddresses(privateKeys: Array<string>): Promise<Array<st
     outputsData,
   };
 
+  logger.info(`rawTx: ${JSON.stringify(rawTx, null, 2)}`);
   const signedTx = ckb.signTransaction(CKB_PRI)(rawTx);
   logger.info('signedTx', signedTx);
 
