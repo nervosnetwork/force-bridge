@@ -1,4 +1,3 @@
-import { Amount } from '@lay2/pw-core';
 import { BigNumber } from 'bignumber.js';
 import { ForceBridgeCore } from '../../core';
 import { fromHexString, stringToUint8Array, toHexString } from '../../utils';

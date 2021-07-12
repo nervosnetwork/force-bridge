@@ -1,4 +1,3 @@
-import { Amount } from '@lay2/pw-core';
 import { ethers } from 'ethers';
 import { ChainType, EthAsset } from '../ckb/model/asset';
 import { forceBridgeRole } from '../config';
@@ -223,7 +222,7 @@ export class EthHandler {
         return {
           id: lockRecord.txHash,
           chain: ChainType.ETH,
-          amount: new Amount(lockRecord.amount, 0).sub(new Amount(lockRecord.bridgeFee, 0)).toString(0),
+          amount: (BigInt(lockRecord.amount) - BigInt(lockRecord.bridgeFee)).toString(),
           asset: lockRecord.token,
           recipientLockscript: lockRecord.recipient,
           sudtExtraData: lockRecord.sudtExtraData,
@@ -254,7 +253,7 @@ export class EthHandler {
         logger.debug('EthHandler watchLockEvents eth lockEvtLog:', { log, parsedLog });
         const amount = parsedLog.args.lockedAmount.toString();
         const asset = new EthAsset(parsedLog.args.token);
-        if (!asset.inWhiteList() || new Amount(amount, 0).lt(new Amount(asset.getMinimalAmount(), 0))) return;
+        if (!asset.inWhiteList() || BigInt(amount) < BigInt(asset.getMinimalAmount())) return;
 
         const bridgeFee = this.role === 'collector' ? asset.getBridgeFee('in') : '0';
         await this.ethDb.createEthLock([

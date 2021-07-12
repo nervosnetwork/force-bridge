@@ -1,12 +1,11 @@
-import { Account } from '@force-bridge/x/dist/ckb/model/accounts';
+import { parseAddress } from '@ckb-lumos/helpers';
 import { Asset } from '@force-bridge/x/dist/ckb/model/asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { asyncSleep } from '@force-bridge/x/dist/utils';
-import { Amount, HashType, Script } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 
-export async function getSudtBalance(address: string, asset: Asset): Promise<Amount> {
+export async function getSudtBalance(address: string, asset: Asset): Promise<bigint> {
   const bridgeCellLockscript = {
     codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
     hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
@@ -14,17 +13,14 @@ export async function getSudtBalance(address: string, asset: Asset): Promise<Amo
   };
   const sudtArgs = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
   const sudtType = {
-    codeHash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
-    hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
+    code_hash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
+    hash_type: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
     args: sudtArgs,
   };
 
-  const userScript = ForceBridgeCore.ckb.utils.addressToScript(address);
+  const userScript = parseAddress(address);
   const collector = new IndexerCollector(ForceBridgeCore.ckbIndexer);
-  const amount = await collector.getSUDTBalance(
-    new Script(sudtType.codeHash, sudtType.args, sudtType.hashType),
-    new Script(userScript.codeHash, userScript.args, userScript.hashType as HashType),
-  );
+  const amount = await collector.getSUDTBalance(sudtType, userScript);
   return amount;
 }
 
@@ -39,8 +35,4 @@ export async function waitUnlockCompleted(ckb: CKB, txhash: string): Promise<voi
       break;
     }
   }
-}
-
-export function ckbPrivateKeyToAddress(privateKey: string, network = 'testnet'): string {
-  return new Account(privateKey, network).address;
 }

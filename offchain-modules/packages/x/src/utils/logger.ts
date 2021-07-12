@@ -3,6 +3,8 @@ import { logConfig } from '../config';
 export const logger = getLogger('@force-bridge/core');
 
 const logPattern = '%[[%d %p %f{2}:%l]%] %m%n';
+// no color for file log
+const fileLogPattern = '[%d %p %f{2}:%l] %m%n';
 
 export const initLog = (cfg: logConfig) => {
   const config = {
@@ -28,7 +30,7 @@ export const initLog = (cfg: logConfig) => {
       backups: 100,
       layout: {
         type: 'pattern',
-        pattern: logPattern,
+        pattern: fileLogPattern,
       },
     };
     config.categories.default.appenders.push('app');
