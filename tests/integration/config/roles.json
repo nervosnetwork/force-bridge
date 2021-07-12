@@ -125,7 +125,7 @@
         "port": 3306,
         "username": "root",
         "password": "root",
-        "database": "collector",
+        "database": "watcher",
         "timezone": "Z",
         "synchronize": true,
         "logging": false
