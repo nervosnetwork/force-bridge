@@ -95,11 +95,11 @@ function start_service {
 }
 
 #clean_all
-clean_config
+#clean_config
 #clean_db
-#install_and_build
+install_and_build
 generate_multisig
-#deploy
+deploy
 generate_configs
-#create_db
-#start_service
+create_db
+start_service
