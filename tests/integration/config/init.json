@@ -35,6 +35,15 @@
       "privateKey": "ckb",
       "startBlockHeight": 1,
       "confirmNumber": 1
+    },
+    "rpc": {
+      "port": 8080,
+      "corsOptions": {
+        "origin": "*",
+        "methods": "GET,HEAD,PUT,PATCH,POST,DELETE",
+        "preflightContinue": false,
+        "optionsSuccessStatus": 200
+      }
     }
   }
 }
