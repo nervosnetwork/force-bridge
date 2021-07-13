@@ -90,10 +90,10 @@ function start_service {
     CONFIG_PATH=${CONFIG_PATH}/verifier${i}.json npx ts-node ./packages/app-multisign-server/src/index.ts &
     # npx forcecli verifier -cfg ${CONFIG_PATH}/verifier${i}.json &
   done
+  sleep 5
   CONFIG_PATH=${CONFIG_PATH}/collector.json npx ts-node ./packages/app-relayer/src/index.ts &
   # npx forcecli collector -cfg ${CONFIG_PATH}/collector.json &
   CONFIG_PATH=${CONFIG_PATH}/watcher.json npx ts-node ./packages/app-rpc-server/src/index.ts &
-
   sleep 20
 }
 

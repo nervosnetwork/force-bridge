@@ -74,7 +74,6 @@ async function generateConfig() {
   // generate watcher config
   const watcherConfig: Config = lodash.cloneDeep(config);
   watcherConfig.common.role = 'watcher';
-  // fixme: the test only pass when using the collector db
   watcherConfig.common.orm = rolesInfos.roles.watcher.orm;
   watcherConfig.common.port = rolesInfos.roles.watcher.port;
   watcherConfig.common.log.logFile = rolesInfos.roles.watcher.logPath;

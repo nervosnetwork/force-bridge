@@ -1,6 +1,6 @@
 // invoke in eth handler
 import { Amount } from '@lay2/pw-core';
-import { Connection, DeleteResult, In, Repository, UpdateResult } from 'typeorm';
+import { Connection, DeleteResult, In, Not, Repository, UpdateResult } from 'typeorm';
 import { ForceBridgeCore } from '../core';
 import { EthUnlockStatus } from './entity/EthUnlock';
 import {
@@ -43,8 +43,8 @@ export class EthDb implements IQuery {
     await ethUnlockRepo.save(dbRecords);
   }
 
-  async saveEthUnlock(records: EthUnlock[]): Promise<void> {
-    await this.ethUnlockRepository.save(records);
+  async saveEthUnlock(records: IEthUnlock[]): Promise<void> {
+    await this.ethUnlockRepository.save(records.map((r) => this.ethUnlockRepository.create(r)));
   }
 
   async createEthLock(records: IEthLock[]): Promise<void> {
@@ -272,6 +272,15 @@ export class EthDb implements IQuery {
     return this.connection.getRepository(EthLock).find({
       where: {
         txHash: In(txHashes),
+      },
+    });
+  }
+
+  async getEthUnlockByCkbTxHashes(ckbTxHashes: string[]): Promise<EthUnlock[]> {
+    return this.connection.getRepository(EthUnlock).find({
+      where: {
+        ckbTxHash: In(ckbTxHashes),
+        status: Not('error'),
       },
     });
   }

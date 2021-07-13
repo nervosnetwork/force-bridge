@@ -27,13 +27,14 @@ export class SignedTx {
   @Column({ nullable: true })
   nonce: number;
 
-  @Index()
+  @Index({ unique: true })
   @Column()
   refTxHash: string;
 
   @Column()
   pubKey: string;
 
+  @Index()
   @Column()
   rawData: string;
 

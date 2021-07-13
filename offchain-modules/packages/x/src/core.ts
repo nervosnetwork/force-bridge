@@ -46,6 +46,19 @@ export async function bootstrap(configPath: string | Config): Promise<void> {
   await new ForceBridgeCore().init(config);
 }
 
+export class XChainHandlers {
+  public ckb: XChainHandler;
+  public eth?: XChainHandler;
+  public btc?: XChainHandler;
+  public eos?: XChainHandler;
+  public tron?: XChainHandler;
+}
+
+export interface XChainHandler {
+  getHandledBlock(): { height: number; hash: string };
+  getTipBlock(): Promise<{ height: number; hash: string }>;
+}
+
 // make global config and var static,
 // which can be import from ForceBridgeCore
 export class ForceBridgeCore {
@@ -55,6 +68,7 @@ export class ForceBridgeCore {
   private static _ckbIndexer: CkbIndexer;
   private static _keystore: KeyStore;
   private static _secp256k1Dep: DepCellInfo;
+  private static _xChainHandler: XChainHandlers;
 
   static get config(): Config {
     asserts(ForceBridgeCore._config, 'ForceBridgeCore config is not init yet');
@@ -79,6 +93,11 @@ export class ForceBridgeCore {
   static get secp256k1Dep(): DepCellInfo {
     asserts(ForceBridgeCore._secp256k1Dep, 'ForceBridgeCore secp256k1Dep is not init yet');
     return ForceBridgeCore._secp256k1Dep;
+  }
+
+  static getXChainHandler(): XChainHandlers {
+    asserts(ForceBridgeCore._keystore, 'ForceBridgeCore is not init yet');
+    return ForceBridgeCore._xChainHandler;
   }
 
   /**
@@ -118,6 +137,7 @@ export class ForceBridgeCore {
       config.eth.privateKey = keystore.getDecryptedByKeyID(config.eth.privateKey);
     }
     ForceBridgeCore._keystore = keystore;
+    ForceBridgeCore._xChainHandler = new XChainHandlers();
     return this;
   }
 }

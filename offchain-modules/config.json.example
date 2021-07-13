@@ -19,7 +19,10 @@
         "logging": false
       },
       "keystorePath": "/home/force-bridge/integration/configs/keystore.json",
-      "port": 8000
+      "port": 8000,
+      "collectorPubKeyHash": [
+        "0x40dcec2ef1ffc2340ea13ff4dd9671d2f9787e95"
+      ]
     },
     "eth": {
       "rpcUrl": "http://127.0.0.1:8545",

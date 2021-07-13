@@ -1,6 +1,6 @@
 // invoke in ckb handler
 import { Amount } from '@lay2/pw-core';
-import { Connection, DeleteResult, In, UpdateResult } from 'typeorm';
+import { Connection, DeleteResult, In, Not, UpdateResult } from 'typeorm';
 import { ChainType } from '../ckb/model/asset';
 import { ForceBridgeCore } from '../core';
 import { dbTxStatus } from './entity/CkbMint';
@@ -59,8 +59,13 @@ export class CkbDb {
   }
 
   // update mint status
-  async updateCkbMint(records: CkbMint[]): Promise<void> {
-    await this.connection.manager.save(records);
+  async updateCkbMint(records: ICkbMint[]): Promise<void> {
+    const mintRepo = this.connection.getRepository(CkbMint);
+    await mintRepo.save(
+      records.map((record) => {
+        return mintRepo.create(record);
+      }),
+    );
   }
 
   async watcherCreateMint(mints: MintedRecords): Promise<void> {
@@ -208,6 +213,15 @@ export class CkbDb {
     return this.connection.getRepository(CkbBurn).find({
       where: {
         ckbTxHash: In(ckbTxHashes),
+      },
+    });
+  }
+
+  async getCkbMintByLockTxHashes(lockTxHashes: string[]): Promise<CkbMint[]> {
+    return this.connection.getRepository(CkbMint).find({
+      where: {
+        id: In(lockTxHashes),
+        status: Not('error'),
       },
     });
   }

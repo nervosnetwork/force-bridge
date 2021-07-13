@@ -17,6 +17,7 @@
         "synchronize": true,
         "logging": false
       },
+      "collectorPubKeyHash": [],
       "openMetric": true
     },
     "eth": {
