@@ -11,7 +11,7 @@ function start_multisign {
     cp docker-compose.yml verifier${i}/
     cd verifier${i}
     PORT=800${i} VERIFIER_INDEX=${i} docker-compose up -d
-    cd .. && rm -f verifier${i}
+    cd .. && rm -rf verifier${i}
   done
 }
 
