@@ -236,7 +236,6 @@ export class CkbTxGenerator {
     txSkeleton: TransactionSkeletonType,
     records: MintAssetRecord[],
   ): Promise<TransactionSkeletonType> {
-    let sudtCapacityTotal = 0n;
     for (const record of records) {
       asserts(record.amount !== 0n, '0 amount should be filtered');
       const recipientLockscript = parseAddress(record.recipient);
@@ -256,10 +255,9 @@ export class CkbTxGenerator {
             args: sudtArgs,
           },
         },
-        data: utils.toBigUInt128LE(record.amount),
+        data: utils.toBigUInt128LE(record.amount) + record.sudtExtraData.slice(2),
       };
       const sudtCapacity = minimalCellCapacity(outputSudtCell);
-      sudtCapacityTotal += sudtCapacity;
       outputSudtCell.cell_output.capacity = `0x${sudtCapacity.toString(16)}`;
       txSkeleton = txSkeleton.update('outputs', (outputs) => {
         return outputs.push(outputSudtCell);
