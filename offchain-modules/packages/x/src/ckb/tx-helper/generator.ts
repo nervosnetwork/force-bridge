@@ -109,27 +109,21 @@ export class CkbTxGenerator {
         let txSkeleton = TransactionSkeleton({ cellProvider: this.ckbIndexer });
         const multisig_cell = await this.fetchMultisigCell();
         txSkeleton = await common.setupInputCell(txSkeleton, multisig_cell!, ForceBridgeCore.config.ckb.multisigScript);
-        const bridgeCellCapacity = 200n * 10n ** 8n;
         const bridgeOutputs = scripts.map((script) => {
-          return <Cell>{
+          const cell: Cell = {
             cell_output: {
-              capacity: `0x${bridgeCellCapacity.toString(16)}`,
+              capacity: '0x0',
               lock: script,
             },
             data: '0x',
           };
+          cell.cell_output.capacity = `0x${minimalCellCapacity(cell)}`;
+          return cell;
         });
-        logger.debug('bridgeOutputs:', JSON.stringify(bridgeOutputs, null, 2));
         txSkeleton = txSkeleton.update('outputs', (outputs) => {
           return outputs.push(...bridgeOutputs);
         });
-        //TODO fix fee calculate
-        const needCapacity = bridgeCellCapacity * BigInt(scripts.length) + bridgeCellCapacity;
-        if (needCapacity !== 0n) {
-          txSkeleton = await common.injectCapacity(txSkeleton, [fromAddress], needCapacity);
-        }
-        const feeRate = BigInt(1000);
-        txSkeleton = await common.payFeeByFeeRate(txSkeleton, [fromAddress], feeRate);
+        txSkeleton = await this.completeTx(txSkeleton, fromAddress);
         txSkeleton = common.prepareSigningEntries(txSkeleton);
         return txSkeleton;
       } catch (e) {
@@ -195,9 +189,7 @@ export class CkbTxGenerator {
 
         txSkeleton = await this.buildSudtOutput(txSkeleton, records);
         txSkeleton = await this.buildBridgeCellOutput(txSkeleton, records);
-
-        const feeRate = BigInt(1000);
-        txSkeleton = await common.payFeeByFeeRate(txSkeleton, [fromAddress], feeRate);
+        txSkeleton = await this.completeTx(txSkeleton, fromAddress);
         txSkeleton = common.prepareSigningEntries(txSkeleton);
         return txSkeleton;
       } catch (e) {
@@ -210,9 +202,8 @@ export class CkbTxGenerator {
   async completeTx(
     txSkeleton: TransactionSkeletonType,
     fromAddress: string,
-    fee = 10000n,
+    feeRate = 10000n,
   ): Promise<TransactionSkeletonType> {
-    const fromLockscript = parseAddress(fromAddress);
     const inputCapacity = txSkeleton
       .get('inputs')
       .map((c) => BigInt(c.cell_output.capacity))
@@ -221,33 +212,15 @@ export class CkbTxGenerator {
       .get('outputs')
       .map((c) => BigInt(c.cell_output.capacity))
       .reduce((a, b) => a + b, 0n);
-    const changeCell: Cell = {
-      cell_output: {
-        lock: fromLockscript,
-        capacity: '0x0',
-      },
-      data: '0x',
-    };
-    const minimalChangeCellCapacity = minimalCellCapacity(changeCell);
-    const needCapacity = outputCapacity - inputCapacity + 10n ** 8n + minimalChangeCellCapacity;
-    const inputCells = await this.collector.getCellsByLockscriptAndCapacity(fromLockscript, needCapacity);
-    const inputCellsCapacity = inputCells.map((c) => BigInt(c.cell_output.capacity)).reduce((a, b) => a + b, 0n);
-    const realChangeCellCapacity = inputCellsCapacity - outputCapacity + inputCapacity - fee;
-    changeCell.cell_output.capacity = `0x${realChangeCellCapacity.toString(16)}`;
-    logger.debug(`change info`, {
-      needCapacity,
-      inputCellsCapacity,
-      realChangeCellCapacity,
-      fromLockscript,
-      inputCells,
+    const needCapacity = outputCapacity - inputCapacity + 10n ** 8n;
+    const fromLockscript = parseAddress(fromAddress);
+    logger.debug('injectCapacity params', { fromAddress, needCapacity, fromLockscript });
+    logger.debug(`txSkeleton: ${JSON.stringify(txSkeleton, null, 2)}`);
+    txSkeleton = await common.injectCapacity(txSkeleton, [fromAddress], needCapacity, undefined, undefined, {
+      enableDeductCapacity: false,
     });
     logger.debug(`txSkeleton: ${JSON.stringify(txSkeleton, null, 2)}`);
-    txSkeleton = txSkeleton.update('inputs', (inputs) => {
-      return inputs.concat(inputCells);
-    });
-    txSkeleton = txSkeleton.update('outputs', (outputs) => {
-      return outputs.push(changeCell);
-    });
+    txSkeleton = await common.payFeeByFeeRate(txSkeleton, [fromAddress], feeRate);
     logger.debug(`txSkeleton: ${JSON.stringify(txSkeleton, null, 2)}`);
     return txSkeleton;
   }
@@ -294,8 +267,6 @@ export class CkbTxGenerator {
         return outputs.push(outputSudtCell);
       });
     }
-    const fromAddress = getFromAddr();
-    txSkeleton = await common.injectCapacity(txSkeleton, [fromAddress], sudtCapacityTotal);
     for (let i = 1; i <= records.length; i++) {
       txSkeleton = txSkeleton.update('fixedEntries', (fixedEntries) => {
         return fixedEntries.push({

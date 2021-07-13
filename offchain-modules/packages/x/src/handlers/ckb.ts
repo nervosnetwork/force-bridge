@@ -491,8 +491,9 @@ export class CkbHandler {
       }
     }
 
+    logger.debug(`mint for records`, records);
     const txSkeleton = await generator.mint(records, this.ckbIndexer);
-    logger.info(`mint tx txSkeleton ${JSON.stringify(txSkeleton, null, 2)}`);
+    logger.debug(`mint tx txSkeleton ${JSON.stringify(txSkeleton, null, 2)}`);
     const sigs = await this.collectMintSignatures(txSkeleton, mintRecords);
     for (;;) {
       try {
@@ -746,7 +747,7 @@ export class CkbHandler {
           return txStatus;
         }
       } catch (e) {
-        logger.error(`CkbHandler waitUntilCommitted error:${e.message}`);
+        logger.error(`CkbHandler waitUntilCommitted error:${e.stack}`);
         await asyncSleep(3000);
       }
     }

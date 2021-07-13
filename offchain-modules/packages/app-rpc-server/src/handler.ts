@@ -150,6 +150,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     payload: API.GenerateBridgeOutNervosTransactionPayload,
   ): Promise<API.GenerateTransactionResponse<T>> {
     logger.info('generateBridgeOutNervosTransaction ', payload);
+    checkCKBAddress(payload.sender);
     const fromLockscript = parseAddress(payload.sender);
     const ownerTypeHash = getOwnerTypeHash();
 
