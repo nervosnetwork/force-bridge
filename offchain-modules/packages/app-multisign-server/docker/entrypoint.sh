@@ -33,6 +33,6 @@ function start_verifier {
   CONFIG_PATH=${CONFIG_PATH}/verifier.json npx ts-node ${WORK_SPACE}/force-bridge/offchain-modules/packages/app-multisign-server/src/index.ts 
 }
 
+prepare
 generate_verifier_config
-sleep 31536000
 start_verifier
