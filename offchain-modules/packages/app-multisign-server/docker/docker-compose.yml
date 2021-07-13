@@ -1,0 +1,23 @@
+version: "3.3"
+services:
+  mysql:
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: forcebridge
+  verifier:
+    container_name: verifier${VERIFIER_INDEX}
+    build:
+      context: ../
+      dockerfile: ./Dockerfile
+    image: multisign-server
+    environment:
+      # MYSQL_ROOT_PASSWORD: root
+      # MYSQL_DATABASE: forcebridge
+      VERIFIER_INDEX: ${VERIFIER_INDEX}
+    volumes:
+      - ${PROJECT_DIR}:/usr/app/tmp/force-bridge
+    ports:
+      - "${PORT}:8000"
+    depends_on: 
+      - mysql
