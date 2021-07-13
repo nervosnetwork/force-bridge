@@ -36,3 +36,9 @@ cp config.json.example config.json
 # edit the config file on your demands
 yarn start
 ```
+
+### Install force-bridge cli
+
+```bash
+npm i -g @force-bridge/cli
+```

@@ -1,12 +1,13 @@
 import { Amount } from '@lay2/pw-core';
-import { ethers } from 'ethers';
+import { BigNumber, ethers } from 'ethers';
 import { ChainType, EthAsset } from '../ckb/model/asset';
 import { forceBridgeRole } from '../config';
 import { ForceBridgeCore } from '../core';
 import { EthDb, KVDb, BridgeFeeDB } from '../db';
 import { EthUnlockStatus } from '../db/entity/EthUnlock';
-import { EthUnlock } from '../db/model';
+import { EthUnlock, IEthUnlock } from '../db/model';
 import { BridgeMetricSingleton, txTokenInfo } from '../monitor/bridge-metric';
+import { ethCollectSignaturesPayload } from '../multisig/multisig-mgr';
 import { asyncSleep, foreverPromise, fromHexString, retryPromise, uint8ArrayToString } from '../utils';
 import { logger } from '../utils/logger';
 import { EthChain, WithdrawBridgeFeeTopic, Log, ParsedLog } from '../xchain/eth';
@@ -39,6 +40,16 @@ export class EthHandler {
     this.lastHandledBlockHeight = blockNumber;
     this.lastHandledBlockHash = blockHash;
     await this.kvDb.set(lastHandleEthBlockKey, `${blockNumber},${blockHash}`);
+  }
+
+  getHandledBlock(): { height: number; hash: string } {
+    return { height: this.lastHandledBlockHeight, hash: this.lastHandledBlockHash };
+  }
+
+  async getTipBlock(): Promise<{ height: number; hash: string }> {
+    const tipHeight = await this.ethChain.getCurrentBlockNumber();
+    const tipBlock = await this.ethChain.getBlock(tipHeight);
+    return { height: tipHeight, hash: tipBlock.hash };
   }
 
   async init(): Promise<void> {
@@ -222,6 +233,7 @@ export class EthHandler {
       const mintRecords = confirmedRecords.map((lockRecord) => {
         return {
           id: lockRecord.txHash,
+          lockBlockHeight: lockRecord.blockNumber,
           chain: ChainType.ETH,
           amount: new Amount(lockRecord.amount, 0).sub(new Amount(lockRecord.bridgeFee, 0)).toString(0),
           asset: lockRecord.token,
@@ -388,13 +400,42 @@ export class EthHandler {
     for (;;) {
       try {
         const records = await this.getUnlockRecords('pending');
-        if (records.length === 0) {
+        const pendingTx = await this.ethChain.getMultiSigMgr().getPendingTx({ chain: 'eth' });
+        if (pendingTx === undefined && records.length !== 0) {
+          //pendingTx has already completed
+          records.map((record) => {
+            record.status = 'success';
+          });
+          const unlockTxHashes = records.map((record) => {
+            return record.ckbTxHash;
+          });
+          await this.ethDb.saveEthUnlock(records);
+          logger.info(`EthHandler handlePendingUnlockRecords set Record to complete ckbTxHashes:${unlockTxHashes}`);
           break;
         }
-        await this.doHandleUnlockRecords(records);
+        if (records.length !== 0) {
+          await this.doHandleUnlockRecords(records);
+          break;
+        }
+        if (pendingTx !== undefined) {
+          logger.info(`EthHandler handlePendingUnlockRecords pendingTx:${JSON.stringify(pendingTx, undefined, 2)}`);
+          await this.doHandleUnlockRecords(
+            (pendingTx.payload as ethCollectSignaturesPayload).unlockRecords.map((ethUnlock) => {
+              return {
+                ckbTxHash: ethUnlock.ckbTxHash,
+                asset: ethUnlock.token,
+                recipientAddress: ethUnlock.recipient,
+                amount: BigNumber.from(ethUnlock.amount).toString(),
+                ethTxHash: '',
+                status: 'pending',
+                message: '',
+              };
+            }),
+          );
+        }
         break;
       } catch (e) {
-        logger.error(`doHandlePendingUnlockRecords error:${e.message}`);
+        logger.error(`doHandlePendingUnlockRecords error:${e.message} stack:${e.stack}`);
         await asyncSleep(3000);
       }
     }
@@ -423,7 +464,7 @@ export class EthHandler {
     );
   }
 
-  async doHandleUnlockRecords(records: EthUnlock[]): Promise<void> {
+  async doHandleUnlockRecords(records: IEthUnlock[]): Promise<void> {
     if (records.length === 0) {
       return;
     }
@@ -445,6 +486,12 @@ export class EthHandler {
         });
         await this.ethDb.saveEthUnlock(records);
         const txRes = await this.ethChain.sendUnlockTxs(records);
+        if (typeof txRes === 'boolean') {
+          records.map((r) => {
+            r.status = 'success';
+          });
+          break;
+        }
         if (txRes instanceof Error) {
           records.map((r) => {
             r.status = 'error';
@@ -491,7 +538,7 @@ export class EthHandler {
         break;
       } catch (e) {
         logger.error(
-          `EthHandler doHandleUnlockRecords ckbTxHashes:${unlockTxHashes} error:${e.toString()}, ${e.message}`,
+          `EthHandler doHandleUnlockRecords ckbTxHashes:${unlockTxHashes} error:${e.toString()}, ${e.stack}`,
         );
         await asyncSleep(5000);
       }
