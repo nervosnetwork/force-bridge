@@ -2,7 +2,7 @@
   "forceBridge": {
     "common": {
       "log": {
-        "level": "info"
+        "level": "debug"
       },
       "network": "testnet",
       "role": "watcher",

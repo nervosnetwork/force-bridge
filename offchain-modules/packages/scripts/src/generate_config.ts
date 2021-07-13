@@ -60,7 +60,7 @@ async function generateConfig() {
   watcherConfig.common.role = 'watcher';
   watcherConfig.common.orm.database = 'watcher';
   watcherConfig.common.port = 8080;
-  collectorConfig.common.log.logFile = path.join(configPath, 'logs/watcher.log');
+  watcherConfig.common.log.logFile = path.join(configPath, 'logs/watcher.log');
   writeJsonToFile({ forceBridge: watcherConfig }, path.join(configPath, 'watcher.json'));
 }
 

@@ -230,7 +230,6 @@ export class CkbHandler {
       }
       const cellData = await parseBurnTx(tx);
       if (cellData !== null) {
-        logger.debug(`tx ${tx.hash} is burn tx`);
         const previousOutput = nonNullable(tx.inputs[0].previousOutput);
         const burnPreviousTx: TransactionWithStatus = await this.ckb.rpc.getTransaction(previousOutput.txHash);
         const senderLockscript = burnPreviousTx.transaction.outputs[Number(previousOutput.index)].lock;
@@ -250,7 +249,6 @@ export class CkbHandler {
           } senderAddress:${senderAddress} cellData:${JSON.stringify(cellData, null, 2)}`,
         );
       }
-      logger.debug(`tx ${tx.hash} is not burn tx`);
     }
     await this.onBurnTxs(blockNumber, burnTxs);
     await this.setLastHandledBlock(blockNumber, blockHash);
@@ -726,7 +724,7 @@ export async function parseBurnTx(tx: Transaction): Promise<RecipientCellData | 
   try {
     cellData = new RecipientCellData(fromHexString(tx.outputsData[0]).buffer);
   } catch (e) {
-    logger.warn(`parse recipient data error: ${e.toString()} ${e.stack}`);
+    logger.warn(`parse recipient data error: ${e.message} ${e.stack}`);
     return null;
   }
   logger.debug('amount: ', toHexString(new Uint8Array(cellData.getAmount().raw())));

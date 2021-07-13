@@ -173,7 +173,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     }
 
     const ckbTxGenerator = new CkbTxGenerator(ForceBridgeCore.ckb, ForceBridgeCore.ckbIndexer);
-    const burnTx = await ckbTxGenerator.burn(fromLockscript, payload.recipient, asset, 0n);
+    const burnTx = await ckbTxGenerator.burn(fromLockscript, payload.recipient, asset, BigInt(amount));
     return {
       network: 'Nervos',
       rawTransaction: burnTx,
@@ -393,7 +393,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         };
         const collector = new IndexerCollector(ForceBridgeCore.ckbIndexer);
         const sudt_amount = await collector.getSUDTBalance(sudtType, userScript);
-        balance = sudt_amount.toString(0);
+        balance = sudt_amount.toString();
         break;
       }
 
