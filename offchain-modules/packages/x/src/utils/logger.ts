@@ -2,11 +2,7 @@ import { configure, getLogger } from 'log4js';
 import { logConfig } from '../config';
 export const logger = getLogger('@force-bridge/core');
 
-const logPattern = '%[[%d %p %f{2}:%l]%] %m%n';
-// no color for file log
-const fileLogPattern = '[%d %p %f{2}:%l] %m%n';
-
-export const initLog = (cfg: logConfig) => {
+export const initLog = (cfg: logConfig): void => {
   const config = {
     appenders: {
       out: {
@@ -14,7 +10,7 @@ export const initLog = (cfg: logConfig) => {
         layout: {
           // ref: https://github.com/log4js-node/log4js-node/blob/master/docs/layouts.md
           type: 'pattern',
-          pattern: logPattern,
+          pattern: '%[[%d %p %f{2}:%l]%] %m%n',
         },
       },
     },
@@ -30,7 +26,7 @@ export const initLog = (cfg: logConfig) => {
       backups: 100,
       layout: {
         type: 'pattern',
-        pattern: fileLogPattern,
+        pattern: '[%d %p %f{2}:%l] %m%n',
       },
     };
     config.categories.default.appenders.push('app');

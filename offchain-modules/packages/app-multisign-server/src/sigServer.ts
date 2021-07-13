@@ -4,7 +4,7 @@ import { SignedDb } from '@force-bridge/x/dist/db/signed';
 import { startHandlers } from '@force-bridge/x/dist/handlers';
 import { responseStatus } from '@force-bridge/x/dist/monitor/rpc-metric';
 import { SigserverMetric } from '@force-bridge/x/dist/monitor/sigserver-metric';
-import { collectSignaturesParams } from '@force-bridge/x/dist/multisig/multisig-mgr';
+import { collectSignaturesParams, getPendingTxParams } from '@force-bridge/x/dist/multisig/multisig-mgr';
 import { ServerSingleton } from '@force-bridge/x/dist/server/serverSingleton';
 import { getDBConnection, privateKeyToCkbAddress, privateKeyToEthAddress } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
@@ -12,20 +12,26 @@ import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
 import bodyParser from 'body-parser';
 import { ethers } from 'ethers';
 import { JSONRPCServer } from 'json-rpc-2.0';
+import * as snappy from 'snappy';
 import { Connection } from 'typeorm';
 import { signCkbTx } from './ckbSigner';
 import { SigError, SigErrorCode } from './error';
 import { signEthTx } from './ethSigner';
-import { serverStatus } from './status';
+import { getPendingTx, getPendingTxResult } from './pendingTx';
+import { serverStatus, serverStatusResult } from './status';
 
 const apiPath = '/force-bridge/sign-server/api/v1';
-const defaultPort = 80;
+
+const ethPendingTxKey = 'ethPendingTx';
+const ckbPendingTxKey = 'ckbPendingTx';
+
+export type SigResponseData = string | serverStatusResult | getPendingTxResult;
 
 export class SigResponse {
-  Data?: any;
+  Data?: SigResponseData;
   Error: SigError;
 
-  constructor(err: SigError, data?: string) {
+  constructor(err: SigError, data?: SigResponseData) {
     this.Error = err;
     if (data) {
       this.Data = data;
@@ -35,7 +41,7 @@ export class SigResponse {
   static fromSigError(code: SigErrorCode, message?: string): SigResponse {
     return new SigResponse(new SigError(code, message));
   }
-  static fromData(data: any): SigResponse {
+  static fromData(data: SigResponseData): SigResponse {
     return new SigResponse(new SigError(SigErrorCode.Ok), data);
   }
 }
@@ -50,6 +56,7 @@ export class SigServer {
   static ethDb: EthDb;
   static kvDb: KVDb;
   static keys: Map<string, Map<string, string>>;
+  static pendingTxs: Map<string, getPendingTxResult>;
   static metrics: SigserverMetric;
 
   constructor(conn: Connection) {
@@ -66,7 +73,7 @@ export class SigServer {
     SigServer.ethDb = new EthDb(conn);
     SigServer.kvDb = new KVDb(conn);
     SigServer.keys = new Map<string, Map<string, string>>();
-
+    SigServer.pendingTxs = new Map<string, getPendingTxResult>();
     SigServer.metrics = new SigserverMetric(ForceBridgeCore.config.common.role);
 
     if (ForceBridgeCore.config.ckb !== undefined) {
@@ -91,6 +98,50 @@ export class SigServer {
       return;
     }
     return keys[address];
+  }
+
+  static async getPendingTx(chain: string): Promise<getPendingTxResult> {
+    let pendingTxKey = '';
+    switch (chain) {
+      case 'ckb':
+        pendingTxKey = ckbPendingTxKey;
+        break;
+      case 'eth':
+        pendingTxKey = ethPendingTxKey;
+        break;
+      default:
+        throw new Error(`invalid chain type:${chain}`);
+    }
+
+    let pendingTx = SigServer.pendingTxs.get(pendingTxKey);
+    if (pendingTx) {
+      return pendingTx;
+    }
+    const data = await SigServer.kvDb.get(pendingTxKey);
+    if (!data) {
+      return undefined;
+    }
+    const uncompressed = snappy.uncompressSync(Buffer.from(data as string, 'base64'), { asBuffer: false });
+    pendingTx = JSON.parse(uncompressed as string);
+    SigServer.pendingTxs.set(pendingTxKey, pendingTx);
+    return pendingTx;
+  }
+
+  static async setPendingTx(chain: string, pendingTx: getPendingTxResult): Promise<void> {
+    let pendingTxKey = '';
+    switch (chain) {
+      case 'ckb':
+        pendingTxKey = ckbPendingTxKey;
+        break;
+      case 'eth':
+        pendingTxKey = ethPendingTxKey;
+        break;
+      default:
+        throw new Error(`invalid chain type:${chain}`);
+    }
+    SigServer.pendingTxs.set(pendingTxKey, pendingTx);
+    const compressed = snappy.compressSync(JSON.stringify(pendingTx));
+    await SigServer.kvDb.set(pendingTxKey, compressed.toString('base64'));
   }
 }
 
@@ -124,6 +175,14 @@ export async function startSigServer(configPath: string): Promise<void> {
       return await serverStatus();
     } catch (e) {
       logger.error(`status error:${e.message}`);
+      return SigResponse.fromSigError(SigErrorCode.UnknownError, e.message);
+    }
+  });
+  server.addMethod('pendingTx', async (params: getPendingTxParams) => {
+    try {
+      return await getPendingTx(params);
+    } catch (e) {
+      logger.error(`get getPendingTx params:${JSON.stringify(params, undefined, 2)} error:${e.message}`);
       return SigResponse.fromSigError(SigErrorCode.UnknownError, e.message);
     }
   });

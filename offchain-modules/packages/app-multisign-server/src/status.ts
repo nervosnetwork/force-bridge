@@ -3,6 +3,24 @@ import { privateKeyToCkbAddress, privateKeyToCkbPubkeyHash, privateKeyToEthAddre
 import * as lodash from 'lodash';
 import { SigResponse, SigServer } from './sigServer';
 
+export interface serverStatusResult {
+  addressConfig: {
+    ethAddress: string;
+    ckbPubkeyHash: string;
+    ckbAddress: string;
+  };
+  latestChainStatus: {
+    ckb: {
+      latestCkbHeight: string;
+      latestCkbBlockHash: string;
+    };
+    eth: {
+      latestEthHeight: string;
+      latestEthBlockHash: string;
+    };
+  };
+}
+
 export async function serverStatus(): Promise<SigResponse> {
   const [latestCkbHeight, latestCkbBlockHash] = lodash.split(await SigServer.kvDb.get('lastHandleCkbBlock'), ',', 2);
   const [latestEthHeight, latestEthBlockHash] = lodash.split(await SigServer.kvDb.get('lastHandleEthBlock'), ',', 2);

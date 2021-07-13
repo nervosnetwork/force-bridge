@@ -51,7 +51,8 @@
     "trongrid": "^1.2.6",
     "tronweb": "^3.2.3",
     "typeorm": "^0.2.31",
-    "typeorm-naming-strategies": "^2.0.0"
+    "typeorm-naming-strategies": "^2.0.0",
+    "snappy": "^6.3.5"
   },
   "publishConfig": {
     "access": "public"

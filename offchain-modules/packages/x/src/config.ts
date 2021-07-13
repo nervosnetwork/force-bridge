@@ -135,6 +135,7 @@ export interface commonConfig {
   orm: ormConfig;
   openMetric: boolean;
   keystorePath?: string;
+  collectorPubKeyHash: string[];
 }
 
 export interface promConfig {

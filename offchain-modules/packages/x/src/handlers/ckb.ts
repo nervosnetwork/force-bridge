@@ -16,10 +16,10 @@ import { getOwnerTypeHash } from '../ckb/tx-helper/multisig/multisig_helper';
 import { forceBridgeRole } from '../config';
 import { ForceBridgeCore } from '../core';
 import { CkbDb, KVDb } from '../db';
-import { CkbMint, ICkbBurn, MintedRecords } from '../db/model';
+import { ICkbBurn, ICkbMint, MintedRecords } from '../db/model';
 import { asserts, nonNullable } from '../errors';
 import { BridgeMetricSingleton, txTokenInfo } from '../monitor/bridge-metric';
-import { createAsset, MultiSigMgr } from '../multisig/multisig-mgr';
+import { ckbCollectSignaturesPayload, createAsset, MultiSigMgr } from '../multisig/multisig-mgr';
 import { asyncSleep, foreverPromise, fromHexString, toHexString, uint8ArrayToString } from '../utils';
 import { logger } from '../utils/logger';
 import { getAssetTypeByAsset } from '../xchain/tron/utils';
@@ -62,6 +62,15 @@ export class CkbHandler {
     this.lastHandledBlockHeight = blockNumber;
     this.lastHandledBlockHash = blockHash;
     await this.kvDb.set(lastHandleCkbBlockKey, `${blockNumber},${blockHash}`);
+  }
+
+  getHandledBlock(): { height: number; hash: string } {
+    return { height: this.lastHandledBlockHeight, hash: this.lastHandledBlockHash };
+  }
+
+  async getTipBlock(): Promise<{ height: number; hash: string }> {
+    const tipHeader = await this.ckb.rpc.getTipHeader();
+    return { height: Number(tipHeader.number), hash: tipHeader.hash };
   }
 
   async onCkbBurnConfirmed(confirmedCkbBurns: ICkbBurn[]): Promise<void> {
@@ -222,7 +231,7 @@ export class CkbHandler {
 
     const burnTxs = new Map();
     for (const tx of block.transactions) {
-      const parsedMintRecords = await this.parseMintTx(tx);
+      const parsedMintRecords = await this.parseMintTx(tx, block);
       if (parsedMintRecords) {
         await this.onMintTx(parsedMintRecords);
         BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('ckb_mint', 'success');
@@ -314,7 +323,7 @@ export class CkbHandler {
     logger.info(`CkbHandler processBurnTxs saveBurnEvent success, burnTxHashes:${burnTxHashes.join(', ')}`);
   }
 
-  async parseMintTx(tx: Transaction): Promise<null | MintedRecords> {
+  async parseMintTx(tx: Transaction, block: Block): Promise<null | MintedRecords> {
     let isInputsContainBridgeCell = false;
     for (const input of tx.inputs) {
       const previousOutput = nonNullable(input.previousOutput);
@@ -355,7 +364,7 @@ export class CkbHandler {
     mintedSudtCellIndexes.forEach((value, index) => {
       const amount = utils.readBigUInt128LE(tx.outputsData[value]);
       const lockTxHash = uint8ArrayToString(new Uint8Array(lockTxHashes.indexAt(index).raw()));
-      parsedResult.push({ amount: amount, lockTxHash: lockTxHash });
+      parsedResult.push({ amount: amount, lockTxHash: lockTxHash, lockBlockHeight: Number(block.header.number) });
     });
     return { txHash: tx.hash, records: parsedResult };
   }
@@ -381,10 +390,43 @@ export class CkbHandler {
     for (;;) {
       try {
         const mintRecords = await this.db.getCkbMintRecordsToMint('pending');
-        await this.doHandleMintRecords(mintRecords, ownerTypeHash, generator);
+        const pendingTx = await this.multisigMgr.getPendingTx({ chain: 'ckb' });
+        if (pendingTx === undefined && mintRecords.length !== 0) {
+          //pendingTx has already completed
+          mintRecords.map((record) => {
+            record.status = 'success';
+          });
+          const lockTxHashes = mintRecords.map((record) => {
+            return record.id;
+          });
+          await this.db.updateCkbMint(mintRecords);
+          logger.info(`CkbHandler handlePendingMintRecords set Record to complete lockIds:${lockTxHashes}`);
+          break;
+        }
+        if (pendingTx !== undefined) {
+          logger.info(`CkbHandler handlePendingMintRecords pendingTx:${JSON.stringify(pendingTx, undefined, 2)}`);
+
+          const ckbSignaturePayload = pendingTx.payload as ckbCollectSignaturesPayload;
+          const mintRecords = ckbSignaturePayload.mintRecords;
+          await this.doHandleMintRecords(
+            mintRecords!.map((record) => {
+              return {
+                id: record.id,
+                chain: record.chain,
+                asset: record.asset,
+                amount: record.amount,
+                recipientLockscript: record.recipientLockscript,
+                status: 'pending',
+                mintHash: '',
+              };
+            }),
+            ownerTypeHash,
+            generator,
+          );
+        }
         break;
       } catch (e) {
-        logger.error(`handlePendingMintRecords getUnlockRecords error:${e.message}`);
+        logger.error(`CkbHandler handlePendingMintRecords error:${e.stack}`);
         await asyncSleep(3000);
       }
     }
@@ -407,13 +449,13 @@ export class CkbHandler {
         onRejectedInterval: 0,
         onResolvedInterval: 0,
         onRejected: (e: Error) => {
-          logger.error(`CKB handleTodoMintRecords error:${e.message}, stack: ${e.stack}`);
+          logger.error(`CKB handleTodoMintRecords error:${e.stack}`);
         },
       },
     );
   }
 
-  async doHandleMintRecords(mintRecords: CkbMint[], ownerTypeHash: string, generator: CkbTxGenerator): Promise<void> {
+  async doHandleMintRecords(mintRecords: ICkbMint[], ownerTypeHash: string, generator: CkbTxGenerator): Promise<void> {
     if (mintRecords.length === 0) {
       return;
     }
@@ -443,7 +485,7 @@ export class CkbHandler {
         await this.waitUntilSync();
         break;
       } catch (e) {
-        logger.error(`CkbHandler doHandleMintRecords prepare error:${e.message}`);
+        logger.error(`CkbHandler doHandleMintRecords prepare error:${e.stack}`);
         await asyncSleep(3000);
       }
     }
@@ -453,15 +495,22 @@ export class CkbHandler {
     const sigs = await this.collectMintSignatures(txSkeleton, mintRecords);
     for (;;) {
       try {
-        if (sigs.length < ForceBridgeCore.config.ckb.multisigScript.M) {
+        if (typeof sigs === 'boolean') {
+          mintRecords.map((r) => {
+            r.status = 'success';
+          });
+          break;
+        }
+        const signatures = sigs as string[];
+        if (signatures.length < ForceBridgeCore.config.ckb.multisigScript.M) {
           const mintTxHash = txSkeleton.get('signingEntries').get(1)!.message;
           mintRecords.map((r) => {
             r.status = 'error';
-            r.message = `sig number:${sigs.length} less than:${ForceBridgeCore.config.ckb.multisigScript.M}`;
+            r.message = `sig number:${signatures.length} less than:${ForceBridgeCore.config.ckb.multisigScript.M}`;
             r.mintHash = mintTxHash;
           });
           logger.error(
-            `CkbHandler doHandleMintRecords sig number:${sigs.length} less than:${ForceBridgeCore.config.ckb.multisigScript.M}, mintIds:${mintIds}`,
+            `CkbHandler doHandleMintRecords sig number:${signatures.length} less than:${ForceBridgeCore.config.ckb.multisigScript.M}, mintIds:${mintIds}`,
           );
           break;
         }
@@ -471,9 +520,9 @@ export class CkbHandler {
           ForceBridgeCore.config.ckb.privateKey,
         );
         let content1 = serializeMultisigScript(ForceBridgeCore.config.ckb.multisigScript);
-        content1 += sigs.join('');
+        content1 += signatures.join('');
 
-        logger.info(`txSkeleton: ${JSON.stringify(txSkeleton, null, 2)}`);
+        logger.debug(`txSkeleton: ${JSON.stringify(txSkeleton, null, 2)}`);
         const tx = sealTransaction(txSkeleton, [content0, content1]);
         const mintTxHash = await this.transactionManager.send_transaction(tx);
         logger.info(
@@ -505,7 +554,7 @@ export class CkbHandler {
         }
         break;
       } catch (e) {
-        logger.error(`CkbHandler doHandleMintRecords mint error, mintIds:${mintIds}, stack: ${e.stack}`);
+        logger.debug(`CkbHandler doHandleMintRecords mint mintIds:${mintIds} error:${e.stack()}`);
         await asyncSleep(3000);
       }
     }
@@ -521,7 +570,10 @@ export class CkbHandler {
     }
   }
 
-  async collectMintSignatures(txSkeleton: TransactionSkeletonType, mintRecords: CkbMint[]): Promise<string[]> {
+  async collectMintSignatures(
+    txSkeleton: TransactionSkeletonType,
+    mintRecords: ICkbMint[],
+  ): Promise<string[] | boolean> {
     return await this.multisigMgr.collectSignatures({
       rawData: txSkeleton.get('signingEntries').get(1)!.message,
       payload: {
@@ -535,12 +587,12 @@ export class CkbHandler {
             recipientLockscript: r.recipientLockscript,
           };
         }),
-        txSkeleton,
+        txSkeleton: txSkeleton.toJS(),
       },
     });
   }
 
-  filterMintRecords(r: CkbMint, ownerTypeHash: string): MintAssetRecord {
+  filterMintRecords(r: ICkbMint, ownerTypeHash: string): MintAssetRecord {
     switch (r.chain) {
       case ChainType.BTC:
         return {
@@ -630,10 +682,16 @@ export class CkbHandler {
       payload: {
         sigType: 'create_cell',
         createAssets: assets,
-        txSkeleton,
+        txSkeleton: txSkeleton.toJS(),
       },
     });
-    content1 += sigs.join('');
+    const signatures = sigs as string[];
+    if (signatures.length < ForceBridgeCore.config.ckb.multisigScript.M) {
+      throw new Error(
+        `createBridgeCell collect signatures failed, expected:${ForceBridgeCore.config.ckb.multisigScript.M}, collected:${signatures.length}`,
+      );
+    }
+    content1 += signatures.join('');
 
     const tx = sealTransaction(txSkeleton, [content0, content1]);
     logger.info('tx:', JSON.stringify(tx, null, 2));

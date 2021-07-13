@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { JSONRPCResponse } from 'json-rpc-2.0';
-import { collectSignaturesParams } from './multisig-mgr';
+import { collectSignaturesParams, getPendingTxParams } from './multisig-mgr';
 
 let id = new Date().getTime();
 const nextId = () => {
@@ -8,11 +8,9 @@ const nextId = () => {
   return id;
 };
 
-export async function httpRequest(
-  reqUrl: string,
-  method: string,
-  params: collectSignaturesParams,
-): Promise<JSONRPCResponse> {
+export type httpRequestParams = collectSignaturesParams | getPendingTxParams;
+
+export async function httpRequest(reqUrl: string, method: string, params: httpRequestParams): Promise<JSONRPCResponse> {
   const jsonRpcRequest = {
     jsonrpc: '2.0',
     method: method,
