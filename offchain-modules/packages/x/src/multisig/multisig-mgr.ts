@@ -37,6 +37,7 @@ export interface mintRecord {
   asset: string;
   amount: string;
   recipientLockscript: string;
+  sudtExtraData: string;
 }
 
 export interface createAsset {

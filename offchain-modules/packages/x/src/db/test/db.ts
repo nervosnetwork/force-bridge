@@ -25,6 +25,7 @@ test('ckb db works', async (t) => {
     amount: '0x01',
     asset: '0x00000000000000000000',
     recipientLockscript: '0x00000000000000000001',
+    sudtExtraData: '0x01',
   };
   // const ckbMintRecord = ckbMintRepo.create(data);
   // await ckbMintRepo.save([ckbMintRecord]);

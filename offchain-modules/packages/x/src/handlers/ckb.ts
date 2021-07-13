@@ -416,6 +416,7 @@ export class CkbHandler {
                 asset: record.asset,
                 amount: record.amount,
                 recipientLockscript: record.recipientLockscript,
+                sudtExtraData: record.sudtExtraData,
                 status: 'pending',
                 mintHash: '',
               };
@@ -585,6 +586,7 @@ export class CkbHandler {
             asset: r.asset,
             amount: r.amount,
             recipientLockscript: r.recipientLockscript,
+            sudtExtraData: r.sudtExtraData,
           };
         }),
         txSkeleton: txSkeleton.toJS(),

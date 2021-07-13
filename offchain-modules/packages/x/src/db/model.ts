@@ -46,7 +46,7 @@ export interface ICkbMint {
   asset: string;
   amount: string;
   recipientLockscript: string;
-  sudtExtraData?: string;
+  sudtExtraData: string;
   status?: CkbMintStatus;
   mintHash?: string;
   message?: string;

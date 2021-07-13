@@ -73,6 +73,7 @@ export class CkbDb {
         id: r.lockTxHash,
         chain: ChainType.ETH,
         amount: r.amount.toString(),
+        sudtExtraData: '',
         asset: '',
         recipientLockscript: '',
         mintHash: mints.txHash,

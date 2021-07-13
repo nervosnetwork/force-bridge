@@ -2,7 +2,12 @@ import * as path from 'path';
 import { Cell } from '@ckb-lumos/base';
 import { common } from '@ckb-lumos/common-scripts';
 import { key } from '@ckb-lumos/hd';
-import { parseAddress, objectToTransactionSkeleton, TransactionSkeleton, TransactionSkeletonType } from '@ckb-lumos/helpers';
+import {
+  parseAddress,
+  objectToTransactionSkeleton,
+  TransactionSkeleton,
+  TransactionSkeletonType,
+} from '@ckb-lumos/helpers';
 import { BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
