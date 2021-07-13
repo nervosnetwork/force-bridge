@@ -1,12 +1,10 @@
-import { Cell, Script, Indexer, WitnessArgs, DepType, core, utils, CellDep } from '@ckb-lumos/base';
-import { common, secp256k1Blake160 } from '@ckb-lumos/common-scripts';
-import { addCellDep } from '@ckb-lumos/common-scripts/lib/helper';
+import { Cell, Script, Indexer, WitnessArgs, core, utils } from '@ckb-lumos/base';
+import { common } from '@ckb-lumos/common-scripts';
 import {
   generateAddress,
   minimalCellCapacity,
   parseAddress,
   TransactionSkeleton,
-  transactionSkeletonToObject,
   TransactionSkeletonType,
 } from '@ckb-lumos/helpers';
 import CKB from '@nervosnetwork/ckb-sdk-core';
@@ -117,7 +115,7 @@ export class CkbTxGenerator {
             },
             data: '0x',
           };
-          cell.cell_output.capacity = `0x${minimalCellCapacity(cell)}`;
+          cell.cell_output.capacity = `0x${minimalCellCapacity(cell).toString(16)}`;
           return cell;
         });
         txSkeleton = txSkeleton.update('outputs', (outputs) => {
