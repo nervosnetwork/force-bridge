@@ -17,7 +17,7 @@ export class SignedTx {
   @Column()
   asset: string;
 
-  @Column()
+  @Column('varchar', { length: 1024 })
   receiver: string;
 
   @Index()

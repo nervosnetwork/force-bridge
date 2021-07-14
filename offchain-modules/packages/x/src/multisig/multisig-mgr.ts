@@ -112,9 +112,11 @@ export class MultiSigMgr {
             },
             (err) => {
               logger.error(
-                `MultiSigMgr collectSignatures chain:${this.chainType} address:${svrHost.address} rawData:${
-                  params.rawData
-                } payload:${JSON.stringify(params.payload, null, 2)} sigServer:${svrHost.host}, error:${err.message}`,
+                `MultiSigMgr collectSignatures error:${err.message}, chain:${this.chainType} address:${
+                  svrHost.address
+                }  rawData:${params.rawData} payload:${JSON.stringify(params.payload, null, 2)} sigServer:${
+                  svrHost.host
+                }`,
               );
               failedSigServerHosts.push(svrHost);
               resolve(null);
@@ -138,22 +140,22 @@ export class MultiSigMgr {
           if (sigResp.error.code === SigErrorTxCompleted) {
             txCompletedMap.set(svrHost.host, true);
             logger.warn(
-              `MultiSigMgr collectSignatures chain:${this.chainType} address:${svrHost.address} rawData:${
-                params.rawData
-              } payload:${JSON.stringify(params.payload, null, 2)} sigServer:${svrHost.host}, errorCode:${
-                sigResp.error.code
-              } errorMessage:${sigResp.error.message}`,
+              `MultiSigMgr collectSignatures errorMessage:${sigResp.error.message}, chain:${this.chainType} address:${
+                svrHost.address
+              } rawData:${params.rawData} payload:${JSON.stringify(params.payload, null, 2)} sigServer:${
+                svrHost.host
+              }, errorCode:${sigResp.error.code} `,
             );
             if (txCompletedMap.size >= this.threshold) {
               return true;
             }
           } else {
             logger.error(
-              `MultiSigMgr collectSignatures chain:${this.chainType} address:${svrHost.address} rawData:${
-                params.rawData
-              } payload:${JSON.stringify(params.payload, null, 2)} sigServer:${svrHost.host}, errorCode:${
-                sigResp.error.code
-              } errorMessage:${sigResp.error.message}`,
+              `MultiSigMgr collectSignatures errorMessage:${sigResp.error.message}. chain:${this.chainType} address:${
+                svrHost.address
+              } rawData:${params.rawData} payload:${JSON.stringify(params.payload, null, 2)} sigServer:${
+                svrHost.host
+              }, errorCode:${sigResp.error.code}`,
             );
           }
           continue;

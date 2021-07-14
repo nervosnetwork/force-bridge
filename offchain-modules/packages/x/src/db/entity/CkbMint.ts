@@ -17,14 +17,14 @@ export class CkbMint {
   @Column()
   amount: string;
 
-  @Column()
+  @Column('varchar', { length: 1024 })
   recipientLockscript: string;
 
   // todo: save address when save lockscript
   // @Column()
   // recipientAddress: string;
 
-  @Column({ default: '' })
+  @Column({ type: 'text', default: '' })
   sudtExtraData: string;
 
   @Column({ default: 'todo' })

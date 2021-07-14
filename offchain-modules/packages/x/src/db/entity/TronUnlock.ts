@@ -23,7 +23,7 @@ export class TronUnlock {
   @Column()
   amount: string;
 
-  @Column({ default: '' })
+  @Column('varchar', { length: 1024 })
   memo: string;
 
   @Index()

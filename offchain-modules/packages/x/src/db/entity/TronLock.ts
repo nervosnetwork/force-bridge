@@ -36,7 +36,7 @@ export class TronLock {
   @Column()
   amount: string;
 
-  @Column()
+  @Column('varchar', { length: 1024 })
   memo: string;
 
   @Index()

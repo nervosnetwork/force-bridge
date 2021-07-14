@@ -15,7 +15,7 @@ export class BtcLock {
   @Column()
   amount: string;
 
-  @Column()
+  @Column('varchar', { length: 1024 })
   data: string;
 
   @Column('text')
