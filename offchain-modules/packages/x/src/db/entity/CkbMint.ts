@@ -24,7 +24,7 @@ export class CkbMint {
   // @Column()
   // recipientAddress: string;
 
-  @Column({ type: 'text', default: '' })
+  @Column('varchar', { length: 1024, default: '' })
   sudtExtraData: string;
 
   @Column({ default: 'todo' })
