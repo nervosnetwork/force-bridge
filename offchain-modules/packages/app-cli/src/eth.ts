@@ -1,10 +1,11 @@
 import { ForceBridgeAPIV1Client } from '@force-bridge/app-rpc-server/dist/client';
 import { nonNullable } from '@force-bridge/x';
+import { privateKeyToCkbAddress } from '@force-bridge/x/dist/utils';
 import { Amount } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import commander from 'commander';
 import { ethers } from 'ethers';
-import { ckbPrivateKeyToAddress, waitUnlockCompleted } from './utils';
+import { waitUnlockCompleted } from './utils';
 
 const ForceBridgeRpc = 'http://47.56.233.149:3083/force-bridge/api/v1';
 const EthNodeRpc = 'http://127.0.0.1:8545';
@@ -122,7 +123,7 @@ async function doUnlock(opts: Record<string, string | boolean>) {
   const forceConfig = await forceClient.getBridgeConfig();
 
   const ckb = new CKB(ckbRpc);
-  const ckbAddress = ckbPrivateKeyToAddress(privateKey, forceConfig.nervos.network);
+  const ckbAddress = privateKeyToCkbAddress(privateKey, forceConfig.nervos.network);
 
   const assetList = await forceClient.getAssetList();
   const assetInfo = assetList.find((asset) => {

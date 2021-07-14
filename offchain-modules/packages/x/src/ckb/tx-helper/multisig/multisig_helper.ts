@@ -3,7 +3,6 @@ import { multisigArgs, serializeMultisigScript } from '@ckb-lumos/common-scripts
 import { getConfig } from '@ckb-lumos/config-manager';
 import { key } from '@ckb-lumos/hd';
 import { generateAddress } from '@ckb-lumos/helpers';
-// import { MultisigItem } from '../config';
 import { MultisigItem } from '../../../config';
 import { ForceBridgeCore } from '../../../core';
 import { nonNullable } from '../../../errors';

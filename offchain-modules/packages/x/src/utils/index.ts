@@ -104,8 +104,15 @@ export function privateKeyToEthAddress(privkey: string): string {
   return ethers.utils.computeAddress(privkey);
 }
 
-export function privateKeyToCkbAddress(privkey: string, prefix: AddressPrefix = AddressPrefix.Testnet): string {
-  return utils.privateKeyToAddress(privkey, { prefix });
+export type ckbAddressPrefix = AddressPrefix | 'mainnet' | 'testnet' | 'ckb' | 'cbt';
+
+export function privateKeyToCkbAddress(privkey: string, prefix: ckbAddressPrefix = AddressPrefix.Testnet): string {
+  if (prefix === 'mainnet' || prefix === 'ckb') {
+    prefix = AddressPrefix.Mainnet;
+  } else if (prefix === 'testnet' || prefix === 'ckt') {
+    prefix = AddressPrefix.Testnet;
+  }
+  return utils.privateKeyToAddress(privkey, { prefix: prefix as AddressPrefix });
 }
 
 export async function getDBConnection(): Promise<Connection> {
