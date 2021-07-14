@@ -1,5 +1,4 @@
 // invoke in eth handler
-import { Amount } from '@lay2/pw-core';
 import { Connection, DeleteResult, In, Not, Repository, UpdateResult } from 'typeorm';
 import { ForceBridgeCore } from '../core';
 import { EthUnlockStatus } from './entity/EthUnlock';
@@ -106,7 +105,7 @@ export class EthDb implements IQuery {
       .where('id = :lockTxHash', { lockTxHash: lockTxHash })
       .getOne();
     if (mintRecord) {
-      const bridgeFee = new Amount(amount, 0).sub(new Amount(mintRecord.amount, 0)).toString(0);
+      const bridgeFee = (BigInt(amount) - BigInt(mintRecord.amount)).toString();
       await this.updateLockBridgeFee(lockTxHash, bridgeFee);
       await this.connection
         .getRepository(CkbMint)
@@ -131,7 +130,7 @@ export class EthDb implements IQuery {
     const query = this.connection.getRepository(CkbBurn).createQueryBuilder();
     const row = await query.select().where('ckb_tx_hash = :ckbTxHash', { ckbTxHash: burnTxHash }).getOne();
     if (row) {
-      const bridgeFee = new Amount(row.amount, 0).sub(new Amount(unlockAmount, 0)).toString(0);
+      const bridgeFee = (BigInt(row.amount) - BigInt(unlockAmount)).toString();
       await query
         .update()
         .set({ bridgeFee: bridgeFee })

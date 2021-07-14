@@ -1,4 +1,3 @@
-import { Amount } from '@lay2/pw-core';
 import { getRepository } from 'typeorm';
 import { ChainType } from '../ckb/model/asset';
 import { SigType } from '../multisig/multisig-mgr';
@@ -47,7 +46,7 @@ export interface ICkbMint {
   asset: string;
   amount: string;
   recipientLockscript: string;
-  sudtExtraData?: string;
+  sudtExtraData: string;
   status?: CkbMintStatus;
   mintHash?: string;
   message?: string;
@@ -222,7 +221,7 @@ export interface UnlockRecord {
 
 export interface MintedRecords {
   txHash: string;
-  records: { amount: Amount; lockTxHash: string }[];
+  records: { amount: bigint; lockTxHash: string }[];
 }
 
 export interface IQuery {

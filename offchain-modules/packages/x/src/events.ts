@@ -1,5 +1,4 @@
 import { EventEmitter } from 'events';
-import { Amount } from '@lay2/pw-core';
 import { Asset, ChainType } from './ckb/model/asset';
 
 export type EthLockEvent = {
@@ -11,7 +10,7 @@ export type MintEvent = {
   name: 'MintEvent';
   chainType: ChainType;
   asset: Asset;
-  amount: Amount;
+  amount: bigint;
   recipientAddress: string;
   sudtExtraData: string;
 };
@@ -21,7 +20,7 @@ export type BurnEvent = {
   name: 'BurnEvent';
   chainType: ChainType;
   asset: Asset;
-  amount: Amount;
+  amount: bigint;
   memo: string;
 };
 

@@ -40,6 +40,7 @@ export class BtcHandler {
                   amount: btcLockEventData.amount,
                   asset: 'btc',
                   recipientLockscript: btcLockEventData.data.slice(0, CkbAddressLen),
+                  sudtExtraData: '0x',
                 },
               ]);
               logger.info(`BtcHandler watchBtcTxEvents save CkbMint successful for BTC tx ${btcLockEventData.txHash}.`);

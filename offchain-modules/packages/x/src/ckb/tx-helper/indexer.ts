@@ -1,14 +1,18 @@
 import {
+  Cell,
   CellCollector,
   CellCollectorResults,
   Hexadecimal,
+  HexString,
   Indexer,
   QueryOptions,
-  Script as LumosScript,
+  Script,
   Tip,
+  OutPoint,
+  HexNumber,
+  Hash,
 } from '@ckb-lumos/base';
 import { RPC } from '@ckb-lumos/rpc';
-import { OutPoint, Script } from '@lay2/pw-core';
 import axios from 'axios';
 import { nonNullable } from '../../errors';
 import { asyncSleep } from '../../utils';
@@ -27,25 +31,31 @@ export enum Order {
 export type HexadecimalRange = [Hexadecimal, Hexadecimal];
 
 export interface SearchKey {
-  script: LumosScript;
+  script: Script;
   script_type: ScriptType;
   filter?: {
-    script?: LumosScript;
+    script?: Script;
     output_data_len_range?: HexadecimalRange;
     output_capacity_range?: HexadecimalRange;
     block_range?: HexadecimalRange;
   };
 }
 
-export type HexString = string;
-export type Hash = HexString;
+export interface GetLiveCellsResult {
+  last_cursor: string;
+  objects: IndexerCell[];
+}
 
 export interface IndexerCell {
-  capacity: HexString;
-  lock: Script;
-  type: Script;
-  outPoint: OutPoint;
-  data: HexString;
+  block_number: Hexadecimal;
+  out_point: OutPoint;
+  output: {
+    capacity: HexNumber;
+    lock: Script;
+    type?: Script;
+  };
+  output_data: HexString;
+  tx_index: Hexadecimal;
 }
 
 export interface TerminatorResult {
@@ -53,7 +63,7 @@ export interface TerminatorResult {
   push: boolean;
 }
 
-export declare type Terminator = (index: number, cell: IndexerCell) => TerminatorResult;
+export declare type Terminator = (index: number, cell: Cell) => TerminatorResult;
 
 const DefaultTerminator: Terminator = (_index, _cell) => {
   return { stop: false, push: true };
@@ -97,18 +107,18 @@ export class CkbIndexer implements Indexer {
     let searchKey: SearchKey;
     if (lock !== undefined) {
       searchKey = {
-        script: lock as LumosScript,
+        script: lock as Script,
         script_type: ScriptType.lock,
       };
       if (type != undefined && type !== 'empty') {
         searchKey.filter = {
-          script: type as LumosScript,
+          script: type as Script,
         };
       }
     } else {
       if (type != undefined && type != 'empty') {
         searchKey = {
-          script: type as LumosScript,
+          script: type as Script,
           script_type: ScriptType.type,
         };
       } else {
@@ -246,27 +256,26 @@ $ echo '{
     searchKey: SearchKey,
     terminator: Terminator = DefaultTerminator,
     { sizeLimit = 0x100, order = Order.asc }: { sizeLimit?: number; order?: Order } = {},
-  ): Promise<IndexerCell[]> {
-    const infos: IndexerCell[] = [];
-    let cursor = null;
+  ): Promise<Cell[]> {
+    const infos: Cell[] = [];
+    let cursor: string | undefined;
     const index = 0;
     while (true) {
       const params = [searchKey, order, `0x${sizeLimit.toString(16)}`, cursor];
-      const res = await this.request('get_cells', params);
+      const res: GetLiveCellsResult = await this.request('get_cells', params);
       const liveCells = res.objects;
       cursor = res.last_cursor;
       logger.debug('liveCells', liveCells[liveCells.length - 1]);
-      for (const cell of liveCells) {
-        const indexCell: IndexerCell = {
-          capacity: cell.output.capacity,
-          lock: Script.fromRPC(cell.output.lock)!,
-          type: Script.fromRPC(cell.output.type)!,
-          outPoint: OutPoint.fromRPC(cell.out_point)!,
-          data: cell.output_data,
+      for (const liveCell of liveCells) {
+        const cell: Cell = {
+          cell_output: liveCell.output,
+          data: liveCell.output_data,
+          out_point: liveCell.out_point,
+          block_number: liveCell.block_number,
         };
-        const { stop, push } = terminator(index, indexCell);
+        const { stop, push } = terminator(index, cell);
         if (push) {
-          infos.push(indexCell);
+          infos.push(cell);
         }
         if (stop) {
           return infos;
