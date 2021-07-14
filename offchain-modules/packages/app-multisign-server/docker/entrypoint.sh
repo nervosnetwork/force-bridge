@@ -4,7 +4,7 @@
 TEMP_DIR=/usr/app/tmp
 WORK_SPACE=/usr/app/workspace
 
-function prepare {
+function init {
   mkdir -p ${WORK_SPACE}/force-bridge/workdir/integration/
   cp -r ${TEMP_DIR}/force-bridge/workdir/integration/configs /usr/app/workspace/force-bridge/workdir/integration/
 
@@ -20,9 +20,6 @@ function prepare {
   done
 
   cd ${WORK_SPACE}/force-bridge/offchain-modules && yarn && yarn build
-
-  export CONFIG_PATH=${WORK_SPACE}/force-bridge/workdir/integration/configs
-  export FORCE_BRIDGE_KEYSTORE_PATH=${WORK_SPACE}/force-bridge/workdir/integration/configs/keystore.json
 }
 
 function generate_verifier_config {
@@ -30,9 +27,24 @@ function generate_verifier_config {
 }
 
 function start_verifier {
-  CONFIG_PATH=${CONFIG_PATH}/verifier.json npx ts-node ${WORK_SPACE}/force-bridge/offchain-modules/packages/app-multisign-server/src/index.ts 
+  CONFIG_PATH=${CONFIG_PATH}/verifier${VERIFIER_INDEX}.json npx ts-node ${WORK_SPACE}/force-bridge/offchain-modules/packages/app-multisign-server/src/index.ts 
 }
 
-prepare
-generate_verifier_config
-start_verifier
+if [ ! -d ${WORK_SPACE}/force-bridge/workdir/ ];then
+  init
+  touch ${WORK_SPACE}/force-bridge/init_ok
+fi
+
+export CONFIG_PATH=${WORK_SPACE}/force-bridge/workdir/integration/configs
+export FORCE_BRIDGE_KEYSTORE_PATH=${WORK_SPACE}/force-bridge/workdir/integration/configs/keystore.json
+
+while [ 1 == 1 ]
+do
+  if [ -f ${WORK_SPACE}/force-bridge/init_ok ];then
+    generate_verifier_config
+    touch ${WORK_SPACE}/force-bridge/${VERIFIER_INDEX}_ok
+    start_verifier
+    break
+  fi
+  sleep 10
+done

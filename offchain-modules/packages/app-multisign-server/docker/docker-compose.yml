@@ -13,6 +13,7 @@ services:
       FORCE_BRIDGE_KEYSTORE_PASSWORD: ${FORCE_BRIDGE_KEYSTORE_PASSWORD}
     volumes:
       - ${PROJECT_DIR}:/usr/app/tmp/force-bridge
+      - ${DOCKER_DIR}:/usr/app/workspace/force-bridge
     ports:
       - "${PORT}:8000"
     networks:

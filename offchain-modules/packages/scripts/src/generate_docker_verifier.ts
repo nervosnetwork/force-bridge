@@ -19,8 +19,8 @@ async function generateConfig() {
 
   verifierConfig.common.port = verifierServerBasePort;
   verifierConfig.common.keystorePath = getFromEnv('FORCE_BRIDGE_KEYSTORE_PATH');
-  verifierConfig.common.log.logFile = path.join(configPath, `logs/verifier.log`);
-  writeJsonToFile({ forceBridge: verifierConfig }, path.join(configPath, `verifier.json`));
+  verifierConfig.common.log.logFile = path.join(configPath, `logs/verifier${verifierIndex}.log`);
+  writeJsonToFile({ forceBridge: verifierConfig }, path.join(configPath, `verifier${verifierIndex}.json`));
 }
 
 async function main() {

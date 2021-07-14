@@ -19,6 +19,7 @@ export MULTISIG_NUMBER=5
 export THRESHOLD=3
 export FORCE_BRIDGE_RPC_URL="http://127.0.0.1:8080/force-bridge/api/v1"
 export FORCE_BRIDGE_KEYSTORE_PATH="${INTEGRATION_TEST_WORKDIR}/configs/keystore.json"
+export DOCKER_DIR=/tmp/force-bridge
 
 function install_and_build {
   cd "${OFFCHAIN_MODULES_DIR}"
@@ -81,6 +82,7 @@ function create_db {
 }
 
 function start_multisign_docker {
+  mkdir -p $DOCKER_DIR
   cd ${OFFCHAIN_MODULES_DIR}/packages/app-multisign-server/docker
   docker build -t multisign-server .
   for i in `seq 1 $MULTISIG_NUMBER`
@@ -98,11 +100,10 @@ function wait_for_multisign_server {
   do
     while [ 1 == 1 ]
     do
-      docker exec -it verifier${i} bash -c 'ps -ef | grep multisign | grep -v grep'
-      if [ $? == 0 ];then
+      if [ -f ${DOCKER_DIR}/${i}_ok ];then
         break
       fi
-      sleep 10
+      sleep 5
     done
   done
 }

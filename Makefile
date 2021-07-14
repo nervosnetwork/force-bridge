@@ -22,3 +22,4 @@ deploy-eth-contracts:
 
 clean-dev-env: stop-docker
 	rm -rf workdir/integration
+	rm -rf /tmp/force-bridge
