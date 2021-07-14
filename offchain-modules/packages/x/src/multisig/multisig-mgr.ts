@@ -137,27 +137,29 @@ export class MultiSigMgr {
           if (retryErrorCode.has(sigResp.error.code)) {
             failedSigServerHosts.push(svrHost);
           }
+          const errorCode = sigResp.error.code;
+          const errorMsg = `MultiSigMgr collectSignatures chain:${this.chainType} address:${svrHost.address} rawData:${
+            params.rawData
+          } payload:${JSON.stringify(params.payload, null, 2)} sigServer:${
+            svrHost.host
+          }, errorCode:${errorCode} errorMessage:${sigResp.error.message}`;
+
+          if (
+            errorCode === SigErrorTxCompleted ||
+            errorCode === SigErrorTxUnconfirmed ||
+            errorCode === SigErrorBlockSyncUncompleted
+          ) {
+            logger.warn(errorMsg);
+          } else {
+            logger.error(errorMsg);
+            BridgeMetricSingleton.getInstance(ForceBridgeCore.config.common.role).addErrorLogMetrics('ckb');
+          }
+
           if (sigResp.error.code === SigErrorTxCompleted) {
             txCompletedMap.set(svrHost.host, true);
-            logger.warn(
-              `MultiSigMgr collectSignatures chain:${this.chainType} address:${svrHost.address} rawData:${
-                params.rawData
-              } payload:${JSON.stringify(params.payload, null, 2)} sigServer:${svrHost.host}, errorCode:${
-                sigResp.error.code
-              } errorMessage:${sigResp.error.message}`,
-            );
             if (txCompletedMap.size >= this.threshold) {
               return true;
             }
-          } else {
-            logger.error(
-              `MultiSigMgr collectSignatures chain:${this.chainType} address:${svrHost.address} rawData:${
-                params.rawData
-              } payload:${JSON.stringify(params.payload, null, 2)} sigServer:${svrHost.host}, errorCode:${
-                sigResp.error.code
-              } errorMessage:${sigResp.error.message}`,
-            );
-            BridgeMetricSingleton.getInstance(ForceBridgeCore.config.common.role).addErrorLogMetrics('ckb');
           }
           continue;
         }
