@@ -78,6 +78,7 @@ export class CkbHandler {
     for (const burn of confirmedCkbBurns) {
       logger.info(`CkbHandler onCkbBurnConfirmed burnRecord:${JSON.stringify(burn, undefined, 2)}`);
       const unlockAmount = (BigInt(burn.amount) - BigInt(burn.bridgeFee)).toString();
+      if (BigInt(unlockAmount) > BigInt(burn.amount)) throw Error('calculate unlock amount overflow');
       switch (burn.chain) {
         case ChainType.BTC:
           await this.db.createBtcUnlock([
@@ -317,7 +318,7 @@ export class CkbHandler {
       burnTxHashes.push(k);
     });
     await this.db.createCkbBurn(ckbBurns);
-    if (this.role === 'watcher') {
+    if (this.role !== 'collector') {
       await this.db.updateBurnBridgeFee(ckbBurns);
     }
     logger.info(`CkbHandler processBurnTxs saveBurnEvent success, burnTxHashes:${burnTxHashes.join(', ')}`);
@@ -792,9 +793,16 @@ export async function parseBurnTx(tx: Transaction): Promise<RecipientCellData | 
   logger.debug('recipient address: ', toHexString(new Uint8Array(cellData.getRecipientAddress().raw())));
   logger.debug('asset: ', toHexString(new Uint8Array(cellData.getAsset().raw())));
   logger.debug('chain: ', cellData.getChain());
+  const recipientCellBridgeLockCodeHash = `0x${toHexString(new Uint8Array(cellData.getBridgeLockCodeHash().raw()))}`;
+  const recipientCellBridgeLockHashType = cellData.getBridgeLockHashType() === 0 ? 'data' : 'type';
+  const expectBridgeLockscript = ForceBridgeCore.config.ckb.deps.bridgeLock.script;
   const recipientCellOwnerTypeHash = `0x${toHexString(new Uint8Array(cellData.getOwnerCellTypeHash().raw()))}`;
   const ownerTypeHash = getOwnerTypeHash();
-  if (recipientCellOwnerTypeHash !== ownerTypeHash) {
+  if (
+    recipientCellBridgeLockCodeHash !== expectBridgeLockscript.codeHash ||
+    recipientCellBridgeLockHashType !== expectBridgeLockscript.hashType ||
+    recipientCellOwnerTypeHash !== ownerTypeHash
+  ) {
     return null;
   }
   let asset;
