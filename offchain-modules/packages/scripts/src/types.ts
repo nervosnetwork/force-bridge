@@ -30,4 +30,5 @@ export type role = {
   keystorePath?: string;
   ethPrivateKey?: string;
   ckbPrivateKey?: string;
+  collectorPubKeyHash?: string[];
 };

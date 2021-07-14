@@ -45,6 +45,7 @@ async function generateConfig() {
   collectorConfig.eth.privateKey = rolesInfos.roles.collector.ethPrivateKey!;
   collectorConfig.ckb.privateKey = rolesInfos.roles.collector.ckbPrivateKey!;
   collectorConfig.common.keystorePath = rolesInfos.roles.collector.keystorePath;
+  collectorConfig.common.collectorPubKeyHash = rolesInfos.roles.collector.collectorPubKeyHash!;
   collectorConfig.eth.multiSignHosts = nodeInfos.nodes.map((v) => {
     return {
       address: v.ethAddress,
@@ -69,6 +70,7 @@ async function generateConfig() {
     verifierConfig.ckb.privateKey = rolesInfos.roles.verifier[verifierIndex].ckbPrivateKey!;
     verifierConfig.common.port = rolesInfos.roles.verifier[verifierIndex].port;
     verifierConfig.common.log.logFile = rolesInfos.roles.verifier[verifierIndex].logPath;
+    verifierConfig.common.collectorPubKeyHash = rolesInfos.roles.verifier[verifierIndex].collectorPubKeyHash!;
     writeJsonToFile({ forceBridge: verifierConfig }, rolesInfos.roles.verifier[verifierIndex].configPath);
   }
   // generate watcher config
