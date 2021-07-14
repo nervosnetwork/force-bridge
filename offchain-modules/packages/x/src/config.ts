@@ -1,4 +1,4 @@
-import { DepType, HashType } from '@ckb-lumos/base'
+import { DepType, HashType, Script } from '@ckb-lumos/base';
 
 export type forceBridgeRole = 'watcher' | 'collector' | 'verifier';
 
@@ -15,12 +15,6 @@ export interface ConfigItem {
     hashType: HashType;
     args?: string;
   };
-}
-
-export interface ScriptItem {
-  code_hash: string;
-  hash_type: HashType;
-  args: string;
 }
 
 export interface MultisigItem {
@@ -40,8 +34,8 @@ export interface CkbConfig {
   privateKey: string;
   multiSignHosts: MultiSignHost[];
   multisigScript: MultisigItem;
-  multisigLockscript: ScriptItem;
-  ownerCellTypescript: ScriptItem;
+  multisigLockscript: Script;
+  ownerCellTypescript: Script;
   deps: {
     bridgeLock: ConfigItem;
     recipientType: ConfigItem;
@@ -141,6 +135,7 @@ export interface commonConfig {
   orm: ormConfig;
   openMetric: boolean;
   keystorePath?: string;
+  collectorPubKeyHash: string[];
 }
 
 export interface promConfig {

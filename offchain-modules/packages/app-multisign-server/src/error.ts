@@ -22,6 +22,9 @@ export enum SigErrorCode {
   DuplicateSign,
   TxUnconfirmed,
   TxNotFound,
+  BlockSyncUncompleted,
+  TxCompleted,
+  InvalidCollector,
   UnknownError = 9999,
 }
 
@@ -32,6 +35,9 @@ const errMessages = new Map([
   [SigErrorCode.DuplicateSign, 'duplicate signature request'],
   [SigErrorCode.TxNotFound, 'tx not found'],
   [SigErrorCode.TxUnconfirmed, 'tx unconfirmed'],
+  [SigErrorCode.BlockSyncUncompleted, 'block sync uncompleted'],
+  [SigErrorCode.TxCompleted, 'tx has already completed'],
+  [SigErrorCode.InvalidCollector, 'invalid collector'],
   [SigErrorCode.UnknownError, 'unknown error'],
 ]);
 

@@ -1,6 +1,8 @@
 import { ChainType, EthAsset } from '@force-bridge/x/dist/ckb/model/asset';
+import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { ICkbBurn } from '@force-bridge/x/dist/db/model';
 import { collectSignaturesParams, ethCollectSignaturesPayload } from '@force-bridge/x/dist/multisig/multisig-mgr';
+import { verifyCollector } from '@force-bridge/x/dist/multisig/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
 import { EthUnlockRecord } from '@force-bridge/x/dist/xchain/eth';
 import { buildSigRawData } from '@force-bridge/x/dist/xchain/eth/utils';
@@ -11,14 +13,20 @@ import { SigError, SigErrorCode, SigErrorOk } from './error';
 import { SigResponse, SigServer } from './sigServer';
 
 async function verifyDuplicateEthTx(pubKey: string, payload: ethCollectSignaturesPayload): Promise<SigError> {
+  const refTxHashes = payload.unlockRecords.map((record) => {
+    return record.ckbTxHash;
+  });
+
+  const unlocks = await SigServer.ethDb.getEthUnlockByCkbTxHashes(refTxHashes);
+  if (unlocks.length !== 0) {
+    return new SigError(SigErrorCode.TxCompleted);
+  }
+
   const nonce = await SigServer.ethBridgeContract.latestUnlockNonce_();
   if (nonce.toString() !== payload.nonce.toString()) {
     return new SigError(SigErrorCode.InvalidParams, `nonce:${payload.nonce} doesn't match with:${nonce.toString()}`);
   }
 
-  const refTxHashes = payload.unlockRecords.map((record) => {
-    return record.ckbTxHash;
-  });
   const lastNonceRow = await SigServer.signedDb.getMaxNonceByRefTxHashes(pubKey, refTxHashes);
   const lastNonce = lastNonceRow.nonce;
   if (lastNonce === null) {
@@ -61,11 +69,24 @@ async function verifyEthTx(pubKey: string, params: collectSignaturesParams): Pro
 
 export async function signEthTx(params: collectSignaturesParams): Promise<SigResponse> {
   logger.info('signEthTx params: ', JSON.stringify(params, undefined, 2));
+  if (!verifyCollector(params)) {
+    return SigResponse.fromSigError(SigErrorCode.InvalidCollector);
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const privKey = SigServer.getKey('eth', params.requestAddress!);
   if (privKey === undefined) {
     return SigResponse.fromSigError(SigErrorCode.InvalidParams, `cannot found key by address:${params.requestAddress}`);
+  }
+
+  const ethHandler = ForceBridgeCore.getXChainHandler().eth!;
+  if ((await ethHandler.getTipBlock()).height - ethHandler.getHandledBlock().height >= 10) {
+    return SigResponse.fromSigError(SigErrorCode.BlockSyncUncompleted);
+  }
+
+  const signed = await SigServer.signedDb.getSignedByRawData(params.rawData);
+  if (signed) {
+    return SigResponse.fromData(signed.signature);
   }
 
   const pubKey = privateKeyToPublicKey(privKey);
@@ -98,6 +119,8 @@ export async function signEthTx(params: collectSignaturesParams): Promise<SigRes
       };
     }),
   );
+
+  await SigServer.setPendingTx('eth', params);
   return SigResponse.fromData(signature);
 }
 

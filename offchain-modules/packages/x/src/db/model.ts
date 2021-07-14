@@ -1,19 +1,11 @@
-import { Amount } from '@lay2/pw-core';
 import { getRepository } from 'typeorm';
 import { ChainType } from '../ckb/model/asset';
 import { SigType } from '../multisig/multisig-mgr';
-import { BtcLock } from './entity/BtcLock';
 import { BtcUnlock } from './entity/BtcUnlock';
-import { CkbBurn } from './entity/CkbBurn';
 import { CkbMint, CkbMintStatus, dbTxStatus } from './entity/CkbMint';
-import { EosLock } from './entity/EosLock';
 import { EosUnlock } from './entity/EosUnlock';
 import { EthLock, TxConfirmStatus } from './entity/EthLock';
 import { EthUnlock, EthUnlockStatus } from './entity/EthUnlock';
-import { TronLock } from './entity/TronLock';
-import { TronUnlock } from './entity/TronUnlock';
-
-// export { EthUnlock, EthLock, BtcLock, BtcUnlock, EosLock, EosUnlock, CkbMint, CkbBurn, TronLock, TronUnlock };
 
 export { EthUnlock } from './entity/EthUnlock';
 export { EthLock, TxConfirmStatus } from './entity/EthLock';
@@ -54,9 +46,10 @@ export interface ICkbMint {
   asset: string;
   amount: string;
   recipientLockscript: string;
-  sudtExtraData?: string;
+  sudtExtraData: string;
   status?: CkbMintStatus;
   mintHash?: string;
+  message?: string;
 }
 
 export interface IEthLock {
@@ -90,6 +83,7 @@ export interface IEthUnlock {
   recipientAddress: string;
   ethTxHash?: string;
   status?: EthUnlockStatus;
+  message?: string;
 }
 
 export interface ITronLock {
@@ -113,9 +107,9 @@ export interface ITronUnlock {
 
 export type XchainUnlock = EthUnlock | BtcUnlock | EosUnlock;
 
-export async function transformBurnEvent(burn: CkbBurn): Promise<XchainUnlock> {
-  throw new Error('Method not implemented.');
-}
+// export async function transformBurnEvent(burn: CkbBurn): Promise<XchainUnlock> {
+//   throw new Error('Method not implemented.');
+// }
 
 // export type XchainLock = EthLock | BtcLock;
 // export async function transformMintEvent(burn: XchainLock): Promise<CkbMint> {
@@ -227,7 +221,7 @@ export interface UnlockRecord {
 
 export interface MintedRecords {
   txHash: string;
-  records: { amount: Amount; lockTxHash: string }[];
+  records: { amount: bigint; lockTxHash: string }[];
 }
 
 export interface IQuery {

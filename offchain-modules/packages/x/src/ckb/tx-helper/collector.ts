@@ -1,9 +1,9 @@
-import {Script, Cell, utils} from '@ckb-lumos/base';
+import { Script, utils, Cell } from '@ckb-lumos/base';
 import { logger } from '../../utils/logger';
 import { CkbIndexer, ScriptType, SearchKey, Terminator } from './indexer';
 
 export abstract class Collector {
-  abstract getCellsByLockscriptAndCapacity(lockscript: Script, capacity: BigInt): Promise<Cell[]>;
+  abstract getCellsByLockscriptAndCapacity(lockscript: Script, capacity: bigint): Promise<Cell[]>;
 }
 
 export class IndexerCollector extends Collector {
@@ -11,14 +11,14 @@ export class IndexerCollector extends Collector {
     super();
   }
 
-  async getCellsByLockscriptAndCapacity(lockscript: Script, needCapacity: BigInt): Promise<Cell[]> {
+  async getCellsByLockscriptAndCapacity(lockscript: Script, needCapacity: bigint): Promise<Cell[]> {
     let accCapacity = 0n;
     const terminator: Terminator = (index, c) => {
       const cell = c;
       if (accCapacity >= needCapacity) {
         return { stop: true, push: false };
       }
-      if (cell.data.length / 2 - 1 > 0 || cell.cell_output.type !== undefined) {
+      if (cell.data.length / 2 - 1 > 0 || cell.cell_output.type) {
         return { stop: false, push: false };
       } else {
         accCapacity += BigInt(cell.cell_output.capacity);
@@ -33,14 +33,14 @@ export class IndexerCollector extends Collector {
     return cells;
   }
 
-  async collectSudtByAmount(searchKey: SearchKey, amount: BigInt): Promise<Cell[]> {
+  async collectSudtByAmount(searchKey: SearchKey, amount: bigint): Promise<Cell[]> {
     let balance = 0n;
     const terminator: Terminator = (index, c) => {
       const cell = c;
       if (balance >= amount) {
         return { stop: true, push: false };
       } else {
-        const cellAmount = utils.readBigUInt128LE(cell.data)
+        const cellAmount = utils.readBigUInt128LE(cell.data);
         balance += cellAmount;
         return { stop: false, push: true };
       }
@@ -49,7 +49,7 @@ export class IndexerCollector extends Collector {
     return cells;
   }
 
-  async getSUDTBalance(sudtType: Script, userLock: Script): Promise<BigInt> {
+  async getSUDTBalance(sudtType: Script, userLock: Script): Promise<bigint> {
     const searchKey = {
       script: userLock,
       script_type: ScriptType.lock,
@@ -70,7 +70,7 @@ export class IndexerCollector extends Collector {
   async getCellsByLockscriptAndCapacityWhenBurn(
     lockscript: Script,
     recipientTypeCodeHash: string,
-    needCapacity: BigInt,
+    needCapacity: bigint,
   ): Promise<Cell[]> {
     let accCapacity = 0n;
     const terminator: Terminator = (index, c) => {
@@ -78,7 +78,7 @@ export class IndexerCollector extends Collector {
       if (accCapacity >= needCapacity) {
         return { stop: true, push: false };
       }
-      if (cell.cell_output.type !== undefined && cell.cell_output.type.code_hash == recipientTypeCodeHash) {
+      if (cell.cell_output.type && cell.cell_output.type.code_hash === recipientTypeCodeHash) {
         accCapacity += BigInt(cell.cell_output.capacity);
         return { stop: false, push: true };
       }

@@ -1,4 +1,3 @@
-import { Amount } from '@lay2/pw-core';
 import { Connection } from 'typeorm';
 import { ChainType } from '../ckb/model/asset';
 import { WithdrawedBridgeFee } from './entity/WithdrawedBridgeFee';
@@ -32,7 +31,7 @@ export class BridgeFeeDB {
   async getEthTotalGeneratedBridgeFee(asset: string): Promise<string> {
     const bridgeInFee = await this.getEthTotalGeneratedBridgeInFee(asset);
     const bridgeOutFee = await this.getEthTotalGeneratedBridgeOutFee(asset);
-    return new Amount(bridgeInFee, 0).add(new Amount(bridgeOutFee, 0)).toString(0);
+    return (BigInt(bridgeInFee) + BigInt(bridgeOutFee)).toString();
   }
 
   async getEthTotalWithdrawedBridgeFee(asset: string): Promise<string> {

@@ -1,10 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 import { Config } from '@force-bridge/x/dist/config';
-import { getFromEnv, writeJsonToFile } from '@force-bridge/x/dist/utils';
+import { getFromEnv, privateKeyToCkbPubkeyHash, writeJsonToFile } from '@force-bridge/x/dist/utils';
 import * as lodash from 'lodash';
 import nconf from 'nconf';
-import { multiSigNode, nodeConfigPath, verifierServerBasePort } from './types';
+import { multiSigNode, nodeConfigPath, privkeysPath, verifierServerBasePort } from './types';
 
 async function generateConfig() {
   const configPath = getFromEnv('CONFIG_PATH');
@@ -21,6 +21,7 @@ async function generateConfig() {
   // keystore
   config.common.keystorePath = getFromEnv('FORCE_BRIDGE_KEYSTORE_PATH');
   const nodeInfos: { nodes: multiSigNode[] } = JSON.parse(fs.readFileSync(nodeConfigPath, 'utf8').toString());
+  const priKeys: { ckb: string } = JSON.parse(fs.readFileSync(privkeysPath, 'utf8').toString());
 
   // generate collector config
   const collectorConfig: Config = lodash.cloneDeep(config);
@@ -42,6 +43,7 @@ async function generateConfig() {
     };
   });
   collectorConfig.common.log.logFile = path.join(configPath, 'logs/collector.log');
+  collectorConfig.common.collectorPubKeyHash.push(privateKeyToCkbPubkeyHash(priKeys.ckb));
   writeJsonToFile({ forceBridge: collectorConfig }, path.join(configPath, 'collector.json'));
   // generate verifier config
 
@@ -53,15 +55,15 @@ async function generateConfig() {
     verifierConfig.ckb.privateKey = `multisig-${verifierIndex}`;
     verifierConfig.common.port = verifierServerBasePort + verifierIndex;
     verifierConfig.common.log.logFile = path.join(configPath, `logs/verifier${verifierIndex}.log`);
+    verifierConfig.common.collectorPubKeyHash.push(privateKeyToCkbPubkeyHash(priKeys.ckb));
     writeJsonToFile({ forceBridge: verifierConfig }, path.join(configPath, `verifier${verifierIndex}.json`));
   }
   // generate watcher config
   const watcherConfig: Config = lodash.cloneDeep(config);
   watcherConfig.common.role = 'watcher';
-  // fixme: the test only pass when using the collector db
-  watcherConfig.common.orm.database = 'collector';
+  watcherConfig.common.orm.database = 'watcher';
   watcherConfig.common.port = 8080;
-  collectorConfig.common.log.logFile = path.join(configPath, 'logs/watcher.log');
+  watcherConfig.common.log.logFile = path.join(configPath, 'logs/watcher.log');
   writeJsonToFile({ forceBridge: watcherConfig }, path.join(configPath, 'watcher.json'));
 }
 

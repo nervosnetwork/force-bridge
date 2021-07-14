@@ -36,6 +36,7 @@
     "eosjs": "^22.0.0-rc2",
     "eosjs-api": "^7.0.4",
     "ethers": "^5.0.32",
+    "express": "^4.17.1",
     "json-rpc-2.0": "^0.2.16",
     "lodash": "^4.17.20",
     "log4js": "^6.3.0",
@@ -49,7 +50,8 @@
     "trongrid": "^1.2.6",
     "tronweb": "^3.2.3",
     "typeorm": "^0.2.31",
-    "typeorm-naming-strategies": "^2.0.0"
+    "typeorm-naming-strategies": "^2.0.0",
+    "snappy": "^6.3.5"
   },
   "publishConfig": {
     "access": "public"
