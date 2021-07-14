@@ -2,6 +2,7 @@ import { bootstrap, ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { CkbDb, EthDb, KVDb } from '@force-bridge/x/dist/db';
 import { SignedDb } from '@force-bridge/x/dist/db/signed';
 import { startHandlers } from '@force-bridge/x/dist/handlers';
+import { BridgeMetricSingleton } from '@force-bridge/x/dist/monitor/bridge-metric';
 import { responseStatus } from '@force-bridge/x/dist/monitor/rpc-metric';
 import { SigserverMetric } from '@force-bridge/x/dist/monitor/sigserver-metric';
 import { collectSignaturesParams, getPendingTxParams } from '@force-bridge/x/dist/multisig/multisig-mgr';
@@ -159,6 +160,7 @@ export async function startSigServer(configPath: string): Promise<void> {
       return await signCkbTx(params);
     } catch (e) {
       logger.error(`signCkbTx params:${JSON.stringify(params, undefined, 2)} error:${e.message}`);
+      BridgeMetricSingleton.getInstance(ForceBridgeCore.config.common.role).addErrorLogMetrics('ckb');
       return SigResponse.fromSigError(SigErrorCode.UnknownError, e.message);
     }
   });
@@ -167,6 +169,7 @@ export async function startSigServer(configPath: string): Promise<void> {
       return await signEthTx(params);
     } catch (e) {
       logger.error(`signEthTx params:${JSON.stringify(params, undefined, 2)} error:${e.message}`);
+      BridgeMetricSingleton.getInstance(ForceBridgeCore.config.common.role).addErrorLogMetrics('eth');
       return SigResponse.fromSigError(SigErrorCode.UnknownError, e.message);
     }
   });

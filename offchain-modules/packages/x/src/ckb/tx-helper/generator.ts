@@ -12,6 +12,7 @@ import { Reader, normalizers } from 'ckb-js-toolkit';
 import * as lodash from 'lodash';
 import { ForceBridgeCore } from '../../core';
 import { asserts } from '../../errors';
+import { BridgeMetricSingleton } from '../../monitor/bridge-metric';
 import { asyncSleep, fromHexString, stringToUint8Array, toHexString } from '../../utils';
 import { logger } from '../../utils/logger';
 import { Asset } from '../model/asset';
@@ -126,6 +127,7 @@ export class CkbTxGenerator {
         return txSkeleton;
       } catch (e) {
         logger.error(`CkbHandler createBridgeCell exception error:${e.message}, stack: ${e.stack}`);
+        BridgeMetricSingleton.getInstance(ForceBridgeCore.config.common.role).addErrorLogMetrics('ckb');
         await asyncSleep(3000);
       }
     }
@@ -139,6 +141,7 @@ export class CkbTxGenerator {
         const multisigCell = await this.fetchMultisigCell();
         if (multisigCell === undefined) {
           logger.error(`CkbHandler mint fetchMultiSigCell failed: cannot found multiSig cell`);
+          BridgeMetricSingleton.getInstance(ForceBridgeCore.config.common.role).addErrorLogMetrics('ckb');
           await asyncSleep(3000);
           continue;
         }
@@ -153,6 +156,7 @@ export class CkbTxGenerator {
         const ownerCell = await this.fetchOwnerCell();
         if (ownerCell === undefined) {
           logger.error(`CkbHandler mint fetchMultiSigCell failed: cannot found owner cell`);
+          BridgeMetricSingleton.getInstance(ForceBridgeCore.config.common.role).addErrorLogMetrics('ckb');
           await asyncSleep(3000);
           continue;
         }
@@ -192,6 +196,7 @@ export class CkbTxGenerator {
         return txSkeleton;
       } catch (e) {
         logger.error(`CkbHandler mint exception error:${e.message}, stack: ${e.stack}`);
+        BridgeMetricSingleton.getInstance(ForceBridgeCore.config.common.role).addErrorLogMetrics('ckb');
         await asyncSleep(3000);
       }
     }
