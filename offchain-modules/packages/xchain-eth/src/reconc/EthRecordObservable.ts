@@ -22,7 +22,7 @@ export interface Options {
   provider: Provider;
 }
 
-export class EthReconcObservable {
+export class EthRecordObservable {
   provider: ethers.providers.Provider;
   contract: ForceBridgeContract;
 

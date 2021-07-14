@@ -1,1 +1,1 @@
-export * from './CKBRecordFetcher';
+export * from './CKBRecordObservable';

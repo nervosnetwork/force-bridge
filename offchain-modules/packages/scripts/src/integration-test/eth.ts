@@ -1,6 +1,7 @@
 import assert from 'assert';
 import { parseAddress } from '@ckb-lumos/helpers';
 import { CKBIndexerClient } from '@force-bridge/ckb-indexer-client';
+import { Account } from '@force-bridge/x/dist/ckb/model/accounts';
 import { ChainType, EthAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
@@ -23,7 +24,7 @@ import {
 import { logger } from '@force-bridge/x/dist/utils/logger';
 import { ETH_ADDRESS } from '@force-bridge/x/dist/xchain/eth';
 import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
-import { EthReconcilerBuilder, ForceBridgeContract } from '@force-bridge/xchain-eth';
+import { ForceBridgeContract, reconc } from '@force-bridge/xchain-eth';
 import { Amount, Script } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import { ethers } from 'ethers';
@@ -195,10 +196,10 @@ async function main() {
     logger.info('parsedLog recipient', recipientParsedLog.args.recipient);
     assert(ethUnlockRecord.recipientAddress === recipientParsedLog.args.recipient);
 
-    const builder = new EthReconcilerBuilder(provider, bridge, new CKBIndexerClient(CKB_INDEXER_URL), ckb.rpc);
+    const builder = new reconc.EthReconcilerBuilder(reconc.createTwoWayRecordObservable());
 
     const lockReconc = await builder
-      .buildLockReconciler(wallet.address, '0x0000000000000000000000000000000000000000')
+      .buildLockReconciler('0x0000000000000000000000000000000000000000')
       .fetchReconciliation();
 
     logger.info('all locked', lockReconc.from);
@@ -206,11 +207,7 @@ async function main() {
 
     assert(lockReconc.checkBalanced(), 'the amount of lock and mint should be balanced');
 
-    const unlockReconciler = builder.buildUnlockReconciler(
-      uint8ArrayToString(recipientLockscript),
-      '0x0000000000000000000000000000000000000000',
-      ownerTypeHash,
-    );
+    const unlockReconciler = builder.buildUnlockReconciler('0x0000000000000000000000000000000000000000');
     const unlockBalancer = await unlockReconciler.fetchReconciliation();
 
     logger.info('all burned', unlockBalancer.from);

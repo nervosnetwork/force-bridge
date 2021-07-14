@@ -12,7 +12,7 @@ import { RecipientCellData } from '../ckb/tx-helper/generated/eth_recipient_cell
 import { MintWitness } from '../ckb/tx-helper/generated/mint_witness';
 import { fromHexString, uint8ArrayToString } from '../utils';
 
-export interface CKBRecordFetcherProvider {
+export interface CKBRecordObservableProvider {
   multiSigLock: ScriptLike;
   recipientType: ScriptLike;
 
@@ -38,8 +38,8 @@ export interface CKBBurnFilter {
   filterRecipientData: (data: RecipientCellData) => boolean;
 }
 
-export class CKBRecordFetcher {
-  constructor(private provider: CKBRecordFetcherProvider) {}
+export class CKBRecordObservable {
+  constructor(private provider: CKBRecordObservableProvider) {}
 
   observeMintRecord(filter: CKBMintFilter): Observable<ToRecord> {
     const { rpc, indexer: indexer, multiSigLock } = this.provider;
