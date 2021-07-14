@@ -80,16 +80,43 @@ function create_db {
   docker exec docker_mysql_1 bash -c "mysql -uroot -proot -e 'create database collector; create database watcher; show databases;'"
 }
 
+function start_multisign_docker {
+  cd ${OFFCHAIN_MODULES_DIR}/packages/app-multisign-server/docker
+  docker build -t multisign-server .
+  for i in `seq 1 $MULTISIG_NUMBER`
+  do
+    mkdir -p verifier${i}
+    cp docker-compose.yml verifier${i}/
+    cd verifier${i}
+    PORT=800${i} VERIFIER_INDEX=${i} docker-compose up -d
+    cd .. && rm -rf verifier${i}
+  done
+}
+
+function wait_for_multisign_server {
+  for i in `seq 1 $MULTISIG_NUMBER`
+  do
+    while [ 1 == 1 ]
+    do
+      docker exec -it verifier${i} bash -c 'ps -ef | grep multisign | grep -v grep'
+      if [ $? == 0 ];then
+        break
+      fi
+      sleep 10
+    done
+  done
+}
+
 function start_service {
   trap 'kill $(jobs -p)' EXIT
   cd "${OFFCHAIN_MODULES_DIR}"
   mkdir -p ${INTEGRATION_TEST_WORKDIR}/logs
-  for i in `seq 1 ${MULTISIG_NUMBER}`
-  do
-    CONFIG_PATH=${CONFIG_PATH}/verifier${i}.json npx ts-node ./packages/app-multisign-server/src/index.ts &
-    # npx forcecli verifier -cfg ${CONFIG_PATH}/verifier${i}.json &
-  done
-  sleep 5
+  # for i in `seq 1 ${MULTISIG_NUMBER}`
+  # do
+  #   CONFIG_PATH=${CONFIG_PATH}/verifier${i}.json npx ts-node ./packages/app-multisign-server/src/index.ts &
+  #   # npx forcecli verifier -cfg ${CONFIG_PATH}/verifier${i}.json &
+  # done
+  # sleep 5
   CONFIG_PATH=${CONFIG_PATH}/collector.json npx ts-node ./packages/app-relayer/src/index.ts &
   # npx forcecli collector -cfg ${CONFIG_PATH}/collector.json &
   CONFIG_PATH=${CONFIG_PATH}/watcher.json npx ts-node ./packages/app-rpc-server/src/index.ts &
@@ -109,5 +136,7 @@ generate_multisig
 deploy
 generate_configs
 create_db
+start_multisign_docker
+wait_for_multisign_server
 start_service
 ci_test

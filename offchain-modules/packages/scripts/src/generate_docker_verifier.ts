@@ -10,7 +10,13 @@ async function generateConfig() {
   nconf.env().file(`verifier${verifierIndex}`, path.join(configPath, `verifier${verifierIndex}.json`));
   const verifierConfig: Config = nconf.get('forceBridge');
 
-  verifierConfig.common.orm.database = `forcebridge`;
+  verifierConfig.common.orm.host = 'mysql-relayer';
+
+  //FIXME: cannot connect to node when using http://geth:8545
+  verifierConfig.eth.rpcUrl = 'http://10.5.0.105:8545';
+  verifierConfig.ckb.ckbRpcUrl = 'http://ckb:8114';
+  verifierConfig.ckb.ckbIndexerUrl = 'http://ckb-indexer:8116';
+
   verifierConfig.common.port = verifierServerBasePort;
   verifierConfig.common.keystorePath = getFromEnv('FORCE_BRIDGE_KEYSTORE_PATH');
   verifierConfig.common.log.logFile = path.join(configPath, `logs/verifier.log`);

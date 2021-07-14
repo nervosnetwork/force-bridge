@@ -12,6 +12,7 @@ start-docker:
 
 stop-docker:
 	cd docker && docker-compose down
+	bash tests/integration/stop-multisign.sh
 
 build-ckb-contracts:
 	cd ckb-contracts && capsule build --release

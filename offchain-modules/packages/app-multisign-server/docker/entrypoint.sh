@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #copy local path to docker
-TEMP_DIR=/usr/app
+TEMP_DIR=/usr/app/tmp
 WORK_SPACE=/usr/app/workspace
 
 function prepare {
@@ -19,14 +19,14 @@ function prepare {
     cp -r $temp_file ${WORK_SPACE}/force-bridge/offchain-modules/
   done
 
-  cd ${WORK_SPACE} && yarn && yarn build
+  cd ${WORK_SPACE}/force-bridge/offchain-modules && yarn && yarn build
 
   export CONFIG_PATH=${WORK_SPACE}/force-bridge/workdir/integration/configs
   export FORCE_BRIDGE_KEYSTORE_PATH=${WORK_SPACE}/force-bridge/workdir/integration/configs/keystore.json
 }
 
 function generate_verifier_config {
-  npx ts-node ${WORK_SPACE}/force-bridge/offchain-modules/packages/scripts/src/generate_verifier.ts
+  npx ts-node ${WORK_SPACE}/force-bridge/offchain-modules/packages/scripts/src/generate_docker_verifier.ts
 }
 
 function start_verifier {
