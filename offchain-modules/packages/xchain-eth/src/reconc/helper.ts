@@ -1,5 +1,5 @@
+import { generateAddress } from '@ckb-lumos/helpers';
 import { CKBIndexerClient, Script as IndexerScript } from '@force-bridge/ckb-indexer-client';
-import { Account } from '@force-bridge/x/dist/ckb/model/accounts';
 import { ScriptLike } from '@force-bridge/x/dist/ckb/model/script';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { CKBRecordObservable } from '@force-bridge/x/dist/reconc/CKBRecordObservable';
@@ -25,7 +25,7 @@ export function createCKBRecordObservable(): CKBRecordObservable {
     rpc: ForceBridgeCore.ckb.rpc,
     multiSigLock: ScriptLike.from(ForceBridgeCore.config.ckb.multisigLockscript),
     recipientType: ScriptLike.from(getRecipientTypeScript()),
-    scriptToAddress: Account.scriptToAddress,
+    scriptToAddress: (script) => generateAddress(script.toIndexerScript()),
   });
 }
 

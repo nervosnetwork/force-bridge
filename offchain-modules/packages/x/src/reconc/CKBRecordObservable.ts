@@ -87,7 +87,7 @@ export class CKBRecordObservable {
           const amount = Amount.fromUInt128LE(tx.transaction.outputsData[i]).toHexString();
           const txId = tx.transaction.hash;
           const fee = filter.asset.getBridgeFee('in');
-          const recipient = this.provider.scriptToAddress(ScriptLike.from(cell.type));
+          const recipient = this.provider.scriptToAddress(ScriptLike.from(cell.lock));
 
           const record: ToRecord = { amount, fromTxId, txId, fee, recipient };
 
