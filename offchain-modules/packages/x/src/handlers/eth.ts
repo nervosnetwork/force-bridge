@@ -139,7 +139,10 @@ export class EthHandler {
           {
             onRejectedInterval: 3000,
             maxRetryTimes: MAX_RETRY_TIMES,
-            onRejected: (e: Error) => logger.error(`Eth watchNewBlock blockHeight:${newBlock} error:${e.message}`),
+            onRejected: (e: Error) => {
+              logger.error(`Eth watchNewBlock blockHeight:${newBlock} error:${e.message}`);
+              BridgeMetricSingleton.getInstance(this.role).addErrorLogMetrics('eth');
+            },
           },
         );
       });
@@ -298,6 +301,7 @@ export class EthHandler {
         break;
       } catch (e) {
         logger.error(`EthHandler watchLockEvents error: ${e}`);
+        BridgeMetricSingleton.getInstance(this.role).addErrorLogMetrics('eth');
         if (i == MAX_RETRY_TIMES) {
           throw e;
         }
@@ -348,6 +352,7 @@ export class EthHandler {
         break;
       } catch (e) {
         logger.error(`EthHandler watchUnlockEvents error: ${e}`);
+        BridgeMetricSingleton.getInstance(this.role).addErrorLogMetrics('eth');
         if (i == MAX_RETRY_TIMES) {
           throw e;
         }
@@ -391,6 +396,7 @@ export class EthHandler {
       },
       (err) => {
         logger.error(`handlePendingUnlockRecords error:${err.message}`);
+        BridgeMetricSingleton.getInstance(this.role).addErrorLogMetrics('eth');
       },
     );
   }
@@ -435,6 +441,7 @@ export class EthHandler {
         break;
       } catch (e) {
         logger.error(`doHandlePendingUnlockRecords error:${e.message} stack:${e.stack}`);
+        BridgeMetricSingleton.getInstance(this.role).addErrorLogMetrics('eth');
         await asyncSleep(3000);
       }
     }
@@ -458,6 +465,7 @@ export class EthHandler {
         onResolvedInterval: 0,
         onRejected: (e: Error) => {
           logger.error(`ETH handleTodoUnlockRecords error:${e.message}`);
+          BridgeMetricSingleton.getInstance(this.role).addErrorLogMetrics('eth');
         },
       },
     );
@@ -500,6 +508,7 @@ export class EthHandler {
           logger.error(
             `EthHandler doHandleUnlockRecords ckbTxHashes:${unlockTxHashes}  sendUnlockTxs error:${txRes as Error}`,
           );
+          BridgeMetricSingleton.getInstance(this.role).addErrorLogMetrics('eth');
           break;
         }
 
@@ -533,12 +542,14 @@ export class EthHandler {
           logger.error(
             `EthHandler doHandleUnlockRecords ckbTxHashes:${unlockTxHashes} unlock execute failed:${receipt}`,
           );
+          BridgeMetricSingleton.getInstance(this.role).addErrorLogMetrics('eth');
         }
         break;
       } catch (e) {
         logger.error(
           `EthHandler doHandleUnlockRecords ckbTxHashes:${unlockTxHashes} error:${e.toString()}, ${e.stack}`,
         );
+        BridgeMetricSingleton.getInstance(this.role).addErrorLogMetrics('eth');
         await asyncSleep(5000);
       }
     }
@@ -551,6 +562,7 @@ export class EthHandler {
         logger.error(
           `EthHandler doHandleUnlockRecords db.saveEthUnlock ckbTxHashes:${unlockTxHashes} error:${e.message}`,
         );
+        BridgeMetricSingleton.getInstance(this.role).addErrorLogMetrics('eth');
         await asyncSleep(3000);
       }
     }
