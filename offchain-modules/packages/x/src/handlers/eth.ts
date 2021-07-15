@@ -88,8 +88,10 @@ export class EthHandler {
         }`,
       );
       const confirmedBlockHeight = nextBlock.number - confirmNumber;
-      const confirmedBlock = await this.ethChain.getBlock(currentBlockHeight);
+      const confirmedBlock = await this.ethChain.getBlock(confirmedBlockHeight);
       await this.ethDb.removeUnconfirmedLocks(confirmedBlockHeight);
+      await this.feeDb.removeForkedWithdrawFee(confirmedBlockHeight);
+      if (this.role !== 'collector') await this.ethDb.removeUnconfirmedUnlocks(confirmedBlockHeight);
       await this.setLastHandledBlock(confirmedBlockHeight, confirmedBlock.hash);
     }
 
@@ -101,16 +103,14 @@ export class EthHandler {
 
       logger.info(`EthHandler init getLogs from:${this.lastHandledBlockHeight} to:${endBlockNumber}`);
 
-      const logs = await this.ethChain.getLockLogs(this.lastHandledBlockHeight + 1, endBlockNumber);
-      for (const log of logs) {
+      const lockLogs = await this.ethChain.getLockLogs(this.lastHandledBlockHeight + 1, endBlockNumber);
+      for (const log of lockLogs) {
         await this.onLockLogs(log.log, log.parsedLog);
       }
 
-      if (this.role === 'watcher') {
-        const logs = await this.ethChain.getUnlockLogs(this.lastHandledBlockHeight + 1, endBlockNumber);
-        for (const log of logs) {
-          await this.onUnlockLogs(log.log, log.parsedLog);
-        }
+      const UnlockLogs = await this.ethChain.getUnlockLogs(this.lastHandledBlockHeight + 1, endBlockNumber);
+      for (const log of UnlockLogs) {
+        await this.onUnlockLogs(log.log, log.parsedLog);
       }
 
       const endBlock = await this.ethChain.getBlock(endBlockNumber);
@@ -169,19 +169,35 @@ export class EthHandler {
       );
       const confirmedBlockHeight = block.number - confirmNumber;
       await this.ethDb.removeUnconfirmedLocks(confirmedBlockHeight);
-      const logs = await this.ethChain.getLockLogs(confirmedBlockHeight + 1, block.number);
+      await this.feeDb.removeForkedWithdrawFee(confirmedBlockHeight);
+      if (this.role !== 'collector') await this.ethDb.removeUnconfirmedUnlocks(confirmedBlockHeight);
 
+      const lockLogs = await this.ethChain.getLockLogs(confirmedBlockHeight + 1, block.number);
       if (
         await this.ethChain.isLogForked(
-          logs.map((log) => {
+          lockLogs.map((log) => {
             return log.log;
           }),
         )
       ) {
-        throw new Error(`log fork occured when reorg block ${block.number}`);
+        throw new Error(`lock log fork occured when reorg block ${block.number}`);
       }
-      for (const log of logs) {
+      for (const log of lockLogs) {
         await this.onLockLogs(log.log, log.parsedLog);
+      }
+
+      const unlockLogs = await this.ethChain.getUnlockLogs(confirmedBlockHeight + 1, block.number);
+      if (
+        await this.ethChain.isLogForked(
+          unlockLogs.map((log) => {
+            return log.log;
+          }),
+        )
+      ) {
+        throw new Error(`unlock log fork occured when reorg block ${block.number}`);
+      }
+      for (const log of unlockLogs) {
+        await this.onUnlockLogs(log.log, log.parsedLog);
       }
     }
 
@@ -192,11 +208,9 @@ export class EthHandler {
     }
 
     // onUnlockLogs
-    if (this.role !== 'collector') {
-      const unlockLogs = await this.ethChain.getUnlockLogsByBlockHash(block.hash);
-      for (const log of unlockLogs) {
-        await this.onUnlockLogs(log.log, log.parsedLog);
-      }
+    const unlockLogs = await this.ethChain.getUnlockLogsByBlockHash(block.hash);
+    for (const log of unlockLogs) {
+      await this.onUnlockLogs(log.log, log.parsedLog);
     }
 
     await this.confirmEthLocks(block.number, confirmNumber);
@@ -221,18 +235,20 @@ export class EthHandler {
     }
 
     const confirmedRecords = unConfirmedLocks.filter((record) => record.blockNumber <= confirmedBlockHeight);
-    const confirmedTxHashes = confirmedRecords.map((lock) => {
-      return lock.txHash;
-    });
     if (confirmedRecords.length === 0) {
       return;
     }
+    const confirmedTxHashes = confirmedRecords.map((lock) => {
+      return lock.txHash;
+    });
 
     logger.info(`EhtHandler confirmEthLocks updateLockConfirmStatus txHashes:${confirmedTxHashes.join(', ')}`);
     await this.ethDb.updateLockConfirmStatus(confirmedTxHashes);
 
     if (this.role === 'collector') {
       const mintRecords = confirmedRecords.map((lockRecord) => {
+        if (BigInt(lockRecord.amount) <= BigInt(lockRecord.bridgeFee))
+          throw new Error('Unexpected error: lock amount less than bridge fee');
         return {
           id: lockRecord.txHash,
           lockBlockHeight: lockRecord.blockNumber,
@@ -292,7 +308,7 @@ export class EthHandler {
           },
         ]);
         logger.info(`EthHandler watchLockEvents save EthLock successful for eth tx ${log.transactionHash}.`);
-        if (this.role === 'watcher') {
+        if (this.role !== 'collector') {
           await this.ethDb.updateBridgeInRecord(txHash, amount, token, recipient, sudtExtraData);
           logger.info(
             `Watcher update bridge in record successful while handle lock log for eth tx ${log.transactionHash}.`,
@@ -319,17 +335,19 @@ export class EthHandler {
         logger.info(
           `EthHandler watchUnlockEvents receiveLog blockHeight:${log.blockNumber} blockHash:${log.blockHash} txHash:${unlockTxHash} amount:${amount} asset:${parsedLog.args.token} recipient:${parsedLog.args.recipient} ckbTxHash:${ckbTxHash} sender:${parsedLog.args.sender}`,
         );
-        logger.info('EthHandler watchUnlockEvents eth unlockLog:', { log, parsedLog });
+        logger.debug('EthHandler watchUnlockEvents eth unlockLog:', { log, parsedLog });
         if (ckbTxHash === WithdrawBridgeFeeTopic) {
-          return await this.feeDb.createWithdrawedBridgeFee([
+          await this.feeDb.createWithdrawedBridgeFee([
             {
               txHash: unlockTxHash,
+              blockNumber: log.blockNumber,
               recipient: recipient,
               chain: ChainType.ETH,
               asset: token,
               amount: amount,
             },
           ]);
+          return;
         }
         if (this.role === 'collector') return;
         await this.ethDb.createEthUnlock([
@@ -338,6 +356,7 @@ export class EthHandler {
             amount: amount,
             asset: token,
             recipientAddress: recipient,
+            blockNumber: log.blockNumber,
             ethTxHash: unlockTxHash,
             status: 'success',
           },
@@ -361,23 +380,23 @@ export class EthHandler {
     }
   }
 
-  // listen ETH chain and handle the new lock events
-  watchLockEvents(): void {
-    this.ethChain.watchLockEvents(this.lastHandledBlockHeight, async (log, parsedLog) => {
-      await this.onLockLogs(log, parsedLog);
-    });
-  }
-
-  watchUnlockEvents(): void {
-    let unlockHash = '';
-    this.ethChain.watchUnlockEvents(this.lastHandledBlockHeight, async (log, parsedLog) => {
-      await this.onUnlockLogs(log, parsedLog);
-      if (log.transactionHash != unlockHash) {
-        unlockHash = log.transactionHash;
-        BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_unlock', 'success');
-      }
-    });
-  }
+  // // listen ETH chain and handle the new lock events
+  // watchLockEvents(): void {
+  //   this.ethChain.watchLockEvents(this.lastHandledBlockHeight, async (log, parsedLog) => {
+  //     await this.onLockLogs(log, parsedLog);
+  //   });
+  // }
+  //
+  // watchUnlockEvents(): void {
+  //   let unlockHash = '';
+  //   this.ethChain.watchUnlockEvents(this.lastHandledBlockHeight, async (log, parsedLog) => {
+  //     await this.onUnlockLogs(log, parsedLog);
+  //     if (log.transactionHash != unlockHash) {
+  //       unlockHash = log.transactionHash;
+  //       BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_unlock', 'success');
+  //     }
+  //   });
+  // }
 
   async getUnlockRecords(status: EthUnlockStatus): Promise<EthUnlock[]> {
     return this.ethDb.getEthUnlockRecordsToUnlock(status);

@@ -1,4 +1,4 @@
-import { Connection } from 'typeorm';
+import { Connection, DeleteResult } from 'typeorm';
 import { ChainType } from '../ckb/model/asset';
 import { WithdrawedBridgeFee } from './entity/WithdrawedBridgeFee';
 import { IWithdrawedBridgeFee } from './model';
@@ -10,6 +10,15 @@ export class BridgeFeeDB {
     const repository = this.conn.getRepository(WithdrawedBridgeFee);
     const dbRecords = records.map((r) => repository.create(r));
     await repository.save(dbRecords);
+  }
+
+  async removeForkedWithdrawFee(confirmedBlockHeight: number): Promise<DeleteResult> {
+    return this.conn
+      .getRepository(WithdrawedBridgeFee)
+      .createQueryBuilder()
+      .delete()
+      .where('block_number > :blockNumber', { blockNumber: confirmedBlockHeight })
+      .execute();
   }
 
   async getEthTotalGeneratedBridgeInFee(asset: string): Promise<string> {
