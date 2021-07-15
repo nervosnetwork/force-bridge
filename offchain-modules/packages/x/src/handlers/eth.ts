@@ -1,4 +1,3 @@
-import { Amount } from '@lay2/pw-core';
 import { BigNumber, ethers } from 'ethers';
 import { ChainType, EthAsset } from '../ckb/model/asset';
 import { forceBridgeRole } from '../config';
@@ -140,7 +139,10 @@ export class EthHandler {
           {
             onRejectedInterval: 3000,
             maxRetryTimes: MAX_RETRY_TIMES,
-            onRejected: (e: Error) => logger.error(`Eth watchNewBlock blockHeight:${newBlock} error:${e.message}`),
+            onRejected: (e: Error) => {
+              logger.error(`Eth watchNewBlock blockHeight:${newBlock} error:${e.message}`);
+              BridgeMetricSingleton.getInstance(this.role).addErrorLogMetrics('eth');
+            },
           },
         );
       });
@@ -235,7 +237,7 @@ export class EthHandler {
           id: lockRecord.txHash,
           lockBlockHeight: lockRecord.blockNumber,
           chain: ChainType.ETH,
-          amount: new Amount(lockRecord.amount, 0).sub(new Amount(lockRecord.bridgeFee, 0)).toString(0),
+          amount: (BigInt(lockRecord.amount) - BigInt(lockRecord.bridgeFee)).toString(),
           asset: lockRecord.token,
           recipientLockscript: lockRecord.recipient,
           sudtExtraData: lockRecord.sudtExtraData,
@@ -266,7 +268,7 @@ export class EthHandler {
         logger.debug('EthHandler watchLockEvents eth lockEvtLog:', { log, parsedLog });
         const amount = parsedLog.args.lockedAmount.toString();
         const asset = new EthAsset(parsedLog.args.token);
-        if (!asset.inWhiteList() || new Amount(amount, 0).lt(new Amount(asset.getMinimalAmount(), 0))) return;
+        if (!asset.inWhiteList() || BigInt(amount) < BigInt(asset.getMinimalAmount())) return;
 
         const bridgeFee = this.role === 'collector' ? asset.getBridgeFee('in') : '0';
         await this.ethDb.createEthLock([
@@ -299,6 +301,7 @@ export class EthHandler {
         break;
       } catch (e) {
         logger.error(`EthHandler watchLockEvents error: ${e}`);
+        BridgeMetricSingleton.getInstance(this.role).addErrorLogMetrics('eth');
         if (i == MAX_RETRY_TIMES) {
           throw e;
         }
@@ -349,6 +352,7 @@ export class EthHandler {
         break;
       } catch (e) {
         logger.error(`EthHandler watchUnlockEvents error: ${e}`);
+        BridgeMetricSingleton.getInstance(this.role).addErrorLogMetrics('eth');
         if (i == MAX_RETRY_TIMES) {
           throw e;
         }
@@ -392,6 +396,7 @@ export class EthHandler {
       },
       (err) => {
         logger.error(`handlePendingUnlockRecords error:${err.message}`);
+        BridgeMetricSingleton.getInstance(this.role).addErrorLogMetrics('eth');
       },
     );
   }
@@ -436,6 +441,7 @@ export class EthHandler {
         break;
       } catch (e) {
         logger.error(`doHandlePendingUnlockRecords error:${e.message} stack:${e.stack}`);
+        BridgeMetricSingleton.getInstance(this.role).addErrorLogMetrics('eth');
         await asyncSleep(3000);
       }
     }
@@ -459,6 +465,7 @@ export class EthHandler {
         onResolvedInterval: 0,
         onRejected: (e: Error) => {
           logger.error(`ETH handleTodoUnlockRecords error:${e.message}`);
+          BridgeMetricSingleton.getInstance(this.role).addErrorLogMetrics('eth');
         },
       },
     );
@@ -501,6 +508,7 @@ export class EthHandler {
           logger.error(
             `EthHandler doHandleUnlockRecords ckbTxHashes:${unlockTxHashes}  sendUnlockTxs error:${txRes as Error}`,
           );
+          BridgeMetricSingleton.getInstance(this.role).addErrorLogMetrics('eth');
           break;
         }
 
@@ -534,12 +542,14 @@ export class EthHandler {
           logger.error(
             `EthHandler doHandleUnlockRecords ckbTxHashes:${unlockTxHashes} unlock execute failed:${receipt}`,
           );
+          BridgeMetricSingleton.getInstance(this.role).addErrorLogMetrics('eth');
         }
         break;
       } catch (e) {
         logger.error(
           `EthHandler doHandleUnlockRecords ckbTxHashes:${unlockTxHashes} error:${e.toString()}, ${e.stack}`,
         );
+        BridgeMetricSingleton.getInstance(this.role).addErrorLogMetrics('eth');
         await asyncSleep(5000);
       }
     }
@@ -552,6 +562,7 @@ export class EthHandler {
         logger.error(
           `EthHandler doHandleUnlockRecords db.saveEthUnlock ckbTxHashes:${unlockTxHashes} error:${e.message}`,
         );
+        BridgeMetricSingleton.getInstance(this.role).addErrorLogMetrics('eth');
         await asyncSleep(3000);
       }
     }

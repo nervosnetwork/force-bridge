@@ -1,12 +1,11 @@
 import assert from 'assert';
+import { parseAddress } from '@ckb-lumos/helpers';
 import { CKBIndexerClient } from '@force-bridge/ckb-indexer-client';
-import { Account } from '@force-bridge/x/dist/ckb/model/accounts';
 import { ChainType, EthAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
-// import {CkbIndexer} from "@force-bridge/x/dist/ckb/tx-helper/indexer";
 import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
-import { getMultisigLock, getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
+import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { Config, EthConfig } from '@force-bridge/x/dist/config';
 import { bootstrap, ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { EthDb } from '@force-bridge/x/dist/db/eth';
@@ -14,35 +13,31 @@ import { CkbMint, EthLock, EthUnlock } from '@force-bridge/x/dist/db/model';
 import {
   asyncSleep,
   getDBConnection,
-  parsePrivateKey,
   stringToUint8Array,
   toHexString,
   uint8ArrayToString,
 } from '@force-bridge/x/dist/utils';
-import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
+import { logger } from '@force-bridge/x/dist/utils/logger';
 import { ETH_ADDRESS } from '@force-bridge/x/dist/xchain/eth';
 import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
 import { EthReconcilerBuilder, ForceBridgeContract } from '@force-bridge/xchain-eth';
-import { Amount, Script } from '@lay2/pw-core';
+import { Amount } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import { ethers } from 'ethers';
 import nconf from 'nconf';
 import { waitUntilCommitted } from './util';
-// const { Indexer, CellCollector } = require('@ckb-lumos/sql-indexer');
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
 const CKB_INDEXER_URL = process.env.CKB_INDEXER_URL || 'http://127.0.0.1:8116';
-// const LUMOS_DB = './lumos_db';
 const indexer = new CkbIndexer(CKB_URL, CKB_INDEXER_URL);
 const collector = new IndexerCollector(indexer);
 
 const ckb = new CKB(CKB_URL);
 const ETH_PRI_KEY = process.env.ETH_PRI_KEY || '0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed37a';
+const RECIPIENT_PRI_KEY = '0xd00c06bfd800d27397002dca6fb0993d5ba6399b4238b2f29ee9deb97593d2bc';
+const RECIPIENT_ADDR = 'ckt1qyqvsv5240xeh85wvnau2eky8pwrhh4jr8ts8vyj37';
 
 async function main() {
   // ckb account to recieve ckETH and send burn tx
-  const RECIPIENT_PRI_KEY = '0xd00c06bfd800d27397002dca6fb0993d5ba6399b4238b2f29ee9deb97593d2bc';
-  const RECIPIENT_ADDR = 'ckt1qyqvsv5240xeh85wvnau2eky8pwrhh4jr8ts8vyj37';
-
   const configPath = process.env.CONFIG_PATH || './config.json';
   nconf.env().file({ file: configPath });
   const conf: Config = nconf.get('forceBridge');
@@ -75,24 +70,25 @@ async function main() {
   logger.info('receipt', receipt);
 
   // get sudt balance before
-  const account = new Account(RECIPIENT_PRI_KEY);
+  const recipientFromLockscript = parseAddress(RECIPIENT_ADDR);
   const ownerTypeHash = getOwnerTypeHash();
   const asset = new EthAsset('0x0000000000000000000000000000000000000000', ownerTypeHash);
   const bridgeCellLockscript = {
-    codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
-    hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
+    code_hash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
+    hash_type: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
     args: asset.toBridgeLockscriptArgs(),
   };
-  const sudtArgs = ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
+  const sudtArgs = ckb.utils.scriptToHash(<CKBComponents.Script>{
+    codeHash: bridgeCellLockscript.code_hash,
+    hashType: bridgeCellLockscript.hash_type,
+    args: bridgeCellLockscript.args,
+  });
   const sudtType = {
-    codeHash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
-    hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
+    code_hash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
+    hash_type: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
     args: sudtArgs,
   };
-  const recipientBalanceBefore = await collector.getSUDTBalance(
-    new Script(sudtType.codeHash, sudtType.args, sudtType.hashType),
-    await account.getLockscript(),
-  );
+  const recipientBalanceBefore = await collector.getSUDTBalance(sudtType, recipientFromLockscript);
 
   // create eth unlock
   const recipientAddress = '0x1000000000000000000000000000000000000001';
@@ -101,7 +97,7 @@ async function main() {
 
   let sendBurn = false;
   let burnTxHash;
-  let expectBalanceAfterBurn = new Amount('0', 0);
+  let expectBalanceAfterBurn = 0n;
   const checkEffect = async () => {
     // check EthLock and CkbMint saved.
     const ethLockRecords = await conn.manager.find(EthLock, {
@@ -139,16 +135,13 @@ async function main() {
     assert(ckbMintRecord.recipientLockscript === `${uint8ArrayToString(recipientLockscript)}`);
 
     // check sudt balance.
-    const recipientBalance = await collector.getSUDTBalance(
-      new Script(sudtType.codeHash, sudtType.args, sudtType.hashType),
-      await account.getLockscript(),
-    );
+    const recipientBalance = await collector.getSUDTBalance(sudtType, recipientFromLockscript);
 
     if (!sendBurn) {
       logger.info('recipient sudt balance on chain:', recipientBalance);
-      const expectBalance = recipientBalanceBefore.add(new Amount(mintAmount, 0));
+      const expectBalance = recipientBalanceBefore + BigInt(mintAmount);
       logger.info('expect recipient balance:', expectBalance);
-      assert(recipientBalance.eq(expectBalance));
+      assert(recipientBalance === expectBalance);
     }
 
     // send burn tx
@@ -156,22 +149,23 @@ async function main() {
     if (!sendBurn) {
       const generator = new CkbTxGenerator(ckb, indexer);
       const burnTx = await generator.burn(
-        await new Account(RECIPIENT_PRI_KEY).getLockscript(),
+        recipientFromLockscript,
         recipientAddress,
         new EthAsset('0x0000000000000000000000000000000000000000', ownerTypeHash),
         // Amount.fromUInt128LE('0x01'),
-        new Amount(burnAmount.toString(), 0),
+        burnAmount.toBigInt(),
       );
       const signedTx = ckb.signTransaction(RECIPIENT_PRI_KEY)(burnTx);
+      logger.info(`burn tx: ${JSON.stringify(signedTx, null, 2)}`);
       burnTxHash = await ckb.rpc.sendTransaction(signedTx);
       console.log(`burn Transaction has been sent with tx hash ${burnTxHash}`);
       await waitUntilCommitted(ckb, burnTxHash, 60);
       sendBurn = true;
-      expectBalanceAfterBurn = new Amount(recipientBalance.sub(new Amount(burnAmount.toString(), 0)).toString());
+      expectBalanceAfterBurn = recipientBalance - burnAmount.toBigInt();
     }
     logger.info('expect recipient balance after burn:', expectBalanceAfterBurn);
     logger.info('recipient onchain balance after burn:', recipientBalance);
-    assert(recipientBalance.eq(expectBalanceAfterBurn));
+    assert(recipientBalance === expectBalanceAfterBurn);
 
     // check unlock record send
     const ethUnlockRecords = await conn.manager.find(EthUnlock, {
@@ -241,6 +235,33 @@ async function main() {
     return;
   }
   throw new Error('The eth component integration test failed!');
+}
+
+async function _burn() {
+  const configPath = process.env.CONFIG_PATH || './config.json';
+  nconf.env().file({ file: configPath });
+  const conf: Config = nconf.get('forceBridge');
+  const config: EthConfig = conf.eth;
+  conf.common.log.logFile = './log/eth-ci.log';
+  await bootstrap(conf);
+  logger.info('config', config);
+  const recipientAddress = '0x1000000000000000000000000000000000000001';
+  const recipientFromLockscript = parseAddress(RECIPIENT_ADDR);
+  const burnAmount = ethers.utils.parseEther('0.01');
+  const ownerTypeHash = getOwnerTypeHash();
+  const generator = new CkbTxGenerator(ckb, indexer);
+  const burnTx = await generator.burn(
+    recipientFromLockscript,
+    recipientAddress,
+    new EthAsset('0x0000000000000000000000000000000000000000', ownerTypeHash),
+    // Amount.fromUInt128LE('0x01'),
+    burnAmount.toBigInt(),
+  );
+  const signedTx = ckb.signTransaction(RECIPIENT_PRI_KEY)(burnTx);
+  logger.info(`burn tx: ${JSON.stringify(signedTx, null, 2)}`);
+  const burnTxHash = await ckb.rpc.sendTransaction(signedTx);
+  console.log(`burn Transaction has been sent with tx hash ${burnTxHash}`);
+  await waitUntilCommitted(ckb, burnTxHash, 60);
 }
 
 main()

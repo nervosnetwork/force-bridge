@@ -7,6 +7,7 @@ PROJECT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && cd ../.
 OFFCHAIN_MODULES_DIR="${PROJECT_DIR}/offchain-modules"
 INTEGRATION_TEST_WORKDIR="${PROJECT_DIR}/workdir/integration"
 
+export PROJECT_DIR
 export CKB_URL='http://127.0.0.1:8114'
 export CKB_INDEXER_URL='http://127.0.0.1:8116';
 export CKB_PRIV_KEY="0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe"
@@ -20,6 +21,7 @@ export THRESHOLD=3
 export FORCE_BRIDGE_RPC_URL="http://127.0.0.1:8080/force-bridge/api/v1"
 export FORCE_BRIDGE_KEYSTORE_PATH="${INTEGRATION_TEST_WORKDIR}/configs/keystore.json"
 export DOCKER_DIR=/tmp/force-bridge
+export FORCECLI="npx ts-node packages/app-cli/src/index.ts"
 
 function install_and_build {
   cd "${OFFCHAIN_MODULES_DIR}"
@@ -114,17 +116,16 @@ function start_service {
   mkdir -p ${INTEGRATION_TEST_WORKDIR}/logs
   # for i in `seq 1 ${MULTISIG_NUMBER}`
   # do
-  #   CONFIG_PATH=${CONFIG_PATH}/verifier${i}.json npx ts-node ./packages/app-multisign-server/src/index.ts &
-  #   # npx forcecli verifier -cfg ${CONFIG_PATH}/verifier${i}.json &
+  #   ${FORCECLI} verifier -cfg ${CONFIG_PATH}/verifier${i}.json &
   # done
-  # sleep 5
-  CONFIG_PATH=${CONFIG_PATH}/collector.json npx ts-node ./packages/app-relayer/src/index.ts &
-  # npx forcecli collector -cfg ${CONFIG_PATH}/collector.json &
+  ${FORCECLI} collector -cfg ${CONFIG_PATH}/collector.json &
+  sleep 5
   CONFIG_PATH=${CONFIG_PATH}/watcher.json npx ts-node ./packages/app-rpc-server/src/index.ts &
-  sleep 20
+#  CONFIG_PATH=${CONFIG_PATH}/watcher.json npx ts-node ./packages/scripts/src/integration-test/eth.ts
 }
 
 function ci_test {
+  sleep 20
   CONFIG_PATH=${CONFIG_PATH}/watcher.json npx ts-node ./packages/scripts/src/integration-test/eth_batch_test.ts
   CONFIG_PATH=${CONFIG_PATH}/watcher.json npx ts-node ./packages/scripts/src/integration-test/rpc-ci.ts
 }

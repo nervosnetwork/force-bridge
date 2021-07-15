@@ -4,7 +4,7 @@ import { Config } from '@force-bridge/x/dist/config';
 import { asserts } from '@force-bridge/x/dist/errors';
 import { asyncSleep } from '@force-bridge/x/dist/utils';
 import { initLog, logger } from '@force-bridge/x/dist/utils/logger';
-import { Script, Amount } from '@lay2/pw-core';
+import { Script } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core/';
 import { AddressPrefix } from '@nervosnetwork/ckb-sdk-utils';
 
@@ -240,22 +240,19 @@ async function prepareCkbAddresses(privateKeys: Array<string>): Promise<Array<st
 
   const publicKey = ckb.utils.privateKeyToPublicKey(CKB_PRI);
   const args = `0x${ckb.utils.blake160(publicKey, 'hex')}`;
-  const fromLockscript = Script.fromRPC({
+  const fromLockscript = {
     code_hash: secp256k1Dep.codeHash,
     args,
     hash_type: secp256k1Dep.hashType,
-  });
+  };
   asserts(fromLockscript);
   const needSupplyCap = BATCH_NUM * 600 * 100000000 + 100000;
   const collector = new IndexerCollector(new CkbIndexer(CKB_NODE_URL, CKB_INDEXER_URL));
 
-  const needSupplyCapCells = await collector.getCellsByLockscriptAndCapacity(
-    fromLockscript,
-    new Amount(`0x${needSupplyCap.toString(16)}`, 0),
-  );
+  const needSupplyCapCells = await collector.getCellsByLockscriptAndCapacity(fromLockscript, BigInt(needSupplyCap));
   console.log(needSupplyCapCells);
   const inputs = needSupplyCapCells.map((cell) => {
-    return { previousOutput: cell.outPoint, since: '0x0' };
+    return { previousOutput: { txHash: cell.out_point!.tx_hash, index: cell.out_point!.index }, since: '0x0' };
   });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -281,12 +278,12 @@ async function prepareCkbAddresses(privateKeys: Array<string>): Promise<Array<st
     outputsData.push('0x');
   }
 
-  const inputCap = needSupplyCapCells.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
+  const inputCap = needSupplyCapCells.map((cell) => BigInt(cell.cell_output.capacity)).reduce((a, b) => a + b);
   const outputCap = outputs.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
   const changeCellCapacity = inputCap - outputCap - 100000n;
   console.log(changeCellCapacity);
   outputs.push({
-    lock: fromLockscript,
+    lock: Script.fromRPC(fromLockscript),
     capacity: `0x${changeCellCapacity.toString(16)}`,
   });
   outputsData.push('0x');
@@ -301,6 +298,7 @@ async function prepareCkbAddresses(privateKeys: Array<string>): Promise<Array<st
     outputsData,
   };
 
+  logger.info(`rawTx: ${JSON.stringify(rawTx, null, 2)}`);
   const signedTx = ckb.signTransaction(CKB_PRI)(rawTx);
   logger.info('signedTx', signedTx);
 

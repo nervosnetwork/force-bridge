@@ -4,6 +4,7 @@ import * as utils from '@nervosnetwork/ckb-sdk-utils';
 import { JSONRPCResponse } from 'json-rpc-2.0';
 import { MultiSignHost } from '../config';
 import { ForceBridgeCore } from '../core';
+import { BridgeMetricSingleton } from '../monitor/bridge-metric';
 import { asyncSleep } from '../utils';
 import { logger } from '../utils/logger';
 import { EthUnlockRecord } from '../xchain/eth';
@@ -37,6 +38,7 @@ export interface mintRecord {
   asset: string;
   amount: string;
   recipientLockscript: string;
+  sudtExtraData: string;
 }
 
 export interface createAsset {
@@ -115,6 +117,7 @@ export class MultiSigMgr {
                   params.rawData
                 } payload:${JSON.stringify(params.payload, null, 2)} sigServer:${svrHost.host}, error:${err.message}`,
               );
+              BridgeMetricSingleton.getInstance(ForceBridgeCore.config.common.role).addErrorLogMetrics('ckb');
               failedSigServerHosts.push(svrHost);
               resolve(null);
             },
@@ -154,6 +157,7 @@ export class MultiSigMgr {
                 sigResp.error.code
               } errorMessage:${sigResp.error.message}`,
             );
+            BridgeMetricSingleton.getInstance(ForceBridgeCore.config.common.role).addErrorLogMetrics('ckb');
           }
           continue;
         }
@@ -213,6 +217,7 @@ export class MultiSigMgr {
             const resp = value as JSONRPCResponse;
             if (resp.error) {
               logger.error(`getPendingTx host:${svr.host} response error:${resp.error}`);
+              BridgeMetricSingleton.getInstance(ForceBridgeCore.config.common.role).addErrorLogMetrics('ckb');
               return resolve(null);
             } else {
               if (resp.result) {
@@ -227,6 +232,7 @@ export class MultiSigMgr {
           },
           (err) => {
             logger.error(`getPendingTx host:${svr.host} error:${err.message}`);
+            BridgeMetricSingleton.getInstance(ForceBridgeCore.config.common.role).addErrorLogMetrics('ckb');
             resolve(null);
           },
         );

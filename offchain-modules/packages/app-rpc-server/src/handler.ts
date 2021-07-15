@@ -1,3 +1,4 @@
+import { parseAddress } from '@ckb-lumos/helpers';
 import { Asset, BtcAsset, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
@@ -11,8 +12,7 @@ import { stringToUint8Array } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
 import { IBalance } from '@force-bridge/x/dist/xchain/btc';
 import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
-import { Amount, HashType, Script } from '@lay2/pw-core';
-import { parseAddress } from '@nervosnetwork/ckb-sdk-utils';
+import { Amount } from '@lay2/pw-core';
 import { BigNumber } from 'bignumber.js';
 import bitcore from 'bitcore-lib';
 import { ethers } from 'ethers';
@@ -35,6 +35,7 @@ import {
   TransactionSummaryWithStatus,
   XChainNetWork,
 } from './types/apiv1';
+
 // The minimum ABI to get ERC20 Token balance
 const minERC20ABI = [
   // balanceOf
@@ -150,7 +151,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
   ): Promise<API.GenerateTransactionResponse<T>> {
     logger.info('generateBridgeOutNervosTransaction ', payload);
     checkCKBAddress(payload.sender);
-    const fromLockscript = ForceBridgeCore.ckb.utils.addressToScript(payload.sender);
+    const fromLockscript = parseAddress(payload.sender);
     const ownerTypeHash = getOwnerTypeHash();
 
     const network = payload.network;
@@ -172,14 +173,8 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         throw new Error('invalid chain type');
     }
 
-    const script = Script.fromRPC({
-      code_hash: fromLockscript.codeHash,
-      args: fromLockscript.args,
-      hash_type: fromLockscript.hashType,
-    });
     const ckbTxGenerator = new CkbTxGenerator(ForceBridgeCore.ckb, ForceBridgeCore.ckbIndexer);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const burnTx = await ckbTxGenerator.burn(script!, payload.recipient, asset, new Amount(amount, 0));
+    const burnTx = await ckbTxGenerator.burn(fromLockscript, payload.recipient, asset, BigInt(amount));
     return {
       network: 'Nervos',
       rawTransaction: burnTx,
@@ -391,18 +386,15 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
       }
 
       case 'Nervos': {
-        const userScript = ForceBridgeCore.ckb.utils.addressToScript(value.userIdent);
+        const userScript = parseAddress(value.userIdent);
         const sudtType = {
-          codeHash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
-          hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
+          code_hash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
+          hash_type: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
           args: value.assetIdent,
         };
         const collector = new IndexerCollector(ForceBridgeCore.ckbIndexer);
-        const sudt_amount = await collector.getSUDTBalance(
-          new Script(sudtType.codeHash, sudtType.args, sudtType.hashType),
-          new Script(userScript.codeHash, userScript.args, userScript.hashType as HashType),
-        );
-        balance = sudt_amount.toString(0);
+        const sudt_amount = await collector.getSUDTBalance(sudtType, userScript);
+        balance = sudt_amount.toString();
         break;
       }
 

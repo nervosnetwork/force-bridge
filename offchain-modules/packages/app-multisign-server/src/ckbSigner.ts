@@ -1,8 +1,12 @@
-import * as path from 'path';
 import { Cell } from '@ckb-lumos/base';
 import { common } from '@ckb-lumos/common-scripts';
 import { key } from '@ckb-lumos/hd';
-import { objectToTransactionSkeleton, TransactionSkeleton, TransactionSkeletonType } from '@ckb-lumos/helpers';
+import {
+  parseAddress,
+  objectToTransactionSkeleton,
+  TransactionSkeleton,
+  TransactionSkeletonType,
+} from '@ckb-lumos/helpers';
 import { BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
@@ -14,12 +18,10 @@ import {
   mintRecord,
 } from '@force-bridge/x/dist/multisig/multisig-mgr';
 import { verifyCollector } from '@force-bridge/x/dist/multisig/utils';
-import { Address, AddressType, Amount } from '@lay2/pw-core';
+import { Amount } from '@lay2/pw-core';
 import { BigNumber } from 'ethers';
 import { SigError, SigErrorCode, SigErrorOk } from './error';
 import { SigResponse, SigServer } from './sigServer';
-
-export const ckbPendingTxFileName = path.join('./', './.ckb_pending_tx.json');
 
 async function verifyCreateCellTx(rawData: string, payload: ckbCollectSignaturesPayload): Promise<SigError> {
   const txSkeleton = payload.txSkeleton;
@@ -240,10 +242,9 @@ function verifyEthBridgeFee(asset: EthAsset, mintAmount: string, lockAmount: str
 
 async function verifyEthMintTx(mintRecord: mintRecord, output: Cell): Promise<SigError> {
   const ownerTypeHash = getOwnerTypeHash();
-  const recipient = new Address(mintRecord.recipientLockscript, AddressType.ckb);
   const amount = new Amount(mintRecord.amount, 0);
   const asset = new EthAsset(mintRecord.asset, ownerTypeHash);
-  const recipientLockscript = recipient.toLockScript();
+  const recipientLockscript = parseAddress(mintRecord.recipientLockscript);
   const bridgeCellLockscript = {
     codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
     hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
@@ -251,16 +252,16 @@ async function verifyEthMintTx(mintRecord: mintRecord, output: Cell): Promise<Si
   };
 
   const lockScript = output.cell_output.lock;
-  if (lockScript.code_hash !== recipientLockscript.codeHash) {
+  if (lockScript.code_hash !== recipientLockscript.code_hash) {
     return new SigError(
       SigErrorCode.InvalidRecord,
-      `lockScript code_hash:${lockScript.code_hash} doesn't match with:${recipientLockscript.codeHash}`,
+      `lockScript code_hash:${lockScript.code_hash} doesn't match with:${recipientLockscript.code_hash}`,
     );
   }
-  if (lockScript.hash_type !== recipientLockscript.hashType) {
+  if (lockScript.hash_type !== recipientLockscript.hash_type) {
     return new SigError(
       SigErrorCode.InvalidRecord,
-      `lockScript hash_type:${lockScript.hash_type} doesn't match with:${recipientLockscript.hashType}`,
+      `lockScript hash_type:${lockScript.hash_type} doesn't match with:${recipientLockscript.hash_type}`,
     );
   }
   if (lockScript.args !== recipientLockscript.args) {

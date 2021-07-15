@@ -1,5 +1,4 @@
 // invoke in ckb handler
-import { Amount } from '@lay2/pw-core';
 import { Connection, DeleteResult, In, Not, UpdateResult } from 'typeorm';
 import { ChainType } from '../ckb/model/asset';
 import { ForceBridgeCore } from '../core';
@@ -73,7 +72,8 @@ export class CkbDb {
       const mint: ICkbMint = {
         id: r.lockTxHash,
         chain: ChainType.ETH,
-        amount: r.amount.toString(0),
+        amount: r.amount.toString(),
+        sudtExtraData: '',
         asset: '',
         recipientLockscript: '',
         mintHash: mints.txHash,
@@ -90,7 +90,7 @@ export class CkbDb {
     for (const record of mintedRecords.records) {
       const row = await lockQuery.select().where('tx_hash = :lockTxHash', { lockTxHash: record.lockTxHash }).getOne();
       if (row) {
-        const bridgeFee = new Amount(row.amount, 0).sub(record.amount).toString(0);
+        const bridgeFee = (BigInt(row.amount) - BigInt(record.amount)).toString();
         await lockQuery
           .update()
           .set({ bridgeFee: bridgeFee })
@@ -114,7 +114,7 @@ export class CkbDb {
         .where('ckb_tx_hash = :ckbTxHash', { ckbTxHash: burn.ckbTxHash })
         .getOne();
       if (unlockRecord) {
-        const bridgeFee = new Amount(burn.amount, 0).sub(new Amount(unlockRecord.amount, 0)).toString(0);
+        const bridgeFee = (BigInt(burn.amount) - BigInt(unlockRecord.amount)).toString();
         await burnQuery
           .update()
           .set({ bridgeFee: bridgeFee })

@@ -1,13 +1,11 @@
-import { core, Script as LumosScript } from '@ckb-lumos/base';
+import { core, utils } from '@ckb-lumos/base';
 import { serializeMultisigScript } from '@ckb-lumos/common-scripts/lib/secp256k1_blake160_multisig';
 import { key } from '@ckb-lumos/hd';
-import { sealTransaction, TransactionSkeletonType } from '@ckb-lumos/helpers';
+import { generateAddress, sealTransaction, TransactionSkeletonType } from '@ckb-lumos/helpers';
 import { RPC } from '@ckb-lumos/rpc';
 import TransactionManager from '@ckb-lumos/transaction-manager';
-import { Address, AddressType, Amount, HashType, Script } from '@lay2/pw-core';
 import { Reader } from 'ckb-js-toolkit';
 import { UpdateResult } from 'typeorm';
-import { Account } from '../ckb/model/accounts';
 import { BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '../ckb/model/asset';
 import { RecipientCellData } from '../ckb/tx-helper/generated/eth_recipient_cell';
 import { ForceBridgeLockscriptArgs } from '../ckb/tx-helper/generated/force_bridge_lockscript';
@@ -79,7 +77,7 @@ export class CkbHandler {
     if (this.role !== 'collector') return;
     for (const burn of confirmedCkbBurns) {
       logger.info(`CkbHandler onCkbBurnConfirmed burnRecord:${JSON.stringify(burn, undefined, 2)}`);
-      const unlockAmount = new Amount(burn.amount, 0).sub(new Amount(burn.bridgeFee, 0)).toString(0);
+      const unlockAmount = (BigInt(burn.amount) - BigInt(burn.bridgeFee)).toString();
       switch (burn.chain) {
         case ChainType.BTC:
           await this.db.createBtcUnlock([
@@ -175,7 +173,7 @@ export class CkbHandler {
           onRejectedInterval: 3000,
           onResolvedInterval: 0,
           onRejected: (e: Error) => {
-            logger.error(`CKB watchNewBlock blockHeight:${this.lastHandledBlockHeight + 1} error:${e.message}`);
+            logger.error(`CKB watchNewBlock blockHeight:${this.lastHandledBlockHeight + 1} error:${e.stack}`);
           },
         },
       );
@@ -237,20 +235,18 @@ export class CkbHandler {
       if (parsedMintRecords) {
         await this.onMintTx(parsedMintRecords);
         BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('ckb_mint', 'success');
-      }
-      const recipientData = tx.outputsData[0];
-      let cellData;
-      try {
-        cellData = new RecipientCellData(fromHexString(recipientData).buffer);
-      } catch (e) {
         continue;
       }
-      if (await isBurnTx(tx, cellData)) {
+      const cellData = await parseBurnTx(tx);
+      if (cellData !== null) {
         const previousOutput = nonNullable(tx.inputs[0].previousOutput);
         const burnPreviousTx: TransactionWithStatus = await this.ckb.rpc.getTransaction(previousOutput.txHash);
-        const senderAddress = Account.scriptToAddress(
-          burnPreviousTx.transaction.outputs[Number(previousOutput.index)].lock,
-        );
+        const senderLockscript = burnPreviousTx.transaction.outputs[Number(previousOutput.index)].lock;
+        const senderAddress = generateAddress({
+          code_hash: senderLockscript.codeHash,
+          hash_type: senderLockscript.hashType,
+          args: senderLockscript.args,
+        });
         const data: BurnDbData = {
           senderAddress: senderAddress,
           cellData: cellData,
@@ -296,7 +292,7 @@ export class CkbHandler {
             ckbTxHash: k,
             asset: asset,
             chain,
-            amount: Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(v.cellData.getAmount().raw()))}`).toString(0),
+            amount: utils.readBigUInt128LE(`0x${toHexString(new Uint8Array(v.cellData.getAmount().raw()))}`).toString(),
             bridgeFee: this.role === 'collector' ? new EthAsset(asset).getBridgeFee('out') : '0',
             recipientAddress: uint8ArrayToString(new Uint8Array(v.cellData.getRecipientAddress().raw())),
             blockNumber: latestHeight,
@@ -366,7 +362,7 @@ export class CkbHandler {
     const lockTxHashes = mintWitness.getLockTxHashes();
     const parsedResult = new Array(0);
     mintedSudtCellIndexes.forEach((value, index) => {
-      const amount = Amount.fromUInt128LE(tx.outputsData[value]);
+      const amount = utils.readBigUInt128LE(tx.outputsData[value]);
       const lockTxHash = uint8ArrayToString(new Uint8Array(lockTxHashes.indexAt(index).raw()));
       parsedResult.push({ amount: amount, lockTxHash: lockTxHash, lockBlockHeight: Number(block.header.number) });
     });
@@ -420,6 +416,7 @@ export class CkbHandler {
                 asset: record.asset,
                 amount: record.amount,
                 recipientLockscript: record.recipientLockscript,
+                sudtExtraData: record.sudtExtraData,
                 status: 'pending',
                 mintHash: '',
               };
@@ -475,7 +472,7 @@ export class CkbHandler {
       logger.info(
         `CkbHandler doHandleMintRecords bridge cell is not exist. do create bridge cell. ownerTypeHash:${ownerTypeHash.toString()}`,
       );
-      logger.info(`CkbHandler doHandleMintRecords createBridgeCell newToken:${JSON.stringify(newTokens, null, 2)}`);
+      logger.info(`CkbHandler doHandleMintRecords createBridgeCell newToken`, newTokens);
       await this.waitUntilSync();
       await this.createBridgeCell(newTokens, generator);
     }
@@ -494,8 +491,9 @@ export class CkbHandler {
       }
     }
 
+    logger.debug(`mint for records`, records);
     const txSkeleton = await generator.mint(records, this.ckbIndexer);
-    logger.info(`mint tx txSkeleton ${JSON.stringify(txSkeleton, null, 2)}`);
+    logger.debug(`mint tx txSkeleton ${JSON.stringify(txSkeleton, null, 2)}`);
     const sigs = await this.collectMintSignatures(txSkeleton, mintRecords);
     for (;;) {
       try {
@@ -526,6 +524,7 @@ export class CkbHandler {
         let content1 = serializeMultisigScript(ForceBridgeCore.config.ckb.multisigScript);
         content1 += signatures.join('');
 
+        logger.debug(`txSkeleton: ${JSON.stringify(txSkeleton, null, 2)}`);
         const tx = sealTransaction(txSkeleton, [content0, content1]);
         const mintTxHash = await this.transactionManager.send_transaction(tx);
         logger.info(
@@ -588,6 +587,7 @@ export class CkbHandler {
             asset: r.asset,
             amount: r.amount,
             recipientLockscript: r.recipientLockscript,
+            sudtExtraData: r.sudtExtraData,
           };
         }),
         txSkeleton: txSkeleton.toJS(),
@@ -601,29 +601,33 @@ export class CkbHandler {
         return {
           lockTxHash: r.id,
           asset: new BtcAsset(r.asset, ownerTypeHash),
-          recipient: new Address(r.recipientLockscript, AddressType.ckb),
-          amount: new Amount(r.amount, 0),
+          recipient: r.recipientLockscript,
+          amount: BigInt(r.amount),
+          sudtExtraData: r.sudtExtraData,
         };
       case ChainType.ETH:
         return {
           lockTxHash: r.id,
           asset: new EthAsset(r.asset, ownerTypeHash),
-          recipient: new Address(r.recipientLockscript, AddressType.ckb),
-          amount: new Amount(r.amount, 0),
+          recipient: r.recipientLockscript,
+          amount: BigInt(r.amount),
+          sudtExtraData: r.sudtExtraData,
         };
       case ChainType.TRON:
         return {
           lockTxHash: r.id,
           asset: new TronAsset(r.asset, ownerTypeHash),
-          amount: new Amount(r.amount, 0),
-          recipient: new Address(r.recipientLockscript, AddressType.ckb),
+          recipient: r.recipientLockscript,
+          amount: BigInt(r.amount),
+          sudtExtraData: r.sudtExtraData,
         };
       case ChainType.EOS:
         return {
           lockTxHash: r.id,
           asset: new EosAsset(r.asset, ownerTypeHash),
-          amount: new Amount(r.amount, 0),
-          recipient: new Address(r.recipientLockscript, AddressType.ckb),
+          recipient: r.recipientLockscript,
+          amount: BigInt(r.amount),
+          sudtExtraData: r.sudtExtraData,
         };
       default:
         throw new Error('asset not supported!');
@@ -641,17 +645,13 @@ export class CkbHandler {
 
       logger.debug('CkbHandler filterNewTokens record:', record);
       const bridgeCellLockscript = {
-        codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
-        hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
+        code_hash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
+        hash_type: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
         args: record.asset.toBridgeLockscriptArgs(),
       };
       logger.debug('CkbHandler filterNewTokens bridgeCellLockscript ', bridgeCellLockscript);
       const searchKey = {
-        script: new Script(
-          bridgeCellLockscript.codeHash,
-          bridgeCellLockscript.args,
-          <HashType>bridgeCellLockscript.hashType,
-        ).serializeJson() as LumosScript,
+        script: bridgeCellLockscript,
         script_type: ScriptType.lock,
       };
       const bridgeCells = await this.ckbIndexer.getCells(searchKey);
@@ -669,14 +669,14 @@ export class CkbHandler {
         chain: r.asset.chainType,
         asset: r.asset.getAddress(),
       });
-      return new Script(
-        ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
-        r.asset.toBridgeLockscriptArgs(),
-        ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
-      );
+      return {
+        code_hash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
+        args: r.asset.toBridgeLockscriptArgs(),
+        hash_type: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
+      };
     });
 
-    const txSkeleton = await generator.createBridgeCell(scripts, this.ckbIndexer);
+    const txSkeleton = await generator.createBridgeCell(scripts);
     const message0 = txSkeleton.get('signingEntries').get(0)!.message;
     const content0 = key.signRecoverable(message0, ForceBridgeCore.config.ckb.privateKey);
     let content1 = serializeMultisigScript(ForceBridgeCore.config.ckb.multisigScript);
@@ -747,7 +747,7 @@ export class CkbHandler {
           return txStatus;
         }
       } catch (e) {
-        logger.error(`CkbHandler waitUntilCommitted error:${e.message}`);
+        logger.error(`CkbHandler waitUntilCommitted error:${e.stack}`);
         await asyncSleep(3000);
       }
     }
@@ -767,15 +767,36 @@ function isTypeIDCorrect(args: string): boolean {
   return ownerTypeHash === expectOwnerTypeHash;
 }
 
-export async function isBurnTx(tx: Transaction, cellData: RecipientCellData): Promise<boolean> {
-  if (tx.outputs.length < 1) {
-    return false;
+export async function parseBurnTx(tx: Transaction): Promise<RecipientCellData | null> {
+  if (tx.outputs.length < 1 || tx.outputs[0].type === null) {
+    return null;
   }
-  const ownerTypeHash = getOwnerTypeHash();
+  const recipientTypescript = nonNullable(tx.outputs[0].type);
+  const expectRecipientTypescript = ForceBridgeCore.config.ckb.deps.recipientType.script;
+  logger.debug('recipientScript:', recipientTypescript);
+  logger.debug('expect:', expectRecipientTypescript);
+  if (
+    recipientTypescript.codeHash !== expectRecipientTypescript.codeHash ||
+    recipientTypescript.hashType !== expectRecipientTypescript.hashType
+  ) {
+    return null;
+  }
+  let cellData: RecipientCellData | null;
+  try {
+    cellData = new RecipientCellData(fromHexString(tx.outputsData[0]).buffer);
+  } catch (e) {
+    logger.warn(`parse recipient data error: ${e.message} ${e.stack}`);
+    return null;
+  }
   logger.debug('amount: ', toHexString(new Uint8Array(cellData.getAmount().raw())));
   logger.debug('recipient address: ', toHexString(new Uint8Array(cellData.getRecipientAddress().raw())));
   logger.debug('asset: ', toHexString(new Uint8Array(cellData.getAsset().raw())));
   logger.debug('chain: ', cellData.getChain());
+  const recipientCellOwnerTypeHash = `0x${toHexString(new Uint8Array(cellData.getOwnerCellTypeHash().raw()))}`;
+  const ownerTypeHash = getOwnerTypeHash();
+  if (recipientCellOwnerTypeHash !== ownerTypeHash) {
+    return null;
+  }
   let asset;
   const assetAddress = toHexString(new Uint8Array(cellData.getAsset().raw()));
   switch (cellData.getChain()) {
@@ -792,28 +813,16 @@ export async function isBurnTx(tx: Transaction, cellData: RecipientCellData): Pr
       asset = new EosAsset(uint8ArrayToString(fromHexString(assetAddress)), ownerTypeHash);
       break;
     default:
-      return false;
+      return null;
   }
 
   if (
     !asset.inWhiteList() ||
-    Amount.fromUInt128LE(`0x${toHexString(new Uint8Array(cellData.getAmount().raw()))}`).lt(
-      new Amount(asset.getMinimalAmount(), 0),
-    )
+    utils.readBigUInt128LE(`0x${toHexString(new Uint8Array(cellData.getAmount().raw()))}`) <
+      BigInt(asset.getMinimalAmount())
   )
-    return false;
-
-  // verify tx output: recipient cell.
-  const recipientTypescript = nonNullable(tx.outputs[0].type);
-  const recipientCellOwnerTypeHash = `0x${toHexString(new Uint8Array(cellData.getOwnerCellTypeHash().raw()))}`;
-  const expectRecipientTypescript = ForceBridgeCore.config.ckb.deps.recipientType.script;
-  logger.debug('recipientScript:', recipientTypescript);
-  logger.debug('expect:', expectRecipientTypescript);
-  return (
-    recipientTypescript.codeHash === expectRecipientTypescript.codeHash &&
-    recipientTypescript.hashType == expectRecipientTypescript.hashType &&
-    recipientCellOwnerTypeHash === ownerTypeHash
-  );
+    return null;
+  return cellData;
 }
 
 type BurnDbData = {

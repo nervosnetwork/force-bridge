@@ -13,6 +13,7 @@ export class BtcHandler {
   constructor(private db: BtcDb, private btcChain: BTCChain, private role: forceBridgeRole) {}
 
   // listen BTC chain and handle the new lock events
+  /* eslint-disable  @typescript-eslint/explicit-module-boundary-types */
   async watchLockEvents() {
     logger.debug('start btc watchLockEvents');
     let latestHeight = await this.db.getLatestHeight();
@@ -40,6 +41,7 @@ export class BtcHandler {
                   amount: btcLockEventData.amount,
                   asset: 'btc',
                   recipientLockscript: btcLockEventData.data.slice(0, CkbAddressLen),
+                  sudtExtraData: '0x',
                 },
               ]);
               logger.info(`BtcHandler watchBtcTxEvents save CkbMint successful for BTC tx ${btcLockEventData.txHash}.`);
@@ -129,6 +131,7 @@ export class BtcHandler {
   }
 
   start() {
+    /* eslint-disable  @typescript-eslint/no-floating-promises */
     this.watchLockEvents();
     this.watchUnlockEvents();
     logger.info('BTC handler started  🚀');
