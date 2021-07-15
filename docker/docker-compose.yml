@@ -51,26 +51,26 @@ services:
         ipv4_address: 10.5.0.105
         aliases:
           - geth
-  btc:
-    image: tockb/btc-regtest
-    stdin_open: true
-    tty: true
-    ports:
-      - "18443:18443"
-    networks:
-      forcenet:
-        ipv4_address: 10.5.0.106
-        aliases:
-          - btc
-  eos:
-    image: tockb/eosio-priv:2.0.11
-    ports:
-      - '8888:8888'
-    networks:
-      forcenet:
-        ipv4_address: 10.5.0.107
-        aliases:
-          - eos
+#  btc:
+#    image: tockb/btc-regtest
+#    stdin_open: true
+#    tty: true
+#    ports:
+#      - "18443:18443"
+#    networks:
+#      forcenet:
+#        ipv4_address: 10.5.0.106
+#        aliases:
+#          - btc
+#  eos:
+#    image: tockb/eosio-priv:2.0.11
+#    ports:
+#      - '8888:8888'
+#    networks:
+#      forcenet:
+#        ipv4_address: 10.5.0.107
+#        aliases:
+#          - eos
 volumes:
   geth-dag:
 networks:

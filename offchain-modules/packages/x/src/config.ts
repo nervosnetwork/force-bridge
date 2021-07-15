@@ -28,6 +28,12 @@ export class MultiSignHost {
   host: string;
 }
 
+export interface CkbDeps {
+  bridgeLock: ConfigItem;
+  recipientType: ConfigItem;
+  sudtType: ConfigItem;
+}
+
 export interface CkbConfig {
   ckbRpcUrl: string;
   ckbIndexerUrl: string;
@@ -36,11 +42,7 @@ export interface CkbConfig {
   multisigScript: MultisigItem;
   multisigLockscript: Script;
   ownerCellTypescript: Script;
-  deps: {
-    bridgeLock: ConfigItem;
-    recipientType: ConfigItem;
-    sudtType: ConfigItem;
-  };
+  deps: CkbDeps;
   startBlockHeight: number;
   confirmNumber: number;
 }

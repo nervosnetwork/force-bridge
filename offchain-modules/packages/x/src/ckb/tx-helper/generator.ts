@@ -12,7 +12,7 @@ import { Reader, normalizers } from 'ckb-js-toolkit';
 import * as lodash from 'lodash';
 import { ForceBridgeCore } from '../../core';
 import { asserts } from '../../errors';
-import { asyncSleep, fromHexString, stringToUint8Array, toHexString } from '../../utils';
+import { asyncSleep, fromHexString, stringToUint8Array, toHexString, transactionSkeletonToJSON } from '../../utils';
 import { logger } from '../../utils/logger';
 import { Asset } from '../model/asset';
 import { IndexerCollector } from './collector';
@@ -213,13 +213,13 @@ export class CkbTxGenerator {
     const needCapacity = outputCapacity - inputCapacity + 10n ** 8n;
     const fromLockscript = parseAddress(fromAddress);
     logger.debug('injectCapacity params', { fromAddress, needCapacity, fromLockscript });
-    logger.debug(`txSkeleton: ${JSON.stringify(txSkeleton, null, 2)}`);
+    logger.debug(`txSkeleton: ${transactionSkeletonToJSON(txSkeleton)}`);
     txSkeleton = await common.injectCapacity(txSkeleton, [fromAddress], needCapacity, undefined, undefined, {
       enableDeductCapacity: false,
     });
-    logger.debug(`txSkeleton: ${JSON.stringify(txSkeleton, null, 2)}`);
+    logger.debug(`txSkeleton: ${transactionSkeletonToJSON(txSkeleton)}`);
     txSkeleton = await common.payFeeByFeeRate(txSkeleton, [fromAddress], feeRate);
-    logger.debug(`txSkeleton: ${JSON.stringify(txSkeleton, null, 2)}`);
+    logger.debug(`txSkeleton: ${transactionSkeletonToJSON(txSkeleton)}`);
     return txSkeleton;
   }
 
@@ -397,11 +397,11 @@ export class CkbTxGenerator {
     const recipientCapacity = minimalCellCapacity(recipientOutput);
     recipientOutput.cell_output.capacity = `0x${recipientCapacity.toString(16)}`;
     logger.debug(`recipientOutput`, recipientOutput);
-    logger.debug(`txSkeleton: ${JSON.stringify(txSkeleton, null, 2)}`);
+    logger.debug(`txSkeleton: ${transactionSkeletonToJSON(txSkeleton)}`);
     txSkeleton = txSkeleton.update('outputs', (outputs) => {
       return outputs.push(recipientOutput);
     });
-    logger.debug(`txSkeleton: ${JSON.stringify(txSkeleton, null, 2)}`);
+    logger.debug(`txSkeleton: ${transactionSkeletonToJSON(txSkeleton)}`);
     // sudt change cell
     const changeAmount = total - amount;
     if (changeAmount > 0n) {
@@ -463,7 +463,7 @@ export class CkbTxGenerator {
       witnesses: [{ lock: '', inputType: '', outputType: '' }],
       outputsData,
     };
-    logger.debug('generate burn rawTx:', rawTx);
+    logger.debug(`generate burn rawTx: ${JSON.stringify(rawTx, null, 2)}`);
     return rawTx as CKBComponents.RawTransactionToSign;
   }
 }

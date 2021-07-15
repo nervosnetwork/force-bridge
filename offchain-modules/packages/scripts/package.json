@@ -16,7 +16,11 @@
     "@force-bridge/reconc": "^0.0.2",
     "@force-bridge/x": "^0.0.2",
     "@force-bridge/xchain-eth": "^0.0.2",
-    "node-fetch": "^1.7.3"
+    "node-fetch": "^1.7.3",
+    "shelljs": "^0.8.4"
   },
-  "version": "0.0.2"
+  "version": "0.0.2",
+  "devDependencies": {
+    "@types/shelljs": "^0.8.9"
+  }
 }

@@ -1,17 +1,16 @@
-import { existsSync } from 'fs';
+import path from 'path';
 import { initializeConfig } from '@ckb-lumos/config-manager';
-import path from "path";
 
-export function initLumosConfig() {
-  const configFilePath = path.join(__dirname, 'generated/devnet-lumos-config.json');
-  if (
-    process.env.LUMOS_CONFIG_NAME !== 'LINA' &&
-    process.env.LUMOS_CONFIG_NAME !== 'AGGRON4' &&
-    existsSync(configFilePath)
-  ) {
+export type LumosConfigType = 'LINA' | 'AGGRON4' | 'DEV';
+
+export function initLumosConfig(env: LumosConfigType = 'DEV') {
+  if (env === 'DEV') {
+    const configFilePath = path.join(__dirname, 'generated/devnet-lumos-config.json');
     process.env.LUMOS_CONFIG_FILE = configFilePath;
+  } else if (env === 'LINA' || env === 'AGGRON4') {
+    process.env.LUMOS_CONFIG_NAME = env;
   } else {
-    throw new Error('should specify LUMOS_CONFIG_NAME');
+    throw new Error(`wrong LumosConfigType ${env}`);
   }
   initializeConfig();
 }

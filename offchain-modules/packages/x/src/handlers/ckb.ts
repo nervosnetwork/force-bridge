@@ -20,7 +20,14 @@ import { ICkbBurn, ICkbMint, MintedRecords } from '../db/model';
 import { asserts, nonNullable } from '../errors';
 import { BridgeMetricSingleton, txTokenInfo } from '../monitor/bridge-metric';
 import { ckbCollectSignaturesPayload, createAsset, MultiSigMgr } from '../multisig/multisig-mgr';
-import { asyncSleep, foreverPromise, fromHexString, toHexString, uint8ArrayToString } from '../utils';
+import {
+  asyncSleep,
+  foreverPromise,
+  fromHexString,
+  toHexString,
+  transactionSkeletonToJSON,
+  uint8ArrayToString,
+} from '../utils';
 import { logger } from '../utils/logger';
 import { getAssetTypeByAsset } from '../xchain/tron/utils';
 import Transaction = CKBComponents.Transaction;
@@ -493,7 +500,7 @@ export class CkbHandler {
 
     logger.debug(`mint for records`, records);
     const txSkeleton = await generator.mint(records, this.ckbIndexer);
-    logger.debug(`mint tx txSkeleton ${JSON.stringify(txSkeleton, null, 2)}`);
+    logger.debug(`mint tx txSkeleton ${transactionSkeletonToJSON(txSkeleton)}`);
     const sigs = await this.collectMintSignatures(txSkeleton, mintRecords);
     for (;;) {
       try {
@@ -524,7 +531,7 @@ export class CkbHandler {
         let content1 = serializeMultisigScript(ForceBridgeCore.config.ckb.multisigScript);
         content1 += signatures.join('');
 
-        logger.debug(`txSkeleton: ${JSON.stringify(txSkeleton, null, 2)}`);
+        logger.debug(`txSkeleton: ${transactionSkeletonToJSON(txSkeleton)}`);
         const tx = sealTransaction(txSkeleton, [content0, content1]);
         const mintTxHash = await this.transactionManager.send_transaction(tx);
         logger.info(

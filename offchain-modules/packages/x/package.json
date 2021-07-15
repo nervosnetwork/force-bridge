@@ -23,6 +23,7 @@
     "@ckb-lumos/transaction-manager": "^0.16.0",
     "@force-bridge/internal": "^0.0.2",
     "@force-bridge/keystore": "^0.0.2",
+    "@lay2/pw-core": "^0.3.22",
     "@nervosnetwork/ckb-sdk-core": "^0.39.0",
     "@nervosnetwork/ckb-sdk-utils": "^0.41.1",
     "@types/lodash": "^4.14.170",

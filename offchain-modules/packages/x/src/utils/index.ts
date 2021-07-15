@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { TransactionSkeletonObject, TransactionSkeletonType } from '@ckb-lumos/helpers';
 import * as utils from '@nervosnetwork/ckb-sdk-utils';
 import { AddressPrefix } from '@nervosnetwork/ckb-sdk-utils';
 import { ethers } from 'ethers';
@@ -144,4 +145,10 @@ export async function getDBConnection(): Promise<Connection> {
     ],
     namingStrategy: new SnakeNamingStrategy(),
   });
+}
+
+export function transactionSkeletonToJSON(txSkelton: TransactionSkeletonType): string {
+  const obj = txSkelton.toJS();
+  obj.cellProvider = undefined;
+  return JSON.stringify(obj, null, 2);
 }
