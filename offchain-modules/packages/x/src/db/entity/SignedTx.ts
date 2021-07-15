@@ -31,6 +31,9 @@ export class SignedTx {
   @Column()
   refTxHash: string;
 
+  @Column({ nullable: true, type: 'text' })
+  inputOutPoints: string;
+
   @Column()
   pubKey: string;
 

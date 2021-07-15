@@ -28,6 +28,7 @@ export interface ISigned {
   signature: string;
   rawData: string;
   nonce?: number;
+  inputOutPoints?: string;
   txHash?: string;
   pubKey: string;
 }

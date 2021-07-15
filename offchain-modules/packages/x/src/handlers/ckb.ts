@@ -1,4 +1,4 @@
-import { core, Script, utils } from '@ckb-lumos/base';
+import { core, utils } from '@ckb-lumos/base';
 import { serializeMultisigScript } from '@ckb-lumos/common-scripts/lib/secp256k1_blake160_multisig';
 import { key } from '@ckb-lumos/hd';
 import { generateAddress, sealTransaction, TransactionSkeletonType } from '@ckb-lumos/helpers';
@@ -497,7 +497,7 @@ export class CkbHandler {
     const sigs = await this.collectMintSignatures(txSkeleton, mintRecords);
     for (;;) {
       try {
-        if (typeof sigs === 'boolean') {
+        if (typeof sigs === 'boolean' && (sigs as boolean)) {
           mintRecords.map((r) => {
             r.status = 'success';
           });
