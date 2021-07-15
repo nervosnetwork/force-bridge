@@ -4,9 +4,8 @@ import * as utils from '@nervosnetwork/ckb-sdk-utils';
 import { JSONRPCResponse } from 'json-rpc-2.0';
 import { MultiSignHost } from '../config';
 import { ForceBridgeCore } from '../core';
-import { BridgeMetricSingleton } from '../monitor/bridge-metric';
 import { asyncSleep } from '../utils';
-import { logger } from '../utils/logger';
+import * as logger from '../utils/logger';
 import { EthUnlockRecord } from '../xchain/eth';
 import { httpRequest } from './client';
 import { verifyCollector } from './utils';
@@ -69,7 +68,7 @@ export interface getPendingTxParams {
 function signToCollectSignaturesParams(params: collectSignaturesParams): void {
   params.collectorSig = '';
   const rawData = JSON.stringify(params, undefined);
-  const data = new Buffer(rawData).toString('hex');
+  const data = Buffer.from(rawData, 'utf8').toString('hex');
   const message = '0x' + utils.blake160('0x' + data, 'hex');
   params.collectorSig = key.signRecoverable(message, ForceBridgeCore.config.ckb.privateKey);
 }
@@ -117,7 +116,6 @@ export class MultiSigMgr {
                   params.rawData
                 } payload:${JSON.stringify(params.payload, null, 2)} sigServer:${svrHost.host}, error:${err.message}`,
               );
-              BridgeMetricSingleton.getInstance(ForceBridgeCore.config.common.role).addErrorLogMetrics('ckb');
               failedSigServerHosts.push(svrHost);
               resolve(null);
             },
@@ -152,7 +150,6 @@ export class MultiSigMgr {
             logger.warn(errorMsg);
           } else {
             logger.error(errorMsg);
-            BridgeMetricSingleton.getInstance(ForceBridgeCore.config.common.role).addErrorLogMetrics('ckb');
           }
 
           if (sigResp.error.code === SigErrorTxCompleted) {
@@ -219,7 +216,6 @@ export class MultiSigMgr {
             const resp = value as JSONRPCResponse;
             if (resp.error) {
               logger.error(`getPendingTx host:${svr.host} response error:${resp.error}`);
-              BridgeMetricSingleton.getInstance(ForceBridgeCore.config.common.role).addErrorLogMetrics('ckb');
               return resolve(null);
             } else {
               if (resp.result) {
@@ -234,7 +230,6 @@ export class MultiSigMgr {
           },
           (err) => {
             logger.error(`getPendingTx host:${svr.host} error:${err.message}`);
-            BridgeMetricSingleton.getInstance(ForceBridgeCore.config.common.role).addErrorLogMetrics('ckb');
             resolve(null);
           },
         );

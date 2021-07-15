@@ -1,4 +1,4 @@
-import { core, Script, utils } from '@ckb-lumos/base';
+import { core, utils } from '@ckb-lumos/base';
 import { serializeMultisigScript } from '@ckb-lumos/common-scripts/lib/secp256k1_blake160_multisig';
 import { key } from '@ckb-lumos/hd';
 import { generateAddress, sealTransaction, TransactionSkeletonType } from '@ckb-lumos/helpers';
@@ -21,7 +21,7 @@ import { asserts, nonNullable } from '../errors';
 import { BridgeMetricSingleton, txTokenInfo } from '../monitor/bridge-metric';
 import { ckbCollectSignaturesPayload, createAsset, MultiSigMgr } from '../multisig/multisig-mgr';
 import { asyncSleep, foreverPromise, fromHexString, toHexString, uint8ArrayToString } from '../utils';
-import { logger } from '../utils/logger';
+import * as logger from '../utils/logger';
 import { getAssetTypeByAsset } from '../xchain/tron/utils';
 import Transaction = CKBComponents.Transaction;
 import TransactionWithStatus = CKBComponents.TransactionWithStatus;

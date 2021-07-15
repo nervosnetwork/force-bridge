@@ -13,14 +13,14 @@ export type txTokenInfo = {
 export class BridgeMetricSingleton {
   private static instance: BridgeMetricSingleton;
 
-  private relayBlockHeightNum: Prometheus.Gauge<any>;
-  private relayBridgeTxNum: Prometheus.Counter<any>;
-  private relayBridgeTokenAmountNum: Prometheus.Gauge<any>;
-  private relayForkHeightNum: Prometheus.Gauge<any>;
+  private readonly relayBlockHeightNum: Prometheus.Gauge<string>;
+  private readonly relayBridgeTxNum: Prometheus.Counter<string>;
+  private readonly relayBridgeTokenAmountNum: Prometheus.Gauge<string>;
+  private readonly relayForkHeightNum: Prometheus.Gauge<string>;
 
-  private relayErrorLogNum: Prometheus.Gauge<any>;
+  private readonly relayErrorLogNum: Prometheus.Gauge<string>;
 
-  private register: Prometheus.Registry;
+  private readonly register: Prometheus.Registry;
 
   constructor(role: forceBridgeRole) {
     this.register = new Prometheus.Registry();
@@ -47,7 +47,7 @@ export class BridgeMetricSingleton {
     this.relayErrorLogNum = new Prometheus.Gauge({
       name: `${role}_error_log_num`,
       help: `amount of error log`,
-      labelNames: ['chain'],
+      labelNames: ['ip'],
     });
     this.register.registerMetric(this.relayBlockHeightNum);
     this.register.registerMetric(this.relayBridgeTxNum);
@@ -95,8 +95,8 @@ export class BridgeMetricSingleton {
     this.relayForkHeightNum.labels({ chain: chain_type }).set(height);
   }
 
-  public addErrorLogMetrics(chain_type: chainType): void {
-    this.relayErrorLogNum.labels({ chain: chain_type }).inc(1);
+  public addErrorLogMetrics(ipAddress: string): void {
+    this.relayErrorLogNum.labels({ ip: ipAddress }).inc(1);
   }
 
   public addBridgeTxMetrics(tx_type: txType, tx_status: txStatus): void {

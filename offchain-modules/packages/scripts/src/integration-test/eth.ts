@@ -5,26 +5,23 @@ import { ChainType, EthAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
 import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
-import { getMultisigLock, getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
+import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { Config, EthConfig } from '@force-bridge/x/dist/config';
 import { bootstrap, ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { EthDb } from '@force-bridge/x/dist/db/eth';
 import { CkbMint, EthLock, EthUnlock } from '@force-bridge/x/dist/db/model';
-import { asserts } from '@force-bridge/x/dist/errors';
 import {
   asyncSleep,
   getDBConnection,
-  parsePrivateKey,
-  privateKeyToCkbAddress,
   stringToUint8Array,
   toHexString,
   uint8ArrayToString,
 } from '@force-bridge/x/dist/utils';
-import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
+import * as logger from '@force-bridge/x/dist/utils/logger';
 import { ETH_ADDRESS } from '@force-bridge/x/dist/xchain/eth';
 import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
 import { EthReconcilerBuilder, ForceBridgeContract } from '@force-bridge/xchain-eth';
-import { Amount, Script } from '@lay2/pw-core';
+import { Amount } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import { ethers } from 'ethers';
 import nconf from 'nconf';
@@ -238,33 +235,6 @@ async function main() {
     return;
   }
   throw new Error('The eth component integration test failed!');
-}
-
-async function burn() {
-  const configPath = process.env.CONFIG_PATH || './config.json';
-  nconf.env().file({ file: configPath });
-  const conf: Config = nconf.get('forceBridge');
-  const config: EthConfig = conf.eth;
-  conf.common.log.logFile = './log/eth-ci.log';
-  await bootstrap(conf);
-  logger.info('config', config);
-  const recipientAddress = '0x1000000000000000000000000000000000000001';
-  const recipientFromLockscript = parseAddress(RECIPIENT_ADDR);
-  const burnAmount = ethers.utils.parseEther('0.01');
-  const ownerTypeHash = getOwnerTypeHash();
-  const generator = new CkbTxGenerator(ckb, indexer);
-  const burnTx = await generator.burn(
-    recipientFromLockscript,
-    recipientAddress,
-    new EthAsset('0x0000000000000000000000000000000000000000', ownerTypeHash),
-    // Amount.fromUInt128LE('0x01'),
-    burnAmount.toBigInt(),
-  );
-  const signedTx = ckb.signTransaction(RECIPIENT_PRI_KEY)(burnTx);
-  logger.info(`burn tx: ${JSON.stringify(signedTx, null, 2)}`);
-  const burnTxHash = await ckb.rpc.sendTransaction(signedTx);
-  console.log(`burn Transaction has been sent with tx hash ${burnTxHash}`);
-  await waitUntilCommitted(ckb, burnTxHash, 60);
 }
 
 main()
