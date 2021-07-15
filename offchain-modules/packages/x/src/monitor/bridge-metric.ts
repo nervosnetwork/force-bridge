@@ -47,7 +47,6 @@ export class BridgeMetricSingleton {
     this.relayErrorLogNum = new Prometheus.Gauge({
       name: `${role}_error_log_num`,
       help: `amount of error log`,
-      labelNames: ['ip'],
     });
     this.register.registerMetric(this.relayBlockHeightNum);
     this.register.registerMetric(this.relayBridgeTxNum);
@@ -95,8 +94,8 @@ export class BridgeMetricSingleton {
     this.relayForkHeightNum.labels({ chain: chain_type }).set(height);
   }
 
-  public addErrorLogMetrics(ipAddress: string): void {
-    this.relayErrorLogNum.labels({ ip: ipAddress }).inc(1);
+  public addErrorLogMetrics(): void {
+    this.relayErrorLogNum.inc(1);
   }
 
   public addBridgeTxMetrics(tx_type: txType, tx_status: txStatus): void {

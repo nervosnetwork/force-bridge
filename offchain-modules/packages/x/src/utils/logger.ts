@@ -1,4 +1,3 @@
-import * as os from 'os';
 import { configure, getLogger } from 'log4js';
 import { logConfig } from '../config';
 import { ForceBridgeCore } from '../core';
@@ -56,32 +55,16 @@ export function warn(message: any, ...args: any[]): void {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/explicit-module-boundary-types
 export function error(message: any, ...args: any[]): void {
   logger.error(message, ...args);
-  BridgeMetricSingleton.getInstance(ForceBridgeCore.config.common.role).addErrorLogMetrics(myHost);
+  BridgeMetricSingleton.getInstance(ForceBridgeCore.config.common.role).addErrorLogMetrics();
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/explicit-module-boundary-types
 export function fatal(message: any, ...args: any[]): void {
   logger.fatal(message, ...args);
-  BridgeMetricSingleton.getInstance(ForceBridgeCore.config.common.role).addErrorLogMetrics(myHost);
+  BridgeMetricSingleton.getInstance(ForceBridgeCore.config.common.role).addErrorLogMetrics();
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/explicit-module-boundary-types
 export function mark(message: any, ...args: any[]): void {
   logger.mark(message, ...args);
 }
-
-function getIpAddress(): string {
-  const interfaces = os.networkInterfaces();
-  for (const devName in interfaces) {
-    const iface = interfaces[devName];
-    for (let i = 0; i < iface!.length; i++) {
-      const alias = iface![i];
-      if (alias.family === 'IPv4' && alias.address !== '127.0.0.1' && !alias.internal) {
-        return alias.address;
-      }
-    }
-  }
-  return '';
-}
-
-const myHost = getIpAddress();
