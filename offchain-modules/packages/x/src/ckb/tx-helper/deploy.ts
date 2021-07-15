@@ -99,7 +99,7 @@ export class CkbDeployManager extends CkbTxHelper {
         lock: fromLockscript,
         type: recipientTypescriptOutputType,
       },
-      data: utils.bytesToHex(contracts.bridgeLockscript),
+      data: utils.bytesToHex(contracts.recipientTypescript),
     };
     const recipientTypescriptCapacity = minimalCellCapacity(recipientTypescriptOutput);
     recipientTypescriptOutput.cell_output.capacity = `0x${recipientTypescriptCapacity.toString(16)}`;

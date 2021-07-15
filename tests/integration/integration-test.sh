@@ -101,12 +101,10 @@ function ci_test {
   CONFIG_PATH=${CONFIG_PATH}/watcher/force_bridge.json npx ts-node ./packages/scripts/src/integration-test/rpc-ci.ts
 }
 
-clean_all
+#clean_all
 #clean_config
 #clean_db
-#install_and_build
-#generate_multisig
-#deploy
+install_and_build
 generate_configs
 create_db
 start_service
