@@ -1,9 +1,10 @@
 import { asyncSleep } from '@force-bridge/x/dist/utils';
-import { logger } from '@force-bridge/x/dist/utils/logger';
+import * as logger from '@force-bridge/x/dist/utils/logger';
+import CKB from '@nervosnetwork/ckb-sdk-core';
 
 type waitFn = () => Promise<boolean>;
 
-export async function waitFnCompleted(timeout: number, fn: waitFn, sleepTime = 1000) {
+export async function waitFnCompleted(timeout: number, fn: waitFn, sleepTime = 1000): Promise<void> {
   const start = new Date().getTime();
   while (true) {
     if (await fn()) {
@@ -16,7 +17,11 @@ export async function waitFnCompleted(timeout: number, fn: waitFn, sleepTime = 1
   }
 }
 
-export async function waitUntilCommitted(ckb, txHash, timeout) {
+export async function waitUntilCommitted(
+  ckb: CKB,
+  txHash: string,
+  timeout: number,
+): Promise<CKBComponents.TransactionWithStatus> {
   let waitTime = 0;
   while (true) {
     const txStatus = await ckb.rpc.getTransaction(txHash);
