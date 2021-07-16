@@ -1,6 +1,4 @@
 import { parsePrivateKey } from '@force-bridge/x/dist/utils';
-import { logger } from '@force-bridge/x/dist/utils/logger';
-import CKB from '@nervosnetwork/ckb-sdk-core';
 
 // const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
 // const CKB_INDEXER_URL = process.env.CKB_INDEXER_URL || 'http://127.0.0.1:8116';
@@ -53,7 +51,7 @@ async function main() {
   // logger.debug('res', bb.toString(), dd);
 }
 
-main();
+void main();
 
 // export function stringToUint8Array(str): Uint8Array {
 //   const arr = [];

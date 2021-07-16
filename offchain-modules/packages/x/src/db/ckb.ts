@@ -67,7 +67,7 @@ export class CkbDb {
     );
   }
 
-  async watcherCreateMint(mints: MintedRecords): Promise<void> {
+  async watcherCreateMint(blockNumber: number, mints: MintedRecords): Promise<void> {
     const dbRecords = mints.records.map((r) => {
       const mint: ICkbMint = {
         id: r.lockTxHash,
@@ -76,6 +76,7 @@ export class CkbDb {
         sudtExtraData: '',
         asset: '',
         recipientLockscript: '',
+        blockNumber: blockNumber,
         mintHash: mints.txHash,
         status: 'success',
       };
@@ -171,6 +172,15 @@ export class CkbDb {
       .createQueryBuilder()
       .delete()
       .where('block_number > :blockNumber And confirm_status = "unconfirmed"', { blockNumber: confirmedBlockHeight })
+      .execute();
+  }
+
+  async removeUnconfirmedCkbMint(confirmedBlockHeight: number): Promise<DeleteResult> {
+    return this.connection
+      .getRepository(CkbMint)
+      .createQueryBuilder()
+      .delete()
+      .where('block_number > :blockNumber', { blockNumber: confirmedBlockHeight })
       .execute();
   }
 

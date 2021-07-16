@@ -14,7 +14,7 @@ import {
 import { RPC } from '@ckb-lumos/rpc';
 import axios from 'axios';
 import { asyncSleep } from '../../utils';
-import { logger } from '../../utils/logger';
+import * as logger from '../../utils/logger';
 
 export enum ScriptType {
   type = 'type',
@@ -161,8 +161,7 @@ export class CkbIndexer implements Indexer {
     };
   }
 
-  /* eslint-disable  @typescript-eslint/no-explicit-any */
-  /* eslint-disable  @typescript-eslint/explicit-module-boundary-types */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/explicit-module-boundary-types
   public async request(method: string, params?: any, ckbIndexerUrl: string = this.ckbIndexerUrl): Promise<any> {
     const data = {
       id: 0,
@@ -304,7 +303,8 @@ $ echo '{
     logger.debug('ckb indexer stop');
   }
 
-  subscribe(_queries: QueryOptions): NodeJS.EventEmitter {
+  //  eslint-disable-next-line @typescript-eslint/no-unused-vars
+  subscribe(queries: QueryOptions): NodeJS.EventEmitter {
     throw new Error('unimplemented');
   }
 

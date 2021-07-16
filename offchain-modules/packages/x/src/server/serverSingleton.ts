@@ -1,5 +1,5 @@
 import express from 'express';
-import { logger } from '../utils/logger';
+import * as logger from '../utils/logger';
 
 export class ServerSingleton {
   private static instance: ServerSingleton;

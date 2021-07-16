@@ -3,10 +3,9 @@ import { Interface } from 'ethers/lib/utils';
 import { EthConfig, forceBridgeRole } from '../../config';
 import { ForceBridgeCore } from '../../core';
 import { IEthUnlock } from '../../db/model';
-import { BridgeMetricSingleton } from '../../monitor/bridge-metric';
 import { MultiSigMgr } from '../../multisig/multisig-mgr';
 import { asyncSleep, retryPromise } from '../../utils';
-import { logger } from '../../utils/logger';
+import * as logger from '../../utils/logger';
 import { abi } from './abi/ForceBridge.json';
 import { buildSigRawData } from './utils';
 
@@ -103,7 +102,6 @@ export class EthChain {
             maxRetryTimes: Infinity,
             onRejected: (e: Error) => {
               logger.error(`Eth watchNewBlock blockHeight:${currentHeight} error:${e.message}`);
-              BridgeMetricSingleton.getInstance(this.role).addErrorLogMetrics('eth');
             },
           },
         );
@@ -186,7 +184,6 @@ export class EthChain {
         logger.error(
           `log fork occured in block ${log.blockNumber}, log.blockHash ${log.blockHash}, block.hash ${block.hash}`,
         );
-        BridgeMetricSingleton.getInstance(this.role).addErrorLogMetrics('eth');
         return true;
       }
     }
