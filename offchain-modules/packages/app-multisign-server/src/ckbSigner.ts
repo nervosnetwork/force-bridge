@@ -426,7 +426,7 @@ export async function signCkbTx(params: collectSignaturesParams): Promise<SigRes
           rawData: params.rawData,
           inputOutPoints: txSkeleton.inputs
             .map((cell) => {
-              return cell.out_point!.index + ':' + cell.out_point!.index;
+              return cell.out_point!.tx_hash + ':' + cell.out_point!.index;
             })
             .join(';'),
           signature: sig,

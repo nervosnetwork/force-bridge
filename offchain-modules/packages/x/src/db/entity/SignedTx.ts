@@ -27,7 +27,6 @@ export class SignedTx {
   @Column({ nullable: true })
   nonce: number;
 
-  @Index({ unique: true })
   @Column()
   refTxHash: string;
 
