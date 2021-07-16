@@ -5,7 +5,7 @@ import { CkbDeployManager, OwnerCellConfig } from '@force-bridge/x/dist/ckb/tx-h
 import { initLumosConfig } from '@force-bridge/x/dist/ckb/tx-helper/init_lumos_config';
 import { Config, WhiteListEthAsset, CkbDeps, ConfigItem } from '@force-bridge/x/dist/config';
 import { asyncSleep, privateKeyToCkbPubkeyHash, writeJsonToFile } from '@force-bridge/x/dist/utils';
-import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
+import * as logger from '@force-bridge/x/dist/utils/logger';
 import { deployEthContract } from '@force-bridge/x/dist/xchain/eth';
 import * as lodash from 'lodash';
 import * as shelljs from 'shelljs';
@@ -129,7 +129,7 @@ async function generateConfig(
 }
 
 async function main() {
-  initLog({ level: 'debug' });
+  logger.initLog({ level: 'debug' });
   logger.info('start integration test');
   initLumosConfig();
   // const

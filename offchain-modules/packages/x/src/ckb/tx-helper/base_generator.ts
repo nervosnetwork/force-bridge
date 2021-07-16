@@ -17,7 +17,7 @@ import * as utils from '@nervosnetwork/ckb-sdk-utils';
 import { AddressPrefix } from '@nervosnetwork/ckb-sdk-utils';
 import { asserts, nonNullable } from '../../errors';
 import { asyncSleep, privateKeyToCkbAddress, transactionSkeletonToJSON } from '../../utils';
-import { logger } from '../../utils/logger';
+import * as logger from '../../utils/logger';
 import { IndexerCollector } from './collector';
 import { CkbIndexer, ScriptType, Terminator } from './indexer';
 import { initLumosConfig } from './init_lumos_config';
