@@ -4,7 +4,7 @@ import { ForceBridgeCore } from '../core';
 import { BtcDb } from '../db/btc';
 import { BtcUnlock } from '../db/entity/BtcUnlock';
 import { asyncSleep } from '../utils';
-import { logger } from '../utils/logger';
+import * as logger from '../utils/logger';
 import { BTCChain, BtcLockData } from '../xchain/btc';
 
 const CkbAddressLen = 46;
@@ -13,7 +13,7 @@ export class BtcHandler {
   constructor(private db: BtcDb, private btcChain: BTCChain, private role: forceBridgeRole) {}
 
   // listen BTC chain and handle the new lock events
-  async watchLockEvents() {
+  async watchLockEvents(): Promise<void> {
     logger.debug('start btc watchLockEvents');
     let latestHeight = await this.db.getLatestHeight();
     while (true) {
@@ -88,7 +88,7 @@ export class BtcHandler {
 
   // watch the BTC_unlock table and handle the new unlock events
   // send tx according to the data
-  async watchUnlockEvents() {
+  async watchUnlockEvents(): Promise<void> {
     if (this.role !== 'collector') {
       return;
     }
@@ -129,9 +129,13 @@ export class BtcHandler {
     }
   }
 
-  start() {
-    this.watchLockEvents();
-    this.watchUnlockEvents();
+  start(): void {
+    this.watchLockEvents().catch((err) => {
+      logger.error(`BTCHandler watchLockEvents error:${err.stack}`);
+    });
+    this.watchUnlockEvents().catch((err) => {
+      logger.error(`BTCHandler watchUnlockEvents error:${err.stack}`);
+    });
     logger.info('BTC handler started  🚀');
   }
 }

@@ -6,7 +6,7 @@ import { ForceBridgeCore } from '../core';
 import { TronDb } from '../db';
 import { ICkbMint, ITronLock, TronUnlock } from '../db/model';
 import { asyncSleep } from '../utils';
-import { logger } from '../utils/logger';
+import * as logger from '../utils/logger';
 import { getAssetTypeByAsset } from '../xchain/tron/utils';
 
 type TronLockEvent = {
@@ -31,8 +31,12 @@ export class TronHandler {
   }
 
   start(): void {
-    this.watchLockEvents();
-    this.watchUnlockEvents();
+    this.watchLockEvents().catch((err) => {
+      logger.error(`TronHandler watchLockEvents error:${err.stack}`);
+    });
+    this.watchUnlockEvents().catch((err) => {
+      logger.error(`TronHandler watchUnlockEvents error:${err.stack}`);
+    });
     logger.info('tron handler started  🚀');
   }
 

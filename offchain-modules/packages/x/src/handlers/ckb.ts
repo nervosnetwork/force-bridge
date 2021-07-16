@@ -1,4 +1,4 @@
-import { core, Script, utils } from '@ckb-lumos/base';
+import { core, utils } from '@ckb-lumos/base';
 import { serializeMultisigScript } from '@ckb-lumos/common-scripts/lib/secp256k1_blake160_multisig';
 import { key } from '@ckb-lumos/hd';
 import { generateAddress, sealTransaction, TransactionSkeletonType } from '@ckb-lumos/helpers';
@@ -28,7 +28,7 @@ import {
   transactionSkeletonToJSON,
   uint8ArrayToString,
 } from '../utils';
-import { logger } from '../utils/logger';
+import * as logger from '../utils/logger';
 import { getAssetTypeByAsset } from '../xchain/tron/utils';
 import Transaction = CKBComponents.Transaction;
 import TransactionWithStatus = CKBComponents.TransactionWithStatus;
@@ -84,6 +84,8 @@ export class CkbHandler {
     if (this.role !== 'collector') return;
     for (const burn of confirmedCkbBurns) {
       logger.info(`CkbHandler onCkbBurnConfirmed burnRecord:${JSON.stringify(burn, undefined, 2)}`);
+      if (BigInt(burn.amount) <= BigInt(burn.bridgeFee))
+        throw new Error('Unexpected error: burn amount less than bridge fee');
       const unlockAmount = (BigInt(burn.amount) - BigInt(burn.bridgeFee)).toString();
       switch (burn.chain) {
         case ChainType.BTC:
@@ -205,6 +207,7 @@ export class CkbHandler {
         `CkbHandler onBlock blockHeight:${blockNumber} parentHash:${block.header.parentHash} != lastHandledBlockHash:${this.lastHandledBlockHash} fork occur removeUnconfirmedLock events from:${confirmedBlockHeight}`,
       );
       await this.db.removeUnconfirmedCkbBurn(confirmedBlockHeight);
+      if (this.role !== 'collector') await this.db.removeUnconfirmedCkbMint(confirmedBlockHeight);
 
       const confirmedBlock = await this.ckb.rpc.getBlockByNumber(BigInt(confirmedBlockHeight));
       await this.setLastHandledBlock(Number(confirmedBlock.header.number), confirmedBlock.header.hash);
@@ -240,7 +243,7 @@ export class CkbHandler {
     for (const tx of block.transactions) {
       const parsedMintRecords = await this.parseMintTx(tx, block);
       if (parsedMintRecords) {
-        await this.onMintTx(parsedMintRecords);
+        await this.onMintTx(blockNumber, parsedMintRecords);
         BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('ckb_mint', 'success');
         continue;
       }
@@ -270,12 +273,12 @@ export class CkbHandler {
     await this.setLastHandledBlock(blockNumber, blockHash);
   }
 
-  async onMintTx(mintedRecords: MintedRecords): Promise<UpdateResult | undefined> {
+  async onMintTx(blockNumber: number, mintedRecords: MintedRecords): Promise<UpdateResult | undefined> {
     if (this.role === 'collector') {
       await this.db.updateCkbMintStatus(mintedRecords.txHash, 'success');
       return;
     }
-    await this.db.watcherCreateMint(mintedRecords);
+    await this.db.watcherCreateMint(blockNumber, mintedRecords);
     await this.db.updateBridgeInRecords(mintedRecords);
   }
 
@@ -324,7 +327,7 @@ export class CkbHandler {
       burnTxHashes.push(k);
     });
     await this.db.createCkbBurn(ckbBurns);
-    if (this.role === 'watcher') {
+    if (this.role !== 'collector') {
       await this.db.updateBurnBridgeFee(ckbBurns);
     }
     logger.info(`CkbHandler processBurnTxs saveBurnEvent success, burnTxHashes:${burnTxHashes.join(', ')}`);
@@ -799,9 +802,16 @@ export async function parseBurnTx(tx: Transaction): Promise<RecipientCellData | 
   logger.debug('recipient address: ', toHexString(new Uint8Array(cellData.getRecipientAddress().raw())));
   logger.debug('asset: ', toHexString(new Uint8Array(cellData.getAsset().raw())));
   logger.debug('chain: ', cellData.getChain());
+  const recipientCellBridgeLockCodeHash = `0x${toHexString(new Uint8Array(cellData.getBridgeLockCodeHash().raw()))}`;
+  const recipientCellBridgeLockHashType = cellData.getBridgeLockHashType() === 0 ? 'data' : 'type';
+  const expectBridgeLockscript = ForceBridgeCore.config.ckb.deps.bridgeLock.script;
   const recipientCellOwnerTypeHash = `0x${toHexString(new Uint8Array(cellData.getOwnerCellTypeHash().raw()))}`;
   const ownerTypeHash = getOwnerTypeHash();
-  if (recipientCellOwnerTypeHash !== ownerTypeHash) {
+  if (
+    recipientCellBridgeLockCodeHash !== expectBridgeLockscript.codeHash ||
+    recipientCellBridgeLockHashType !== expectBridgeLockscript.hashType ||
+    recipientCellOwnerTypeHash !== ownerTypeHash
+  ) {
     return null;
   }
   let asset;

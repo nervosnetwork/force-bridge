@@ -3,8 +3,8 @@ import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
 import { Config } from '@force-bridge/x/dist/config';
 import { asserts } from '@force-bridge/x/dist/errors';
 import { asyncSleep } from '@force-bridge/x/dist/utils';
-import { initLog, logger } from '@force-bridge/x/dist/utils/logger';
-import { Script, Amount } from '@lay2/pw-core';
+import * as logger from '@force-bridge/x/dist/utils/logger';
+import { Script } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core/';
 import { AddressPrefix } from '@nervosnetwork/ckb-sdk-utils';
 
@@ -312,7 +312,7 @@ async function main() {
   nconf.env().file({ file: configPath });
   const conf: Config = nconf.get('forceBridge');
   conf.common.log.logFile = './log/rpc-ci.log';
-  initLog(conf.common.log);
+  logger.initLog(conf.common.log);
 
   const provider = new ethers.providers.JsonRpcProvider(ETH_NODE_URL);
   const ethWallet = new ethers.Wallet(ETH_PRI, provider);
