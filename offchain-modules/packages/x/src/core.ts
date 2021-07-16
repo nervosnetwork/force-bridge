@@ -3,6 +3,7 @@ import { KeyStore } from '@force-bridge/keystore';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import nconf from 'nconf';
 import { CkbIndexer } from './ckb/tx-helper/indexer';
+import { initLumosConfig } from './ckb/tx-helper/init_lumos_config';
 import { Config } from './config';
 import { asserts } from './errors';
 import { ServerSingleton } from './server/serverSingleton';
@@ -133,6 +134,8 @@ export class ForceBridgeCore {
     ForceBridgeCore._config = config;
     ForceBridgeCore._keystore = keystore;
     ForceBridgeCore._xChainHandler = new XChainHandlers();
+    // init lumos config
+    initLumosConfig(config.common.lumosConfigType);
     return this;
   }
 }

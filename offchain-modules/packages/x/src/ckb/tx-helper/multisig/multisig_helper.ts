@@ -7,9 +7,7 @@ import { MultisigItem } from '../../../config';
 import { ForceBridgeCore } from '../../../core';
 import { nonNullable } from '../../../errors';
 import { parsePrivateKey } from '../../../utils';
-import { initLumosConfig } from '../init_lumos_config';
 
-initLumosConfig();
 const config = getConfig();
 const multisigTemplate = nonNullable(config.SCRIPTS.SECP256K1_BLAKE160_MULTISIG);
 if (!multisigTemplate) {

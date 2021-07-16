@@ -138,6 +138,7 @@ async function main() {
       log: {
         level: 'debug',
       },
+      lumosConfigType: 'DEV',
       network: 'testnet',
       role: 'watcher',
       orm: {

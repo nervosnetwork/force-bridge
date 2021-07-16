@@ -133,6 +133,7 @@ export interface commonConfig {
   role: forceBridgeRole;
   log: logConfig;
   network: 'mainnet' | 'testnet';
+  lumosConfigType: 'LINA' | 'AGGRON4' | 'DEV';
   port?: number;
   orm: ormConfig;
   openMetric: boolean;
