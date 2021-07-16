@@ -542,7 +542,7 @@ export class CkbHandler {
         );
 
         const txStatus = await this.waitUntilCommitted(mintTxHash, 200);
-        if (txStatus.txStatus.status === 'committed') {
+        if (txStatus && txStatus.txStatus.status === 'committed') {
           const mintTokens: txTokenInfo[] = [];
           mintRecords.map((r) => {
             r.status = 'success';
@@ -554,9 +554,7 @@ export class CkbHandler {
           });
           BridgeMetricSingleton.getInstance(this.role).addBridgeTokenMetrics('ckb_mint', mintTokens);
         } else {
-          logger.error(
-            `CkbHandler doHandleMintRecords mint execute failed txStatus:${txStatus.txStatus.status}, mintIds:${mintIds}`,
-          );
+          logger.error(`CkbHandler doHandleMintRecords mint execute failed, mintIds:${mintIds}`);
           BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('ckb_mint', 'failed');
           mintRecords.map((r) => {
             r.status = 'error';
@@ -709,7 +707,10 @@ export class CkbHandler {
     const tx = sealTransaction(txSkeleton, [content0, content1]);
     logger.info('tx:', JSON.stringify(tx, null, 2));
     const txHash = await this.transactionManager.send_transaction(tx);
-    await this.waitUntilCommitted(txHash, 60);
+    const txStatus = await this.waitUntilCommitted(txHash, 120);
+    if (txStatus === null || txStatus.txStatus.status !== 'committed') {
+      throw new Error('fail to createBridgeCell');
+    }
   }
 
   async waitUntilSync(): Promise<void> {
@@ -735,31 +736,30 @@ export class CkbHandler {
     }
   }
 
-  async waitUntilCommitted(txHash: string, timeout: number): Promise<TransactionWithStatus> {
+  async waitUntilCommitted(txHash: string, timeout: number): Promise<TransactionWithStatus | null> {
     let waitTime = 0;
-    const statusMap = new Map<string, boolean>();
-
+    let txStatus: TransactionWithStatus | null = null;
     for (;;) {
       try {
-        const txStatus = await this.ckb.rpc.getTransaction(txHash);
-        if (!statusMap.get(txStatus.txStatus.status)) {
-          logger.info(
-            `CkbHandler waitUntilCommitted tx ${txHash} status: ${txStatus.txStatus.status}, index: ${waitTime}`,
-          );
-          statusMap.set(txStatus.txStatus.status, true);
+        txStatus = await this.ckb.rpc.getTransaction(txHash);
+        if (txStatus === null) {
+          logger.warn(`CkbHandler waitUntilCommitted tx ${txHash} status: null, index: ${waitTime}`);
+          return null;
         }
+        logger.debug(
+          `CkbHandler waitUntilCommitted tx ${txHash} status: ${txStatus.txStatus.status}, index: ${waitTime}`,
+        );
         if (txStatus.txStatus.status === 'committed') {
-          return txStatus;
-        }
-        await asyncSleep(1000);
-        waitTime += 1;
-        if (waitTime >= timeout) {
           return txStatus;
         }
       } catch (e) {
         logger.error(`CkbHandler waitUntilCommitted error:${e.stack}`);
-        await asyncSleep(3000);
       }
+      waitTime += 1;
+      if (waitTime >= timeout) {
+        return txStatus;
+      }
+      await asyncSleep(1000);
     }
   }
 
