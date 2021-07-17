@@ -10,13 +10,11 @@ import {
   Tip,
   OutPoint,
   HexNumber,
-  Hash,
 } from '@ckb-lumos/base';
 import { RPC } from '@ckb-lumos/rpc';
 import axios from 'axios';
-import { nonNullable } from '../../errors';
 import { asyncSleep } from '../../utils';
-import { logger } from '../../utils/logger';
+import * as logger from '../../utils/logger';
 
 export enum ScriptType {
   type = 'type',
@@ -163,6 +161,7 @@ export class CkbIndexer implements Indexer {
     };
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/explicit-module-boundary-types
   public async request(method: string, params?: any, ckbIndexerUrl: string = this.ckbIndexerUrl): Promise<any> {
     const data = {
       id: 0,
@@ -304,6 +303,7 @@ $ echo '{
     logger.debug('ckb indexer stop');
   }
 
+  //  eslint-disable-next-line @typescript-eslint/no-unused-vars
   subscribe(queries: QueryOptions): NodeJS.EventEmitter {
     throw new Error('unimplemented');
   }

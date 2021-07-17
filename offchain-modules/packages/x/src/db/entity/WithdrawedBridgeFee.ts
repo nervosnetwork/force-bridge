@@ -1,4 +1,4 @@
-import { Entity, PrimaryColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryColumn, Column, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
 
 @Entity()
 export class WithdrawedBridgeFee {
@@ -10,6 +10,10 @@ export class WithdrawedBridgeFee {
 
   @Column()
   chain: number;
+
+  @Index()
+  @Column()
+  blockNumber: number;
 
   @Column()
   asset: string;

@@ -5,7 +5,7 @@ import { ForceBridgeCore } from '../../core';
 import { IEthUnlock } from '../../db/model';
 import { MultiSigMgr } from '../../multisig/multisig-mgr';
 import { asyncSleep, retryPromise } from '../../utils';
-import { logger } from '../../utils/logger';
+import * as logger from '../../utils/logger';
 import { abi } from './abi/ForceBridge.json';
 import { buildSigRawData } from './utils';
 
@@ -100,7 +100,9 @@ export class EthChain {
           {
             onRejectedInterval: 3000,
             maxRetryTimes: Infinity,
-            onRejected: (e: Error) => logger.error(`Eth watchNewBlock blockHeight:${currentHeight} error:${e.message}`),
+            onRejected: (e: Error) => {
+              logger.error(`Eth watchNewBlock blockHeight:${currentHeight} error:${e.message}`);
+            },
           },
         );
       }
@@ -202,7 +204,7 @@ export class EthChain {
     const typeHash = await this.bridge.UNLOCK_TYPEHASH();
     const nonce: BigNumber = await this.bridge.latestUnlockNonce_();
     const signResult = await this.signUnlockRecords(domainSeparator, typeHash, params, nonce);
-    if (typeof signResult === 'boolean') {
+    if (typeof signResult === 'boolean' && (signResult as boolean)) {
       return true;
     }
     const signatures = signResult as string[];

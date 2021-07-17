@@ -4,7 +4,7 @@ import { RPCClient } from 'rpc-bitcoin';
 import { ForceBridgeCore } from '../../core';
 import { BtcUnlock } from '../../db/entity/BtcUnlock';
 import { asserts, nonNullable } from '../../errors';
-import { logger } from '../../utils/logger';
+import * as logger from '../../utils/logger';
 import {
   BtcLockData,
   BtcUnlockResult,
@@ -48,7 +48,12 @@ export class BTCChain {
     this.rpcClient = new RPCClient(clientParams);
   }
 
-  async watchBtcTxEvents(startHeight = 1, endHeight, handleLockAsyncFunc, handleUnlockAsyncFunc) {
+  async watchBtcTxEvents(
+    startHeight = 1,
+    endHeight: number,
+    handleLockAsyncFunc: (lockData: BtcLockData) => void,
+    handleUnlockAsyncFunc: (txHash: string) => void,
+  ): Promise<void> {
     for (let blockHeight = startHeight; blockHeight <= endHeight; blockHeight++) {
       const blockhash = await this.rpcClient.getblockhash({ height: blockHeight });
       const block: IBlock = await this.rpcClient.getblock({ blockhash, verbosity: 2 });
@@ -209,10 +214,6 @@ export class BTCChain {
     return height[0].height;
   }
 
-  async getTxOut(txid: string, n: number): Promise<any> {
-    return await this.rpcClient.gettxout({ txid, n });
-  }
-
   isLockTx(txVouts: IVout[]): boolean {
     if (txVouts.length < 2) {
       return false;
@@ -309,7 +310,7 @@ export async function getBtcMainnetFee(): Promise<MainnetFee> {
     const res = await axios.get('https://bitcoinfees.earn.com/api/v1/fees/recommended');
     return res.data;
   } catch (err) {
-    console.error('failed get btc mainnet recommended fee. by error : ', err.response.data);
+    logger.error('failed get btc mainnet recommended fee. by error : ', err.response.data);
     throw err;
   }
 }
