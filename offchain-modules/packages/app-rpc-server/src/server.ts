@@ -3,7 +3,7 @@ import { startHandlers } from '@force-bridge/x/dist/handlers';
 import { responseStatus, RpcMetric } from '@force-bridge/x/dist/monitor/rpc-metric';
 import { ServerSingleton } from '@force-bridge/x/dist/server/serverSingleton';
 import { getDBConnection } from '@force-bridge/x/dist/utils';
-import * as logger from '@force-bridge/x/dist/utils/logger';
+import { logger } from '@force-bridge/x/dist/utils/logger';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import { JSONRPCServer } from 'json-rpc-2.0';

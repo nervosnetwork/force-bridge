@@ -113,6 +113,7 @@ export interface rpcConfig {
 export interface logConfig {
   level: string;
   logFile?: string;
+  identity?: string;
 }
 
 export type ormDBType = 'mysql';

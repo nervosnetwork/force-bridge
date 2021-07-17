@@ -8,7 +8,7 @@ import { EthUnlock, IEthUnlock } from '../db/model';
 import { BridgeMetricSingleton, txTokenInfo } from '../monitor/bridge-metric';
 import { ethCollectSignaturesPayload } from '../multisig/multisig-mgr';
 import { asyncSleep, foreverPromise, fromHexString, retryPromise, uint8ArrayToString } from '../utils';
-import * as logger from '../utils/logger';
+import { logger } from '../utils/logger';
 import { EthChain, WithdrawBridgeFeeTopic, Log, ParsedLog } from '../xchain/eth';
 
 const MAX_RETRY_TIMES = 3;

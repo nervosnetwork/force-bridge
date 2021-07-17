@@ -13,7 +13,7 @@ export interface VerifierConfig {
   ethAddress: string;
 }
 
-export function genRandomVerifierConfig() {
+export function genRandomVerifierConfig(): VerifierConfig {
   const privkey = genRandomHex(64);
   return {
     privkey,

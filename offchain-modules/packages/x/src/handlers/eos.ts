@@ -8,7 +8,7 @@ import { getEosLockId } from '../db/entity/EosLock';
 import { EosUnlock, EosUnlockStatus } from '../db/entity/EosUnlock';
 import { EosDb } from '../db/eos';
 import { asyncSleep } from '../utils';
-import * as logger from '../utils/logger';
+import { logger } from '../utils/logger';
 import { EosChain } from '../xchain/eos/eosChain';
 import { EosAssetAmount, getTxIdFromSerializedTx } from '../xchain/eos/utils';
 const EosTokenAccount = 'eosio.token';

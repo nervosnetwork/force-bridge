@@ -17,7 +17,7 @@ import {
   toHexString,
   uint8ArrayToString,
 } from '@force-bridge/x/dist/utils';
-import * as logger from '@force-bridge/x/dist/utils/logger';
+import { logger } from '@force-bridge/x/dist/utils/logger';
 import { ETH_ADDRESS } from '@force-bridge/x/dist/xchain/eth';
 import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
 import { EthReconcilerBuilder, ForceBridgeContract } from '@force-bridge/xchain-eth';

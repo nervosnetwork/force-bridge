@@ -20,7 +20,7 @@ import { RPC as ToolkitRPC } from 'ckb-js-toolkit';
 import { ConfigItem, MultisigItem } from '../../config';
 import { asserts, nonNullable } from '../../errors';
 import { blake2b, asyncSleep, privateKeyToCkbAddress, transactionSkeletonToJSON } from '../../utils';
-import * as logger from '../../utils/logger';
+import { logger } from '../../utils/logger';
 import { CkbTxHelper } from './base_generator';
 import { IndexerCollector } from './collector';
 import { CkbIndexer, ScriptType, Terminator } from './indexer';

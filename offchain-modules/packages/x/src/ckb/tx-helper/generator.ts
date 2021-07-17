@@ -13,7 +13,7 @@ import * as lodash from 'lodash';
 import { ForceBridgeCore } from '../../core';
 import { asserts } from '../../errors';
 import { asyncSleep, fromHexString, stringToUint8Array, toHexString, transactionSkeletonToJSON } from '../../utils';
-import * as logger from '../../utils/logger';
+import { logger } from '../../utils/logger';
 import { Asset } from '../model/asset';
 import { IndexerCollector } from './collector';
 import { SerializeRecipientCellData } from './generated/eth_recipient_cell';

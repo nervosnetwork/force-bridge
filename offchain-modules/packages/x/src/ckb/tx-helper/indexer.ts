@@ -14,7 +14,7 @@ import {
 import { RPC } from '@ckb-lumos/rpc';
 import axios from 'axios';
 import { asyncSleep } from '../../utils';
-import * as logger from '../../utils/logger';
+import { logger } from '../../utils/logger';
 
 export enum ScriptType {
   type = 'type',

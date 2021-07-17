@@ -17,7 +17,7 @@ import * as utils from '@nervosnetwork/ckb-sdk-utils';
 import { AddressPrefix } from '@nervosnetwork/ckb-sdk-utils';
 import { asserts, nonNullable } from '../../errors';
 import { asyncSleep, privateKeyToCkbAddress, transactionSkeletonToJSON } from '../../utils';
-import * as logger from '../../utils/logger';
+import { logger } from '../../utils/logger';
 import { IndexerCollector } from './collector';
 import { CkbIndexer, ScriptType, Terminator } from './indexer';
 import { initLumosConfig } from './init_lumos_config';
@@ -148,7 +148,7 @@ export class CkbTxHelper {
           return txStatus;
         }
       } else {
-        logger.debug(`tx ${txHash}, status: null, index: ${waitTime}`);
+        throw new Error(`wait for ${txHash} until committed failed with null txStatus`);
       }
       waitTime += 1;
       if (waitTime > timeout) {

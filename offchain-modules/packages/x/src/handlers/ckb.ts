@@ -28,7 +28,7 @@ import {
   transactionSkeletonToJSON,
   uint8ArrayToString,
 } from '../utils';
-import * as logger from '../utils/logger';
+import { logger } from '../utils/logger';
 import { getAssetTypeByAsset } from '../xchain/tron/utils';
 import Transaction = CKBComponents.Transaction;
 import TransactionWithStatus = CKBComponents.TransactionWithStatus;
@@ -147,7 +147,7 @@ export class CkbHandler {
     const lastHandledBlockHeight = ForceBridgeCore.config.ckb.startBlockHeight;
     if (lastHandledBlockHeight > 0) {
       const lastHandledHead = await this.ckb.rpc.getHeaderByNumber(`0x${lastHandledBlockHeight.toString(16)}`);
-      if (lastHandledHead !== undefined) {
+      if (lastHandledHead) {
         this.lastHandledBlockHeight = Number(lastHandledHead.number);
         this.lastHandledBlockHash = lastHandledHead.hash;
         return;
@@ -564,7 +564,7 @@ export class CkbHandler {
         }
         break;
       } catch (e) {
-        logger.debug(`CkbHandler doHandleMintRecords mint mintIds:${mintIds} error:${e.stack()}`);
+        logger.debug(`CkbHandler doHandleMintRecords mint mintIds:${mintIds} error:${e.stack}`);
         await asyncSleep(3000);
       }
     }

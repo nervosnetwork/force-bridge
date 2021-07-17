@@ -1,12 +1,42 @@
 import path from 'path';
 import { asyncSleep } from '@force-bridge/x/dist/utils';
-import * as logger from '@force-bridge/x/dist/utils/logger';
+import { logger } from '@force-bridge/x/dist/utils/logger';
 import CKB from '@nervosnetwork/ckb-sdk-core';
+import * as shelljs from 'shelljs';
 
 export const PATH_PROJECT_ROOT = path.join(__dirname, '../../../../..');
 
 export function pathFromProjectRoot(subPath: string): string {
   return path.join(PATH_PROJECT_ROOT, subPath);
+}
+
+export async function execShellCmd(command: string, waitUntilFinished = true): Promise<void> {
+  logger.debug('run command', command);
+  const res = shelljs.exec(command, { async: true });
+  process.on('exit', () => {
+    const killRes = res.kill();
+    logger.debug(`kill cmd [${res.pid}] ${command}, res: ${killRes}`);
+  });
+  if (!waitUntilFinished) {
+    res.on('exit', (code) => {
+      if (code !== 0) {
+        logger.error(`command "${command}" failed with code ${code}`);
+        process.exit(code!);
+      }
+    });
+  } else {
+    for (;;) {
+      if (res.exitCode === null) {
+        await asyncSleep(100);
+      } else {
+        if (res.exitCode === 0) {
+          return;
+        } else {
+          throw new Error(`command "${command} exit with code ${res.exitCode}`);
+        }
+      }
+    }
+  }
 }
 
 type waitFn = () => Promise<boolean>;

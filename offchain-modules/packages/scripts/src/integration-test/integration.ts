@@ -5,17 +5,35 @@ import { CkbDeployManager, OwnerCellConfig } from '@force-bridge/x/dist/ckb/tx-h
 import { initLumosConfig } from '@force-bridge/x/dist/ckb/tx-helper/init_lumos_config';
 import { Config, WhiteListEthAsset, CkbDeps, ConfigItem } from '@force-bridge/x/dist/config';
 import { asyncSleep, privateKeyToCkbPubkeyHash, writeJsonToFile } from '@force-bridge/x/dist/utils';
-import * as logger from '@force-bridge/x/dist/utils/logger';
+import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
 import { deployEthContract } from '@force-bridge/x/dist/xchain/eth';
+import CKB from '@nervosnetwork/ckb-sdk-core';
+import { ethers } from 'ethers';
 import * as lodash from 'lodash';
-import * as shelljs from 'shelljs';
-
-import { keystorePath, verifierServerBasePort } from '../types';
-import { pathFromProjectRoot } from '../utils';
+import { execShellCmd, pathFromProjectRoot } from '../utils';
+import { ethBatchTest } from './eth_batch_test';
 import { genRandomVerifierConfig } from './generate';
+import { rpcTest } from './rpc-ci';
 
+// used for deploy and run service
 const ETH_PRIVATE_KEY = '0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed37a';
 const CKB_PRIVATE_KEY = '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
+// used for test
+const ETH_TEST_PRIVKEY = '0x719e94ec5d2ecef67b5878503ffd6e1e0e2fe7a52ddd55c436878cb4d52d376d';
+const CKB_TEST_PRIVKEY = '0xa6b8e0cbadda5c0d91cf82d1e8d8120b755aa06bc49030ca6e8392458c65fc80';
+
+const MULTISIG_NUMBER = 5;
+const MULTISIG_THRESHOLD = 3;
+const FORCE_BRIDGE_KEYSTORE_PASSWORD = '123456';
+const ETH_RPC_URL = 'http://127.0.0.1:8545';
+const CKB_RPC_URL = 'http://127.0.0.1:8114';
+const CKB_INDEXER_URL = 'http://127.0.0.1:8116';
+const FORCE_BRIDGE_URL = 'http://127.0.0.1:8080/force-bridge/api/v1';
+
+const configPath = pathFromProjectRoot('workdir/integration');
+const offchainModulePath = pathFromProjectRoot('offchain-modules');
+const tsnodePath = path.join(offchainModulePath, 'node_modules/.bin/ts-node');
+const forcecli = `${tsnodePath} ${offchainModulePath}/packages/app-cli/src/index.ts`;
 
 export interface VerifierConfig {
   privkey: string;
@@ -29,6 +47,28 @@ export interface MultisigConfig {
   verifiers: VerifierConfig[];
 }
 
+async function handleDb(action: 'create' | 'drop') {
+  if (action === 'create') {
+    for (let i = 0; i < MULTISIG_NUMBER; i++) {
+      await execShellCmd(
+        `docker exec docker_mysql_1 bash -c "mysql -uroot -proot -e 'create database verifier${i + 1}'";`,
+      );
+    }
+    await execShellCmd(
+      `docker exec docker_mysql_1 bash -c "mysql -uroot -proot -e 'create database collector; create database watcher; show databases;'";`,
+    );
+  } else {
+    for (let i = 0; i < MULTISIG_NUMBER; i++) {
+      await execShellCmd(
+        `docker exec docker_mysql_1 bash -c "mysql -uroot -proot -e 'drop database if exists verifier${i + 1}'";`,
+      );
+    }
+    await execShellCmd(
+      `docker exec docker_mysql_1 bash -c "mysql -uroot -proot -e 'drop database if exists collector; drop database if exists watcher; show databases;'";`,
+    );
+  }
+}
+
 async function generateConfig(
   initConfig: Config,
   assetWhiteList: WhiteListEthAsset[],
@@ -39,7 +79,7 @@ async function generateConfig(
   ckbStartHeight: number,
   ethStartHeight: number,
   configPath: string,
-  password = '123456',
+  password = FORCE_BRIDGE_KEYSTORE_PASSWORD,
 ) {
   const baseConfig: Config = lodash.cloneDeep(initConfig);
   logger.debug(`baseConfig: ${JSON.stringify(baseConfig, null, 2)}`);
@@ -75,6 +115,7 @@ async function generateConfig(
     };
   });
   collectorConfig.common.log.logFile = path.join(configPath, 'collector/force_bridge.log');
+  collectorConfig.common.log.identity = 'collector';
   collectorConfig.common.keystorePath = path.join(configPath, 'collector/keystore.json');
   const collectorStore = KeyStore.createFromPairs(
     {
@@ -90,6 +131,7 @@ async function generateConfig(
   watcherConfig.common.role = 'watcher';
   watcherConfig.common.orm.database = 'watcher';
   watcherConfig.common.log.logFile = path.join(configPath, 'watcher/force_bridge.log');
+  watcherConfig.common.log.identity = 'watcher';
   watcherConfig.common.port = 8080;
   watcherConfig.common.keystorePath = path.join(configPath, 'watcher/keystore.json');
   const watcherStore = KeyStore.createFromPairs(
@@ -112,6 +154,7 @@ async function generateConfig(
     verifierConfig.common.port = 8000 + verifierIndex;
     verifierConfig.common.collectorPubKeyHash.push(privateKeyToCkbPubkeyHash(CKB_PRIVATE_KEY));
     verifierConfig.common.log.logFile = path.join(configPath, `verifier${verifierIndex}/force_bridge.log`);
+    verifierConfig.common.log.identity = `verifier${verifierIndex}`;
     verifierConfig.common.keystorePath = path.join(configPath, `verifier${verifierIndex}/keystore.json`);
     const verifierStore = KeyStore.createFromPairs(
       {
@@ -128,15 +171,13 @@ async function generateConfig(
   // docker compose file
 }
 
-async function main() {
-  logger.initLog({ level: 'debug' });
-  logger.info('start integration test');
+async function deployAndGenerateConfig() {
   initLumosConfig();
   // const
   const initConfig = {
     common: {
       log: {
-        level: 'debug',
+        level: 'info',
       },
       lumosConfigType: 'DEV',
       network: 'testnet',
@@ -172,37 +213,23 @@ async function main() {
       startBlockHeight: 1,
       confirmNumber: 1,
     },
-    rpc: {
-      port: 8080,
-      corsOptions: {
-        origin: '*',
-        methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-        preflightContinue: false,
-        optionsSuccessStatus: 200,
-      },
-    },
   };
-  const multisigNumber = 5;
-  const multisigThreshold = 3;
-  const verifierConfigs = lodash.range(multisigNumber).map((i) => genRandomVerifierConfig());
+  const verifierConfigs = lodash.range(MULTISIG_NUMBER).map((i) => genRandomVerifierConfig());
   const ethMultiSignAddresses = verifierConfigs.map((vc) => vc.ethAddress);
-  const ethRpcUrl = 'http://127.0.0.1:8545';
-  const ckbRpcUrl = 'http://127.0.0.1:8114';
-  const ckbIndexerUrl = 'http://127.0.0.1:8116';
 
   // deploy eth contract
   const bridgeEthAddress = await deployEthContract(
-    ethRpcUrl,
+    ETH_RPC_URL,
     ETH_PRIVATE_KEY,
     ethMultiSignAddresses,
-    multisigThreshold,
+    MULTISIG_THRESHOLD,
   );
   logger.info(`bridge address: ${bridgeEthAddress}`);
   // deploy ckb contracts
   const PATH_SUDT_DEP = pathFromProjectRoot('/offchain-modules/deps/simple_udt');
   const PATH_RECIPIENT_TYPESCRIPT = pathFromProjectRoot('/ckb-contracts/build/release/recipient-typescript');
   const PATH_BRIDGE_LOCKSCRIPT = pathFromProjectRoot('/ckb-contracts/build/release/bridge-lockscript');
-  const ckbDeployGenerator = new CkbDeployManager(ckbRpcUrl, ckbIndexerUrl);
+  const ckbDeployGenerator = new CkbDeployManager(CKB_RPC_URL, CKB_INDEXER_URL);
   const contractsDeps = await ckbDeployGenerator.deployContracts(
     {
       bridgeLockscript: await fs.readFile(PATH_BRIDGE_LOCKSCRIPT),
@@ -215,7 +242,7 @@ async function main() {
   logger.info('deps', { contractsDeps, sudtDep });
   const multisigItem = {
     R: 0,
-    M: multisigThreshold,
+    M: MULTISIG_THRESHOLD,
     publicKeyHashes: verifierConfigs.map((vc) => vc.ckbPubkeyHash),
   };
   const ownerConfig: OwnerCellConfig = await ckbDeployGenerator.createOwnerCell(multisigItem, CKB_PRIVATE_KEY);
@@ -228,11 +255,17 @@ async function main() {
     sudtType: sudtDep,
     ...contractsDeps,
   };
-  const configPath = pathFromProjectRoot('workdir/integration-docker');
   const multisigConfig = {
-    threshold: multisigThreshold,
+    threshold: MULTISIG_THRESHOLD,
     verifiers: verifierConfigs,
   };
+  // get start height
+  const provider = new ethers.providers.JsonRpcProvider(ETH_RPC_URL);
+  const delta = 1;
+  const ethStartHeight = await provider.getBlockNumber();
+  const ckb = new CKB(CKB_RPC_URL);
+  const ckbStartHeight = Number(await ckb.rpc.getTipBlockNumber());
+  logger.debug('start height', { ethStartHeight, ckbStartHeight });
   await generateConfig(
     initConfig as unknown as Config,
     assetWhiteList,
@@ -240,13 +273,43 @@ async function main() {
     ownerConfig,
     bridgeEthAddress,
     multisigConfig,
-    1,
-    1,
+    ckbStartHeight - delta,
+    ethStartHeight - delta,
     configPath,
   );
+}
 
-  // create_db
-  // start_service
+async function startService() {
+  for (let i = 1; i <= MULTISIG_NUMBER; i++) {
+    await execShellCmd(
+      `FORCE_BRIDGE_KEYSTORE_PASSWORD=${FORCE_BRIDGE_KEYSTORE_PASSWORD} ${forcecli} verifier -cfg ${configPath}/verifier${i}/force_bridge.json`,
+      false,
+    );
+  }
+  await execShellCmd(
+    `FORCE_BRIDGE_KEYSTORE_PASSWORD=${FORCE_BRIDGE_KEYSTORE_PASSWORD} ${forcecli} collector -cfg ${configPath}/collector/force_bridge.json`,
+    false,
+  );
+  await execShellCmd(
+    `FORCE_BRIDGE_KEYSTORE_PASSWORD=${FORCE_BRIDGE_KEYSTORE_PASSWORD} ${forcecli} rpc -cfg ${path.join(
+      configPath,
+      'watcher/force_bridge.json',
+    )}`,
+    false,
+  );
+}
+
+async function main() {
+  initLog({ level: 'debug', identity: 'integration' });
+  logger.info('start integration test');
+  await deployAndGenerateConfig();
+  await handleDb('drop');
+  await handleDb('create');
+  await startService();
+  await asyncSleep(20000);
+  await ethBatchTest(ETH_TEST_PRIVKEY, CKB_TEST_PRIVKEY, ETH_RPC_URL, CKB_RPC_URL, CKB_INDEXER_URL, FORCE_BRIDGE_URL);
+  await rpcTest(FORCE_BRIDGE_URL, CKB_RPC_URL, ETH_RPC_URL, CKB_TEST_PRIVKEY, ETH_TEST_PRIVKEY);
+  logger.info('integration test pass!');
 }
 
 main()

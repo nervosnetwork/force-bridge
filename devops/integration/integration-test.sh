@@ -5,7 +5,7 @@ set -ex
 CURRENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 PROJECT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && cd ../.. && pwd )"
 OFFCHAIN_MODULES_DIR="${PROJECT_DIR}/offchain-modules"
-INTEGRATION_TEST_WORKDIR="${PROJECT_DIR}/workdir/integration-docker"
+INTEGRATION_TEST_WORKDIR="${PROJECT_DIR}/workdir/integration"
 
 export CONFIG_PATH="${INTEGRATION_TEST_WORKDIR}"
 export FORCE_BRIDGE_KEYSTORE_PASSWORD=123456

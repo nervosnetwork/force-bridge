@@ -9,7 +9,7 @@ import { BtcDb } from '@force-bridge/x/dist/db/btc';
 import { EosDb } from '@force-bridge/x/dist/db/eos';
 import { IQuery, LockRecord, UnlockRecord } from '@force-bridge/x/dist/db/model';
 import { stringToUint8Array } from '@force-bridge/x/dist/utils';
-import * as logger from '@force-bridge/x/dist/utils/logger';
+import { logger } from '@force-bridge/x/dist/utils/logger';
 import { IBalance } from '@force-bridge/x/dist/xchain/btc';
 import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
 import { Amount } from '@lay2/pw-core';

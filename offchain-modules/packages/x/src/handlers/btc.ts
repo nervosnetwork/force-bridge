@@ -4,7 +4,7 @@ import { ForceBridgeCore } from '../core';
 import { BtcDb } from '../db/btc';
 import { BtcUnlock } from '../db/entity/BtcUnlock';
 import { asyncSleep } from '../utils';
-import * as logger from '../utils/logger';
+import { logger } from '../utils/logger';
 import { BTCChain, BtcLockData } from '../xchain/btc';
 
 const CkbAddressLen = 46;

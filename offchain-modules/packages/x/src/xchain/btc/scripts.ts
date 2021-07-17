@@ -4,7 +4,7 @@ import { RPCClient } from 'rpc-bitcoin';
 import { ForceBridgeCore } from '../../core';
 import { BtcUnlock } from '../../db/entity/BtcUnlock';
 import { asserts, nonNullable } from '../../errors';
-import * as logger from '../../utils/logger';
+import { logger } from '../../utils/logger';
 import {
   BtcLockData,
   BtcUnlockResult,
