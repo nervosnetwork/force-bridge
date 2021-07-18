@@ -13,14 +13,6 @@ async function main() {
   const CKB_INDEXER_URL = getFromEnv('CKB_INDEXER_URL');
   const CKB_TEST_PRIVKEY = getFromEnv('CKB_TEST_PRIVKEY');
   const ETH_TEST_PRIVKEY = getFromEnv('ETH_TEST_PRIVKEY');
-  logger.debug('env', {
-    ETH_TEST_PRIVKEY,
-    CKB_TEST_PRIVKEY,
-    ETH_RPC_URL,
-    CKB_RPC_URL,
-    CKB_INDEXER_URL,
-    FORCE_BRIDGE_URL,
-  });
   logger.info('start batch test');
   for (;;) {
     await ethBatchTest(
@@ -30,7 +22,7 @@ async function main() {
       CKB_RPC_URL,
       CKB_INDEXER_URL,
       FORCE_BRIDGE_URL,
-      1000,
+      10,
     );
   }
 }

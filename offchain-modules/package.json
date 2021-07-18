@@ -49,6 +49,8 @@
     "init-multisig": "ts-node ./packages/x/src/ckb/tx-helper/multisig/deploy.ts",
     "integration": "ts-node packages/scripts/src/integration.ts",
     "startTxSender": "ts-node packages/scripts/src/txSender.ts",
+    "startDevDockerDeps": "docker-compose -f ../docker/docker-compose.dev.yml up -d",
+    "destroyDevDockerDeps": "docker-compose -f ../docker/docker-compose.dev.yml down",
     "dev-docker:generate": "ts-node packages/scripts/src/devDocker.ts"
   },
   "author": "",
