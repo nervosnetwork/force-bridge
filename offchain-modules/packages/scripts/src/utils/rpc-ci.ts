@@ -1,8 +1,8 @@
 import assert from 'assert';
 import { asyncSleep, privateKeyToCkbAddress, privateKeyToEthAddress } from '@force-bridge/x/dist/utils';
-import { initLog, logger } from '@force-bridge/x/dist/utils/logger';
+import { logger } from '@force-bridge/x/dist/utils/logger';
 import { Amount } from '@lay2/pw-core';
-import CKB from '@nervosnetwork/ckb-sdk-core/';
+import CKB from '@nervosnetwork/ckb-sdk-core';
 import { ethers } from 'ethers';
 import { JSONRPCClient } from 'json-rpc-2.0';
 import fetch from 'node-fetch/index';
@@ -1021,7 +1021,7 @@ export async function rpcTest(
   CKB_TEST_ADDRESS: string = privateKeyToCkbAddress(CKB_PRI_KEY),
   ETH_TEST_ADDRESS: string = privateKeyToEthAddress(ETH_PRI_KEY),
   ETH_TOKEN_ADDRESS = '0x0000000000000000000000000000000000000000',
-) {
+): Promise<void> {
   const ckb = new CKB(CKB_NODE_URL);
 
   // JSONRPCClient needs to know how to send a JSON-RPC request.

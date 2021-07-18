@@ -1,39 +1,14 @@
-import { promises as fs } from 'fs';
 import path from 'path';
 import { KeyStore } from '@force-bridge/keystore/dist';
-import { CkbDeployManager, OwnerCellConfig } from '@force-bridge/x/dist/ckb/tx-helper/deploy';
-import { initLumosConfig } from '@force-bridge/x/dist/ckb/tx-helper/init_lumos_config';
-import { Config, WhiteListEthAsset, CkbDeps, ConfigItem } from '@force-bridge/x/dist/config';
+import { OwnerCellConfig } from '@force-bridge/x/dist/ckb/tx-helper/deploy';
+import { Config, WhiteListEthAsset, CkbDeps } from '@force-bridge/x/dist/config';
 import { asyncSleep, privateKeyToCkbPubkeyHash, writeJsonToFile } from '@force-bridge/x/dist/utils';
 import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
-import { deployEthContract } from '@force-bridge/x/dist/xchain/eth';
-import CKB from '@nervosnetwork/ckb-sdk-core';
-import { ethers } from 'ethers';
 import * as lodash from 'lodash';
-import { execShellCmd, pathFromProjectRoot } from '../utils';
-import { ethBatchTest } from './eth_batch_test';
-import { genRandomVerifierConfig } from './generate';
-import { rpcTest } from './rpc-ci';
-
-// used for deploy and run service
-const ETH_PRIVATE_KEY = '0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed37a';
-const CKB_PRIVATE_KEY = '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
-// used for test
-const ETH_TEST_PRIVKEY = '0x719e94ec5d2ecef67b5878503ffd6e1e0e2fe7a52ddd55c436878cb4d52d376d';
-const CKB_TEST_PRIVKEY = '0xa6b8e0cbadda5c0d91cf82d1e8d8120b755aa06bc49030ca6e8392458c65fc80';
-
-const MULTISIG_NUMBER = 5;
-const MULTISIG_THRESHOLD = 3;
-const FORCE_BRIDGE_KEYSTORE_PASSWORD = '123456';
-const ETH_RPC_URL = 'http://127.0.0.1:8545';
-const CKB_RPC_URL = 'http://127.0.0.1:8114';
-const CKB_INDEXER_URL = 'http://127.0.0.1:8116';
-const FORCE_BRIDGE_URL = 'http://127.0.0.1:8080/force-bridge/api/v1';
-
-const configPath = pathFromProjectRoot('workdir/integration');
-const offchainModulePath = pathFromProjectRoot('offchain-modules');
-const tsnodePath = path.join(offchainModulePath, 'node_modules/.bin/ts-node');
-const forcecli = `${tsnodePath} ${offchainModulePath}/packages/app-cli/src/index.ts`;
+import { execShellCmd, pathFromProjectRoot } from './utils';
+import { deployDev } from './utils/deploy';
+import { ethBatchTest } from './utils/eth_batch_test';
+import { rpcTest } from './utils/rpc-ci';
 
 export interface VerifierConfig {
   privkey: string;
@@ -47,7 +22,7 @@ export interface MultisigConfig {
   verifiers: VerifierConfig[];
 }
 
-async function handleDb(action: 'create' | 'drop') {
+async function handleDb(action: 'create' | 'drop', MULTISIG_NUMBER: number) {
   if (action === 'create') {
     for (let i = 0; i < MULTISIG_NUMBER; i++) {
       await execShellCmd(
@@ -79,7 +54,9 @@ async function generateConfig(
   ckbStartHeight: number,
   ethStartHeight: number,
   configPath: string,
-  password = FORCE_BRIDGE_KEYSTORE_PASSWORD,
+  ETH_PRIVATE_KEY: string,
+  CKB_PRIVATE_KEY: string,
+  password,
 ) {
   const baseConfig: Config = lodash.cloneDeep(initConfig);
   logger.debug(`baseConfig: ${JSON.stringify(baseConfig, null, 2)}`);
@@ -171,9 +148,55 @@ async function generateConfig(
   // docker compose file
 }
 
-async function deployAndGenerateConfig() {
-  initLumosConfig();
-  // const
+async function startService(
+  FORCE_BRIDGE_KEYSTORE_PASSWORD: string,
+  forcecli: string,
+  configPath: string,
+  MULTISIG_NUMBER: number,
+) {
+  for (let i = 1; i <= MULTISIG_NUMBER; i++) {
+    await execShellCmd(
+      `FORCE_BRIDGE_KEYSTORE_PASSWORD=${FORCE_BRIDGE_KEYSTORE_PASSWORD} ${forcecli} verifier -cfg ${configPath}/verifier${i}/force_bridge.json`,
+      false,
+    );
+  }
+  await execShellCmd(
+    `FORCE_BRIDGE_KEYSTORE_PASSWORD=${FORCE_BRIDGE_KEYSTORE_PASSWORD} ${forcecli} collector -cfg ${configPath}/collector/force_bridge.json`,
+    false,
+  );
+  await execShellCmd(
+    `FORCE_BRIDGE_KEYSTORE_PASSWORD=${FORCE_BRIDGE_KEYSTORE_PASSWORD} ${forcecli} rpc -cfg ${path.join(
+      configPath,
+      'watcher/force_bridge.json',
+    )}`,
+    false,
+  );
+}
+
+async function main() {
+  initLog({ level: 'debug', identity: 'integration' });
+  logger.info('start integration test');
+
+  // used for deploy and run service
+  const ETH_PRIVATE_KEY = '0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed37a';
+  const CKB_PRIVATE_KEY = '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
+  // used for test
+  const ETH_TEST_PRIVKEY = '0x719e94ec5d2ecef67b5878503ffd6e1e0e2fe7a52ddd55c436878cb4d52d376d';
+  const CKB_TEST_PRIVKEY = '0xa6b8e0cbadda5c0d91cf82d1e8d8120b755aa06bc49030ca6e8392458c65fc80';
+
+  const MULTISIG_NUMBER = 5;
+  const MULTISIG_THRESHOLD = 3;
+  const FORCE_BRIDGE_KEYSTORE_PASSWORD = '123456';
+  const ETH_RPC_URL = 'http://127.0.0.1:8545';
+  const CKB_RPC_URL = 'http://127.0.0.1:8114';
+  const CKB_INDEXER_URL = 'http://127.0.0.1:8116';
+  const FORCE_BRIDGE_URL = 'http://127.0.0.1:8080/force-bridge/api/v1';
+
+  const configPath = pathFromProjectRoot('workdir/integration');
+  const offchainModulePath = pathFromProjectRoot('offchain-modules');
+  const tsnodePath = path.join(offchainModulePath, 'node_modules/.bin/ts-node');
+  const forcecli = `${tsnodePath} ${offchainModulePath}/packages/app-cli/src/index.ts`;
+
   const initConfig = {
     common: {
       log: {
@@ -214,58 +237,17 @@ async function deployAndGenerateConfig() {
       confirmNumber: 1,
     },
   };
-  const verifierConfigs = lodash.range(MULTISIG_NUMBER).map((i) => genRandomVerifierConfig());
-  const ethMultiSignAddresses = verifierConfigs.map((vc) => vc.ethAddress);
-
-  // deploy eth contract
-  const bridgeEthAddress = await deployEthContract(
-    ETH_RPC_URL,
-    ETH_PRIVATE_KEY,
-    ethMultiSignAddresses,
-    MULTISIG_THRESHOLD,
-  );
-  logger.info(`bridge address: ${bridgeEthAddress}`);
-  // deploy ckb contracts
-  const PATH_SUDT_DEP = pathFromProjectRoot('/offchain-modules/deps/simple_udt');
-  const PATH_RECIPIENT_TYPESCRIPT = pathFromProjectRoot('/ckb-contracts/build/release/recipient-typescript');
-  const PATH_BRIDGE_LOCKSCRIPT = pathFromProjectRoot('/ckb-contracts/build/release/bridge-lockscript');
-  const ckbDeployGenerator = new CkbDeployManager(CKB_RPC_URL, CKB_INDEXER_URL);
-  const contractsDeps = await ckbDeployGenerator.deployContracts(
-    {
-      bridgeLockscript: await fs.readFile(PATH_BRIDGE_LOCKSCRIPT),
-      recipientTypescript: await fs.readFile(PATH_RECIPIENT_TYPESCRIPT),
-    },
-    CKB_PRIVATE_KEY,
-  );
-  const sudtBin = await fs.readFile(PATH_SUDT_DEP);
-  const sudtDep = await ckbDeployGenerator.deploySudt(sudtBin, CKB_PRIVATE_KEY);
-  logger.info('deps', { contractsDeps, sudtDep });
-  const multisigItem = {
-    R: 0,
-    M: MULTISIG_THRESHOLD,
-    publicKeyHashes: verifierConfigs.map((vc) => vc.ckbPubkeyHash),
-  };
-  const ownerConfig: OwnerCellConfig = await ckbDeployGenerator.createOwnerCell(multisigItem, CKB_PRIVATE_KEY);
-  logger.info('ownerConfig', ownerConfig);
-  // generate_configs
-  const assetWhiteList: WhiteListEthAsset[] = JSON.parse(
-    (await fs.readFile(pathFromProjectRoot('/configs/testnet-asset-white-list.json'), 'utf8')).toString(),
-  );
-  const ckbDeps = {
-    sudtType: sudtDep,
-    ...contractsDeps,
-  };
-  const multisigConfig = {
-    threshold: MULTISIG_THRESHOLD,
-    verifiers: verifierConfigs,
-  };
-  // get start height
-  const provider = new ethers.providers.JsonRpcProvider(ETH_RPC_URL);
-  const delta = 1;
-  const ethStartHeight = await provider.getBlockNumber();
-  const ckb = new CKB(CKB_RPC_URL);
-  const ckbStartHeight = Number(await ckb.rpc.getTipBlockNumber());
-  logger.debug('start height', { ethStartHeight, ckbStartHeight });
+  const { assetWhiteList, ckbDeps, ownerConfig, bridgeEthAddress, multisigConfig, ckbStartHeight, ethStartHeight } =
+    await deployDev(
+      ETH_RPC_URL,
+      CKB_RPC_URL,
+      CKB_INDEXER_URL,
+      MULTISIG_NUMBER,
+      MULTISIG_THRESHOLD,
+      ETH_PRIVATE_KEY,
+      CKB_PRIVATE_KEY,
+      path.join(configPath, 'deployConfig.json'),
+    );
   await generateConfig(
     initConfig as unknown as Config,
     assetWhiteList,
@@ -273,39 +255,16 @@ async function deployAndGenerateConfig() {
     ownerConfig,
     bridgeEthAddress,
     multisigConfig,
-    ckbStartHeight - delta,
-    ethStartHeight - delta,
+    ckbStartHeight,
+    ethStartHeight,
     configPath,
+    ETH_PRIVATE_KEY,
+    CKB_PRIVATE_KEY,
+    FORCE_BRIDGE_KEYSTORE_PASSWORD,
   );
-}
-
-async function startService() {
-  for (let i = 1; i <= MULTISIG_NUMBER; i++) {
-    await execShellCmd(
-      `FORCE_BRIDGE_KEYSTORE_PASSWORD=${FORCE_BRIDGE_KEYSTORE_PASSWORD} ${forcecli} verifier -cfg ${configPath}/verifier${i}/force_bridge.json`,
-      false,
-    );
-  }
-  await execShellCmd(
-    `FORCE_BRIDGE_KEYSTORE_PASSWORD=${FORCE_BRIDGE_KEYSTORE_PASSWORD} ${forcecli} collector -cfg ${configPath}/collector/force_bridge.json`,
-    false,
-  );
-  await execShellCmd(
-    `FORCE_BRIDGE_KEYSTORE_PASSWORD=${FORCE_BRIDGE_KEYSTORE_PASSWORD} ${forcecli} rpc -cfg ${path.join(
-      configPath,
-      'watcher/force_bridge.json',
-    )}`,
-    false,
-  );
-}
-
-async function main() {
-  initLog({ level: 'debug', identity: 'integration' });
-  logger.info('start integration test');
-  await deployAndGenerateConfig();
-  await handleDb('drop');
-  await handleDb('create');
-  await startService();
+  await handleDb('drop', MULTISIG_NUMBER);
+  await handleDb('create', MULTISIG_NUMBER);
+  await startService(FORCE_BRIDGE_KEYSTORE_PASSWORD, forcecli, configPath, MULTISIG_NUMBER);
   await asyncSleep(20000);
   await ethBatchTest(ETH_TEST_PRIVKEY, CKB_TEST_PRIVKEY, ETH_RPC_URL, CKB_RPC_URL, CKB_INDEXER_URL, FORCE_BRIDGE_URL);
   await rpcTest(FORCE_BRIDGE_URL, CKB_RPC_URL, ETH_RPC_URL, CKB_TEST_PRIVKEY, ETH_TEST_PRIVKEY);

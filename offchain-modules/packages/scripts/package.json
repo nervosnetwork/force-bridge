@@ -16,6 +16,8 @@
     "@force-bridge/reconc": "^0.0.2",
     "@force-bridge/x": "^0.0.2",
     "@force-bridge/xchain-eth": "^0.0.2",
+    "dotenv": "^10.0.0",
+    "mustache": "^4.2.0",
     "node-fetch": "^1.7.3",
     "shelljs": "^0.8.4"
   },

@@ -1,0 +1,50 @@
+version: "3.3"
+services:
+  geth-dev:
+    image: tockb/geth-priv:v1.9.23
+    volumes:
+      - type: volume
+        source: geth-dag
+        target: /root/.ethash
+      - type: bind
+        source: ./geth
+        target: /config
+    ports:
+      - "3000:8545"
+    networks:
+      force-dev-net:
+        ipv4_address: 10.4.0.10
+        aliases:
+          - geth-dev
+  ckb-dev:
+    image: tockb/ckb-dev:v0.39.2
+    ports:
+      - "3001:8114"
+    networks:
+      force-dev-net:
+        ipv4_address: 10.4.0.11
+        aliases:
+          - ckb-dev
+  ckb-indexer-dev:
+    image: tockb/ckb-indexer:ab57116
+    ports:
+      - "3002:8116"
+    environment:
+      - RUST_LOG=info
+    command: ckb-indexer -s /tmp/ckb-indexer-test -c http://ckb-dev:8114 -l 0.0.0.0:8116
+    depends_on:
+      - ckb-dev
+    networks:
+      force-dev-net:
+        ipv4_address: 10.4.0.12
+        aliases:
+          - ckb-indexer-dev
+volumes:
+  geth-dag:
+networks:
+  force-dev-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.4.0.0/16
+          gateway: 10.4.0.1

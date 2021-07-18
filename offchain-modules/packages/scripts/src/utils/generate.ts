@@ -4,7 +4,6 @@ import {
   privateKeyToCkbPubkeyHash,
   privateKeyToEthAddress,
 } from '@force-bridge/x/dist/utils';
-import * as lodash from 'lodash';
 
 export interface VerifierConfig {
   privkey: string;

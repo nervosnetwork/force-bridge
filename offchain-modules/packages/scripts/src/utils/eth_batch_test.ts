@@ -4,7 +4,7 @@ import { asserts } from '@force-bridge/x/dist/errors';
 import { asyncSleep } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
 import { Script } from '@lay2/pw-core';
-import CKB from '@nervosnetwork/ckb-sdk-core/';
+import CKB from '@nervosnetwork/ckb-sdk-core';
 import { AddressPrefix } from '@nervosnetwork/ckb-sdk-utils';
 import { ethers } from 'ethers';
 import { JSONRPCClient } from 'json-rpc-2.0';
@@ -243,7 +243,6 @@ async function prepareCkbAddresses(
   const collector = new IndexerCollector(new CkbIndexer(ckbNodeUrl, ckbIndexerUrl));
 
   const needSupplyCapCells = await collector.getCellsByLockscriptAndCapacity(fromLockscript, BigInt(needSupplyCap));
-  console.log(needSupplyCapCells);
   const inputs = needSupplyCapCells.map((cell) => {
     return { previousOutput: { txHash: cell.out_point!.tx_hash, index: cell.out_point!.index }, since: '0x0' };
   });
@@ -273,8 +272,7 @@ async function prepareCkbAddresses(
 
   const inputCap = needSupplyCapCells.map((cell) => BigInt(cell.cell_output.capacity)).reduce((a, b) => a + b);
   const outputCap = outputs.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
-  const changeCellCapacity = inputCap - outputCap - 100000n;
-  console.log(changeCellCapacity);
+  const changeCellCapacity = inputCap - outputCap - 10000000n;
   outputs.push({
     lock: Script.fromRPC(fromLockscript),
     capacity: `0x${changeCellCapacity.toString(16)}`,
@@ -334,7 +332,7 @@ export async function ethBatchTest(
   ethTokenAddress = '0x0000000000000000000000000000000000000000',
   lockAmount = '2000000000000000',
   burnAmount = '1000000000000000',
-) {
+): Promise<void> {
   logger.info('ethBatchTest start!');
   const ckb = new CKB(ckbNodeUrl);
 
