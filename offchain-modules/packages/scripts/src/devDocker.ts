@@ -122,6 +122,7 @@ version: "3.3"
 services:
   script:
     image: node:14
+    restart: on-failure
     volumes:
       - {{&projectDir}}:/app
       - force-bridge-node-modules:/app/offchain-modules/node_modules
@@ -145,6 +146,7 @@ services:
       - {{network}}
   watcher:
     image: node:14
+    restart: on-failure
     environment:
       FORCE_BRIDGE_KEYSTORE_PASSWORD: {{FORCE_BRIDGE_KEYSTORE_PASSWORD}}
     volumes:
@@ -173,6 +175,7 @@ services:
       - {{network}}
   collector:
     image: node:14
+    restart: on-failure
     environment:
       FORCE_BRIDGE_KEYSTORE_PASSWORD: {{FORCE_BRIDGE_KEYSTORE_PASSWORD}}
     volumes:
@@ -202,6 +205,7 @@ services:
       - {{network}}
   {{name}}:
     image: node:14
+    restart: on-failure
     environment:
       FORCE_BRIDGE_KEYSTORE_PASSWORD: {{FORCE_BRIDGE_KEYSTORE_PASSWORD}}
     volumes:

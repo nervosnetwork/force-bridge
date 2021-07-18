@@ -1,5 +1,5 @@
 import * as lodash from 'lodash';
-import { configure, getLogger } from 'log4js';
+import { configure, getLogger, shutdown } from 'log4js';
 import { logConfig } from '../config';
 
 export const logger = getLogger('@force-bridge/core');
@@ -39,3 +39,10 @@ export const initLog = (cfg: logConfig): void => {
   }
   configure(config);
 };
+
+process.on('unhandledRejection', (error) => {
+  logger.fatal('Unhandled rejection', error);
+  shutdown(function () {
+    process.exit(1);
+  });
+});

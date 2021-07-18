@@ -68,12 +68,14 @@ const DefaultTerminator: Terminator = (_index, _cell) => {
 };
 
 export class CkbIndexer implements Indexer {
-  private ckbRpc: RPC;
   uri: string;
 
   constructor(public ckbRpcUrl: string, public ckbIndexerUrl: string) {
     this.uri = ckbRpcUrl;
-    this.ckbRpc = new RPC(ckbRpcUrl);
+  }
+
+  getCkbRpc(): RPC {
+    return new RPC(this.ckbRpcUrl);
   }
 
   async tip(): Promise<Tip> {
@@ -82,7 +84,7 @@ export class CkbIndexer implements Indexer {
   }
 
   async waitForSync(blockDifference = 0): Promise<void> {
-    const rpcTipNumber = parseInt((await this.ckbRpc.get_tip_header()).number, 16);
+    const rpcTipNumber = parseInt((await this.getCkbRpc().get_tip_header()).number, 16);
     logger.debug('rpcTipNumber', rpcTipNumber);
     let index = 0;
     while (true) {
