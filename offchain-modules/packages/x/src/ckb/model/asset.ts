@@ -2,6 +2,7 @@ import { BigNumber } from 'bignumber.js';
 import { ForceBridgeCore } from '../../core';
 import { fromHexString, stringToUint8Array, toHexString } from '../../utils';
 import { SerializeForceBridgeLockscriptArgs } from '../tx-helper/generated/force_bridge_lockscript';
+import { ScriptLike } from './script';
 
 export enum ChainType {
   BTC,
@@ -13,6 +14,34 @@ export enum ChainType {
 
 export abstract class Asset {
   public chainType: ChainType;
+  public ownerCellTypeHash: string;
+
+  protected constructor(ownerCellTypeHash?: string) {
+    if (ownerCellTypeHash) {
+      this.ownerCellTypeHash = ownerCellTypeHash;
+      return;
+    }
+
+    this.ownerCellTypeHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>{
+      codeHash: ForceBridgeCore.config.ckb.ownerCellTypescript.code_hash,
+      hashType: ForceBridgeCore.config.ckb.ownerCellTypescript.hash_type,
+      args: ForceBridgeCore.config.ckb.ownerCellTypescript.args,
+    });
+  }
+
+  public toTypeScript(): ScriptLike {
+    const bridgeCellLockscript = {
+      codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
+      hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
+      args: this.toBridgeLockscriptArgs(),
+    };
+    return new ScriptLike(
+      ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
+      ForceBridgeCore.ckb.utils.scriptToHash(bridgeCellLockscript),
+      ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
+    );
+  }
+
   public inWhiteList(): boolean {
     switch (this.chainType) {
       case ChainType.ETH: {
@@ -93,8 +122,8 @@ export abstract class Asset {
 export class EthAsset extends Asset {
   // '0x00000000000000000000' represents ETH
   // other address represents ERC20 address
-  constructor(public address: string, public ownerCellTypeHash: string = '') {
-    super();
+  constructor(public address: string, ownerCellTypeHash = '') {
+    super(ownerCellTypeHash);
     if (!address.startsWith('0x') || address.length !== 42) {
       throw new Error('invalid ETH asset address');
     }

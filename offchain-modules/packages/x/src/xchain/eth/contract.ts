@@ -204,7 +204,7 @@ export class EthChain {
     const typeHash = await this.bridge.UNLOCK_TYPEHASH();
     const nonce: BigNumber = await this.bridge.latestUnlockNonce_();
     const signResult = await this.signUnlockRecords(domainSeparator, typeHash, params, nonce);
-    if (typeof signResult === 'boolean') {
+    if (typeof signResult === 'boolean' && (signResult as boolean)) {
       return true;
     }
     const signatures = signResult as string[];

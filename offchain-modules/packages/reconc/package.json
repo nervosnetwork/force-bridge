@@ -13,7 +13,6 @@
     "access": "public"
   },
   "dependencies": {
-    "@force-bridge/x": "^0.0.2",
     "bignumber.js": "^9.0.1"
   }
 }

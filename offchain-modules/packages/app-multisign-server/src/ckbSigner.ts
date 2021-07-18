@@ -6,6 +6,7 @@ import {
   objectToTransactionSkeleton,
   TransactionSkeleton,
   TransactionSkeletonType,
+  TransactionSkeletonObject,
 } from '@ckb-lumos/helpers';
 import { BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
@@ -95,7 +96,11 @@ async function verifyCreateCellTx(rawData: string, payload: ckbCollectSignatures
   return SigErrorOk;
 }
 
-async function verifyDuplicateMintTx(pubKey: string, mintRecords: mintRecord[], sigData: string): Promise<SigError> {
+async function verifyDuplicateMintTx(
+  pubKey: string,
+  mintRecords: mintRecord[],
+  txSkeleton: TransactionSkeletonObject,
+): Promise<SigError> {
   const refTxHashes = mintRecords.map((mintRecord) => {
     return mintRecord.id;
   });
@@ -105,16 +110,37 @@ async function verifyDuplicateMintTx(pubKey: string, mintRecords: mintRecord[], 
     return new SigError(SigErrorCode.TxCompleted);
   }
 
-  const signedRawDatas = await SigServer.signedDb.getDistinctRawDataByRefTxHashes(pubKey, refTxHashes);
-  asserts(signedRawDatas);
+  const signedRecords = await SigServer.signedDb.getSignedByRefTxHashes(pubKey, refTxHashes);
+  asserts(signedRecords);
 
-  if (signedRawDatas.length === 0) {
-    return SigErrorOk;
-  }
-
+  const sigData = txSkeleton.signingEntries[1].message;
   if (
-    signedRawDatas.some((signedRawData) => {
-      return signedRawData === sigData;
+    signedRecords.some((signedTx) => {
+      if (signedTx.rawData === sigData) {
+        return false;
+      }
+      const inputOutPoints = signedTx.inputOutPoints;
+      if (!inputOutPoints || inputOutPoints.length === 0) {
+        return true;
+      }
+      const inputCellMap = new Map<string, string>();
+      inputOutPoints.split(';').forEach((output) => {
+        const point = output.split(':');
+        if (point.length !== 2) {
+          return;
+        }
+        inputCellMap.set(point[0], point[1]);
+      });
+
+      let overlap = false;
+      for (const cell of txSkeleton.inputs) {
+        const index = inputCellMap.get(cell.out_point!.tx_hash);
+        if (index && index === cell.out_point!.index) {
+          overlap = true;
+          break;
+        }
+      }
+      return !overlap;
     })
   ) {
     return new SigError(SigErrorCode.DuplicateSign, `duplicate mint tx in ${refTxHashes.join(',')}`);
@@ -132,7 +158,7 @@ async function verifyMintTx(pubKey: string, rawData: string, payload: ckbCollect
   const mintRecords = payload.mintRecords;
   asserts(mintRecords);
 
-  let err = await verifyDuplicateMintTx(pubKey, mintRecords, sigData);
+  let err = await verifyDuplicateMintTx(pubKey, mintRecords, txSkeleton);
   if (err.Code !== SigErrorCode.Ok) {
     return err;
   }
@@ -398,6 +424,11 @@ export async function signCkbTx(params: collectSignaturesParams): Promise<SigRes
           refTxHash: mintRecord.id,
           pubKey: pubKey,
           rawData: params.rawData,
+          inputOutPoints: txSkeleton.inputs
+            .map((cell) => {
+              return cell.out_point!.tx_hash + ':' + cell.out_point!.index;
+            })
+            .join(';'),
           signature: sig,
         };
       }),

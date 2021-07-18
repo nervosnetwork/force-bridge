@@ -507,7 +507,7 @@ export class CkbHandler {
     const sigs = await this.collectMintSignatures(txSkeleton, mintRecords);
     for (;;) {
       try {
-        if (typeof sigs === 'boolean') {
+        if (typeof sigs === 'boolean' && (sigs as boolean)) {
           mintRecords.map((r) => {
             r.status = 'success';
           });
