@@ -280,7 +280,7 @@ async function main() {
     eth: {
       rpcUrl: 'http://10.4.0.10:8545',
       privateKey: 'eth',
-      confirmNumber: 1,
+      confirmNumber: 12,
       startBlockHeight: 1,
       batchUnlock: {
         batchNumber: 100,
@@ -292,7 +292,7 @@ async function main() {
       ckbIndexerUrl: 'http://ckb-indexer-dev:8116',
       privateKey: 'ckb',
       startBlockHeight: 1,
-      confirmNumber: 1,
+      confirmNumber: 15,
     },
   };
   const { assetWhiteList, ckbDeps, ownerConfig, bridgeEthAddress, multisigConfig, ckbStartHeight, ethStartHeight } =

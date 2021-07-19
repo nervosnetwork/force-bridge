@@ -22,6 +22,8 @@ export interface DeployDevResult {
   };
   ckbStartHeight: number;
   ethStartHeight: number;
+  ckbPrivateKey: string;
+  ethPrivateKey: string;
 }
 
 export async function deployDev(
@@ -30,8 +32,8 @@ export async function deployDev(
   CKB_INDEXER_URL: string,
   MULTISIG_NUMBER: number,
   MULTISIG_THRESHOLD: number,
-  ETH_PRIVATE_KEY: string,
-  CKB_PRIVATE_KEY: string,
+  ethPrivateKey: string,
+  ckbPrivateKey: string,
   cachePath?: string,
 ): Promise<DeployDevResult> {
   if (cachePath && fs.existsSync(cachePath)) {
@@ -44,7 +46,7 @@ export async function deployDev(
   // deploy eth contract
   const bridgeEthAddress = await deployEthContract(
     ETH_RPC_URL,
-    ETH_PRIVATE_KEY,
+    ethPrivateKey,
     ethMultiSignAddresses,
     MULTISIG_THRESHOLD,
   );
@@ -59,17 +61,17 @@ export async function deployDev(
       bridgeLockscript: fs.readFileSync(PATH_BRIDGE_LOCKSCRIPT),
       recipientTypescript: fs.readFileSync(PATH_RECIPIENT_TYPESCRIPT),
     },
-    CKB_PRIVATE_KEY,
+    ckbPrivateKey,
   );
   const sudtBin = fs.readFileSync(PATH_SUDT_DEP);
-  const sudtDep = await ckbDeployGenerator.deploySudt(sudtBin, CKB_PRIVATE_KEY);
+  const sudtDep = await ckbDeployGenerator.deploySudt(sudtBin, ckbPrivateKey);
   logger.info('deps', { contractsDeps, sudtDep });
   const multisigItem = {
     R: 0,
     M: MULTISIG_THRESHOLD,
     publicKeyHashes: verifierConfigs.map((vc) => vc.ckbPubkeyHash),
   };
-  const ownerConfig: OwnerCellConfig = await ckbDeployGenerator.createOwnerCell(multisigItem, CKB_PRIVATE_KEY);
+  const ownerConfig: OwnerCellConfig = await ckbDeployGenerator.createOwnerCell(multisigItem, ckbPrivateKey);
   logger.info('ownerConfig', ownerConfig);
   // generate_configs
   const assetWhiteList: WhiteListEthAsset[] = JSON.parse(
@@ -98,6 +100,8 @@ export async function deployDev(
     multisigConfig,
     ckbStartHeight,
     ethStartHeight,
+    ethPrivateKey,
+    ckbPrivateKey,
   };
   if (cachePath) {
     writeJsonToFile(data, cachePath);
