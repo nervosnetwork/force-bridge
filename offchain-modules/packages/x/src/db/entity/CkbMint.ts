@@ -32,6 +32,10 @@ export class CkbMint {
 
   @Index()
   @Column({ nullable: true })
+  blockNumber: number;
+
+  @Index()
+  @Column({ nullable: true })
   mintHash: string;
 
   @Column({ type: 'text', nullable: true })

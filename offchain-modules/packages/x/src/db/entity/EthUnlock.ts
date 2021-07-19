@@ -17,6 +17,10 @@ export class EthUnlock {
   @Column()
   recipientAddress: string;
 
+  @Index()
+  @Column({ nullable: true })
+  blockNumber: number;
+
   @Column({ nullable: true })
   ethTxHash: string;
 

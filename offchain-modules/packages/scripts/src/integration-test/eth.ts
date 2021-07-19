@@ -1,30 +1,25 @@
 import assert from 'assert';
 import { parseAddress } from '@ckb-lumos/helpers';
-import { CKBIndexerClient } from '@force-bridge/ckb-indexer-client';
 import { ChainType, EthAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
 import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
-import { getMultisigLock, getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
+import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { Config, EthConfig } from '@force-bridge/x/dist/config';
 import { bootstrap, ForceBridgeCore } from '@force-bridge/x/dist/core';
-import { EthDb } from '@force-bridge/x/dist/db/eth';
 import { CkbMint, EthLock, EthUnlock } from '@force-bridge/x/dist/db/model';
-import { asserts } from '@force-bridge/x/dist/errors';
 import {
   asyncSleep,
   getDBConnection,
-  parsePrivateKey,
-  privateKeyToCkbAddress,
   stringToUint8Array,
   toHexString,
   uint8ArrayToString,
 } from '@force-bridge/x/dist/utils';
-import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
+import * as logger from '@force-bridge/x/dist/utils/logger';
 import { ETH_ADDRESS } from '@force-bridge/x/dist/xchain/eth';
 import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
-import { EthReconcilerBuilder, ForceBridgeContract } from '@force-bridge/xchain-eth';
-import { Amount, Script } from '@lay2/pw-core';
+import { ForceBridgeContract, reconc } from '@force-bridge/xchain-eth';
+import { Amount } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import { ethers } from 'ethers';
 import nconf from 'nconf';
@@ -195,15 +190,10 @@ async function main() {
     logger.info('parsedLog recipient', recipientParsedLog.args.recipient);
     assert(ethUnlockRecord.recipientAddress === recipientParsedLog.args.recipient);
 
-    const builder = new EthReconcilerBuilder(
-      provider,
-      bridge,
-      new EthDb(conn),
-      new CKBIndexerClient(CKB_INDEXER_URL),
-      ckb.rpc,
-    );
+    const builder = new reconc.EthReconcilerBuilder(reconc.createTwoWayRecordObservable());
+
     const lockReconc = await builder
-      .buildLockReconciler(wallet.address, '0x0000000000000000000000000000000000000000')
+      .buildLockReconciler('0x0000000000000000000000000000000000000000')
       .fetchReconciliation();
 
     logger.info('all locked', lockReconc.from);
@@ -211,18 +201,13 @@ async function main() {
 
     assert(lockReconc.checkBalanced(), 'the amount of lock and mint should be balanced');
 
-    const unlockReconc = await builder
-      .buildUnlockReconciler(
-        uint8ArrayToString(recipientLockscript),
-        '0x0000000000000000000000000000000000000000',
-        ownerTypeHash,
-      )
-      .fetchReconciliation();
+    const unlockReconciler = builder.buildUnlockReconciler('0x0000000000000000000000000000000000000000');
+    const unlockBalancer = await unlockReconciler.fetchReconciliation();
 
-    logger.info('all burned', unlockReconc.from);
-    logger.info('all unlocked', unlockReconc.to);
+    logger.info('all burned', unlockBalancer.from);
+    logger.info('all unlocked', unlockBalancer.to);
 
-    assert(unlockReconc.checkBalanced(), 'the amount of burn and unlock should be balanced');
+    assert(unlockBalancer.checkBalanced(), 'the amount of burn and unlock should be balanced');
   };
 
   // try 100 times and wait for 3 seconds every time.
@@ -240,7 +225,7 @@ async function main() {
   throw new Error('The eth component integration test failed!');
 }
 
-async function burn() {
+async function _burn() {
   const configPath = process.env.CONFIG_PATH || './config.json';
   nconf.env().file({ file: configPath });
   const conf: Config = nconf.get('forceBridge');

@@ -59,6 +59,14 @@ export class EthDb implements IQuery {
       .execute();
   }
 
+  async removeUnconfirmedUnlocks(confirmedBlockHeight: number): Promise<DeleteResult> {
+    return this.ethUnlockRepository
+      .createQueryBuilder()
+      .delete()
+      .where('block_number > :blockNumber', { blockNumber: confirmedBlockHeight })
+      .execute();
+  }
+
   async getUnconfirmedLocks(limit = 1000): Promise<EthLock[]> {
     return this.ethLockRepository
       .createQueryBuilder()

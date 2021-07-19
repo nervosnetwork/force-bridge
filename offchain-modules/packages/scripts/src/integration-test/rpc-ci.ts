@@ -1,7 +1,7 @@
 import assert from 'assert';
 import { Config } from '@force-bridge/x/dist/config';
 import { asyncSleep } from '@force-bridge/x/dist/utils';
-import { initLog, logger } from '@force-bridge/x/dist/utils/logger';
+import * as logger from '@force-bridge/x/dist/utils/logger';
 import { Amount } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core/';
 import { ethers } from 'ethers';
@@ -1017,7 +1017,7 @@ async function main() {
   nconf.env().file({ file: configPath });
   const conf: Config = nconf.get('forceBridge');
   conf.common.log.logFile = './log/rpc-ci.log';
-  initLog(conf.common.log);
+  logger.initLog(conf.common.log);
 
   await lock(lockCases);
   await burn(burnCases);

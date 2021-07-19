@@ -28,12 +28,14 @@ export interface ISigned {
   signature: string;
   rawData: string;
   nonce?: number;
+  inputOutPoints?: string;
   txHash?: string;
   pubKey: string;
 }
 
 export interface IWithdrawedBridgeFee {
   txHash: string;
+  blockNumber: number;
   recipient: string;
   chain: number;
   asset: string;
@@ -48,6 +50,7 @@ export interface ICkbMint {
   recipientLockscript: string;
   sudtExtraData: string;
   status?: CkbMintStatus;
+  blockNumber?: number;
   mintHash?: string;
   message?: string;
 }
@@ -81,6 +84,7 @@ export interface IEthUnlock {
   asset: string;
   amount: string;
   recipientAddress: string;
+  blockNumber?: number;
   ethTxHash?: string;
   status?: EthUnlockStatus;
   message?: string;

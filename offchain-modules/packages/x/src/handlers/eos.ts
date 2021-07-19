@@ -8,7 +8,7 @@ import { getEosLockId } from '../db/entity/EosLock';
 import { EosUnlock, EosUnlockStatus } from '../db/entity/EosUnlock';
 import { EosDb } from '../db/eos';
 import { asyncSleep } from '../utils';
-import { logger } from '../utils/logger';
+import * as logger from '../utils/logger';
 import { EosChain } from '../xchain/eos/eosChain';
 import { EosAssetAmount, getTxIdFromSerializedTx } from '../xchain/eos/utils';
 const EosTokenAccount = 'eosio.token';
@@ -45,7 +45,7 @@ export class EosHandler {
     this.assetPrecisionCache = new Map<string, number>();
   }
 
-  setPrecision(symbol: string, precision: number) {
+  setPrecision(symbol: string, precision: number): void {
     this.assetPrecisionCache.set(symbol, precision);
   }
 
@@ -93,7 +93,7 @@ export class EosHandler {
     return true;
   }
 
-  async processAction(pos: number, action: OrderedActionResult) {
+  async processAction(pos: number, action: OrderedActionResult): Promise<void> {
     const actionTrace = action.action_trace;
     const act = actionTrace.act;
     const data = act.data;
@@ -124,7 +124,7 @@ export class EosHandler {
     }
   }
 
-  async doWatchLockEventsInDescOrder(latestActionSeq: number) {
+  async doWatchLockEventsInDescOrder(latestActionSeq: number): Promise<void> {
     let pos = 0;
     const offset = 20;
     while (true) {
@@ -188,7 +188,7 @@ export class EosHandler {
     }
   }
 
-  async doWatchLockEventsInAscOrder(latestActionSeq: number) {
+  async doWatchLockEventsInAscOrder(latestActionSeq: number): Promise<void> {
     const lastActionPos = await this.db.getActionPos(latestActionSeq);
     const offset = 20;
     let pos = lastActionPos;
@@ -234,7 +234,7 @@ export class EosHandler {
     }
   }
 
-  async watchLockEvents() {
+  async watchLockEvents(): Promise<void> {
     //check chain id
     const curBlockInfo = await this.chain.getCurrentBlockInfo();
     if (curBlockInfo.chain_id != this.config.chainId) {
@@ -273,7 +273,7 @@ export class EosHandler {
     }
   }
 
-  async processLockEvent(lockEvent: EosLockEvent) {
+  async processLockEvent(lockEvent: EosLockEvent): Promise<void> {
     const lockRecord = {
       id: getEosLockId(lockEvent.TxHash, lockEvent.ActionIndex),
       actionPos: lockEvent.ActionPos,
@@ -311,7 +311,7 @@ export class EosHandler {
     );
   }
 
-  async watchUnlockEvents() {
+  async watchUnlockEvents(): Promise<void> {
     if (this.role !== 'collector') {
       return;
     }
@@ -330,7 +330,7 @@ export class EosHandler {
     }
   }
 
-  async processUnLockEvents(records: EosUnlock[]) {
+  async processUnLockEvents(records: EosUnlock[]): Promise<void> {
     for (const record of records) {
       logger.info(`EosHandler processUnLockEvents get new unlockEvent:${JSON.stringify(record, null, 2)}`);
       record.status = 'pending';
@@ -390,7 +390,7 @@ export class EosHandler {
     }
   }
 
-  async checkUnlockTxStatus() {
+  async checkUnlockTxStatus(): Promise<void> {
     if (this.role != 'collector') {
       return;
     }
@@ -443,10 +443,16 @@ export class EosHandler {
     }
   }
 
-  start() {
-    this.watchLockEvents();
-    this.watchUnlockEvents();
-    this.checkUnlockTxStatus();
+  start(): void {
+    this.watchLockEvents().catch((err) => {
+      logger.error(`EOSHandler watchLockEvents error:${err.stack}`);
+    });
+    this.watchUnlockEvents().catch((err) => {
+      logger.error(`EOSHandler watchUnlockEvents error:${err.stack}`);
+    });
+    this.checkUnlockTxStatus().catch((err) => {
+      logger.error(`EOSHandler checkUnlockTxStatus error:${err.stack}`);
+    });
     logger.info('eos handler started  🚀');
   }
 }

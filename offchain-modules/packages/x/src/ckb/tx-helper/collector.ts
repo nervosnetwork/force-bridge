@@ -1,5 +1,5 @@
 import { Script, utils, Cell } from '@ckb-lumos/base';
-import { logger } from '../../utils/logger';
+import * as logger from '../../utils/logger';
 import { CkbIndexer, ScriptType, SearchKey, Terminator } from './indexer';
 
 export abstract class Collector {
