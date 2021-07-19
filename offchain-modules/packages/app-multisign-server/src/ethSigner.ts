@@ -68,7 +68,7 @@ async function verifyEthTx(pubKey: string, params: collectSignaturesParams): Pro
 }
 
 export async function signEthTx(params: collectSignaturesParams): Promise<SigResponse> {
-  logger.info('signEthTx params: ', JSON.stringify(params, undefined, 2));
+  logger.info(`signEthTx params:, ${JSON.stringify(params)}`);
   if (!verifyCollector(params)) {
     return SigResponse.fromSigError(SigErrorCode.InvalidCollector);
   }

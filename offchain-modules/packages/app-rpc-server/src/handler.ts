@@ -68,7 +68,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
   async generateBridgeInNervosTransaction<T extends NetworkTypes>(
     payload: API.GenerateBridgeInTransactionPayload,
   ): Promise<API.GenerateTransactionResponse<T>> {
-    logger.info('generateBridgeInNervosTransaction ', payload);
+    logger.info(`generateBridgeInNervosTransaction, payload: ${JSON.stringify(payload)}`);
 
     checkCKBAddress(payload.recipient);
 
@@ -149,7 +149,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
   async generateBridgeOutNervosTransaction<T extends NetworkTypes>(
     payload: API.GenerateBridgeOutNervosTransactionPayload,
   ): Promise<API.GenerateTransactionResponse<T>> {
-    logger.info('generateBridgeOutNervosTransaction ', payload);
+    logger.info(`generateBridgeOutNervosTransaction, payload: ${JSON.stringify(payload)}`);
     checkCKBAddress(payload.sender);
     const fromLockscript = parseAddress(payload.sender);
     const ownerTypeHash = getOwnerTypeHash();

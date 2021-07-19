@@ -10,7 +10,7 @@ import { ethers } from 'ethers';
 import { JSONRPCClient } from 'json-rpc-2.0';
 import fetch from 'node-fetch/index';
 
-async function generateLockTx(
+export async function generateLockTx(
   client: JSONRPCClient,
   ethWallet: ethers.Wallet,
   assetIdent: string,
@@ -48,7 +48,7 @@ async function generateLockTx(
   return hexTx;
 }
 
-async function generateBurnTx(
+export async function generateBurnTx(
   ckb: CKB,
   client: JSONRPCClient,
   asset: string,
@@ -133,16 +133,17 @@ async function checkTx(client: JSONRPCClient, assetIdent: string, txId: string, 
   }
 }
 
-async function lock(
+export async function lock(
   client: JSONRPCClient,
   provider: ethers.providers.JsonRpcProvider,
   ethWallet: ethers.Wallet,
   recipients: Array<string>,
-  batchNum: number,
   ethTokenAddress: string,
   lockAmount: string,
   ethNodeURL: string,
+  intervalMs = 0,
 ): Promise<Array<string>> {
+  const batchNum = recipients.length;
   const signedLockTxs = new Array<string>();
   const lockTxHashes = new Array<string>();
   const startNonce = await ethWallet.getTransactionCount();
@@ -162,22 +163,24 @@ async function lock(
 
   for (let i = 0; i < batchNum; i++) {
     const lockTxHash = (await provider.sendTransaction(signedLockTxs[i])).hash;
+    await asyncSleep(intervalMs);
     lockTxHashes.push(lockTxHash);
   }
   logger.info('lock txs', lockTxHashes);
   return lockTxHashes;
 }
 
-async function burn(
+export async function burn(
   ckb: CKB,
   client: JSONRPCClient,
   ckbPrivs: Array<string>,
   senders: Array<string>,
   recipient: string,
-  batchNum: number,
   ethTokenAddress: string,
   burnAmount: string,
+  intervalMs = 0,
 ): Promise<Array<string>> {
+  const batchNum = ckbPrivs.length;
   const burnTxHashes = new Array<string>();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const signedBurnTxs = new Array<any>();
@@ -188,6 +191,7 @@ async function burn(
 
   for (let i = 0; i < batchNum; i++) {
     const burnETHTxHash = await ckb.rpc.sendTransaction(signedBurnTxs[i]);
+    await asyncSleep(intervalMs);
     burnTxHashes.push(burnETHTxHash);
   }
   logger.info('burn txs', burnTxHashes);
@@ -214,14 +218,14 @@ function prepareCkbPrivateKeys(batchNum: number): Array<string> {
   return privateKeys;
 }
 
-async function prepareCkbAddresses(
+export async function prepareCkbAddresses(
   ckb: CKB,
   privateKeys: Array<string>,
   ckbPrivateKey: string,
-  batchNum: number,
   ckbNodeUrl: string,
   ckbIndexerUrl: string,
 ): Promise<Array<string>> {
+  const batchNum = ckbPrivateKey.length;
   const { secp256k1Dep } = await ckb.loadDeps();
   asserts(secp256k1Dep);
   const cellDeps = [
@@ -359,21 +363,12 @@ export async function ethBatchTest(
   const ethAddress = ethWallet.address;
 
   const ckbPrivs = await prepareCkbPrivateKeys(batchNum);
-  const ckbAddresses = await prepareCkbAddresses(ckb, ckbPrivs, ckbPrivateKey, batchNum, ckbNodeUrl, ckbIndexerUrl);
+  const ckbAddresses = await prepareCkbAddresses(ckb, ckbPrivs, ckbPrivateKey, ckbNodeUrl, ckbIndexerUrl);
 
-  const lockTxs = await lock(
-    client,
-    provider,
-    ethWallet,
-    ckbAddresses,
-    batchNum,
-    ethTokenAddress,
-    lockAmount,
-    ethNodeUrl,
-  );
+  const lockTxs = await lock(client, provider, ethWallet, ckbAddresses, ethTokenAddress, lockAmount, ethNodeUrl);
   await check(client, lockTxs, ckbAddresses, batchNum, ethTokenAddress);
 
-  const burnTxs = await burn(ckb, client, ckbPrivs, ckbAddresses, ethAddress, batchNum, ethTokenAddress, burnAmount);
+  const burnTxs = await burn(ckb, client, ckbPrivs, ckbAddresses, ethAddress, ethTokenAddress, burnAmount);
   await check(client, burnTxs, ckbAddresses, batchNum, ethTokenAddress);
   logger.info('ethBatchTest pass!');
 }

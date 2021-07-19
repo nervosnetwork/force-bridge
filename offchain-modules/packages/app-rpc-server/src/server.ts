@@ -71,7 +71,7 @@ export async function startRpcServer(configPath: string): Promise<void> {
   ServerSingleton.getInstance()
     .getServer()
     .post(forceBridgePath, cors(ForceBridgeCore.config.rpc.corsOptions), (req, res) => {
-      logger.info('request', req.method, req.body);
+      logger.info(`request, method: ${req.method}, body: ${JSON.stringify(req.body)}`);
       const jsonRPCRequest = req.body;
       const startTime = Date.now();
       // server.receive takes a JSON-RPC request and returns a promise of a JSON-RPC response.
@@ -90,7 +90,7 @@ export async function startRpcServer(configPath: string): Promise<void> {
           res.json(jsonRPCResponse);
           const status: responseStatus = jsonRPCResponse.error ? 'failed' : 'success';
           metrics.setRpcRequestMetric(jsonRPCRequest.method, status, Date.now() - startTime);
-          logger.info('response', jsonRPCResponse, ' status :', status);
+          logger.info(`response: ${JSON.stringify(jsonRPCResponse)}, status: ${status}`);
         },
         (reason) => {
           logger.error('RPC Server Error: the request is rejected by ', reason);

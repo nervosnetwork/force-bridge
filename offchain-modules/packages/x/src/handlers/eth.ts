@@ -471,7 +471,7 @@ export class EthHandler {
           logger.info('wait for batch');
           return;
         }
-        logger.info('EthHandler watchUnlockEvents unlock records', records);
+        logger.info(`EthHandler watchUnlockEvents unlock records: ${records}`);
         await this.doHandleUnlockRecords(records);
       },
       {
@@ -513,6 +513,13 @@ export class EthHandler {
           break;
         }
         if (txRes instanceof Error) {
+          if (records.length > 1) {
+            logger.warn(`split batch unlock into separate ones for records: ${JSON.stringify(records)}`);
+            for (const r of records) {
+              await this.doHandleUnlockRecords([r]);
+            }
+            return;
+          }
           records.map((r) => {
             r.status = 'error';
             r.message = (txRes as Error).message;
@@ -531,7 +538,7 @@ export class EthHandler {
         await this.ethDb.saveEthUnlock(records);
         logger.debug('sendUnlockTxs res', txRes);
         const receipt = await txRes.wait();
-        logger.info(`EthHandler doHandleUnlockRecords sendUnlockTxs receipt:${JSON.stringify(receipt.logs, null, 2)}`);
+        logger.info(`EthHandler doHandleUnlockRecords sendUnlockTxs receipt:${JSON.stringify(receipt.logs)}`);
         if (receipt.status === 1) {
           records.map((r) => {
             r.status = 'success';
@@ -557,9 +564,7 @@ export class EthHandler {
         }
         break;
       } catch (e) {
-        logger.error(
-          `EthHandler doHandleUnlockRecords ckbTxHashes:${unlockTxHashes} error:${e.toString()}, ${e.stack}`,
-        );
+        logger.error(`EthHandler doHandleUnlockRecords ckbTxHashes:${unlockTxHashes} error:${e.stack}`);
         await asyncSleep(5000);
       }
     }
@@ -570,7 +575,7 @@ export class EthHandler {
         break;
       } catch (e) {
         logger.error(
-          `EthHandler doHandleUnlockRecords db.saveEthUnlock ckbTxHashes:${unlockTxHashes} error:${e.message}`,
+          `EthHandler doHandleUnlockRecords db.saveEthUnlock ckbTxHashes:${unlockTxHashes} error:${e.stack}`,
         );
         await asyncSleep(3000);
       }

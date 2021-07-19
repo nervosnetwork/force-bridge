@@ -214,7 +214,13 @@ export class EthChain {
       );
     }
     const signature = '0x' + signatures.join('');
-    return this.bridge.unlock(params, nonce, signature);
+    try {
+      const res = await this.bridge.unlock(params, nonce, signature);
+      return res;
+    } catch (e) {
+      logger.error(`send unlock tx error: ${JSON.stringify({ params, nonce, signature, e })}`);
+      return new Error(`send unlock tx error: ${e}`);
+    }
   }
 
   public async getUnlockMessageToSign(records: EthUnlockRecord[]): Promise<string> {

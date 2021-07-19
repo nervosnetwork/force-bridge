@@ -83,7 +83,7 @@ export class CkbHandler {
   async onCkbBurnConfirmed(confirmedCkbBurns: ICkbBurn[]): Promise<void> {
     if (this.role !== 'collector') return;
     for (const burn of confirmedCkbBurns) {
-      logger.info(`CkbHandler onCkbBurnConfirmed burnRecord:${JSON.stringify(burn, undefined, 2)}`);
+      logger.info(`CkbHandler onCkbBurnConfirmed burnRecord:${JSON.stringify(burn)}`);
       if (BigInt(burn.amount) <= BigInt(burn.bridgeFee))
         throw new Error('Unexpected error: burn amount less than bridge fee');
       const unlockAmount = (BigInt(burn.amount) - BigInt(burn.bridgeFee)).toString();
@@ -262,11 +262,7 @@ export class CkbHandler {
           cellData: cellData,
         };
         burnTxs.set(tx.hash, data);
-        logger.info(
-          `CkbHandler watchBurnEvents receive burnedTx, ckbTxHash:${
-            tx.hash
-          } senderAddress:${senderAddress} cellData:${JSON.stringify(cellData, null, 2)}`,
-        );
+        logger.info(`CkbHandler watchBurnEvents receive burnedTx, ckbTxHash:${tx.hash} senderAddress:${senderAddress}`);
       }
     }
     await this.onBurnTxs(blockNumber, burnTxs);
@@ -452,7 +448,7 @@ export class CkbHandler {
           await asyncSleep(3000);
           return;
         }
-        logger.info(`CkbHandler handleMintRecords new mintRecords:${JSON.stringify(mintRecords, null, 2)}`);
+        logger.info(`CkbHandler handleMintRecords new mintRecords:${JSON.stringify(mintRecords)}`);
         await this.ckbIndexer.waitForSync();
         await this.doHandleMintRecords(mintRecords, ownerTypeHash, generator);
       },
