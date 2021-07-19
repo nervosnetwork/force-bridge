@@ -1,3 +1,4 @@
+import path from 'path';
 import { configure, getLogger } from 'log4js';
 import { logConfig } from '../config';
 import { ForceBridgeCore } from '../core';
@@ -13,7 +14,7 @@ export const initLog = (cfg: logConfig): void => {
         layout: {
           // ref: https://github.com/log4js-node/log4js-node/blob/master/docs/layouts.md
           type: 'pattern',
-          pattern: '%[[%d %p %f{2}:%l]%] %m%n',
+          pattern: '%[[%d %p]%] %m%n',
         },
       },
     },
@@ -29,7 +30,7 @@ export const initLog = (cfg: logConfig): void => {
       backups: 100,
       layout: {
         type: 'pattern',
-        pattern: '[%d %p %f{2}:%l] %m%n',
+        pattern: '[%d %p] %m%n',
       },
     };
     config.categories.default.appenders.push('app');
@@ -39,32 +40,43 @@ export const initLog = (cfg: logConfig): void => {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/explicit-module-boundary-types
 export function info(message: any, ...args: any[]): void {
-  logger.info(message, ...args);
+  logger.info(getLoggerFile(), message, ...args);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/explicit-module-boundary-types
 export function debug(message: any, ...args: any[]): void {
-  logger.debug(message, ...args);
+  logger.debug(getLoggerFile(), message, ...args);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/explicit-module-boundary-types
 export function warn(message: any, ...args: any[]): void {
-  logger.warn(message, ...args);
+  logger.warn(getLoggerFile(), message, ...args);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/explicit-module-boundary-types
 export function error(message: any, ...args: any[]): void {
-  logger.error(message, ...args);
+  logger.error(getLoggerFile(), message, ...args);
   BridgeMetricSingleton.getInstance(ForceBridgeCore.config.common.role).addErrorLogMetrics();
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/explicit-module-boundary-types
 export function fatal(message: any, ...args: any[]): void {
-  logger.fatal(message, ...args);
+  logger.fatal(getLoggerFile(), message, ...args);
   BridgeMetricSingleton.getInstance(ForceBridgeCore.config.common.role).addErrorLogMetrics();
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/explicit-module-boundary-types
 export function mark(message: any, ...args: any[]): void {
-  logger.mark(message, ...args);
+  logger.mark(getLoggerFile(), message, ...args);
+}
+
+function getCallerStack() {
+  const err = new Error();
+  Error.captureStackTrace(err);
+  return err.stack;
+}
+
+function getLoggerFile(): string {
+  const stack = getCallerStack();
+  return stack!.split('\n')[4].split(path.sep).slice(-2).join(path.sep).slice(0, -1);
 }
