@@ -232,7 +232,7 @@ export async function startSigServer(configPath: string): Promise<void> {
               Date.now() - startTime,
             );
           }
-          logger.info(`response: ${jsonRPCResponse}, status: ${status}`);
+          logger.info(`response: ${JSON.stringify(jsonRPCResponse)}, status: ${status}`);
         },
         (reason) => {
           logger.error('Sig Server Error: the request is rejected by ', reason);
