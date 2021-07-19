@@ -471,7 +471,7 @@ export class EthHandler {
           logger.info('wait for batch');
           return;
         }
-        logger.info(`EthHandler watchUnlockEvents unlock records: ${records}`);
+        logger.info(`EthHandler watchUnlockEvents unlock records: ${JSON.stringify(records)}`);
         await this.doHandleUnlockRecords(records);
       },
       {
