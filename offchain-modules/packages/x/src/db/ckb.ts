@@ -125,12 +125,12 @@ export class CkbDb {
     }
   }
 
-  async updateCkbMintStatus(mintTxHash: string, status: dbTxStatus): Promise<void> {
+  async updateCkbMintStatus(blockNumber: number, mintTxHash: string, status: dbTxStatus): Promise<void> {
     await this.connection
       .getRepository(CkbMint)
       .createQueryBuilder()
       .update()
-      .set({ status: status })
+      .set({ blockNumber: blockNumber, status: status })
       .where('mintHash = :mintTxHash', { mintTxHash: mintTxHash })
       .execute();
   }

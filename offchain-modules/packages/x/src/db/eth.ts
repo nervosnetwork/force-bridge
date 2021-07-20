@@ -51,6 +51,16 @@ export class EthDb implements IQuery {
     await this.ethLockRepository.save(dbRecords);
   }
 
+  async updateUnlockStatus(blockNumber: number, unlockTxHash: string, status: EthUnlockStatus): Promise<void> {
+    await this.connection
+      .getRepository(EthUnlock)
+      .createQueryBuilder()
+      .update()
+      .set({ blockNumber: blockNumber, status: status })
+      .where('ethTxHash = :unlockTxHash', { unlockTxHash: unlockTxHash })
+      .execute();
+  }
+
   async removeUnconfirmedLocks(confirmedBlockHeight: number): Promise<DeleteResult> {
     return this.ethLockRepository
       .createQueryBuilder()
