@@ -275,7 +275,7 @@ export class CkbHandler {
 
   async onMintTx(blockNumber: number, mintedRecords: MintedRecords): Promise<UpdateResult | undefined> {
     if (this.role === 'collector') {
-      await this.db.updateCkbMintStatus(mintedRecords.txHash, 'success');
+      await this.db.updateCkbMintStatus(blockNumber, mintedRecords.txHash, 'success');
       return;
     }
     await this.db.watcherCreateMint(blockNumber, mintedRecords);

@@ -347,19 +347,22 @@ export class EthHandler {
           ]);
           return;
         }
-        if (this.role === 'collector') return;
-        await this.ethDb.createEthUnlock([
-          {
-            ckbTxHash: ckbTxHash,
-            amount: amount,
-            asset: token,
-            recipientAddress: recipient,
-            blockNumber: log.blockNumber,
-            ethTxHash: unlockTxHash,
-            status: 'success',
-          },
-        ]);
-        await this.ethDb.updateBurnBridgeFee(ckbTxHash, amount);
+        if (this.role === 'collector') {
+          await this.ethDb.updateUnlockStatus(log.blockNumber, unlockTxHash, 'success');
+        } else {
+          await this.ethDb.createEthUnlock([
+            {
+              ckbTxHash: ckbTxHash,
+              amount: amount,
+              asset: token,
+              recipientAddress: recipient,
+              blockNumber: log.blockNumber,
+              ethTxHash: unlockTxHash,
+              status: 'success',
+            },
+          ]);
+          await this.ethDb.updateBurnBridgeFee(ckbTxHash, amount);
+        }
         BridgeMetricSingleton.getInstance(this.role).addBridgeTokenMetrics('eth_unlock', [
           {
             amount: Number(amount),
