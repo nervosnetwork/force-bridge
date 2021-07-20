@@ -213,14 +213,16 @@ export async function startSigServer(configPath: string): Promise<void> {
             return;
           }
 
-          let status: responseStatus = 'success';
-          const sigRsp = jsonRPCResponse.result as SigResponse;
-          if (sigRsp.Error.Code === SigErrorCode.Ok) {
-            jsonRPCResponse.result = sigRsp.Data;
-          } else {
-            status = 'failed';
-            jsonRPCResponse.result = undefined;
-            jsonRPCResponse.error = { code: sigRsp.Error.Code, message: sigRsp.Error.Message };
+          let status: responseStatus = 'failed';
+          if (!jsonRPCResponse.error) {
+            const sigRsp = jsonRPCResponse.result as SigResponse;
+            if (sigRsp.Error.Code === SigErrorCode.Ok) {
+              jsonRPCResponse.result = sigRsp.Data;
+              status = 'success';
+            } else {
+              jsonRPCResponse.result = undefined;
+              jsonRPCResponse.error = { code: sigRsp.Error.Code, message: sigRsp.Error.Message };
+            }
           }
 
           res.json(jsonRPCResponse);
