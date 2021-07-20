@@ -22,10 +22,10 @@ export class EthLock {
   bridgeFee: string;
 
   @Index()
-  @Column()
+  @Column('varchar', { length: 10240 })
   recipient: string;
 
-  @Column()
+  @Column({ type: 'text', nullable: true })
   sudtExtraData: string;
 
   @Index()
