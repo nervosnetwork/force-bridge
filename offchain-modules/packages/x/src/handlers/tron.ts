@@ -6,7 +6,7 @@ import { ForceBridgeCore } from '../core';
 import { TronDb } from '../db';
 import { ICkbMint, ITronLock, TronUnlock } from '../db/model';
 import { asyncSleep } from '../utils';
-import * as logger from '../utils/logger';
+import { logger } from '../utils/logger';
 import { getAssetTypeByAsset } from '../xchain/tron/utils';
 
 type TronLockEvent = {

@@ -5,7 +5,7 @@ import { JSONRPCResponse } from 'json-rpc-2.0';
 import { MultiSignHost } from '../config';
 import { ForceBridgeCore } from '../core';
 import { asyncSleep } from '../utils';
-import * as logger from '../utils/logger';
+import { logger } from '../utils/logger';
 import { EthUnlockRecord } from '../xchain/eth';
 import { httpRequest } from './client';
 import { verifyCollector } from './utils';

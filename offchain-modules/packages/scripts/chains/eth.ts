@@ -15,7 +15,7 @@ import {
   toHexString,
   uint8ArrayToString,
 } from '@force-bridge/x/dist/utils';
-import * as logger from '@force-bridge/x/dist/utils/logger';
+import { logger } from '@force-bridge/x/dist/utils/logger';
 import { ETH_ADDRESS } from '@force-bridge/x/dist/xchain/eth';
 import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
 import { ForceBridgeContract, reconc } from '@force-bridge/xchain-eth';
@@ -23,7 +23,7 @@ import { Amount } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import { ethers } from 'ethers';
 import nconf from 'nconf';
-import { waitUntilCommitted } from './util';
+import { waitUntilCommitted } from '../utils';
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
 const CKB_INDEXER_URL = process.env.CKB_INDEXER_URL || 'http://127.0.0.1:8116';
 const indexer = new CkbIndexer(CKB_URL, CKB_INDEXER_URL);

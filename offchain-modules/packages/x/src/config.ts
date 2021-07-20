@@ -28,6 +28,12 @@ export class MultiSignHost {
   host: string;
 }
 
+export interface CkbDeps {
+  bridgeLock: ConfigItem;
+  recipientType: ConfigItem;
+  sudtType: ConfigItem;
+}
+
 export interface CkbConfig {
   ckbRpcUrl: string;
   ckbIndexerUrl: string;
@@ -36,11 +42,7 @@ export interface CkbConfig {
   multisigScript: MultisigItem;
   multisigLockscript: Script;
   ownerCellTypescript: Script;
-  deps: {
-    bridgeLock: ConfigItem;
-    recipientType: ConfigItem;
-    sudtType: ConfigItem;
-  };
+  deps: CkbDeps;
   startBlockHeight: number;
   confirmNumber: number;
 }
@@ -111,6 +113,7 @@ export interface rpcConfig {
 export interface logConfig {
   level: string;
   logFile?: string;
+  identity?: string;
 }
 
 export type ormDBType = 'mysql';
@@ -131,6 +134,7 @@ export interface commonConfig {
   role: forceBridgeRole;
   log: logConfig;
   network: 'mainnet' | 'testnet';
+  lumosConfigType: 'LINA' | 'AGGRON4' | 'DEV';
   port?: number;
   orm: ormConfig;
   openMetric: boolean;

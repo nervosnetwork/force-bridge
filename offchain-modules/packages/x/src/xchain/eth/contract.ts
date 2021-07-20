@@ -5,7 +5,7 @@ import { ForceBridgeCore } from '../../core';
 import { IEthUnlock } from '../../db/model';
 import { MultiSigMgr } from '../../multisig/multisig-mgr';
 import { asyncSleep, retryPromise } from '../../utils';
-import * as logger from '../../utils/logger';
+import { logger } from '../../utils/logger';
 import { abi } from './abi/ForceBridge.json';
 import { buildSigRawData } from './utils';
 

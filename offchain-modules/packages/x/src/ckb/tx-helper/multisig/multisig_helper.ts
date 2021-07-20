@@ -7,9 +7,7 @@ import { MultisigItem } from '../../../config';
 import { ForceBridgeCore } from '../../../core';
 import { nonNullable } from '../../../errors';
 import { parsePrivateKey } from '../../../utils';
-import { init } from './init_config';
 
-init();
 const config = getConfig();
 const multisigTemplate = nonNullable(config.SCRIPTS.SECP256K1_BLAKE160_MULTISIG);
 if (!multisigTemplate) {

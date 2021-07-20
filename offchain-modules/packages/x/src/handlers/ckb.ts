@@ -20,8 +20,15 @@ import { ICkbBurn, ICkbMint, MintedRecords } from '../db/model';
 import { asserts, nonNullable } from '../errors';
 import { BridgeMetricSingleton, txTokenInfo } from '../monitor/bridge-metric';
 import { ckbCollectSignaturesPayload, createAsset, MultiSigMgr } from '../multisig/multisig-mgr';
-import { asyncSleep, foreverPromise, fromHexString, toHexString, uint8ArrayToString } from '../utils';
-import * as logger from '../utils/logger';
+import {
+  asyncSleep,
+  foreverPromise,
+  fromHexString,
+  toHexString,
+  transactionSkeletonToJSON,
+  uint8ArrayToString,
+} from '../utils';
+import { logger } from '../utils/logger';
 import { getAssetTypeByAsset } from '../xchain/tron/utils';
 import Transaction = CKBComponents.Transaction;
 import TransactionWithStatus = CKBComponents.TransactionWithStatus;
@@ -140,7 +147,7 @@ export class CkbHandler {
     const lastHandledBlockHeight = ForceBridgeCore.config.ckb.startBlockHeight;
     if (lastHandledBlockHeight > 0) {
       const lastHandledHead = await this.ckb.rpc.getHeaderByNumber(`0x${lastHandledBlockHeight.toString(16)}`);
-      if (lastHandledHead !== undefined) {
+      if (lastHandledHead) {
         this.lastHandledBlockHeight = Number(lastHandledHead.number);
         this.lastHandledBlockHash = lastHandledHead.hash;
         return;
@@ -496,7 +503,7 @@ export class CkbHandler {
 
     logger.debug(`mint for records`, records);
     const txSkeleton = await generator.mint(records, this.ckbIndexer);
-    logger.debug(`mint tx txSkeleton ${JSON.stringify(txSkeleton, null, 2)}`);
+    logger.debug(`mint tx txSkeleton ${transactionSkeletonToJSON(txSkeleton)}`);
     const sigs = await this.collectMintSignatures(txSkeleton, mintRecords);
     for (;;) {
       try {
@@ -527,7 +534,7 @@ export class CkbHandler {
         let content1 = serializeMultisigScript(ForceBridgeCore.config.ckb.multisigScript);
         content1 += signatures.join('');
 
-        logger.debug(`txSkeleton: ${JSON.stringify(txSkeleton, null, 2)}`);
+        logger.debug(`txSkeleton: ${transactionSkeletonToJSON(txSkeleton)}`);
         const tx = sealTransaction(txSkeleton, [content0, content1]);
         const mintTxHash = await this.transactionManager.send_transaction(tx);
         logger.info(
@@ -535,7 +542,7 @@ export class CkbHandler {
         );
 
         const txStatus = await this.waitUntilCommitted(mintTxHash, 200);
-        if (txStatus.txStatus.status === 'committed') {
+        if (txStatus && txStatus.txStatus.status === 'committed') {
           const mintTokens: txTokenInfo[] = [];
           mintRecords.map((r) => {
             r.status = 'success';
@@ -547,9 +554,7 @@ export class CkbHandler {
           });
           BridgeMetricSingleton.getInstance(this.role).addBridgeTokenMetrics('ckb_mint', mintTokens);
         } else {
-          logger.error(
-            `CkbHandler doHandleMintRecords mint execute failed txStatus:${txStatus.txStatus.status}, mintIds:${mintIds}`,
-          );
+          logger.error(`CkbHandler doHandleMintRecords mint execute failed, mintIds:${mintIds}`);
           BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('ckb_mint', 'failed');
           mintRecords.map((r) => {
             r.status = 'error';
@@ -559,7 +564,7 @@ export class CkbHandler {
         }
         break;
       } catch (e) {
-        logger.debug(`CkbHandler doHandleMintRecords mint mintIds:${mintIds} error:${e.stack()}`);
+        logger.debug(`CkbHandler doHandleMintRecords mint mintIds:${mintIds} error:${e.stack}`);
         await asyncSleep(3000);
       }
     }
@@ -702,7 +707,10 @@ export class CkbHandler {
     const tx = sealTransaction(txSkeleton, [content0, content1]);
     logger.info('tx:', JSON.stringify(tx, null, 2));
     const txHash = await this.transactionManager.send_transaction(tx);
-    await this.waitUntilCommitted(txHash, 60);
+    const txStatus = await this.waitUntilCommitted(txHash, 120);
+    if (txStatus === null || txStatus.txStatus.status !== 'committed') {
+      throw new Error('fail to createBridgeCell');
+    }
   }
 
   async waitUntilSync(): Promise<void> {
@@ -728,31 +736,30 @@ export class CkbHandler {
     }
   }
 
-  async waitUntilCommitted(txHash: string, timeout: number): Promise<TransactionWithStatus> {
+  async waitUntilCommitted(txHash: string, timeout: number): Promise<TransactionWithStatus | null> {
     let waitTime = 0;
-    const statusMap = new Map<string, boolean>();
-
+    let txStatus: TransactionWithStatus | null = null;
     for (;;) {
       try {
-        const txStatus = await this.ckb.rpc.getTransaction(txHash);
-        if (!statusMap.get(txStatus.txStatus.status)) {
-          logger.info(
-            `CkbHandler waitUntilCommitted tx ${txHash} status: ${txStatus.txStatus.status}, index: ${waitTime}`,
-          );
-          statusMap.set(txStatus.txStatus.status, true);
+        txStatus = await this.ckb.rpc.getTransaction(txHash);
+        if (txStatus === null) {
+          logger.warn(`CkbHandler waitUntilCommitted tx ${txHash} status: null, index: ${waitTime}`);
+          return null;
         }
+        logger.debug(
+          `CkbHandler waitUntilCommitted tx ${txHash} status: ${txStatus.txStatus.status}, index: ${waitTime}`,
+        );
         if (txStatus.txStatus.status === 'committed') {
-          return txStatus;
-        }
-        await asyncSleep(1000);
-        waitTime += 1;
-        if (waitTime >= timeout) {
           return txStatus;
         }
       } catch (e) {
         logger.error(`CkbHandler waitUntilCommitted error:${e.stack}`);
-        await asyncSleep(3000);
       }
+      waitTime += 1;
+      if (waitTime >= timeout) {
+        return txStatus;
+      }
+      await asyncSleep(1000);
     }
   }
 

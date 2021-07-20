@@ -10,7 +10,7 @@
     "start": "ts-node ./packages/app-relayer/src/index.ts",
     "rpc": "CONFIG_PATH=./packages/scripts/src/integration-test/config/watcher.json ts-node ./packages/app-rpc-server/src/index.ts",
     "prepare-rpc-test": "sleep 10",
-    "rpc-ci": "ts-node ./packages/scripts/src/integration-test/rpc-ci.ts",
+    "rpc-ci": "ts-node packages/scripts/src/utils/rpc-ci.ts",
     "rpc-test": "run-s prepare-rpc-test rpc-ci",
     "demo": "ts-node-dev ./packages/scripts/src/demo.ts",
     "build": "yarn install && lerna run build",
@@ -46,7 +46,12 @@
     "cov:check": "nyc report && nyc check-coverage --lines 100 --functions 100 --branches 100",
     "deploy": "ts-node-dev ./packages/scripts/src/deploy_ckb.ts",
     "prepare": "cd .. && husky install offchain-modules/.husky",
-    "init-multisig": "ts-node ./packages/x/src/ckb/tx-helper/multisig/deploy.ts"
+    "init-multisig": "ts-node ./packages/x/src/ckb/tx-helper/multisig/deploy.ts",
+    "integration": "ts-node packages/scripts/src/integration.ts",
+    "startTxSender": "ts-node packages/scripts/src/txSender.ts",
+    "startDevDockerDeps": "docker-compose -f ../docker/docker-compose.dev.yml up -d",
+    "destroyDevDockerDeps": "docker-compose -f ../docker/docker-compose.dev.yml down",
+    "dev-docker:generate": "ts-node packages/scripts/src/devDocker.ts"
   },
   "author": "",
   "license": "MIT",
