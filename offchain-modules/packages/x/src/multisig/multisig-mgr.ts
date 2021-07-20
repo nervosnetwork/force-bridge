@@ -85,11 +85,7 @@ export class MultiSigMgr {
 
   public async collectSignatures(params: collectSignaturesParams): Promise<string[] | boolean> {
     logger.info(
-      `collectSignatures chain:${this.chainType} rawData:${params.rawData} payload:${JSON.stringify(
-        params.payload,
-        null,
-        2,
-      )}`,
+      `collectSignatures chain:${this.chainType} rawData:${params.rawData} payload:${JSON.stringify(params.payload)}`,
     );
 
     const sigs: { svrHost: MultiSignHost; signature: string; timeCost: number }[] = [];
@@ -138,9 +134,9 @@ export class MultiSigMgr {
           const errorCode = sigResp.error.code;
           const errorMsg = `MultiSigMgr collectSignatures chain:${this.chainType} address:${svrHost.address} rawData:${
             params.rawData
-          } payload:${JSON.stringify(params.payload, null, 2)} sigServer:${
-            svrHost.host
-          }, errorCode:${errorCode} errorMessage:${sigResp.error.message}`;
+          } payload:${JSON.stringify(params.payload)} sigServer:${svrHost.host}, errorCode:${errorCode} errorMessage:${
+            sigResp.error.message
+          }`;
 
           if (
             errorCode === SigErrorTxCompleted ||

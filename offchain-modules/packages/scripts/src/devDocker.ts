@@ -56,6 +56,7 @@ async function generateConfig(
   const collectorConfig: Config = lodash.cloneDeep(baseConfig);
   collectorConfig.common.role = 'collector';
   collectorConfig.common.orm.host = 'collector_db';
+  collectorConfig.common.collectorPubKeyHash.push(privateKeyToCkbPubkeyHash(CKB_PRIVATE_KEY));
   collectorConfig.eth.multiSignHosts = multisigConfig.verifiers.map((v, i) => {
     return {
       address: v.ethAddress,
@@ -124,14 +125,17 @@ services:
     image: node:14
     restart: on-failure
     volumes:
+      - ./script:/data
       - {{&projectDir}}:/app
       - force-bridge-node-modules:/app/offchain-modules/node_modules
     environment:
-      DOTENV_PATH: /app/devops/devnet-docker/.env.tx_sender.docker
+      DOTENV_PATH: /data/.env
+      LOG_PATH: /data/script.log
     networks:
       - {{network}}
     command: |
       sh -c '
+      cp /app/devops/devnet-docker/.env.tx_sender.docker /data/.env
       cd /app/offchain-modules;
       yarn startTxSender
       '
@@ -317,9 +321,6 @@ async function main() {
     FORCE_BRIDGE_KEYSTORE_PASSWORD,
   );
 
-  await execShellCmd(
-    `docker run --rm -v ${offchainModulePath}:/app -v force-bridge-node-modules:/app/node_modules node:14 bash -c 'cd /app && yarn build'`,
-  );
   const verifiers = lodash.range(MULTISIG_NUMBER).map((i) => {
     return {
       name: `verifier${i + 1}`,
@@ -334,6 +335,9 @@ async function main() {
     verifiers,
   });
   fs.writeFileSync(path.join(configPath, 'docker-compose.yml'), dockerComposeFile);
+  await execShellCmd(
+    `docker run --rm -v ${offchainModulePath}:/app -v force-bridge-node-modules:/app/node_modules node:14 bash -c 'cd /app && yarn build'`,
+  );
 }
 
 main()

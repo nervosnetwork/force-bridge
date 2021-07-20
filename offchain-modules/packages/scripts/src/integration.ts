@@ -79,6 +79,7 @@ async function generateConfig(
   collectorConfig.common.role = 'collector';
   collectorConfig.common.orm.database = 'collector';
   collectorConfig.common.port = 8090;
+  collectorConfig.common.collectorPubKeyHash.push(privateKeyToCkbPubkeyHash(CKB_PRIVATE_KEY));
   collectorConfig.eth.multiSignHosts = multisigConfig.verifiers.map((v, i) => {
     return {
       address: v.ethAddress,

@@ -139,7 +139,7 @@ export class CkbIndexer implements Indexer {
             let cursor = null;
             for (;;) {
               const params = [searchKey, order, `0x${sizeLimit.toString(16)}`, cursor];
-              logger.info('get_cells params', params);
+              logger.debug('get_cells params', params);
               const res = await request('get_cells', params, ckbIndexerUrl);
               const liveCells = res.objects;
               cursor = res.last_cursor;
