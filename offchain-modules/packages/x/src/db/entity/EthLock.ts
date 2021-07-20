@@ -21,7 +21,6 @@ export class EthLock {
   @Column({ default: '0' })
   bridgeFee: string;
 
-  @Index()
   @Column('varchar', { length: 10240 })
   recipient: string;
 
