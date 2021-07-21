@@ -3,6 +3,7 @@ import { Interface } from 'ethers/lib/utils';
 import { EthConfig, forceBridgeRole } from '../../config';
 import { ForceBridgeCore } from '../../core';
 import { IEthUnlock } from '../../db/model';
+import { nonNullable } from '../../errors';
 import { MultiSigMgr } from '../../multisig/multisig-mgr';
 import { asyncSleep, retryPromise } from '../../utils';
 import { logger } from '../../utils/logger';
@@ -52,6 +53,10 @@ export class EthChain {
       this.bridge = new ethers.Contract(this.bridgeContractAddr, abi, this.provider).connect(this.wallet);
       this.multisigMgr = new MultiSigMgr('ETH', this.config.multiSignHosts, this.config.multiSignThreshold);
     }
+  }
+
+  async getGasPrice(): Promise<BigNumber> {
+    return this.provider.getGasPrice();
   }
 
   getMultiSigMgr(): MultiSigMgr {
@@ -190,7 +195,10 @@ export class EthChain {
     return false;
   }
 
-  async sendUnlockTxs(records: IEthUnlock[]): Promise<ethers.providers.TransactionResponse | boolean | Error> {
+  async sendUnlockTxs(
+    records: IEthUnlock[],
+    gasPrice: BigNumber,
+  ): Promise<ethers.providers.TransactionResponse | boolean | Error> {
     logger.debug('contract balance', await this.provider.getBalance(this.bridgeContractAddr));
     const params: EthUnlockRecord[] = records.map((r) => {
       return {
@@ -214,11 +222,18 @@ export class EthChain {
       );
     }
     const signature = '0x' + signatures.join('');
+    const collectorConfig = nonNullable(ForceBridgeCore.config.collector);
+    const gasLimit = records.length === 1 ? collectorConfig.gasLimit : records.length * collectorConfig.batchGasLimit;
+    const options = {
+      gasPrice,
+      gasLimit,
+    };
+    logger.debug(`send unlock options: ${JSON.stringify(options)}`);
     try {
-      const res = await this.bridge.unlock(params, nonce, signature);
+      const res = await this.bridge.unlock(params, nonce, signature, options);
       return res;
     } catch (e) {
-      logger.error(`send unlock tx error: ${JSON.stringify({ params, nonce, signature, e })}`);
+      logger.error(`send unlock tx error: ${JSON.stringify({ params, nonce, signature, options, e })}`);
       return new Error(`send unlock tx error: ${e}`);
     }
   }

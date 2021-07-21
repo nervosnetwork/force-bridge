@@ -45,6 +45,7 @@ export interface CkbConfig {
   deps: CkbDeps;
   startBlockHeight: number;
   confirmNumber: number;
+  sudtSize: number;
 }
 
 export interface EthConfig {
@@ -156,6 +157,12 @@ export interface WhiteListEthAsset {
   bridgeFee: { in: string; out: string };
 }
 
+export interface collectorConfig {
+  gasLimit: number;
+  batchGasLimit: number;
+  gasPriceGweiLimit: number;
+}
+
 export interface Config {
   common: commonConfig;
   ckb: CkbConfig;
@@ -163,5 +170,6 @@ export interface Config {
   eos: EosConfig;
   tron: TronConfig;
   btc: BtcConfig;
-  rpc: rpcConfig;
+  rpc?: rpcConfig;
+  collector?: collectorConfig;
 }

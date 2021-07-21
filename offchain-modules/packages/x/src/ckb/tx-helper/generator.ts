@@ -30,12 +30,6 @@ export interface MintAssetRecord {
 }
 
 export class CkbTxGenerator {
-  private collector: IndexerCollector;
-
-  constructor(private ckb: CKB, private ckbIndexer: CkbIndexer) {
-    this.collector = new IndexerCollector(ckbIndexer);
-  }
-
   sudtDep = {
     out_point: {
       tx_hash: ForceBridgeCore.config.ckb.deps.sudtType.cellDep.outPoint.txHash,
@@ -59,6 +53,12 @@ export class CkbTxGenerator {
     },
     dep_type: ForceBridgeCore.config.ckb.deps.bridgeLock.cellDep.depType,
   };
+
+  private collector: IndexerCollector;
+
+  constructor(private ckb: CKB, private ckbIndexer: CkbIndexer) {
+    this.collector = new IndexerCollector(ckbIndexer);
+  }
 
   async fetchOwnerCell(): Promise<Cell | undefined> {
     const cellCollector = this.ckbIndexer.collector({
@@ -86,7 +86,7 @@ export class CkbTxGenerator {
       lock: bridgeLock,
     });
     let index = 0;
-    while (true) {
+    for (;;) {
       if (index > maxTimes) {
         throw new Error('failed to fetch bridge cell.');
       }
@@ -95,7 +95,8 @@ export class CkbTxGenerator {
           return cell;
         }
       }
-      logger.debug('try to fetch bridge cell: ', index++);
+      logger.debug('try to fetch bridge cell: ', index);
+      index += 1;
       await asyncSleep(1000);
     }
   }
@@ -257,7 +258,15 @@ export class CkbTxGenerator {
         },
         data: utils.toBigUInt128LE(record.amount) + record.sudtExtraData.slice(2),
       };
-      const sudtCapacity = minimalCellCapacity(outputSudtCell);
+      const sudtCapacity = ForceBridgeCore.config.ckb.sudtSize * 10 ** 8;
+      logger.debug(
+        `check sudtSize: ${JSON.stringify({
+          minimal: minimalCellCapacity(outputSudtCell).toString(),
+          sudtCapacity: sudtCapacity,
+          recipientLockscript,
+          extraData: record.sudtExtraData,
+        })}`,
+      );
       outputSudtCell.cell_output.capacity = `0x${sudtCapacity.toString(16)}`;
       txSkeleton = txSkeleton.update('outputs', (outputs) => {
         return outputs.push(outputSudtCell);

@@ -80,6 +80,11 @@ async function generateConfig(
   collectorConfig.common.orm.database = 'collector';
   collectorConfig.common.port = 8090;
   collectorConfig.common.collectorPubKeyHash.push(privateKeyToCkbPubkeyHash(CKB_PRIVATE_KEY));
+  collectorConfig.collector = {
+    gasLimit: 250000,
+    batchGasLimit: 100000,
+    gasPriceGweiLimit: 1,
+  };
   collectorConfig.eth.multiSignHosts = multisigConfig.verifiers.map((v, i) => {
     return {
       address: v.ethAddress,
@@ -185,7 +190,7 @@ async function main() {
   const ETH_TEST_PRIVKEY = '0x719e94ec5d2ecef67b5878503ffd6e1e0e2fe7a52ddd55c436878cb4d52d376d';
   const CKB_TEST_PRIVKEY = '0xa6b8e0cbadda5c0d91cf82d1e8d8120b755aa06bc49030ca6e8392458c65fc80';
 
-  const MULTISIG_NUMBER = 5;
+  const MULTISIG_NUMBER = 3;
   const MULTISIG_THRESHOLD = 3;
   const FORCE_BRIDGE_KEYSTORE_PASSWORD = '123456';
   const ETH_RPC_URL = 'http://127.0.0.1:8545';
@@ -236,6 +241,7 @@ async function main() {
       privateKey: 'ckb',
       startBlockHeight: 1,
       confirmNumber: 1,
+      sudtSize: 500,
     },
   };
   const { assetWhiteList, ckbDeps, ownerConfig, bridgeEthAddress, multisigConfig, ckbStartHeight, ethStartHeight } =

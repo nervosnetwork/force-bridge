@@ -55,8 +55,14 @@ async function generateConfig(
   // collector
   const collectorConfig: Config = lodash.cloneDeep(baseConfig);
   collectorConfig.common.role = 'collector';
+  collectorConfig.common.log.level = 'debug';
   collectorConfig.common.orm.host = 'collector_db';
   collectorConfig.common.collectorPubKeyHash.push(privateKeyToCkbPubkeyHash(CKB_PRIVATE_KEY));
+  collectorConfig.collector = {
+    gasLimit: 250000,
+    batchGasLimit: 100000,
+    gasPriceGweiLimit: 100,
+  };
   collectorConfig.eth.multiSignHosts = multisigConfig.verifiers.map((v, i) => {
     return {
       address: v.ethAddress,
@@ -293,6 +299,7 @@ async function main() {
       privateKey: 'ckb',
       startBlockHeight: 1,
       confirmNumber: 15,
+      sudtSize: 500,
     },
   };
   const { assetWhiteList, ckbDeps, ownerConfig, bridgeEthAddress, multisigConfig, ckbStartHeight, ethStartHeight } =
