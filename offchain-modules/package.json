@@ -51,7 +51,8 @@
     "startTxSender": "ts-node packages/scripts/src/txSender.ts",
     "startDevDockerDeps": "docker-compose -f ../docker/docker-compose.dev.yml up -d",
     "destroyDevDockerDeps": "docker-compose -f ../docker/docker-compose.dev.yml down",
-    "dev-docker:generate": "ts-node packages/scripts/src/devDocker.ts"
+    "dev-docker:generate": "ts-node packages/scripts/src/devDocker.ts",
+    "testnet-docker:generate": "DOTENV_PATH=../workdir/testnet-docker/.env ts-node packages/scripts/src/testnetDocker.ts"
   },
   "author": "",
   "license": "MIT",

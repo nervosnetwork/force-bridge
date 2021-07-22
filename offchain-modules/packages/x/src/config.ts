@@ -102,15 +102,6 @@ export interface BtcConfig {
   confirmNumber: number;
 }
 
-export interface rpcConfig {
-  corsOptions?: {
-    origin: string;
-    methods?: string;
-    preflightContinue?: boolean;
-    optionsSuccessStatus?: number;
-  };
-}
-
 export interface logConfig {
   level: string;
   logFile?: string;
@@ -170,6 +161,5 @@ export interface Config {
   eos: EosConfig;
   tron: TronConfig;
   btc: BtcConfig;
-  rpc?: rpcConfig;
   collector?: collectorConfig;
 }

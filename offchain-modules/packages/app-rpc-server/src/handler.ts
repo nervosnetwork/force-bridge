@@ -173,7 +173,10 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         throw new Error('invalid chain type');
     }
 
-    const ckbTxGenerator = new CkbTxGenerator(ForceBridgeCore.ckb, ForceBridgeCore.ckbIndexer);
+    const ckbTxGenerator = new CkbTxGenerator(
+      ForceBridgeCore.config.ckb.ckbRpcUrl,
+      ForceBridgeCore.config.ckb.ckbIndexerUrl,
+    );
     const burnTx = await ckbTxGenerator.burn(fromLockscript, payload.recipient, asset, BigInt(amount));
     return {
       network: 'Nervos',

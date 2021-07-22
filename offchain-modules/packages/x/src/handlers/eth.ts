@@ -155,7 +155,7 @@ export class EthHandler {
             onRejectedInterval: 3000,
             maxRetryTimes: MAX_RETRY_TIMES,
             onRejected: (e: Error) => {
-              logger.error(`Eth watchNewBlock blockHeight:${newBlock} error:${e.message}`);
+              logger.error(`Eth watchNewBlock blockHeight:${JSON.stringify(newBlock)} error:${e.stack}`);
             },
           },
         );

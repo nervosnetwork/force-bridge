@@ -34,12 +34,13 @@ export async function deployDev(
   MULTISIG_THRESHOLD: number,
   ethPrivateKey: string,
   ckbPrivateKey: string,
+  env: 'LINA' | 'AGGRON4' | 'DEV' = 'DEV',
   cachePath?: string,
 ): Promise<DeployDevResult> {
   if (cachePath && fs.existsSync(cachePath)) {
     return JSON.parse(fs.readFileSync(cachePath, 'utf8'));
   }
-  initLumosConfig();
+  initLumosConfig(env);
   const verifierConfigs = lodash.range(MULTISIG_NUMBER).map((_i) => genRandomVerifierConfig());
   logger.debug('verifierConfigs', verifierConfigs);
   const ethMultiSignAddresses = verifierConfigs.map((vc) => vc.ethAddress);
@@ -52,7 +53,6 @@ export async function deployDev(
   );
   logger.info(`bridge address: ${bridgeEthAddress}`);
   // deploy ckb contracts
-  const PATH_SUDT_DEP = pathFromProjectRoot('/offchain-modules/deps/simple_udt');
   const PATH_RECIPIENT_TYPESCRIPT = pathFromProjectRoot('/ckb-contracts/build/release/recipient-typescript');
   const PATH_BRIDGE_LOCKSCRIPT = pathFromProjectRoot('/ckb-contracts/build/release/bridge-lockscript');
   const ckbDeployGenerator = new CkbDeployManager(CKB_RPC_URL, CKB_INDEXER_URL);
@@ -63,8 +63,28 @@ export async function deployDev(
     },
     ckbPrivateKey,
   );
-  const sudtBin = fs.readFileSync(PATH_SUDT_DEP);
-  const sudtDep = await ckbDeployGenerator.deploySudt(sudtBin, ckbPrivateKey);
+  let sudtDep;
+  if (env === 'DEV') {
+    const PATH_SUDT_DEP = pathFromProjectRoot('/offchain-modules/deps/simple_udt');
+    const sudtBin = fs.readFileSync(PATH_SUDT_DEP);
+    sudtDep = await ckbDeployGenerator.deploySudt(sudtBin, ckbPrivateKey);
+  } else if (env === 'AGGRON4') {
+    sudtDep = {
+      cellDep: {
+        depType: 'code',
+        outPoint: {
+          txHash: '0xe12877ebd2c3c364dc46c5c992bcfaf4fee33fa13eebdf82c591fc9825aab769',
+          index: '0x0',
+        },
+      },
+      script: {
+        codeHash: '0xc5e5dcf215925f7ef4dfaf5f4b4f105bc321c02776d6e7d52a1db3fcd9d011a4',
+        hashType: 'type',
+      },
+    };
+  } else {
+    throw new Error(`wrong env: ${env}`);
+  }
   logger.info('deps', { contractsDeps, sudtDep });
   const multisigItem = {
     R: 0,
