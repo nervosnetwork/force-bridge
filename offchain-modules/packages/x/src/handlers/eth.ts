@@ -1,3 +1,5 @@
+import { parseAddress } from '@ckb-lumos/helpers';
+import { Reader } from 'ckb-js-toolkit';
 import { BigNumber, ethers } from 'ethers';
 import { ChainType, EthAsset } from '../ckb/model/asset';
 import { forceBridgeRole } from '../config';
@@ -5,6 +7,7 @@ import { ForceBridgeCore } from '../core';
 import { EthDb, KVDb, BridgeFeeDB } from '../db';
 import { EthUnlockStatus } from '../db/entity/EthUnlock';
 import { EthUnlock, IEthUnlock } from '../db/model';
+import { nonNullable } from '../errors';
 import { BridgeMetricSingleton, txTokenInfo } from '../monitor/bridge-metric';
 import { ethCollectSignaturesPayload } from '../multisig/multisig-mgr';
 import { asyncSleep, foreverPromise, fromHexString, retryPromise, uint8ArrayToString } from '../utils';
@@ -13,6 +16,18 @@ import { EthChain, WithdrawBridgeFeeTopic, Log, ParsedLog } from '../xchain/eth'
 
 const MAX_RETRY_TIMES = 3;
 const lastHandleEthBlockKey = 'lastHandleEthBlock';
+
+export interface ParsedLockLog {
+  txHash: string;
+  sender: string;
+  token: string;
+  amount: string;
+  recipient: string;
+  sudtExtraData: string;
+  blockNumber: number;
+  blockHash: string;
+  asset: EthAsset;
+}
 
 export class EthHandler {
   private lastHandledBlockHeight: number;
@@ -267,12 +282,71 @@ export class EthHandler {
     }
   }
 
+  async parseLockLog(log: Log, parsedLog: ParsedLog): Promise<ParsedLockLog> {
+    const txHash = log.transactionHash;
+    const { token, sudtExtraData, sender } = parsedLog.args;
+    const amount = parsedLog.args.lockedAmount.toString();
+    const asset = new EthAsset(parsedLog.args.token);
+    const recipient = uint8ArrayToString(fromHexString(parsedLog.args.recipientLockscript));
+    return {
+      txHash: txHash,
+      amount: amount,
+      token: token,
+      recipient: recipient,
+      sudtExtraData: sudtExtraData,
+      blockNumber: log.blockNumber,
+      blockHash: log.blockHash,
+      sender: sender,
+      asset,
+    };
+  }
+  // filter lock log, return empty string if it passes, otherwise return the reason why it fails
+  async filterLockLog(parsedLockLog: ParsedLockLog): Promise<string> {
+    const { amount, asset, token, recipient, sudtExtraData } = parsedLockLog;
+    if (!asset.inWhiteList()) {
+      return `EthAsset ${token} not in while list`;
+    }
+    const minimalAmount = asset.getMinimalAmount();
+    if (BigInt(amount) < BigInt(minimalAmount)) {
+      return `asset amount less than minimal amount ${minimalAmount}`;
+    }
+    // check sudtSize
+    try {
+      const recipientLockscript = parseAddress(recipient);
+      const recipientLockscriptLen = new Reader(recipientLockscript.args).length() + 33;
+      const sudtExtraDataLen = sudtExtraData.length / 2 - 1;
+      // - capacity size: 8
+      // - sudt typescript size
+      //    - code_hash: 32
+      //    - hash_type: 1
+      //    - args: 32
+      // - sude amount size: 16
+      const sudtSizeLimit = ForceBridgeCore.config.ckb.sudtSize;
+      const actualSudtSize = recipientLockscriptLen + sudtExtraDataLen + 89;
+      logger.debug(
+        `check sudtSize: ${JSON.stringify({
+          parsedLockLog,
+          sudtSizeLimit,
+          actualSudtSize,
+          recipientLockscriptLen,
+          sudtExtraDataLen,
+        })}`,
+      );
+      if (actualSudtSize > sudtSizeLimit) {
+        return `sudt size exceeds limit: ${JSON.stringify({ sudtSizeLimit, actualSudtSize })}`;
+      }
+    } catch (e) {
+      return 'invalid recipient address';
+    }
+    return '';
+  }
+
   async onLockLogs(log: Log, parsedLog: ParsedLog): Promise<void> {
     for (let i = 1; i <= MAX_RETRY_TIMES; i++) {
       try {
-        const txHash = log.transactionHash;
-        const { token, sudtExtraData, sender } = parsedLog.args;
-        const recipient = uint8ArrayToString(fromHexString(parsedLog.args.recipientLockscript));
+        const parsedLockLog = await this.parseLockLog(log, parsedLog);
+        const { amount, asset, token, sudtExtraData, sender, txHash, recipient, blockNumber, blockHash } =
+          parsedLockLog;
         logger.info(
           `EthHandler watchLockEvents receiveLog blockHeight:${log.blockNumber} blockHash:${log.blockHash} txHash:${
             log.transactionHash
@@ -281,9 +355,11 @@ export class EthHandler {
           } sudtExtraData:${parsedLog.args.sudtExtraData} sender:${parsedLog.args.sender}`,
         );
         logger.debug('EthHandler watchLockEvents eth lockEvtLog:', { log, parsedLog });
-        const amount = parsedLog.args.lockedAmount.toString();
-        const asset = new EthAsset(parsedLog.args.token);
-        if (!asset.inWhiteList() || BigInt(amount) < BigInt(asset.getMinimalAmount())) return;
+        const filterReason = await this.filterLockLog(parsedLockLog);
+        if (filterReason !== '') {
+          logger.warn(`skip record ${JSON.stringify(parsedLog)}, reason: ${filterReason}`);
+          return;
+        }
 
         const bridgeFee = this.role === 'collector' ? asset.getBridgeFee('in') : '0';
         await this.ethDb.createEthLock([
@@ -294,8 +370,8 @@ export class EthHandler {
             token: token,
             recipient: recipient,
             sudtExtraData: sudtExtraData,
-            blockNumber: log.blockNumber,
-            blockHash: log.blockHash,
+            blockNumber,
+            blockHash,
             sender: sender,
           },
         ]);
@@ -414,7 +490,7 @@ export class EthHandler {
         this.handleTodoUnlockRecords();
       },
       (err) => {
-        logger.error(`handlePendingUnlockRecords error:${err.message}`);
+        logger.error(`handlePendingUnlockRecords error:${err.stack}`);
       },
     );
   }
@@ -503,12 +579,22 @@ export class EthHandler {
 
     for (;;) {
       try {
+        // check gas price
+        const gasPrice = await this.ethChain.getGasPrice();
+        const gasPriceLimit = BigNumber.from(nonNullable(ForceBridgeCore.config.collector).gasPriceGweiLimit * 10 ** 9);
+        logger.debug(`gasPrice ${gasPrice}, gasPriceLimit ${gasPriceLimit}`);
+        if (gasPrice > gasPriceLimit) {
+          const waitSeconds = 30;
+          logger.warn(`gasPrice ${gasPrice} exceeds limit ${gasPriceLimit}, waiting for ${waitSeconds}s`);
+          await asyncSleep(waitSeconds * 1000);
+          continue;
+        }
         // write db first, avoid send tx success and fail to write db
         records.map((r) => {
           r.status = 'pending';
         });
         await this.ethDb.saveEthUnlock(records);
-        const txRes = await this.ethChain.sendUnlockTxs(records);
+        const txRes = await this.ethChain.sendUnlockTxs(records, gasPrice);
         if (typeof txRes === 'boolean') {
           records.map((r) => {
             r.status = 'success';

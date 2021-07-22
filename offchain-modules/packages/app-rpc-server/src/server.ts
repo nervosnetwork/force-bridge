@@ -70,7 +70,7 @@ export async function startRpcServer(configPath: string): Promise<void> {
 
   ServerSingleton.getInstance()
     .getServer()
-    .post(forceBridgePath, cors(ForceBridgeCore.config.rpc.corsOptions), (req, res) => {
+    .post(forceBridgePath, cors(ForceBridgeCore.config.rpc!.corsOptions), (req, res) => {
       logger.info(`request, method: ${req.method}, body: ${JSON.stringify(req.body)}`);
       const jsonRPCRequest = req.body;
       const startTime = Date.now();
