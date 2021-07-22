@@ -221,13 +221,6 @@ services:
     depends_on:
       - {{name}}_db
 {{/verifiers}}      
-  ckb:
-    image: nervos/perkins-tent:v0.43.0
-    restart: on-failure
-    environment:
-      CKB_NETWORK: testnet
-    volumes:
-      - /Users/huwenchao/code/cryptape/deploy_data/testnet:/data
 volumes:
   force-bridge-node-modules:
     external: true
