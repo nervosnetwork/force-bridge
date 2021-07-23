@@ -1,12 +1,6 @@
 import { Cell, Script, Indexer, WitnessArgs, core, utils } from '@ckb-lumos/base';
 import { common } from '@ckb-lumos/common-scripts';
-import {
-  generateAddress,
-  minimalCellCapacity,
-  parseAddress,
-  TransactionSkeleton,
-  TransactionSkeletonType,
-} from '@ckb-lumos/helpers';
+import { minimalCellCapacity, parseAddress, TransactionSkeleton, TransactionSkeletonType } from '@ckb-lumos/helpers';
 import { Reader, normalizers } from 'ckb-js-toolkit';
 import * as lodash from 'lodash';
 import { ForceBridgeCore } from '../../core';
@@ -407,9 +401,47 @@ export class CkbTxGenerator extends CkbTxHelper {
         .push(this.sudtDep)
         .push(this.recipientDep);
     });
-    // change cell
-    const fromAddress = generateAddress(fromLockscript);
-    txSkeleton = await this.completeTx(txSkeleton, fromAddress);
+    logger.debug(`txSkeleton: ${transactionSkeletonToJSON(txSkeleton)}`);
+    // add change output
+    const fee = 100000n;
+    const changeOutput: Cell = {
+      cell_output: {
+        capacity: '0x0',
+        lock: fromLockscript,
+      },
+      data: '0x',
+    };
+    const minimalChangeCellCapacity = minimalCellCapacity(changeOutput);
+    changeOutput.cell_output.capacity = `0x${minimalChangeCellCapacity.toString(16)}`;
+    txSkeleton = txSkeleton.update('outputs', (outputs) => {
+      return outputs.push(changeOutput);
+    });
+    // add inputs
+    const capacityDiff = await this.calculateCapacityDiff(txSkeleton);
+    logger.debug(`capacityDiff`, capacityDiff);
+    const needCapacity = -capacityDiff + fee;
+    if (needCapacity < 0) {
+      txSkeleton = txSkeleton.update('outputs', (outputs) => {
+        changeOutput.cell_output.capacity = `0x${(minimalChangeCellCapacity - needCapacity).toString(16)}`;
+        return outputs.set(outputs.size - 1, changeOutput);
+      });
+    } else {
+      const fromCells = await this.collector.getCellsByLockscriptAndCapacity(fromLockscript, needCapacity);
+      logger.debug(`fromCells: ${JSON.stringify(fromCells, null, 2)}`);
+      txSkeleton = txSkeleton.update('inputs', (inputs) => {
+        return inputs.concat(fromCells);
+      });
+      const capacityDiff = await this.calculateCapacityDiff(txSkeleton);
+      if (capacityDiff < 0) {
+        throw new Error(`fromAddress capacity not enough, need ${capacityDiff.toString()} more`);
+      }
+      txSkeleton = txSkeleton.update('outputs', (outputs) => {
+        changeOutput.cell_output.capacity = `0x${(minimalChangeCellCapacity + capacityDiff - fee).toString(16)}`;
+        return outputs.set(outputs.size - 1, changeOutput);
+      });
+    }
+    logger.debug(`txSkeleton: ${transactionSkeletonToJSON(txSkeleton)}`);
+    logger.debug(`final fee: ${await this.calculateCapacityDiff(txSkeleton)}`);
     return txSkeletonToRawTransactionToSign(txSkeleton);
   }
 }

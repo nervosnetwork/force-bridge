@@ -53,22 +53,19 @@ export async function deployDev(
   );
   logger.info(`bridge address: ${bridgeEthAddress}`);
   // deploy ckb contracts
-  const PATH_RECIPIENT_TYPESCRIPT = pathFromProjectRoot('/ckb-contracts/build/release/recipient-typescript');
-  const PATH_BRIDGE_LOCKSCRIPT = pathFromProjectRoot('/ckb-contracts/build/release/bridge-lockscript');
   const ckbDeployGenerator = new CkbDeployManager(CKB_RPC_URL, CKB_INDEXER_URL);
-  const contractsDeps = await ckbDeployGenerator.deployContracts(
-    {
-      bridgeLockscript: fs.readFileSync(PATH_BRIDGE_LOCKSCRIPT),
-      recipientTypescript: fs.readFileSync(PATH_RECIPIENT_TYPESCRIPT),
-    },
-    ckbPrivateKey,
-  );
   let sudtDep;
+  let PATH_BRIDGE_LOCKSCRIPT;
+  let PATH_RECIPIENT_TYPESCRIPT;
   if (env === 'DEV') {
+    PATH_RECIPIENT_TYPESCRIPT = pathFromProjectRoot('/ckb-contracts/build/release-devnet/recipient-typescript');
+    PATH_BRIDGE_LOCKSCRIPT = pathFromProjectRoot('/ckb-contracts/build/release-devnet/bridge-lockscript');
     const PATH_SUDT_DEP = pathFromProjectRoot('/offchain-modules/deps/simple_udt');
     const sudtBin = fs.readFileSync(PATH_SUDT_DEP);
     sudtDep = await ckbDeployGenerator.deploySudt(sudtBin, ckbPrivateKey);
   } else if (env === 'AGGRON4') {
+    PATH_RECIPIENT_TYPESCRIPT = pathFromProjectRoot('/ckb-contracts/build/release-aggron/recipient-typescript');
+    PATH_BRIDGE_LOCKSCRIPT = pathFromProjectRoot('/ckb-contracts/build/release-aggron/bridge-lockscript');
     sudtDep = {
       cellDep: {
         depType: 'code',
@@ -85,6 +82,13 @@ export async function deployDev(
   } else {
     throw new Error(`wrong env: ${env}`);
   }
+  const contractsDeps = await ckbDeployGenerator.deployContracts(
+    {
+      bridgeLockscript: fs.readFileSync(PATH_BRIDGE_LOCKSCRIPT),
+      recipientTypescript: fs.readFileSync(PATH_RECIPIENT_TYPESCRIPT),
+    },
+    ckbPrivateKey,
+  );
   logger.info('deps', { contractsDeps, sudtDep });
   const multisigItem = {
     R: 0,

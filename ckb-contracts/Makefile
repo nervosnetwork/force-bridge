@@ -19,4 +19,23 @@ build-contract:
 test-contract: build-contract
 	cargo test -- --nocapture
 
+build-release:
+	# sed is incompatible on Mac and Linux, refer <https://gist.github.com/andre3k1/e3a1a7133fded5de5a9ee99c87c6fa0d> to
+	# change default sed on Mac.
+	rm -rf build
+	capsule build --release
+	mv build/release build/release-devnet
+
+	sed -i 's/\["contract", "devnet"\]/\["contract", "aggron"\]/g' lib/*/*.toml
+	capsule build --release
+	mv build/release build/release-aggron
+
+	sed -i 's/\["contract", "aggron"\]/\["contract", "lina"\]/g' lib/*/*.toml
+	capsule build --release
+	mv build/release build/release-lina
+	sed -i 's/\["contract", "lina"\]/\["contract", "devnet"\]/g' lib/*/*.toml
+
+check-release:
+	md5 build/release-*/*
+
 .PHONY: ci

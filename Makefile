@@ -14,7 +14,7 @@ stop-docker:
 	cd docker && docker-compose down
 
 build-ckb-contracts:
-	cd ckb-contracts && capsule build --release
+	cd ckb-contracts && make build-release
 
 deploy-eth-contracts:
 	cd eth-contracts && yarn ci
