@@ -273,7 +273,7 @@ async function main() {
   await handleDb('drop', MULTISIG_NUMBER);
   await handleDb('create', MULTISIG_NUMBER);
   await startService(FORCE_BRIDGE_KEYSTORE_PASSWORD, forcecli, configPath, MULTISIG_NUMBER);
-  await asyncSleep(30000);
+  await asyncSleep(60000);
   await ethBatchTest(
     ETH_TEST_PRIVKEY,
     CKB_TEST_PRIVKEY,
