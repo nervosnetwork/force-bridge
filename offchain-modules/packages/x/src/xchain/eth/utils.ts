@@ -45,3 +45,28 @@ export function buildSigRawData(domainSeparator: string, typeHash: string, recor
     ),
   );
 }
+
+export function buildChangeValidatorsSigRawData(
+  domainSeparator: string,
+  typeHash: string,
+  validators: string[],
+  threshold: number,
+  nonce: number,
+): string {
+  return ethers.utils.keccak256(
+    ethers.utils.solidityPack(
+      ['bytes1', 'bytes1', 'bytes32', 'bytes32'],
+      [
+        '0x19',
+        '0x01',
+        domainSeparator,
+        ethers.utils.keccak256(
+          ethers.utils.defaultAbiCoder.encode(
+            ['bytes32', 'address[]', 'uint256', 'uint256'],
+            [typeHash, validators, threshold, nonce],
+          ),
+        ),
+      ],
+    ),
+  );
+}
