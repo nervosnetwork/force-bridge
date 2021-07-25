@@ -1,162 +1,337 @@
-import { Cell, Indexer, Script } from '@ckb-lumos/base';
-import { common, secp256k1Blake160 } from '@ckb-lumos/common-scripts';
+import fs from 'fs';
+import { Cell, Script } from '@ckb-lumos/base';
+import { common } from '@ckb-lumos/common-scripts';
+import { serializeMultisigScript } from '@ckb-lumos/common-scripts/lib/secp256k1_blake160_multisig';
 import { key } from '@ckb-lumos/hd';
 import {
-  objectToTransactionSkeleton,
-  TransactionSkeletonObject,
   generateSecp256k1Blake160Address,
   minimalCellCapacity,
-  parseAddress,
+  objectToTransactionSkeleton,
   sealTransaction,
   TransactionSkeleton,
+  TransactionSkeletonObject,
   TransactionSkeletonType,
 } from '@ckb-lumos/helpers';
-
 import { nonNullable } from '@force-bridge/x';
 import { CkbTxHelper } from '@force-bridge/x/dist/ckb/tx-helper/base_generator';
 import { getMultisigLock } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
-import { generateTypeIDScript } from '@force-bridge/x/dist/ckb/tx-helper/multisig/typeid';
 import { MultisigItem } from '@force-bridge/x/dist/config';
-import { logger } from '@force-bridge/x/dist/utils/logger';
+import { httpRequest } from '@force-bridge/x/dist/multisig/client';
+import { privateKeyToCkbPubkeyHash, transactionSkeletonToJSON, writeJsonToFile } from '@force-bridge/x/dist/utils';
 import { buildChangeValidatorsSigRawData } from '@force-bridge/x/dist/xchain/eth';
 import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
 import commander from 'commander';
 import { ecsign, toRpcSig } from 'ethereumjs-util';
-import { ethers, BigNumber } from 'ethers';
+import { BigNumber, ethers } from 'ethers';
+import { JSONRPCResponse } from 'json-rpc-2.0';
+
+const txWithSignatureDir = './';
+
+const validitorInfos = './validitorInfos.json';
+const changeValidatorRawTx = './changeValidatorRawTx.json';
+const changeValidatorTxWithSig = `${txWithSignatureDir}/changeValidatorTxWithSig.json`;
 
 const EthNodeRpc = 'http://127.0.0.1:8545';
 const CkbNodeRpc = 'http://127.0.0.1:8114';
+const CkbIndexerRpc = 'http://127.0.0.1:8116';
+
 export const changeValCmd = new commander.Command('change-val');
 changeValCmd
   .command('set')
-  .requiredOption('-r, --recipient <recipient>', 'recipient address on eth')
-  .requiredOption('-p, --privateKey <privateKey>', 'private key of unlock address on ckb')
-  .requiredOption('-a, --amount <amount>', 'amount of unlock')
-  .option('-s, --symbol <symbol>', 'token symbol', 'ckETH')
+  .requiredOption('-i, --input <input>', 'filepath of validators infos', validitorInfos)
+  .requiredOption(
+    '-o, --output <output>',
+    'filepath of raw transaction which need request signature',
+    changeValidatorRawTx,
+  )
+  .requiredOption('-p, --privateKey <ckbPrivateKey>', 'ckb private key ')
   .option('--ckbRpcUrl <ckbRpcUrl>', 'Url of ckb rpc', CkbNodeRpc)
-  .option('-w, --wait', 'whether wait for transaction confirmed')
+  .option('--ckbIndexerUrl <ckbIndexerRpcUrl>', 'Url of ckb indexer url', CkbIndexerRpc)
+  .option('--ethRpcUrl <ethRpcUrl>', 'Url of eth rpc', EthNodeRpc)
   .action(doMakeTx)
-  .description('unlock asset on eth');
+  .description('generate raw transaction for change validator');
+
 changeValCmd
   .command('sign')
-  .requiredOption('-r, --recipient <recipient>', 'recipient address on eth')
-  .requiredOption('-p, --privateKey <privateKey>', 'private key of unlock address on ckb')
-  .requiredOption('-a, --amount <amount>', 'amount of unlock')
-  .option('-s, --symbol <symbol>', 'token symbol', 'ckETH')
-  .option('--ckbRpcUrl <ckbRpcUrl>', 'Url of ckb rpc', CkbNodeRpc)
-  .option('-w, --wait', 'whether wait for transaction confirmed')
+  .requiredOption(
+    '-i, --input <input>',
+    'filepath of raw transaction which need request signature',
+    changeValidatorRawTx,
+  )
+  .requiredOption('-o, --output <output>', 'filepath of transaction whit signature', changeValidatorTxWithSig)
+  .requiredOption('--ckbPrivateKey <ckbPrivateKey>', 'ckb private key ')
+  .requiredOption('--ethPrivateKey <ethPrivateKey>', 'eth private key ')
   .action(doSignTx)
-  .description('unlock asset on eth');
+  .description('sign the message of change validator');
 
 changeValCmd
   .command('send')
-  .requiredOption('-r, --recipient <recipient>', 'recipient address on eth')
-  .requiredOption('-p, --privateKey <privateKey>', 'private key of unlock address on ckb')
-  .requiredOption('-a, --amount <amount>', 'amount of unlock')
-  .option('-s, --symbol <symbol>', 'token symbol', 'ckETH')
+  .requiredOption('-i, --input <input>', 'directory of transaction files with signature', txWithSignatureDir)
+  .requiredOption(
+    '-s, --source <source>',
+    'filepath of raw transaction which need request signature',
+    changeValidatorRawTx,
+  )
+  .requiredOption('--ckbPrivateKey <ckbPrivateKey>', 'ckb private key ')
+  .requiredOption('--ethPrivateKey <ethPrivateKey>', 'eth private key ')
   .option('--ckbRpcUrl <ckbRpcUrl>', 'Url of ckb rpc', CkbNodeRpc)
-  .option('-w, --wait', 'whether wait for transaction confirmed')
+  .option('--ckbIndexerUrl <ckbIndexerRpcUrl>', 'Url of ckb indexer url', CkbIndexerRpc)
+  .option('--ethRpcUrl <ethRpcUrl>', 'Url of eth rpc', EthNodeRpc)
   .action(doSendTx)
-  .description('unlock asset on eth');
+  .description('send the transaction for change validator');
 
-async function doMakeTx() {
-  logger.error('// TODO');
+async function doMakeTx(opts: Record<string, string>): Promise<void> {
+  const validatorInfoPath = nonNullable(opts.input || validitorInfos);
+  const changeValRawTxPath = nonNullable(opts.output || changeValidatorRawTx);
+  const ethRpc = nonNullable(opts.ethRpcUrl || EthNodeRpc) as string;
+  const ckbRpcURL = nonNullable(opts.ckbRpcUrl || CkbNodeRpc) as string;
+  const ckbPrivateKey = nonNullable(opts.ckbPrivateKey) as string;
+  const ckbIndexerRPC = nonNullable(opts.ckbIndexerRpcUrl || CkbIndexerRpc) as string;
+
+  const valInfos: ValInfos = JSON.parse(fs.readFileSync(validatorInfoPath, 'utf8').toString());
+
+  const valPromises = valInfos.newValRpcURLs.map((host) => {
+    return new Promise((resolve) => {
+      httpRequest(`${host}/force-bridge/sign-server/api/v1`, 'status', { chain: '' }).then(
+        (value) => {
+          resolve(value);
+        },
+        (err) => {
+          console.error(`Change Validators error. fail to get validators from  ${host}  error:${err.message}`);
+          return;
+        },
+      );
+    });
+  });
+  const valResponses = await Promise.all(valPromises);
+  const valAddresses: addressConfig[] = [];
+  for (const value of valResponses) {
+    if (value === null) {
+      return Promise.reject(`failed to get verifier info by rpc status interface`);
+    }
+    const resp = value as JSONRPCResponse;
+
+    if (resp.error) {
+      console.error(`failed to get verifier info by error`, resp.error);
+      return Promise.reject(`failed to get verifier info by error ${JSON.stringify(resp.error, null, 2)}`);
+    }
+
+    const result = resp.result as statusResponse;
+    valAddresses.push(result.addressConfig);
+  }
+
+  const txInfo: ChangeVal = {};
+
+  if (valInfos.ckb) {
+    const newValsPubKeyHashes = valAddresses.map((val) => {
+      return val.ckbPubkeyHash;
+    });
+    const newMultisigItem = {
+      R: 0,
+      M: valInfos.ckb.newThreshold,
+      publicKeyHashes: newValsPubKeyHashes,
+    };
+    const txSkeleton = await generateCkbChangeValTx(
+      valInfos.ckb.oldValInfos,
+      newMultisigItem,
+      ckbPrivateKey,
+      ckbRpcURL,
+      ckbIndexerRPC,
+    );
+    txInfo.ckb = {
+      newMultisigScript: newMultisigItem,
+      oldMultisigItem: valInfos.ckb.oldValInfos,
+      signature: [],
+      txSkeleton: txSkeleton.toJS(),
+    };
+  }
+
+  if (valInfos.eth) {
+    const newValsEthAddrs = valAddresses.map((val) => {
+      return val.ethAddress;
+    });
+    txInfo.eth = await generateEthChangeValTx(
+      valInfos.eth.oldValidators,
+      newValsEthAddrs,
+      valInfos.eth.newThreshold,
+      valInfos.eth.contractAddr,
+      ethRpc,
+    );
+  }
+  writeJsonToFile(txInfo, `${changeValRawTxPath}`);
 }
-async function doSignTx() {
-  logger.error('// TODO');
+async function doSignTx(opts: Record<string, string>): Promise<void> {
+  const changeValidatorTxPath = nonNullable(opts.input || changeValidatorRawTx);
+  const txWithSigPath = nonNullable(opts.output || changeValidatorTxWithSig);
+  const ckbPrivateKey = nonNullable(opts.ckbPrivateKey) as string;
+  const ethPrivateKey = nonNullable(opts.ethPrivateKey) as string;
+
+  const valInfos: ChangeVal = JSON.parse(fs.readFileSync(changeValidatorTxPath, 'utf8').toString());
+  if (valInfos.ckb) {
+    const sig = await signCkbChangeValTx(valInfos.ckb, ckbPrivateKey);
+    valInfos.ckb.signature!.push(sig);
+  }
+  if (valInfos.eth) {
+    const sig = await signEthChangeValTx(valInfos.eth, ethPrivateKey);
+    valInfos.eth.signature!.push(sig);
+  }
+  writeJsonToFile(valInfos, `${txWithSigPath}`);
 }
-async function doSendTx() {
-  logger.error('// TODO');
+
+async function doSendTx(opts: Record<string, string>): Promise<void> {
+  const changeValidatorTxSigDir = nonNullable(opts.input || txWithSignatureDir);
+  const changeValidatorTxPath = nonNullable(opts.rawTx || changeValidatorRawTx);
+  const ethRpc = nonNullable(opts.ethRpcUrl || EthNodeRpc) as string;
+  const ckbRpcURL = nonNullable(opts.ckbRpcUrl || CkbNodeRpc) as string;
+  const ckbPrivateKey = nonNullable(opts.ckbPrivateKey) as string;
+  const ckbIndexerRPC = nonNullable(opts.ckbIndexerRpcUrl || CkbIndexerRpc) as string;
+  const ethPrivateKey = nonNullable(opts.ethPrivateKey) as string;
+  const files = fs.readdirSync(changeValidatorTxSigDir);
+  const ckbSignatures: string[] = [];
+  const ethSignatures: string[] = [];
+  for (const file of files) {
+    const valInfos: ChangeVal = JSON.parse(fs.readFileSync(file, 'utf8').toString());
+    if (valInfos.eth && valInfos.eth!.signature && valInfos.eth!.signature.length !== 0) {
+      ethSignatures.push(valInfos.eth.signature[0]);
+    }
+    if (valInfos.ckb && valInfos.ckb!.signature && valInfos.ckb!.signature.length !== 0) {
+      ethSignatures.push(valInfos.ckb.signature[0]);
+    }
+  }
+  const rawTx: ChangeVal = JSON.parse(fs.readFileSync(changeValidatorTxPath, 'utf8').toString());
+  if (rawTx.ckb) {
+    await sendCkbChangeValTx(rawTx.ckb, ckbPrivateKey, ckbRpcURL, ckbIndexerRPC, ckbSignatures);
+  }
+
+  if (rawTx.eth) {
+    await sendEthChangeValTx(rawTx.eth.msg, ethPrivateKey, ethRpc, rawTx.eth.contractAddr, ethSignatures);
+  }
 }
 
 async function generateCkbChangeValTx(
-  multisigItem: MultisigItem,
+  oldMultisigItem: MultisigItem,
+  newMultisigItem: MultisigItem,
   privateKey: string,
-  lockscript: Script,
-): Promise<void> {
-  const ckbClient = new CkbTx('', '');
+  ckbRpcURL: string,
+  ckbIndexerURL: string,
+): Promise<TransactionSkeletonType> {
+  const ckbClient = new CkbChangeValClient(ckbRpcURL, ckbIndexerURL);
   await ckbClient.indexer.waitForSync();
-  const multisigLockscript = getMultisigLock(multisigItem);
+  const oldMultisigLockscript = getMultisigLock(oldMultisigItem);
+
+  const newMultisigLockscript = getMultisigLock(newMultisigItem);
   const fromAddress = generateSecp256k1Blake160Address(key.privateKeyToBlake160(privateKey));
-  const fromLockscript = parseAddress(fromAddress);
   let txSkeleton = TransactionSkeleton({ cellProvider: this.indexer });
-  const fromCells = await this.getFromCells(fromLockscript);
-  if (fromCells.length === 0) {
-    throw new Error('no available cells found');
-  }
-  const firstInputCell: Cell = nonNullable(fromCells[0]);
-  txSkeleton = await common.setupInputCell(txSkeleton, firstInputCell);
 
-  const multisigCell = await ckbClient.fetchMultisigCell(lockscript);
-  if (multisigCell) {
-    txSkeleton = await common.setupInputCell(txSkeleton, multisigCell);
-  }
+  const oldOwnerCell = await ckbClient.fetchCellWithMultisig(oldMultisigLockscript, 'owner');
+  const oldMultisigCell = await ckbClient.fetchCellWithMultisig(oldMultisigLockscript, 'multisig');
 
+  const newOwnerCell: Cell = {
+    cell_output: {
+      capacity: '0x0',
+      lock: newMultisigLockscript,
+      type: oldOwnerCell!.cell_output.type,
+    },
+    data: '0x',
+  };
+  newOwnerCell.cell_output.capacity = `0x${minimalCellCapacity(newOwnerCell).toString(16)}`;
+  const newMultiCell: Cell = {
+    cell_output: {
+      capacity: '0x0',
+      lock: newMultisigLockscript,
+    },
+    data: '0x',
+  };
+  newMultiCell.cell_output.capacity = `0x${minimalCellCapacity(newMultiCell).toString(16)}`;
+
+  txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
+    return cellDeps.push({
+      out_point: oldOwnerCell!.out_point!,
+      dep_type: 'code',
+    });
+  });
+
+  txSkeleton = await common.setupInputCell(txSkeleton, oldOwnerCell!);
+  txSkeleton = await common.setupInputCell(txSkeleton, oldMultisigCell!);
   // setupInputCell will put an output same with input, clear it
   txSkeleton = txSkeleton.update('outputs', (outputs) => {
     return outputs.clear();
   });
-  // add owner cell
-  const firstInput = {
-    previous_output: firstInputCell.out_point,
-    since: '0x0',
-  };
-  const ownerCellTypescript = generateTypeIDScript(firstInput, `0x0`);
-  const ownerCell: Cell = {
-    cell_output: {
-      capacity: '0x0',
-      lock: multisigLockscript,
-      type: ownerCellTypescript,
-    },
-    data: '0x',
-  };
-  ownerCell.cell_output.capacity = `0x${minimalCellCapacity(ownerCell).toString(16)}`;
-  // create an empty cell for the multi sig
-  const multiCell: Cell = {
-    cell_output: {
-      capacity: '0x0',
-      lock: multisigLockscript,
-    },
-    data: '0x',
-  };
-  multiCell.cell_output.capacity = `0x${minimalCellCapacity(multiCell).toString(16)}`;
+
   txSkeleton = txSkeleton.update('outputs', (outputs) => {
-    return outputs.push(ownerCell).push(multiCell);
+    return outputs.push(newOwnerCell).push(newMultiCell);
   });
-  txSkeleton = await ckbClient.completeTx(txSkeleton, fromAddress, fromCells.slice(1));
+  txSkeleton = await ckbClient.completeTx(txSkeleton, fromAddress);
+  return txSkeleton;
 }
 
-async function signCkbChangeValTx(ckbMsgInfo: CkbConfig, ckbPrivKey: string) {
+async function signCkbChangeValTx(ckbMsgInfo: CkbParams, ckbPrivKey: string): Promise<string> {
+  const signerPubKeyHash = privateKeyToCkbPubkeyHash(ckbPrivKey);
+  if (ckbMsgInfo.oldMultisigItem.publicKeyHashes.indexOf(signerPubKeyHash) === -1) {
+    return Promise.reject('failed to sign the tx by wrong private key');
+  }
   const txSkeleton = objectToTransactionSkeleton(ckbMsgInfo.txSkeleton);
   const message = txSkeleton.signingEntries.get(1)!.message;
-  const signature = key.signRecoverable(message, ckbPrivKey).slice(2);
+  return key.signRecoverable(message, ckbPrivKey).slice(2);
 }
 
-async function sendCkbChangeValTx(ckbMsgInfo: CkbConfig, ckbPrivKey: string) {
-  const ckbClient = new CkbTx('', '');
+async function sendCkbChangeValTx(
+  ckbMsgInfo: CkbParams,
+  ckbPrivKey: string,
+  ckbRpcURL: string,
+  indexerURL: string,
+  signatures: string[],
+): Promise<void> {
+  const ckbClient = new CkbChangeValClient(ckbRpcURL, indexerURL);
   const txSkeleton = objectToTransactionSkeleton(ckbMsgInfo.txSkeleton);
-  const _hash = await ckbClient.SignAndSendTransaction(txSkeleton, ckbPrivKey);
+
+  const content0 = key.signRecoverable(txSkeleton.get('signingEntries').get(0)!.message, ckbPrivKey);
+  let content1 = serializeMultisigScript({
+    M: ckbMsgInfo.oldMultisigItem.M,
+    R: ckbMsgInfo.oldMultisigItem.R,
+    publicKeyHashes: ckbMsgInfo.oldMultisigItem.publicKeyHashes,
+  });
+  content1 += signatures.join('');
+
+  console.debug(`txSkeleton: ${transactionSkeletonToJSON(txSkeleton)}`);
+  const tx = sealTransaction(txSkeleton, [content0, content1]);
+  const hash = await ckbClient.ckb.send_transaction(tx);
+  await ckbClient.waitUntilCommitted(hash);
+  return;
 }
 
-async function generateEthChangeValTx(validators: string[], threshold: number) {
-  const ethClient = new EthTX('', '', '');
+async function generateEthChangeValTx(
+  oldVals: string[],
+  newVals: string[],
+  threshold: number,
+  contractAddr: string,
+  ethRpcURL: string,
+): Promise<EthParams> {
+  const ethClient = new EthChangeValClient(ethRpcURL, contractAddr, '');
   const domainSeparator = await ethClient.bridge.DOMAIN_SEPARATOR();
   const typeHash = await ethClient.bridge.CHANGE_VALIDATORS_TYPEHASH();
   const nonce: BigNumber = await ethClient.bridge.latestChangeValidatorsNonce_();
-  const msgHash = buildChangeValidatorsSigRawData(domainSeparator, typeHash, validators, threshold, nonce.toNumber());
-  const msg = {
+  const msgHash = buildChangeValidatorsSigRawData(domainSeparator, typeHash, newVals, threshold, nonce.toNumber());
+  const msg: EthMsg = {
     domainSeparator: domainSeparator,
     typeHash: typeHash,
     threshold: threshold,
-    validators: validators,
-    nonce: nonce,
+    validators: newVals,
+    nonce: nonce.toNumber(),
+  };
+  return {
+    contractAddr: contractAddr,
+    msg: msg,
+    msgHash: msgHash,
+    oldValidators: oldVals,
+    signature: [],
   };
 }
 
-async function signEthChangeValTx(ethMsgInfo: EthConfig, ethPrivKey: string) {
+async function signEthChangeValTx(ethMsgInfo: EthParams, ethPrivKey: string): Promise<string> {
   const signerAddr = new ethers.Wallet(ethPrivKey).address;
   if (ethMsgInfo.oldValidators.indexOf(signerAddr) === -1) {
-    return Error('failed to sign the tx by wrong private key');
+    return Promise.reject('failed to sign the tx by wrong private key');
   }
   const calcMsgHash = buildChangeValidatorsSigRawData(
     ethMsgInfo.msg.domainSeparator,
@@ -166,70 +341,96 @@ async function signEthChangeValTx(ethMsgInfo: EthConfig, ethPrivKey: string) {
     ethMsgInfo.msg.nonce,
   );
   if (calcMsgHash !== ethMsgInfo.msgHash) {
-    return Error('failed to sign the tx by msg is wrong');
+    return Promise.reject('failed to sign the tx by msg is wrong');
   }
   const { v, r, s } = ecsign(Buffer.from(ethMsgInfo.msgHash.slice(2), 'hex'), Buffer.from(ethPrivKey.slice(2), 'hex'));
   const sigHex = toRpcSig(v, r, s);
-  const signature = sigHex.slice(2);
+  return sigHex.slice(2);
 }
-async function sendEthChangeValTx(ethMsgInfo: EthMsg, privKey: string) {
-  const ethClient = new EthTX('', '', privKey);
-  const signatures: string[] = [];
+async function sendEthChangeValTx(
+  ethMsgInfo: EthMsg,
+  privKey: string,
+  ethRpcURL: string,
+  contractAddr: string,
+  signatures: string[],
+): Promise<void> {
+  const ethClient = new EthChangeValClient(ethRpcURL, contractAddr, privKey);
   const signature = '0x' + signatures.join('');
-  return ethClient.bridge.changeValidators(ethMsgInfo.validators, ethMsgInfo.threshold, ethMsgInfo.nonce, signature);
+  const res = ethClient.bridge.changeValidators(
+    ethMsgInfo.validators,
+    ethMsgInfo.threshold,
+    ethMsgInfo.nonce,
+    signature,
+  );
+  console.debug('send change eth validators res', res);
+  const receipt = await res.wait();
+  if (receipt.status !== 1) {
+    console.error(`failed to execute change validator tx. tx recipient is `, receipt);
+    return Promise.reject('failed to execute change validator tx');
+  }
+  return;
 }
 
-export class EthTX {
+export class EthChangeValClient {
   protected readonly provider: ethers.providers.JsonRpcProvider;
   public readonly bridge: ethers.Contract;
   protected readonly wallet: ethers.Wallet;
   constructor(url: string, contractAddress: string, privateKey: string) {
     this.provider = new ethers.providers.JsonRpcProvider(url);
     this.wallet = new ethers.Wallet(privateKey, this.provider);
-    logger.debug('tx sender', this.wallet.address);
+    console.debug('tx sender', this.wallet.address);
     this.bridge = new ethers.Contract(contractAddress, abi, this.provider).connect(this.wallet);
   }
 }
 
-export class CkbTx extends CkbTxHelper {
+export class CkbChangeValClient extends CkbTxHelper {
   constructor(ckbRpcUrl: string, ckbIndexerUrl: string) {
     super(ckbRpcUrl, ckbIndexerUrl);
   }
 
-  async fetchMultisigCell(lockScript: Script): Promise<Cell | undefined> {
+  async fetchCellWithMultisig(lockScript: Script, type: cell_type): Promise<Cell | undefined> {
     const cellCollector = this.indexer.collector({
       lock: lockScript,
     });
     for await (const cell of cellCollector.collect()) {
-      if (cell.cell_output.type === null) {
-        return cell;
+      if (type === 'multisig') {
+        if (cell.cell_output.type === null) return cell;
+      }
+      if (type === 'owner') {
+        if (cell.cell_output.type) return cell;
       }
     }
   }
-  async SignAndSendTransaction(txSkeleton: TransactionSkeletonType, privateKey: string): Promise<string> {
-    txSkeleton = await common.prepareSigningEntries(txSkeleton);
-    const message = txSkeleton.get('signingEntries').get(0)!.message;
-    const Sig = key.signRecoverable(message!, privateKey);
-    const tx = sealTransaction(txSkeleton, [Sig]);
-    const hash = await this.ckb.send_transaction(tx);
-    await this.waitUntilCommitted(hash);
-    return hash;
-  }
+}
+type cell_type = 'owner' | 'multisig';
+
+export interface ValInfos {
+  ckb?: {
+    oldValInfos: MultisigItem;
+    newThreshold: number;
+  };
+  eth?: {
+    oldValidators: string[];
+    contractAddr: string;
+    newThreshold: number;
+  };
+  newValRpcURLs: string[];
 }
 
 export interface ChangeVal {
-  ckb: CkbConfig;
-  eth: EthConfig;
+  ckb?: CkbParams;
+  eth?: EthParams;
 }
 
-export interface EthConfig {
+export interface EthParams {
   oldValidators: string[];
+  contractAddr: string;
   msgHash: string;
   msg: EthMsg;
   signature?: string[];
 }
-export interface CkbConfig {
-  oldMultisigScript: MultisigItem;
+export interface CkbParams {
+  oldMultisigItem: MultisigItem;
   txSkeleton: TransactionSkeletonObject;
   newMultisigScript: MultisigItem;
   signature?: string[];
@@ -241,3 +442,21 @@ export interface EthMsg {
   validators: string[];
   nonce: number;
 }
+type statusResponse = {
+  addressConfig: addressConfig;
+  latestChainStatus?: {
+    ckb: {
+      latestCkbHeight: string;
+      latestCkbBlockHash: string;
+    };
+    eth: {
+      latestEthHeight: string;
+      latestEthBlockHash: string;
+    };
+  };
+};
+type addressConfig = {
+  ethAddress: string;
+  ckbPubkeyHash: string;
+  ckbAddress: string;
+};

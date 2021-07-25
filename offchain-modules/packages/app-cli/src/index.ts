@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import commander from 'commander';
 import { feeCmd } from './bridgeFee';
+import { changeValCmd } from './changeVal';
 import { configCmd } from './config';
 import { ethCmd } from './eth';
 import { keystoreCmd } from './keystore';
@@ -22,6 +23,7 @@ async function main() {
     .addCommand(rpcCmd)
     .addCommand(sigCmd)
     .addCommand(configCmd)
+    .addCommand(changeValCmd)
     .addCommand(keystoreCmd);
 
   await program.parseAsync(process.argv);
