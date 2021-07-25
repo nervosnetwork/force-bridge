@@ -18,7 +18,7 @@ import { ForceBridgeCore } from '../core';
 import { CkbDb, KVDb } from '../db';
 import { ICkbBurn, ICkbMint, MintedRecords } from '../db/model';
 import { asserts, nonNullable } from '../errors';
-import { BridgeMetricSingleton, txTokenInfo } from '../monitor/bridge-metric';
+import { BridgeMetricSingleton, txTokenInfo } from '../metric/bridge-metric';
 import { ckbCollectSignaturesPayload, createAsset, MultiSigMgr } from '../multisig/multisig-mgr';
 import {
   asyncSleep,

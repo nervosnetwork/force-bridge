@@ -23,10 +23,38 @@ export type FromRecord = {
   txId: ID;
 };
 
+export type EthLockRecord = FromRecord & {
+  sender: string;
+  token: string;
+  recipient: string;
+  sudtExtraData: string;
+  blockNumber: number;
+  blockHash: string;
+};
+
+export type CkbBurnRecord = FromRecord & {
+  recipient: string;
+  token: string;
+  chain: number;
+  blockNumber?: number;
+  blockHash?: string;
+};
+
 export type ToRecord = FromRecord & {
   recipient: ID;
   fromTxId?: ID;
   fee?: Amount;
+};
+
+export type EthUnlockRecord = ToRecord & {
+  token: string;
+  blockNumber: number;
+  blockHash: string;
+};
+
+export type CkbMintRecord = ToRecord & {
+  blockNumber?: number;
+  blockHash?: string;
 };
 
 export class Reconciliation {

@@ -8,7 +8,7 @@ import { EthDb, KVDb, BridgeFeeDB } from '../db';
 import { EthUnlockStatus } from '../db/entity/EthUnlock';
 import { EthUnlock, IEthUnlock } from '../db/model';
 import { nonNullable } from '../errors';
-import { BridgeMetricSingleton, txTokenInfo } from '../monitor/bridge-metric';
+import { BridgeMetricSingleton, txTokenInfo } from '../metric/bridge-metric';
 import { ethCollectSignaturesPayload } from '../multisig/multisig-mgr';
 import { asyncSleep, foreverPromise, fromHexString, retryPromise, uint8ArrayToString } from '../utils';
 import { logger } from '../utils/logger';
@@ -282,69 +282,10 @@ export class EthHandler {
     }
   }
 
-  async parseLockLog(log: Log, parsedLog: ParsedLog): Promise<ParsedLockLog> {
-    const txHash = log.transactionHash;
-    const { token, sudtExtraData, sender } = parsedLog.args;
-    const amount = parsedLog.args.lockedAmount.toString();
-    const asset = new EthAsset(parsedLog.args.token);
-    const recipient = uint8ArrayToString(fromHexString(parsedLog.args.recipientLockscript));
-    return {
-      txHash: txHash,
-      amount: amount,
-      token: token,
-      recipient: recipient,
-      sudtExtraData: sudtExtraData,
-      blockNumber: log.blockNumber,
-      blockHash: log.blockHash,
-      sender: sender,
-      asset,
-    };
-  }
-  // filter lock log, return empty string if it passes, otherwise return the reason why it fails
-  async filterLockLog(parsedLockLog: ParsedLockLog): Promise<string> {
-    const { amount, asset, token, recipient, sudtExtraData } = parsedLockLog;
-    if (!asset.inWhiteList()) {
-      return `EthAsset ${token} not in while list`;
-    }
-    const minimalAmount = asset.getMinimalAmount();
-    if (BigInt(amount) < BigInt(minimalAmount)) {
-      return `asset amount less than minimal amount ${minimalAmount}`;
-    }
-    // check sudtSize
-    try {
-      const recipientLockscript = parseAddress(recipient);
-      const recipientLockscriptLen = new Reader(recipientLockscript.args).length() + 33;
-      const sudtExtraDataLen = sudtExtraData.length / 2 - 1;
-      // - capacity size: 8
-      // - sudt typescript size
-      //    - code_hash: 32
-      //    - hash_type: 1
-      //    - args: 32
-      // - sude amount size: 16
-      const sudtSizeLimit = ForceBridgeCore.config.ckb.sudtSize;
-      const actualSudtSize = recipientLockscriptLen + sudtExtraDataLen + 89;
-      logger.debug(
-        `check sudtSize: ${JSON.stringify({
-          parsedLockLog,
-          sudtSizeLimit,
-          actualSudtSize,
-          recipientLockscriptLen,
-          sudtExtraDataLen,
-        })}`,
-      );
-      if (actualSudtSize > sudtSizeLimit) {
-        return `sudt size exceeds limit: ${JSON.stringify({ sudtSizeLimit, actualSudtSize })}`;
-      }
-    } catch (e) {
-      return 'invalid recipient address';
-    }
-    return '';
-  }
-
   async onLockLogs(log: Log, parsedLog: ParsedLog): Promise<void> {
     for (let i = 1; i <= MAX_RETRY_TIMES; i++) {
       try {
-        const parsedLockLog = await this.parseLockLog(log, parsedLog);
+        const parsedLockLog = parseLockLog(log, parsedLog);
         const { amount, asset, token, sudtExtraData, sender, txHash, recipient, blockNumber, blockHash } =
           parsedLockLog;
         logger.info(
@@ -355,7 +296,7 @@ export class EthHandler {
           } sudtExtraData:${parsedLog.args.sudtExtraData} sender:${parsedLog.args.sender}`,
         );
         logger.debug('EthHandler watchLockEvents eth lockEvtLog:', { log, parsedLog });
-        const filterReason = await this.filterLockLog(parsedLockLog);
+        const filterReason = filterLockLog(parsedLockLog);
         if (filterReason !== '') {
           logger.warn(`skip record ${JSON.stringify(parsedLog)}, reason: ${filterReason}`);
           return;
@@ -690,4 +631,64 @@ export class EthHandler {
     this.handleUnlockRecords();
     logger.info('eth handler started  🚀');
   }
+}
+
+export function parseLockLog(log: Log, parsedLog: ParsedLog): ParsedLockLog {
+  const txHash = log.transactionHash;
+  const { token, sudtExtraData, sender } = parsedLog.args;
+  const amount = parsedLog.args.lockedAmount.toString();
+  const asset = new EthAsset(parsedLog.args.token);
+  const recipient = uint8ArrayToString(fromHexString(parsedLog.args.recipientLockscript));
+  return {
+    txHash: txHash,
+    amount: amount,
+    token: token,
+    recipient: recipient,
+    sudtExtraData: sudtExtraData,
+    blockNumber: log.blockNumber,
+    blockHash: log.blockHash,
+    sender: sender,
+    asset,
+  };
+}
+
+// filter lock log, return empty string if it passes, otherwise return the reason why it fails
+export function filterLockLog(parsedLockLog: ParsedLockLog): string {
+  const { amount, asset, token, recipient, sudtExtraData } = parsedLockLog;
+  if (!asset.inWhiteList()) {
+    return `EthAsset ${token} not in while list`;
+  }
+  const minimalAmount = asset.getMinimalAmount();
+  if (BigInt(amount) < BigInt(minimalAmount)) {
+    return `asset amount less than minimal amount ${minimalAmount}`;
+  }
+  // check sudtSize
+  try {
+    const recipientLockscript = parseAddress(recipient);
+    const recipientLockscriptLen = new Reader(recipientLockscript.args).length() + 33;
+    const sudtExtraDataLen = sudtExtraData.length / 2 - 1;
+    // - capacity size: 8
+    // - sudt typescript size
+    //    - code_hash: 32
+    //    - hash_type: 1
+    //    - args: 32
+    // - sude amount size: 16
+    const sudtSizeLimit = ForceBridgeCore.config.ckb.sudtSize;
+    const actualSudtSize = recipientLockscriptLen + sudtExtraDataLen + 89;
+    logger.debug(
+      `check sudtSize: ${JSON.stringify({
+        parsedLockLog,
+        sudtSizeLimit,
+        actualSudtSize,
+        recipientLockscriptLen,
+        sudtExtraDataLen,
+      })}`,
+    );
+    if (actualSudtSize > sudtSizeLimit) {
+      return `sudt size exceeds limit: ${JSON.stringify({ sudtSizeLimit, actualSudtSize })}`;
+    }
+  } catch (e) {
+    return 'invalid recipient address';
+  }
+  return '';
 }

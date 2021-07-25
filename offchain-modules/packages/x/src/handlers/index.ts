@@ -8,7 +8,7 @@ import { CkbHandler } from '../handlers/ckb';
 import { EosHandler } from '../handlers/eos';
 import { EthHandler } from '../handlers/eth';
 import { TronHandler } from '../handlers/tron';
-import { BridgeMetricSingleton } from '../monitor/bridge-metric';
+import { BridgeMetricSingleton } from '../metric/bridge-metric';
 import { logger } from '../utils/logger';
 import { BTCChain } from '../xchain/btc';
 import { EthChain } from '../xchain/eth';

@@ -116,12 +116,15 @@ export class ForceBridgeCore {
     if (config.common.port) {
       ServerSingleton.getInstance().start(config.common.port);
     }
+
     // decrypt private key
-    console.log('keystorePath', config.common.keystorePath);
-    const keystore = bootstrapKeyStore(config.common.keystorePath);
-    config.ckb.privateKey = keystore.getDecryptedByKeyID(config.ckb.privateKey);
-    if (config.eth !== undefined) {
-      config.eth.privateKey = keystore.getDecryptedByKeyID(config.eth.privateKey);
+    if (config.common.keystorePath) {
+      const keystore = bootstrapKeyStore(config.common.keystorePath);
+      config.ckb.privateKey = keystore.getDecryptedByKeyID(config.ckb.privateKey);
+      if (config.eth !== undefined) {
+        config.eth.privateKey = keystore.getDecryptedByKeyID(config.eth.privateKey);
+      }
+      ForceBridgeCore._keystore = keystore;
     }
 
     // write static
@@ -132,7 +135,6 @@ export class ForceBridgeCore {
     ForceBridgeCore._secp256k1Dep = secp256k1Dep;
     ForceBridgeCore._ckbIndexer = new CkbIndexer(config.ckb.ckbRpcUrl, config.ckb.ckbIndexerUrl);
     ForceBridgeCore._config = config;
-    ForceBridgeCore._keystore = keystore;
     ForceBridgeCore._xChainHandler = new XChainHandlers();
     // init lumos config
     initLumosConfig(config.common.lumosConfigType);
