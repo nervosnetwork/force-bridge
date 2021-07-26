@@ -73,130 +73,143 @@ changeValCmd
   .description('send the transaction for change validator');
 
 async function doMakeTx(opts: Record<string, string>): Promise<void> {
-  const validatorInfoPath = nonNullable(opts.input || validitorInfos);
-  const changeValRawTxPath = nonNullable(opts.output || changeValidatorRawTx);
-  const ethRpc = nonNullable(opts.ethRpcUrl || EthNodeRpc) as string;
-  const ckbRpcURL = nonNullable(opts.ckbRpcUrl || CkbNodeRpc) as string;
-  const ckbPrivateKey = nonNullable(opts.ckbPrivateKey) as string;
-  const ckbIndexerRPC = nonNullable(opts.ckbIndexerRpcUrl || CkbIndexerRpc) as string;
+  try {
+    const validatorInfoPath = nonNullable(opts.input || validitorInfos);
+    const changeValRawTxPath = nonNullable(opts.output || changeValidatorRawTx);
+    const ethRpc = nonNullable(opts.ethRpcUrl || EthNodeRpc) as string;
+    const ckbRpcURL = nonNullable(opts.ckbRpcUrl || CkbNodeRpc) as string;
+    const ckbPrivateKey = nonNullable(opts.ckbPrivateKey) as string;
+    const ckbIndexerRPC = nonNullable(opts.ckbIndexerRpcUrl || CkbIndexerRpc) as string;
 
-  const valInfos: ValInfos = JSON.parse(fs.readFileSync(validatorInfoPath, 'utf8').toString());
+    const valInfos: ValInfos = JSON.parse(fs.readFileSync(validatorInfoPath, 'utf8').toString());
 
-  const valPromises = valInfos.newValRpcURLs.map((host) => {
-    return new Promise((resolve) => {
-      httpRequest(`${host}/force-bridge/sign-server/api/v1`, 'status', { chain: '' }).then(
-        (value) => {
-          resolve(value);
-        },
-        (err) => {
-          console.error(`Change Validators error. fail to get validators from  ${host}  error:${err.message}`);
-          return;
-        },
+    const valPromises = valInfos.newValRpcURLs.map((host) => {
+      return new Promise((resolve) => {
+        httpRequest(`${host}/force-bridge/sign-server/api/v1`, 'status', {chain: ''}).then(
+            (value) => {
+              resolve(value);
+            },
+            (err) => {
+              console.error(`Change Validators error. fail to get validators from  ${host}  error:${err.message}`);
+              return;
+            },
+        );
+      });
+    });
+    const valResponses = await Promise.all(valPromises);
+    const valAddresses: addressConfig[] = [];
+    for (const value of valResponses) {
+      if (value === null) {
+        return Promise.reject(`failed to get verifier info by rpc status interface`);
+      }
+      const resp = value as JSONRPCResponse;
+
+      if (resp.error) {
+        console.error(`failed to get verifier info by error`, resp.error);
+        return Promise.reject(`failed to get verifier info by error ${JSON.stringify(resp.error, null, 2)}`);
+      }
+
+      const result = resp.result as statusResponse;
+      valAddresses.push(result.addressConfig);
+    }
+
+    const txInfo: ChangeVal = {};
+
+    if (valInfos.ckb) {
+      const newValsPubKeyHashes = valAddresses.map((val) => {
+        return val.ckbPubkeyHash;
+      });
+      const newMultisigItem = {
+        R: 0,
+        M: valInfos.ckb.newThreshold,
+        publicKeyHashes: newValsPubKeyHashes,
+      };
+      const txSkeleton = await generateCkbChangeValTx(
+          valInfos.ckb.oldValInfos,
+          newMultisigItem,
+          ckbPrivateKey,
+          ckbRpcURL,
+          ckbIndexerRPC,
       );
-    });
-  });
-  const valResponses = await Promise.all(valPromises);
-  const valAddresses: addressConfig[] = [];
-  for (const value of valResponses) {
-    if (value === null) {
-      return Promise.reject(`failed to get verifier info by rpc status interface`);
-    }
-    const resp = value as JSONRPCResponse;
-
-    if (resp.error) {
-      console.error(`failed to get verifier info by error`, resp.error);
-      return Promise.reject(`failed to get verifier info by error ${JSON.stringify(resp.error, null, 2)}`);
+      txInfo.ckb = {
+        newMultisigScript: newMultisigItem,
+        oldMultisigItem: valInfos.ckb.oldValInfos,
+        signature: [],
+        txSkeleton: txSkeleton.toJS(),
+      };
     }
 
-    const result = resp.result as statusResponse;
-    valAddresses.push(result.addressConfig);
+    if (valInfos.eth) {
+      const newValsEthAddrs = valAddresses.map((val) => {
+        return val.ethAddress;
+      });
+      txInfo.eth = await generateEthChangeValTx(
+          valInfos.eth.oldValidators,
+          newValsEthAddrs,
+          valInfos.eth.newThreshold,
+          valInfos.eth.contractAddr,
+          ethRpc,
+      );
+    }
+    writeJsonToFile(txInfo, `${changeValRawTxPath}`);
+  }catch (e) {
+    console.error(`failed to generate tx by `,e);
   }
-
-  const txInfo: ChangeVal = {};
-
-  if (valInfos.ckb) {
-    const newValsPubKeyHashes = valAddresses.map((val) => {
-      return val.ckbPubkeyHash;
-    });
-    const newMultisigItem = {
-      R: 0,
-      M: valInfos.ckb.newThreshold,
-      publicKeyHashes: newValsPubKeyHashes,
-    };
-    const txSkeleton = await generateCkbChangeValTx(
-      valInfos.ckb.oldValInfos,
-      newMultisigItem,
-      ckbPrivateKey,
-      ckbRpcURL,
-      ckbIndexerRPC,
-    );
-    txInfo.ckb = {
-      newMultisigScript: newMultisigItem,
-      oldMultisigItem: valInfos.ckb.oldValInfos,
-      signature: [],
-      txSkeleton: txSkeleton.toJS(),
-    };
-  }
-
-  if (valInfos.eth) {
-    const newValsEthAddrs = valAddresses.map((val) => {
-      return val.ethAddress;
-    });
-    txInfo.eth = await generateEthChangeValTx(
-      valInfos.eth.oldValidators,
-      newValsEthAddrs,
-      valInfos.eth.newThreshold,
-      valInfos.eth.contractAddr,
-      ethRpc,
-    );
-  }
-  writeJsonToFile(txInfo, `${changeValRawTxPath}`);
 }
 async function doSignTx(opts: Record<string, string>): Promise<void> {
-  const changeValidatorTxPath = nonNullable(opts.input || changeValidatorRawTx);
-  const txWithSigPath = nonNullable(opts.output || changeValidatorTxWithSig);
-  const ckbPrivateKey = nonNullable(opts.ckbPrivateKey) as string;
-  const ethPrivateKey = nonNullable(opts.ethPrivateKey) as string;
+  try {
 
-  const valInfos: ChangeVal = JSON.parse(fs.readFileSync(changeValidatorTxPath, 'utf8').toString());
-  if (valInfos.ckb) {
-    const sig = await signCkbChangeValTx(valInfos.ckb, ckbPrivateKey);
-    valInfos.ckb.signature!.push(sig);
+    const changeValidatorTxPath = nonNullable(opts.input || changeValidatorRawTx);
+    const txWithSigPath = nonNullable(opts.output || changeValidatorTxWithSig);
+    const ckbPrivateKey = nonNullable(opts.ckbPrivateKey) as string;
+    const ethPrivateKey = nonNullable(opts.ethPrivateKey) as string;
+
+    const valInfos: ChangeVal = JSON.parse(fs.readFileSync(changeValidatorTxPath, 'utf8').toString());
+    if (valInfos.ckb) {
+      const sig = await signCkbChangeValTx(valInfos.ckb, ckbPrivateKey);
+      valInfos.ckb.signature!.push(sig);
+    }
+    if (valInfos.eth) {
+      const sig = await signEthChangeValTx(valInfos.eth, ethPrivateKey);
+      valInfos.eth.signature!.push(sig);
+    }
+    writeJsonToFile(valInfos, `${txWithSigPath}`);
+  }catch (e) {
+    console.error(`failed to sign tx by `,e);
   }
-  if (valInfos.eth) {
-    const sig = await signEthChangeValTx(valInfos.eth, ethPrivateKey);
-    valInfos.eth.signature!.push(sig);
-  }
-  writeJsonToFile(valInfos, `${txWithSigPath}`);
 }
 
 async function doSendTx(opts: Record<string, string>): Promise<void> {
-  const changeValidatorTxSigDir = nonNullable(opts.input || txWithSignatureDir);
-  const changeValidatorTxPath = nonNullable(opts.source || changeValidatorRawTx);
-  const ethRpc = nonNullable(opts.ethRpcUrl || EthNodeRpc) as string;
-  const ckbRpcURL = nonNullable(opts.ckbRpcUrl || CkbNodeRpc) as string;
-  const ckbPrivateKey = nonNullable(opts.ckbPrivateKey) as string;
-  const ckbIndexerRPC = nonNullable(opts.ckbIndexerRpcUrl || CkbIndexerRpc) as string;
-  const ethPrivateKey = nonNullable(opts.ethPrivateKey) as string;
-  const files = fs.readdirSync(changeValidatorTxSigDir);
-  const ckbSignatures: string[] = [];
-  const ethSignatures: string[] = [];
-  for (const file of files) {
-    const valInfos: ChangeVal = JSON.parse(fs.readFileSync(`${changeValidatorTxSigDir}${file}`, 'utf8').toString());
-    if (valInfos.eth && valInfos.eth!.signature && valInfos.eth!.signature.length !== 0) {
-      ethSignatures.push(valInfos.eth.signature[0]);
+  try {
+    const changeValidatorTxSigDir = nonNullable(opts.input || txWithSignatureDir);
+    const changeValidatorTxPath = nonNullable(opts.source || changeValidatorRawTx);
+    const ethRpc = nonNullable(opts.ethRpcUrl || EthNodeRpc) as string;
+    const ckbRpcURL = nonNullable(opts.ckbRpcUrl || CkbNodeRpc) as string;
+    const ckbPrivateKey = nonNullable(opts.ckbPrivateKey) as string;
+    const ckbIndexerRPC = nonNullable(opts.ckbIndexerRpcUrl || CkbIndexerRpc) as string;
+    const ethPrivateKey = nonNullable(opts.ethPrivateKey) as string;
+    const files = fs.readdirSync(changeValidatorTxSigDir);
+    const ckbSignatures: string[] = [];
+    const ethSignatures: string[] = [];
+    for (const file of files) {
+      const valInfos: ChangeVal = JSON.parse(fs.readFileSync(`${changeValidatorTxSigDir}${file}`, 'utf8').toString());
+      if (valInfos.eth && valInfos.eth!.signature && valInfos.eth!.signature.length !== 0) {
+        ethSignatures.push(valInfos.eth.signature[0]);
+      }
+      if (valInfos.ckb && valInfos.ckb!.signature && valInfos.ckb!.signature.length !== 0) {
+        ethSignatures.push(valInfos.ckb.signature[0]);
+      }
     }
-    if (valInfos.ckb && valInfos.ckb!.signature && valInfos.ckb!.signature.length !== 0) {
-      ethSignatures.push(valInfos.ckb.signature[0]);
+    const rawTx: ChangeVal = JSON.parse(fs.readFileSync(changeValidatorTxPath, 'utf8').toString());
+    if (rawTx.ckb) {
+      await sendCkbChangeValTx(rawTx.ckb, ckbPrivateKey, ckbRpcURL, ckbIndexerRPC, ckbSignatures);
     }
-  }
-  const rawTx: ChangeVal = JSON.parse(fs.readFileSync(changeValidatorTxPath, 'utf8').toString());
-  if (rawTx.ckb) {
-    await sendCkbChangeValTx(rawTx.ckb, ckbPrivateKey, ckbRpcURL, ckbIndexerRPC, ckbSignatures);
-  }
 
-  if (rawTx.eth) {
-    await sendEthChangeValTx(rawTx.eth.msg, ethPrivateKey, ethRpc, rawTx.eth.contractAddr, ethSignatures);
+    if (rawTx.eth) {
+      await sendEthChangeValTx(rawTx.eth.msg, ethPrivateKey, ethRpc, rawTx.eth.contractAddr, ethSignatures);
+    }
+  }catch (e) {
+    console.error(`failed to send tx by `,e);
   }
 }
 
