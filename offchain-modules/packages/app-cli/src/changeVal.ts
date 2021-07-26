@@ -195,16 +195,22 @@ async function doSendTx(opts: Record<string, string>): Promise<void> {
     const files = fs.readdirSync(changeValidatorTxSigDir);
     const ckbSignatures: string[] = [];
     const ethSignatures: string[] = [];
+    const rawTx: ChangeVal = JSON.parse(fs.readFileSync(changeValidatorTxPath, 'utf8').toString());
+
     for (const file of files) {
       const valInfos: ChangeVal = JSON.parse(fs.readFileSync(`${changeValidatorTxSigDir}${file}`, 'utf8').toString());
       if (valInfos.eth && valInfos.eth!.signature && valInfos.eth!.signature.length !== 0) {
         ethSignatures.push(valInfos.eth.signature[0]);
       }
-      if (valInfos.ckb && valInfos.ckb!.signature && valInfos.ckb!.signature.length !== 0) {
+      if (
+        valInfos.ckb &&
+        ckbSignatures.length < rawTx.ckb!.newMultisigScript.M &&
+        valInfos.ckb!.signature &&
+        valInfos.ckb!.signature.length !== 0
+      ) {
         ckbSignatures.push(valInfos.ckb.signature[0]);
       }
     }
-    const rawTx: ChangeVal = JSON.parse(fs.readFileSync(changeValidatorTxPath, 'utf8').toString());
     if (rawTx.ckb) {
       await sendCkbChangeValTx(rawTx.ckb, ckbPrivateKey, ckbRpcURL, ckbIndexerRPC, ckbSignatures);
     }
@@ -396,11 +402,11 @@ export class CkbChangeValClient extends CkbTxHelper {
       lock: lockScript,
     });
     for await (const cell of cellCollector.collect()) {
-      if (type === 'multisig') {
-        if (cell.cell_output.type === null) return cell;
+      if (type === 'multisig' && cell.cell_output.type === null) {
+        return cell;
       }
-      if (type === 'owner') {
-        if (cell.cell_output.type) return cell;
+      if (type === 'owner' && cell.cell_output.type) {
+        return cell;
       }
     }
   }
