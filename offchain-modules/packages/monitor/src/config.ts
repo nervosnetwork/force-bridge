@@ -4,6 +4,7 @@ import { ckbMonitorEvent, ethMonitorEvent } from './monitor';
 export interface Config {
   common: {
     expiredTime: number;
+    discordWebHook: string;
   };
   eth: {
     lastHandledBlock: number;
@@ -18,6 +19,8 @@ export interface Config {
     expiredEvents: ckbMonitorEvent[];
   };
 }
+
+export const forceBridgeBotName = `ForceBridge-Monitor`;
 
 const monitorConfigPath = `./monitor.json`;
 

@@ -8,7 +8,7 @@ import { logger } from '@force-bridge/x/dist/utils/logger';
 import { EthRecordObservable } from '@force-bridge/xchain-eth/dist/reconc';
 import { ethers } from 'ethers';
 import { Config, readMonitorConfig, writeMonitorConfig } from './config';
-import { sendDiscordMessage } from './utils';
+import { WebHook } from './discord';
 
 const defStep = 100;
 let expiredTime = 60 * 1000;
@@ -253,7 +253,7 @@ export class Monitor {
         const ethExpiredEvents: eventItem[] = [];
 
         const ckbChecker = (value: eventItem): void => {
-          if (value.expired()) {
+          if (value.isExpired || value.expired()) {
             ckbExpiredEvents.push(value);
             return;
           }
@@ -262,7 +262,7 @@ export class Monitor {
           }
         };
         const ethChecker = (value: eventItem): void => {
-          if (value.expired()) {
+          if (value.isExpired || value.expired()) {
             ethExpiredEvents.push(value);
             return;
           }
@@ -277,16 +277,56 @@ export class Monitor {
 
         let isSend = false;
         if (ethExpiredEvents.length > 0) {
-          logger.info(`Eth expired events ${JSON.stringify(ethExpiredEvents)}`);
-          sendDiscordMessage(`Eth expired events:${JSON.stringify(ethExpiredEvents, undefined, 2)}`, '', '');
+          for (const item of ethExpiredEvents) {
+            const detail = JSON.stringify(item.event);
+            if ((item.event as unknown as EthUnlockRecord).fromTxId) {
+              const msg = `ETH unlock timeout`;
+              logger.error(msg, detail);
+              await new WebHook(this.config.common.discordWebHook)
+                .setTitle(msg)
+                .setDescription(detail)
+                .addTimeStamp()
+                .error()
+                .send();
+            } else {
+              const msg = `ETH lock timeout`;
+              logger.error(msg, detail);
+              await new WebHook(this.config.common.discordWebHook)
+                .setTitle(msg)
+                .setDescription(detail)
+                .addTimeStamp()
+                .error()
+                .send();
+            }
+          }
           isSend = true;
           ethExpiredEvents.forEach((value) => {
             value.resetAddTime();
           });
         }
         if (ckbExpiredEvents.length > 0) {
-          logger.info(`CKB expired events ${JSON.stringify(ckbExpiredEvents)}`);
-          sendDiscordMessage(`CKB expired events:${JSON.stringify(ckbExpiredEvents, undefined, 2)}`, '', '');
+          for (const item of ckbExpiredEvents) {
+            const detail = JSON.stringify(item.event);
+            if ((item.event as unknown as CkbMintRecord).fromTxId) {
+              const msg = `CKB mint timeout`;
+              logger.error(msg, detail);
+              await new WebHook(this.config.common.discordWebHook)
+                .setTitle(msg)
+                .setDescription(detail)
+                .addTimeStamp()
+                .error()
+                .send();
+            } else {
+              const msg = `CKB burn timeout`;
+              logger.error(msg, detail);
+              await new WebHook(this.config.common.discordWebHook)
+                .setTitle(msg)
+                .setDescription(detail)
+                .addTimeStamp()
+                .error()
+                .send();
+            }
+          }
           isSend = true;
           ckbExpiredEvents.forEach((value) => {
             value.resetAddTime();
@@ -314,8 +354,13 @@ export class Monitor {
           ckbBurnNum: this.ckbBurnCache.length(),
         };
         logger.info(`Monitor records number in cache:${JSON.stringify(recordsNum)}`);
+
         if (!isSend) {
-          sendDiscordMessage(`${JSON.stringify(recordsNum, undefined, 2)}`, '', '');
+          await new WebHook(this.config.common.discordWebHook)
+            .setTitle(`ForceBridge cross bridge success.`)
+            .addTimeStamp()
+            .success()
+            .send();
         }
       },
       {
