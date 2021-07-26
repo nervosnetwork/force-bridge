@@ -14,6 +14,7 @@ import {
 } from '@ckb-lumos/helpers';
 import { nonNullable } from '@force-bridge/x';
 import { CkbTxHelper } from '@force-bridge/x/dist/ckb/tx-helper/base_generator';
+import { initLumosConfig } from '@force-bridge/x/dist/ckb/tx-helper/init_lumos_config';
 import { getMultisigLock } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { MultisigItem } from '@force-bridge/x/dist/config';
 import { httpRequest } from '@force-bridge/x/dist/multisig/client';
@@ -24,7 +25,6 @@ import commander from 'commander';
 import { ecsign, toRpcSig } from 'ethereumjs-util';
 import { BigNumber, ethers } from 'ethers';
 import { JSONRPCResponse } from 'json-rpc-2.0';
-import {initLumosConfig} from "../../x/src/ckb/tx-helper/init_lumos_config";
 
 const txWithSignatureDir = './';
 
@@ -36,6 +36,8 @@ const EthNodeRpc = 'http://127.0.0.1:8545';
 const CkbNodeRpc = 'http://127.0.0.1:8114';
 const CkbIndexerRpc = 'http://127.0.0.1:8116';
 
+const fakePrivKey = '0xa6b8e0cbadda5c0d91cf82d1e8d8120b755aa06bc49030ca6e8392458c65fc80';
+
 export const changeValCmd = new commander.Command('change-val');
 changeValCmd
   .command('set')
@@ -45,7 +47,7 @@ changeValCmd
   .option('--ckbRpcUrl <ckbRpcUrl>', 'Url of ckb rpc', CkbNodeRpc)
   .option('--ckbIndexerUrl <ckbIndexerRpcUrl>', 'Url of ckb indexer url', CkbIndexerRpc)
   .option('--ethRpcUrl <ethRpcUrl>', 'Url of eth rpc', EthNodeRpc)
-    .option('--chain <chain>', "'LINA' | 'AGGRON4' | 'DEV'", 'DEV')
+  .option('--chain <chain>', "'LINA' | 'AGGRON4' | 'DEV'", 'DEV')
   .action(doMakeTx)
   .description('generate raw transaction for change validator');
 
@@ -88,14 +90,14 @@ async function doMakeTx(opts: Record<string, string>): Promise<void> {
 
     const valPromises = valInfos.newValRpcURLs.map((host) => {
       return new Promise((resolve) => {
-        httpRequest(`${host}/force-bridge/sign-server/api/v1`, 'status', {chain: ''}).then(
-            (value) => {
-              resolve(value);
-            },
-            (err) => {
-              console.error(`Change Validators error. fail to get validators from  ${host}  error:${err.message}`);
-              return;
-            },
+        httpRequest(`${host}/force-bridge/sign-server/api/v1`, 'status', { chain: '' }).then(
+          (value) => {
+            resolve(value);
+          },
+          (err) => {
+            console.error(`Change Validators error. fail to get validators from  ${host}  error:${err.message}`);
+            return;
+          },
         );
       });
     });
@@ -128,11 +130,11 @@ async function doMakeTx(opts: Record<string, string>): Promise<void> {
         publicKeyHashes: newValsPubKeyHashes,
       };
       const txSkeleton = await generateCkbChangeValTx(
-          valInfos.ckb.oldValInfos,
-          newMultisigItem,
-          ckbPrivateKey,
-          ckbRpcURL,
-          ckbIndexerRPC,
+        valInfos.ckb.oldValInfos,
+        newMultisigItem,
+        ckbPrivateKey,
+        ckbRpcURL,
+        ckbIndexerRPC,
       );
       txInfo.ckb = {
         newMultisigScript: newMultisigItem,
@@ -147,21 +149,20 @@ async function doMakeTx(opts: Record<string, string>): Promise<void> {
         return val.ethAddress;
       });
       txInfo.eth = await generateEthChangeValTx(
-          valInfos.eth.oldValidators,
-          newValsEthAddrs,
-          valInfos.eth.newThreshold,
-          valInfos.eth.contractAddr,
-          ethRpc,
+        valInfos.eth.oldValidators,
+        newValsEthAddrs,
+        valInfos.eth.newThreshold,
+        valInfos.eth.contractAddr,
+        ethRpc,
       );
     }
     writeJsonToFile(txInfo, `${changeValRawTxPath}`);
-  }catch (e) {
-    console.error(`failed to generate tx by `,e);
+  } catch (e) {
+    console.error(`failed to generate tx by `, e);
   }
 }
 async function doSignTx(opts: Record<string, string>): Promise<void> {
   try {
-
     const changeValidatorTxPath = nonNullable(opts.input || changeValidatorRawTx);
     const txWithSigPath = nonNullable(opts.output || changeValidatorTxWithSig);
     const ckbPrivateKey = nonNullable(opts.ckbPrivateKey) as string;
@@ -177,8 +178,8 @@ async function doSignTx(opts: Record<string, string>): Promise<void> {
       valInfos.eth.signature!.push(sig);
     }
     writeJsonToFile(valInfos, `${txWithSigPath}`);
-  }catch (e) {
-    console.error(`failed to sign tx by `,e);
+  } catch (e) {
+    console.error(`failed to sign tx by `, e);
   }
 }
 
@@ -211,8 +212,8 @@ async function doSendTx(opts: Record<string, string>): Promise<void> {
     if (rawTx.eth) {
       await sendEthChangeValTx(rawTx.eth.msg, ethPrivateKey, ethRpc, rawTx.eth.contractAddr, ethSignatures);
     }
-  }catch (e) {
-    console.error(`failed to send tx by `,e);
+  } catch (e) {
+    console.error(`failed to send tx by `, e);
   }
 }
 
@@ -298,7 +299,7 @@ async function sendCkbChangeValTx(
   console.debug(`txSkeleton: ${transactionSkeletonToJSON(txSkeleton)}`);
   const tx = sealTransaction(txSkeleton, [content0, content1]);
   const hash = await ckbClient.ckb.send_transaction(tx);
-  console.log(`change tx hash ${hash}`)
+  console.log(`change tx hash ${hash}`);
   await ckbClient.waitUntilCommitted(hash);
   return;
 }
@@ -310,11 +311,7 @@ async function generateEthChangeValTx(
   contractAddr: string,
   ethRpcURL: string,
 ): Promise<EthParams> {
-  const ethClient = new EthChangeValClient(
-    ethRpcURL,
-    contractAddr,
-    '0xa6b8e0cbadda5c0d91cf82d1e8d8120b755aa06bc49030ca6e8392458c65fc80',
-  );
+  const ethClient = new EthChangeValClient(ethRpcURL, contractAddr, fakePrivKey);
   const domainSeparator = await ethClient.bridge.DOMAIN_SEPARATOR();
   const typeHash = await ethClient.bridge.CHANGE_VALIDATORS_TYPEHASH();
   const nonce: BigNumber = await ethClient.bridge.latestChangeValidatorsNonce_();
@@ -385,7 +382,6 @@ export class EthChangeValClient {
   constructor(url: string, contractAddress: string, privateKey: string) {
     this.provider = new ethers.providers.JsonRpcProvider(url);
     this.wallet = new ethers.Wallet(privateKey, this.provider);
-    console.debug('tx sender', this.wallet.address);
     this.bridge = new ethers.Contract(contractAddress, abi, this.provider).connect(this.wallet);
   }
 }
