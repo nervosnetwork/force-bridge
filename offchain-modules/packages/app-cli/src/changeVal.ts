@@ -24,6 +24,7 @@ import commander from 'commander';
 import { ecsign, toRpcSig } from 'ethereumjs-util';
 import { BigNumber, ethers } from 'ethers';
 import { JSONRPCResponse } from 'json-rpc-2.0';
+import {initLumosConfig} from "../../x/src/ckb/tx-helper/init_lumos_config";
 
 const txWithSignatureDir = './';
 
@@ -44,6 +45,7 @@ changeValCmd
   .option('--ckbRpcUrl <ckbRpcUrl>', 'Url of ckb rpc', CkbNodeRpc)
   .option('--ckbIndexerUrl <ckbIndexerRpcUrl>', 'Url of ckb indexer url', CkbIndexerRpc)
   .option('--ethRpcUrl <ethRpcUrl>', 'Url of eth rpc', EthNodeRpc)
+    .option('--chain <chain>', "'LINA' | 'AGGRON4' | 'DEV'", 'DEV')
   .action(doMakeTx)
   .description('generate raw transaction for change validator');
 
@@ -80,7 +82,8 @@ async function doMakeTx(opts: Record<string, string>): Promise<void> {
     const ckbRpcURL = nonNullable(opts.ckbRpcUrl || CkbNodeRpc) as string;
     const ckbPrivateKey = nonNullable(opts.ckbPrivateKey) as string;
     const ckbIndexerRPC = nonNullable(opts.ckbIndexerRpcUrl || CkbIndexerRpc) as string;
-
+    const chain = nonNullable(opts.chain || 'DEV') as 'LINA' | 'AGGRON4' | 'DEV';
+    initLumosConfig(chain);
     const valInfos: ValInfos = JSON.parse(fs.readFileSync(validatorInfoPath, 'utf8').toString());
 
     const valPromises = valInfos.newValRpcURLs.map((host) => {
@@ -197,7 +200,7 @@ async function doSendTx(opts: Record<string, string>): Promise<void> {
         ethSignatures.push(valInfos.eth.signature[0]);
       }
       if (valInfos.ckb && valInfos.ckb!.signature && valInfos.ckb!.signature.length !== 0) {
-        ethSignatures.push(valInfos.ckb.signature[0]);
+        ckbSignatures.push(valInfos.ckb.signature[0]);
       }
     }
     const rawTx: ChangeVal = JSON.parse(fs.readFileSync(changeValidatorTxPath, 'utf8').toString());
@@ -249,13 +252,6 @@ async function generateCkbChangeValTx(
   };
   newMultiCell.cell_output.capacity = `0x${minimalCellCapacity(newMultiCell).toString(16)}`;
 
-  txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
-    return cellDeps.push({
-      out_point: oldOwnerCell!.out_point!,
-      dep_type: 'code',
-    });
-  });
-
   txSkeleton = await common.setupInputCell(txSkeleton, oldOwnerCell!, oldMultisigItem);
   txSkeleton = await common.setupInputCell(txSkeleton, oldMultisigCell!, oldMultisigItem);
   // setupInputCell will put an output same with input, clear it
@@ -302,6 +298,7 @@ async function sendCkbChangeValTx(
   console.debug(`txSkeleton: ${transactionSkeletonToJSON(txSkeleton)}`);
   const tx = sealTransaction(txSkeleton, [content0, content1]);
   const hash = await ckbClient.ckb.send_transaction(tx);
+  console.log(`change tx hash ${hash}`)
   await ckbClient.waitUntilCommitted(hash);
   return;
 }
