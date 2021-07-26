@@ -90,7 +90,7 @@ async function doMakeTx(opts: Record<string, string>): Promise<void> {
 
     const valPromises = valInfos.newValRpcURLs.map((host) => {
       return new Promise((resolve) => {
-        httpRequest(`${host}/force-bridge/sign-server/api/v1`, 'status', { chain: '' }).then(
+        httpRequest(`${host}/force-bridge/sign-server/api/v1`, 'status').then(
           (value) => {
             resolve(value);
           },
