@@ -204,7 +204,7 @@ async function doSendTx(opts: Record<string, string>): Promise<void> {
       }
       if (
         valInfos.ckb &&
-        ckbSignatures.length < rawTx.ckb!.newMultisigScript.M &&
+        ckbSignatures.length < rawTx.ckb!.oldMultisigItem.M &&
         valInfos.ckb!.signature &&
         valInfos.ckb!.signature.length !== 0
       ) {
