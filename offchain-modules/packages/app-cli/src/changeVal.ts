@@ -29,7 +29,7 @@ const txWithSignatureDir = './';
 
 const validitorInfos = './validitorInfos.json';
 const changeValidatorRawTx = './changeValidatorRawTx.json';
-const changeValidatorTxWithSig = `${txWithSignatureDir}/changeValidatorTxWithSig.json`;
+const changeValidatorTxWithSig = `${txWithSignatureDir}changeValidatorTxWithSig.json`;
 
 const EthNodeRpc = 'http://127.0.0.1:8545';
 const CkbNodeRpc = 'http://127.0.0.1:8114';
@@ -38,13 +38,9 @@ const CkbIndexerRpc = 'http://127.0.0.1:8116';
 export const changeValCmd = new commander.Command('change-val');
 changeValCmd
   .command('set')
-  .requiredOption('-i, --input <input>', 'filepath of validators infos', validitorInfos)
-  .requiredOption(
-    '-o, --output <output>',
-    'filepath of raw transaction which need request signature',
-    changeValidatorRawTx,
-  )
-  .requiredOption('-p, --privateKey <ckbPrivateKey>', 'ckb private key ')
+  .option('-i, --input <input>', 'filepath of validators infos', validitorInfos)
+  .option('-o, --output <output>', 'filepath of raw transaction which need request signature', changeValidatorRawTx)
+  .requiredOption('-p, --ckbPrivateKey <ckbPrivateKey>', 'ckb private key ')
   .option('--ckbRpcUrl <ckbRpcUrl>', 'Url of ckb rpc', CkbNodeRpc)
   .option('--ckbIndexerUrl <ckbIndexerRpcUrl>', 'Url of ckb indexer url', CkbIndexerRpc)
   .option('--ethRpcUrl <ethRpcUrl>', 'Url of eth rpc', EthNodeRpc)
@@ -58,7 +54,7 @@ changeValCmd
     'filepath of raw transaction which need request signature',
     changeValidatorRawTx,
   )
-  .requiredOption('-o, --output <output>', 'filepath of transaction whit signature', changeValidatorTxWithSig)
+  .option('-o, --output <output>', 'filepath of transaction whit signature', changeValidatorTxWithSig)
   .requiredOption('--ckbPrivateKey <ckbPrivateKey>', 'ckb private key ')
   .requiredOption('--ethPrivateKey <ethPrivateKey>', 'eth private key ')
   .action(doSignTx)
@@ -66,12 +62,8 @@ changeValCmd
 
 changeValCmd
   .command('send')
-  .requiredOption('-i, --input <input>', 'directory of transaction files with signature', txWithSignatureDir)
-  .requiredOption(
-    '-s, --source <source>',
-    'filepath of raw transaction which need request signature',
-    changeValidatorRawTx,
-  )
+  .option('-i, --input <input>', 'directory of transaction files with signature', txWithSignatureDir)
+  .option('-s, --source <source>', 'filepath of raw transaction which need request signature', changeValidatorRawTx)
   .requiredOption('--ckbPrivateKey <ckbPrivateKey>', 'ckb private key ')
   .requiredOption('--ethPrivateKey <ethPrivateKey>', 'eth private key ')
   .option('--ckbRpcUrl <ckbRpcUrl>', 'Url of ckb rpc', CkbNodeRpc)
@@ -180,7 +172,7 @@ async function doSignTx(opts: Record<string, string>): Promise<void> {
 
 async function doSendTx(opts: Record<string, string>): Promise<void> {
   const changeValidatorTxSigDir = nonNullable(opts.input || txWithSignatureDir);
-  const changeValidatorTxPath = nonNullable(opts.rawTx || changeValidatorRawTx);
+  const changeValidatorTxPath = nonNullable(opts.source || changeValidatorRawTx);
   const ethRpc = nonNullable(opts.ethRpcUrl || EthNodeRpc) as string;
   const ckbRpcURL = nonNullable(opts.ckbRpcUrl || CkbNodeRpc) as string;
   const ckbPrivateKey = nonNullable(opts.ckbPrivateKey) as string;
@@ -190,7 +182,7 @@ async function doSendTx(opts: Record<string, string>): Promise<void> {
   const ckbSignatures: string[] = [];
   const ethSignatures: string[] = [];
   for (const file of files) {
-    const valInfos: ChangeVal = JSON.parse(fs.readFileSync(file, 'utf8').toString());
+    const valInfos: ChangeVal = JSON.parse(fs.readFileSync(`${changeValidatorTxSigDir}${file}`, 'utf8').toString());
     if (valInfos.eth && valInfos.eth!.signature && valInfos.eth!.signature.length !== 0) {
       ethSignatures.push(valInfos.eth.signature[0]);
     }
@@ -221,7 +213,7 @@ async function generateCkbChangeValTx(
 
   const newMultisigLockscript = getMultisigLock(newMultisigItem);
   const fromAddress = generateSecp256k1Blake160Address(key.privateKeyToBlake160(privateKey));
-  let txSkeleton = TransactionSkeleton({ cellProvider: this.indexer });
+  let txSkeleton = TransactionSkeleton({ cellProvider: ckbClient.indexer });
 
   const oldOwnerCell = await ckbClient.fetchCellWithMultisig(oldMultisigLockscript, 'owner');
   const oldMultisigCell = await ckbClient.fetchCellWithMultisig(oldMultisigLockscript, 'multisig');
@@ -251,8 +243,8 @@ async function generateCkbChangeValTx(
     });
   });
 
-  txSkeleton = await common.setupInputCell(txSkeleton, oldOwnerCell!);
-  txSkeleton = await common.setupInputCell(txSkeleton, oldMultisigCell!);
+  txSkeleton = await common.setupInputCell(txSkeleton, oldOwnerCell!, oldMultisigItem);
+  txSkeleton = await common.setupInputCell(txSkeleton, oldMultisigCell!, oldMultisigItem);
   // setupInputCell will put an output same with input, clear it
   txSkeleton = txSkeleton.update('outputs', (outputs) => {
     return outputs.clear();
@@ -262,6 +254,7 @@ async function generateCkbChangeValTx(
     return outputs.push(newOwnerCell).push(newMultiCell);
   });
   txSkeleton = await ckbClient.completeTx(txSkeleton, fromAddress);
+  txSkeleton = common.prepareSigningEntries(txSkeleton);
   return txSkeleton;
 }
 
@@ -307,7 +300,11 @@ async function generateEthChangeValTx(
   contractAddr: string,
   ethRpcURL: string,
 ): Promise<EthParams> {
-  const ethClient = new EthChangeValClient(ethRpcURL, contractAddr, '');
+  const ethClient = new EthChangeValClient(
+    ethRpcURL,
+    contractAddr,
+    '0xa6b8e0cbadda5c0d91cf82d1e8d8120b755aa06bc49030ca6e8392458c65fc80',
+  );
   const domainSeparator = await ethClient.bridge.DOMAIN_SEPARATOR();
   const typeHash = await ethClient.bridge.CHANGE_VALIDATORS_TYPEHASH();
   const nonce: BigNumber = await ethClient.bridge.latestChangeValidatorsNonce_();
@@ -356,13 +353,13 @@ async function sendEthChangeValTx(
 ): Promise<void> {
   const ethClient = new EthChangeValClient(ethRpcURL, contractAddr, privKey);
   const signature = '0x' + signatures.join('');
-  const res = ethClient.bridge.changeValidators(
+  const res = await ethClient.bridge.changeValidators(
     ethMsgInfo.validators,
     ethMsgInfo.threshold,
     ethMsgInfo.nonce,
     signature,
   );
-  console.debug('send change eth validators res', res);
+  console.debug('send change eth validators res', JSON.stringify(res, null, 2));
   const receipt = await res.wait();
   if (receipt.status !== 1) {
     console.error(`failed to execute change validator tx. tx recipient is `, receipt);
