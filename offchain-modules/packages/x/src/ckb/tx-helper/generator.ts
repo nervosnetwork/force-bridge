@@ -10,6 +10,7 @@ import {
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import { Reader, normalizers } from 'ckb-js-toolkit';
 import * as lodash from 'lodash';
+import { getMultisigLock } from '../../../dist/ckb/tx-helper/multisig/multisig_helper';
 import { ForceBridgeCore } from '../../core';
 import { asserts } from '../../errors';
 import { asyncSleep, fromHexString, stringToUint8Array, toHexString, transactionSkeletonToJSON } from '../../utils';
@@ -71,8 +72,9 @@ export class CkbTxGenerator {
 
   // fixme: if not find multisig cell, create it
   async fetchMultisigCell(): Promise<Cell | undefined> {
+    const multisigLockscript = getMultisigLock(ForceBridgeCore.config.ckb.multisigScript!);
     const cellCollector = this.ckbIndexer.collector({
-      lock: ForceBridgeCore.config.ckb.multisigLockscript,
+      lock: multisigLockscript,
     });
     for await (const cell of cellCollector.collect()) {
       if (cell.cell_output.type === null) {

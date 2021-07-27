@@ -36,7 +36,7 @@ const EthNodeRpc = 'http://127.0.0.1:8545';
 const CkbNodeRpc = 'http://127.0.0.1:8114';
 const CkbIndexerRpc = 'http://127.0.0.1:8116';
 
-const fakePrivKey = '0xa6b8e0cbadda5c0d91cf82d1e8d8120b755aa06bc49030ca6e8392458c65fc80';
+const fakePrivKey = '0x719e94ec5d2ecef67b5878503ffd6e1e0e2fe7a52ddd55c436878cb4d52d376d';
 
 export const changeValCmd = new commander.Command('change-val');
 changeValCmd
