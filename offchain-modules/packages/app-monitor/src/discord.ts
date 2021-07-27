@@ -1,7 +1,8 @@
+import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { retryPromise } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
 import * as fetch from 'node-fetch';
-import { forceBridgeBotName } from './config';
+import { forceBridgeBotName } from './duration';
 
 export interface WebHookPayload {
   username: string;
@@ -17,7 +18,7 @@ export interface WebHookPayload {
 export class WebHook {
   payload: WebHookPayload;
 
-  constructor(private webHookUrl: string) {
+  constructor(private webHookUrl: string = ForceBridgeCore.config.monitor!.discordWebHook) {
     this.payload = {
       username: forceBridgeBotName,
       embeds: [],
@@ -90,6 +91,10 @@ export class WebHook {
 }
 
 export async function sendWebHook(hookUrl: string, payload: WebHookPayload): Promise<void> {
+  if (hookUrl === '') {
+    logger.warn(`sendWebHook failed, webHookUrl is empty`);
+    return;
+  }
   return retryPromise(
     async () => {
       await fetch(hookUrl, {

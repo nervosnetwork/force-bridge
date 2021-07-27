@@ -1,4 +1,6 @@
+import * as fs from 'fs';
 import path from 'path';
+import { monitorDurationConfigPath } from '@force-bridge/app-monitor/dist/duration';
 import { KeyStore } from '@force-bridge/keystore/dist';
 import { OwnerCellConfig } from '@force-bridge/x/dist/ckb/tx-helper/deploy';
 import { Config, WhiteListEthAsset, CkbDeps } from '@force-bridge/x/dist/config';
@@ -20,6 +22,12 @@ export interface VerifierConfig {
 export interface MultisigConfig {
   threshold: number;
   verifiers: VerifierConfig[];
+}
+
+function clean() {
+  if (fs.existsSync(monitorDurationConfigPath)) {
+    fs.unlinkSync(monitorDurationConfigPath);
+  }
 }
 
 async function handleDb(action: 'create' | 'drop', MULTISIG_NUMBER: number) {
@@ -77,7 +85,7 @@ async function generateConfig(
   // collector
   const collectorConfig: Config = lodash.cloneDeep(baseConfig);
   collectorConfig.common.role = 'collector';
-  collectorConfig.common.orm.database = 'collector';
+  collectorConfig.common.orm!.database = 'collector';
   collectorConfig.common.port = 8090;
   collectorConfig.common.collectorPubKeyHash.push(privateKeyToCkbPubkeyHash(CKB_PRIVATE_KEY));
   collectorConfig.collector = {
@@ -112,7 +120,7 @@ async function generateConfig(
   // watcher
   const watcherConfig: Config = lodash.cloneDeep(baseConfig);
   watcherConfig.common.role = 'watcher';
-  watcherConfig.common.orm.database = 'watcher';
+  watcherConfig.common.orm!.database = 'watcher';
   watcherConfig.common.log.logFile = path.join(configPath, 'watcher/force_bridge.log');
   watcherConfig.common.log.identity = 'watcher';
   watcherConfig.common.port = 8080;
@@ -126,12 +134,28 @@ async function generateConfig(
   ).getEncryptedData();
   writeJsonToFile(watcherStore, watcherConfig.common.keystorePath);
   writeJsonToFile({ forceBridge: watcherConfig }, path.join(configPath, 'watcher/force_bridge.json'));
+  //monitor
+  const monitorConfig: Config = lodash.cloneDeep(baseConfig);
+  monitorConfig.common.orm = undefined;
+  monitorConfig.common.port = undefined;
+  monitorConfig.common.openMetric = false;
+  monitorConfig.common.role = 'watcher';
+  monitorConfig.common.log.identity = 'monitor';
+  monitorConfig.common.log.logFile = path.join(configPath, 'monitor/force_bridge.log');
+  monitorConfig.eth.privateKey = '';
+  monitorConfig.ckb.privateKey = '';
+  monitorConfig.monitor = {
+    discordWebHook: '',
+    expiredTime: 300000, //5 min
+    scanStep: 100,
+  };
+  writeJsonToFile({ forceBridge: monitorConfig }, path.join(configPath, 'monitor/force_bridge.json'));
   // verifiers
   multisigConfig.verifiers.map((v, i) => {
     const verifierIndex = i + 1;
     const verifierConfig: Config = lodash.cloneDeep(baseConfig);
     verifierConfig.common.role = 'verifier';
-    verifierConfig.common.orm.database = `verifier${verifierIndex}`;
+    verifierConfig.common.orm!.database = `verifier${verifierIndex}`;
     verifierConfig.eth.privateKey = 'verifier';
     verifierConfig.ckb.privateKey = 'verifier';
     verifierConfig.common.port = 8000 + verifierIndex;
@@ -177,6 +201,7 @@ async function startService(
     )}`,
     false,
   );
+  await execShellCmd(`${forcecli} monitor -cfg ${path.join(configPath, 'monitor/force_bridge.json')}`, false);
 }
 
 async function main() {
@@ -270,6 +295,7 @@ async function main() {
     CKB_PRIVATE_KEY,
     FORCE_BRIDGE_KEYSTORE_PASSWORD,
   );
+  clean();
   await handleDb('drop', MULTISIG_NUMBER);
   await handleDb('create', MULTISIG_NUMBER);
   await startService(FORCE_BRIDGE_KEYSTORE_PASSWORD, forcecli, configPath, MULTISIG_NUMBER);

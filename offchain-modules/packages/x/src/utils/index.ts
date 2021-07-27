@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { TransactionSkeletonObject, TransactionSkeletonType } from '@ckb-lumos/helpers';
+import { TransactionSkeletonType } from '@ckb-lumos/helpers';
 import * as utils from '@nervosnetwork/ckb-sdk-utils';
 import { AddressPrefix } from '@nervosnetwork/ckb-sdk-utils';
 import { ethers } from 'ethers';
@@ -119,15 +119,15 @@ export function privateKeyToCkbAddress(privkey: string, prefix: ckbAddressPrefix
 export async function getDBConnection(): Promise<Connection> {
   const ormCfg = ForceBridgeCore.config.common.orm;
   return createConnection({
-    type: ormCfg.type,
-    host: ormCfg.host,
-    port: ormCfg.port,
-    username: ormCfg.username,
-    password: ormCfg.password,
-    database: ormCfg.database,
-    timezone: ormCfg.timezone,
-    synchronize: ormCfg.synchronize,
-    logging: ormCfg.logging,
+    type: ormCfg!.type,
+    host: ormCfg!.host,
+    port: ormCfg!.port,
+    username: ormCfg!.username,
+    password: ormCfg!.password,
+    database: ormCfg!.database,
+    timezone: ormCfg!.timezone,
+    synchronize: ormCfg!.synchronize,
+    logging: ormCfg!.logging,
     entities: [
       BtcLock,
       BtcUnlock,

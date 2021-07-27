@@ -128,7 +128,7 @@ export interface commonConfig {
   network: 'mainnet' | 'testnet';
   lumosConfigType: 'LINA' | 'AGGRON4' | 'DEV';
   port?: number;
-  orm: ormConfig;
+  orm?: ormConfig;
   openMetric: boolean;
   keystorePath?: string;
   collectorPubKeyHash: string[];
@@ -154,6 +154,12 @@ export interface collectorConfig {
   gasPriceGweiLimit: number;
 }
 
+export interface monitorConfig {
+  expiredTime: number;
+  discordWebHook: string;
+  scanStep: number;
+}
+
 export interface Config {
   common: commonConfig;
   ckb: CkbConfig;
@@ -162,4 +168,5 @@ export interface Config {
   tron: TronConfig;
   btc: BtcConfig;
   collector?: collectorConfig;
+  monitor?: monitorConfig;
 }

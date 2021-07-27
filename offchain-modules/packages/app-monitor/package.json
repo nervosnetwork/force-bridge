@@ -1,5 +1,5 @@
 {
-  "name": "@force-bridge/monitor",
+  "name": "@force-bridge/app-monitor",
   "version": "0.0.3",
   "main": "dist",
   "scripts": {

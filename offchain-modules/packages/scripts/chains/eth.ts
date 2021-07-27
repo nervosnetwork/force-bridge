@@ -23,7 +23,7 @@ import { Amount } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import { ethers } from 'ethers';
 import nconf from 'nconf';
-import { waitUntilCommitted } from '../utils';
+import { waitUntilCommitted } from '../src/utils';
 const CKB_URL = process.env.CKB_URL || 'http://127.0.0.1:8114';
 const CKB_INDEXER_URL = process.env.CKB_INDEXER_URL || 'http://127.0.0.1:8116';
 const indexer = new CkbIndexer(CKB_URL, CKB_INDEXER_URL);

@@ -1,17 +1,21 @@
 import { CkbBurnRecord, CkbMintRecord, EthLockRecord, EthUnlockRecord } from '@force-bridge/reconc/dist';
 import { EthAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
-import { ForceBridgeCore } from '@force-bridge/x/dist/core';
+import { bootstrap, ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { CKBRecordObservable } from '@force-bridge/x/dist/reconc';
 import { asyncSleep, foreverPromise } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
-import { EthRecordObservable } from '@force-bridge/xchain-eth/dist/reconc';
+import {
+  createCKBRecordObservable,
+  createETHRecordObservable,
+  EthRecordObservable,
+} from '@force-bridge/xchain-eth/dist/reconc';
 import { ethers } from 'ethers';
-import { Config, readMonitorConfig, writeMonitorConfig } from './config';
 import { WebHook } from './discord';
+import { Duration, readMonitorConfig, writeMonitorConfig } from './duration';
 
-const defStep = 100;
-let expiredTime = 60 * 1000;
+let step = 100;
+let expiredTime = 1200 * 1000;
 
 export type ckbMonitorEvent = CkbMintRecord | CkbBurnRecord;
 export type ethMonitorEvent = EthLockRecord | EthUnlockRecord;
@@ -82,7 +86,7 @@ export class Monitor {
   private ownerTypeHash: string;
   private ethLastScannedBlock: number;
   private ckbLastScannedBlock: number;
-  private config: Config;
+  private durationConfig: Duration;
 
   constructor(private ethRecordObservable: EthRecordObservable, private ckbRecordObservable: CKBRecordObservable) {
     this.ethProvider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
@@ -201,47 +205,59 @@ export class Monitor {
   }
 
   init(): void {
-    this.config = readMonitorConfig();
-    if (this.config.common.expiredTime && this.config.common.expiredTime > 0) {
-      expiredTime = this.config.common.expiredTime;
+    let durationConfig = readMonitorConfig();
+    if (!durationConfig) {
+      durationConfig = {
+        eth: {
+          lastHandledBlock: ForceBridgeCore.config.eth.startBlockHeight,
+          pendingEvents: [],
+          expiredEvents: [],
+        },
+        ckb: {
+          lastHandledBlock: ForceBridgeCore.config.ckb.startBlockHeight,
+          pendingEvents: [],
+          expiredEvents: [],
+        },
+      };
     }
-    if (!this.config.eth.scanStep || this.config.eth.scanStep <= 0) {
-      this.config.eth.scanStep = defStep;
+    this.durationConfig = durationConfig;
+    if (ForceBridgeCore.config.monitor!.expiredTime > 0) {
+      expiredTime = ForceBridgeCore.config.monitor!.expiredTime;
     }
-    if (!this.config.ckb.scanStep || this.config.ckb.scanStep <= 0) {
-      this.config.ckb.scanStep = defStep;
+    if (ForceBridgeCore.config.monitor!.scanStep > 0) {
+      step = ForceBridgeCore.config.monitor!.scanStep;
     }
 
-    this.config.ckb.expiredEvents.forEach((record) => {
+    this.durationConfig.ckb.expiredEvents.forEach((record) => {
       if ((record as CkbMintRecord).fromTxId) {
         this.onCkbMintRecord(record, true);
       } else {
         this.onCkbBurnRecord(record as unknown as CkbBurnRecord, true);
       }
     });
-    this.config.ckb.pendingEvents.forEach((record) => {
+    this.durationConfig.ckb.pendingEvents.forEach((record) => {
       if ((record as CkbMintRecord).fromTxId) {
         this.onCkbMintRecord(record);
       } else {
         this.onCkbBurnRecord(record as unknown as CkbBurnRecord);
       }
     });
-    this.config.eth.expiredEvents.forEach((record) => {
+    this.durationConfig.eth.expiredEvents.forEach((record) => {
       if ((record as EthUnlockRecord).fromTxId) {
         this.onEthUnlockRecord(record, true);
       } else {
         this.onEthLockRecord(record as unknown as EthLockRecord, true);
       }
     });
-    this.config.eth.pendingEvents.forEach((record) => {
+    this.durationConfig.eth.pendingEvents.forEach((record) => {
       if ((record as EthUnlockRecord).fromTxId) {
         this.onEthUnlockRecord(record);
       } else {
         this.onEthLockRecord(record as unknown as EthLockRecord);
       }
     });
-    this.ckbLastScannedBlock = this.config.ckb.lastHandledBlock;
-    this.ethLastScannedBlock = this.config.eth.lastHandledBlock;
+    this.ckbLastScannedBlock = this.durationConfig.ckb.lastHandledBlock;
+    this.ethLastScannedBlock = this.durationConfig.eth.lastHandledBlock;
   }
 
   checkExpiredEvent(): void {
@@ -282,21 +298,11 @@ export class Monitor {
             if ((item.event as unknown as EthUnlockRecord).fromTxId) {
               const msg = `ETH unlock timeout`;
               logger.error(msg, detail);
-              await new WebHook(this.config.common.discordWebHook)
-                .setTitle(msg)
-                .setDescription(detail)
-                .addTimeStamp()
-                .error()
-                .send();
+              await new WebHook().setTitle(msg).setDescription(detail).addTimeStamp().error().send();
             } else {
               const msg = `ETH lock timeout`;
               logger.error(msg, detail);
-              await new WebHook(this.config.common.discordWebHook)
-                .setTitle(msg)
-                .setDescription(detail)
-                .addTimeStamp()
-                .error()
-                .send();
+              await new WebHook().setTitle(msg).setDescription(detail).addTimeStamp().error().send();
             }
           }
           isSend = true;
@@ -310,21 +316,11 @@ export class Monitor {
             if ((item.event as unknown as CkbMintRecord).fromTxId) {
               const msg = `CKB mint timeout`;
               logger.error(msg, detail);
-              await new WebHook(this.config.common.discordWebHook)
-                .setTitle(msg)
-                .setDescription(detail)
-                .addTimeStamp()
-                .error()
-                .send();
+              await new WebHook().setTitle(msg).setDescription(detail).addTimeStamp().error().send();
             } else {
               const msg = `CKB burn timeout`;
               logger.error(msg, detail);
-              await new WebHook(this.config.common.discordWebHook)
-                .setTitle(msg)
-                .setDescription(detail)
-                .addTimeStamp()
-                .error()
-                .send();
+              await new WebHook().setTitle(msg).setDescription(detail).addTimeStamp().error().send();
             }
           }
           isSend = true;
@@ -334,18 +330,18 @@ export class Monitor {
         }
 
         if (ckbPendingEvents.length === 0) {
-          this.config.ckb.lastHandledBlock = this.ckbLastScannedBlock;
+          this.durationConfig.ckb.lastHandledBlock = this.ckbLastScannedBlock;
         }
         if (ethPendingEvents.length === 0) {
-          this.config.eth.lastHandledBlock = this.ethLastScannedBlock;
+          this.durationConfig.eth.lastHandledBlock = this.ethLastScannedBlock;
         }
 
-        this.config.eth.pendingEvents = ethPendingEvents;
-        this.config.eth.expiredEvents = ethExpiredEvents.map((item) => item.event as ethMonitorEvent);
-        this.config.ckb.pendingEvents = ckbPendingEvents;
-        this.config.ckb.expiredEvents = ckbExpiredEvents.map((item) => item.event as ckbMonitorEvent);
+        this.durationConfig.eth.pendingEvents = ethPendingEvents;
+        this.durationConfig.eth.expiredEvents = ethExpiredEvents.map((item) => item.event as ethMonitorEvent);
+        this.durationConfig.ckb.pendingEvents = ckbPendingEvents;
+        this.durationConfig.ckb.expiredEvents = ckbExpiredEvents.map((item) => item.event as ckbMonitorEvent);
 
-        writeMonitorConfig(this.config);
+        writeMonitorConfig(this.durationConfig);
 
         const recordsNum = {
           ethLockNum: this.ethLockCache.length(),
@@ -356,11 +352,7 @@ export class Monitor {
         logger.info(`Monitor records number in cache:${JSON.stringify(recordsNum)}`);
 
         if (!isSend) {
-          await new WebHook(this.config.common.discordWebHook)
-            .setTitle(`ForceBridge cross bridge success.`)
-            .addTimeStamp()
-            .success()
-            .send();
+          await new WebHook().setTitle(`ForceBridge cross bridge success.`).addTimeStamp().success().send();
         }
       },
       {
@@ -377,7 +369,6 @@ export class Monitor {
     let fromBlock = this.ckbLastScannedBlock;
     let blockNumber =
       Number(await ForceBridgeCore.ckb.rpc.getTipBlockNumber()) - ForceBridgeCore.config.ckb.confirmNumber;
-    const step = this.config.ckb.scanStep;
     let toBlock = fromBlock + step > blockNumber ? blockNumber : fromBlock + step;
 
     foreverPromise(
@@ -429,7 +420,7 @@ export class Monitor {
           } else {
             this.onCkbBurnRecord(record as unknown as CkbBurnRecord);
           }
-          this.config.ckb.lastHandledBlock = record.blockNumber!;
+          this.durationConfig.ckb.lastHandledBlock = record.blockNumber!;
         });
 
         this.ckbLastScannedBlock = toBlock;
@@ -459,7 +450,6 @@ export class Monitor {
   async observeEthEvent(): Promise<void> {
     let fromBlock = this.ethLastScannedBlock;
     let blockNumber = (await this.ethProvider.getBlockNumber()) - ForceBridgeCore.config.eth.confirmNumber;
-    const step = this.config.ckb.scanStep;
     let toBlock = fromBlock + step > blockNumber ? blockNumber : fromBlock + step;
 
     foreverPromise(
@@ -489,7 +479,7 @@ export class Monitor {
           } else {
             this.onEthLockRecord(record as EthLockRecord);
           }
-          this.config.eth.lastHandledBlock = record.blockNumber;
+          this.durationConfig.eth.lastHandledBlock = record.blockNumber;
         });
 
         this.ethLastScannedBlock = toBlock;
@@ -514,4 +504,10 @@ export class Monitor {
       },
     );
   }
+}
+
+export async function startMonitor(configPath: string): Promise<void> {
+  await bootstrap(configPath);
+  const monitor = new Monitor(createETHRecordObservable(), createCKBRecordObservable());
+  await monitor.start();
 }

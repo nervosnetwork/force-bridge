@@ -56,7 +56,7 @@ async function generateConfig(
   const collectorConfig: Config = lodash.cloneDeep(baseConfig);
   collectorConfig.common.role = 'collector';
   collectorConfig.common.log.level = 'debug';
-  collectorConfig.common.orm.host = 'collector_db';
+  collectorConfig.common.orm!.host = 'collector_db';
   collectorConfig.common.collectorPubKeyHash.push(privateKeyToCkbPubkeyHash(CKB_PRIVATE_KEY));
   collectorConfig.collector = {
     gasLimit: 250000,
@@ -88,7 +88,7 @@ async function generateConfig(
   // watcher
   const watcherConfig: Config = lodash.cloneDeep(baseConfig);
   watcherConfig.common.role = 'watcher';
-  watcherConfig.common.orm.host = 'watcher_db';
+  watcherConfig.common.orm!.host = 'watcher_db';
   const watcherStore = KeyStore.createFromPairs(
     {
       ckb: CKB_PRIVATE_KEY,
@@ -104,7 +104,7 @@ async function generateConfig(
     const verifierIndex = i + 1;
     const verifierConfig: Config = lodash.cloneDeep(baseConfig);
     verifierConfig.common.role = 'verifier';
-    verifierConfig.common.orm.host = `verifier${verifierIndex}_db`;
+    verifierConfig.common.orm!.host = `verifier${verifierIndex}_db`;
     verifierConfig.eth.privateKey = 'verifier';
     verifierConfig.ckb.privateKey = 'verifier';
     verifierConfig.common.collectorPubKeyHash.push(privateKeyToCkbPubkeyHash(CKB_PRIVATE_KEY));
