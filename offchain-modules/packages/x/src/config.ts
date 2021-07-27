@@ -172,4 +172,5 @@ export interface Config {
   btc: BtcConfig;
   rpc?: rpcConfig;
   collector?: collectorConfig;
+  configPath?: string;
 }

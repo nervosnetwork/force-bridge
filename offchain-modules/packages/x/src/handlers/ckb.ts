@@ -27,6 +27,7 @@ import {
   toHexString,
   transactionSkeletonToJSON,
   uint8ArrayToString,
+  writeJsonToFile,
 } from '../utils';
 import { logger } from '../utils/logger';
 import { getAssetTypeByAsset } from '../xchain/tron/utils';
@@ -241,6 +242,7 @@ export class CkbHandler {
 
     const burnTxs = new Map();
     for (const tx of block.transactions) {
+      await this.parseChangeValTx(tx);
       const parsedMintRecords = await this.parseMintTx(tx, block);
       if (parsedMintRecords) {
         await this.onMintTx(blockNumber, parsedMintRecords);
@@ -267,6 +269,25 @@ export class CkbHandler {
     }
     await this.onBurnTxs(blockNumber, burnTxs);
     await this.setLastHandledBlock(blockNumber, blockHash);
+  }
+  async parseChangeValTx(tx: Transaction): Promise<void> {
+    for (const output of tx.outputs) {
+      if (
+        output.type &&
+        output.type.hashType === ForceBridgeCore.config.ckb.ownerCellTypescript.hash_type &&
+        output.type.codeHash === ForceBridgeCore.config.ckb.ownerCellTypescript.code_hash &&
+        output.type.args === ForceBridgeCore.config.ckb.ownerCellTypescript.args
+      ) {
+        ForceBridgeCore.config.ckb.multisigLockscript = {
+          args: output.lock.args,
+          code_hash: output.lock.codeHash,
+          hash_type: output.lock.hashType,
+        };
+        if (ForceBridgeCore.config.configPath) {
+          writeJsonToFile({ forceBridge: ForceBridgeCore.config }, ForceBridgeCore.config.configPath);
+        }
+      }
+    }
   }
 
   async onMintTx(blockNumber: number, mintedRecords: MintedRecords): Promise<UpdateResult | undefined> {
