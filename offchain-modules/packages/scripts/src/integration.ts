@@ -344,7 +344,7 @@ async function main() {
   await handleDb('create', MULTISIG_NUMBER);
   await startService(FORCE_BRIDGE_KEYSTORE_PASSWORD, forcecli, configPath, MULTISIG_NUMBER);
   await asyncSleep(30000);
-  await startChangeVal(forcecli, configPath, bridgeEthAddress, ETH_PRIVATE_KEY, CKB_PRIVATE_KEY, multisigConfig);
+  await startChangeVal(forcecli, configPath, bridgeEthAddress, ETH_TEST_PRIVKEY, CKB_TEST_PRIVKEY, multisigConfig);
   await asyncSleep(30000);
   await ethBatchTest(ETH_TEST_PRIVKEY, CKB_TEST_PRIVKEY, ETH_RPC_URL, CKB_RPC_URL, CKB_INDEXER_URL, FORCE_BRIDGE_URL);
   await rpcTest(FORCE_BRIDGE_URL, CKB_RPC_URL, ETH_RPC_URL, CKB_TEST_PRIVKEY, ETH_TEST_PRIVKEY);
