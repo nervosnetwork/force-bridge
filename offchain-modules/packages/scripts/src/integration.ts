@@ -158,7 +158,7 @@ async function generateConfig(
   // docker compose file
 }
 
-async function startService(
+async function startVerifierService(
   FORCE_BRIDGE_KEYSTORE_PASSWORD: string,
   forcecli: string,
   configPath: string,
@@ -170,19 +170,25 @@ async function startService(
       false,
     );
   }
-  await execShellCmd(
-    `FORCE_BRIDGE_KEYSTORE_PASSWORD=${FORCE_BRIDGE_KEYSTORE_PASSWORD} ${forcecli} collector -cfg ${configPath}/collector/force_bridge.json`,
-    false,
-  );
-  await execShellCmd(
-    `FORCE_BRIDGE_KEYSTORE_PASSWORD=${FORCE_BRIDGE_KEYSTORE_PASSWORD} ${forcecli} rpc -cfg ${path.join(
-      configPath,
-      'watcher/force_bridge.json',
-    )}`,
-    false,
-  );
 }
 
+async function startCollectorService(
+    FORCE_BRIDGE_KEYSTORE_PASSWORD: string,
+    forcecli: string,
+    configPath: string,
+) {
+  await execShellCmd(
+      `FORCE_BRIDGE_KEYSTORE_PASSWORD=${FORCE_BRIDGE_KEYSTORE_PASSWORD} ${forcecli} collector -cfg ${configPath}/collector/force_bridge.json`,
+      false,
+  );
+  await execShellCmd(
+      `FORCE_BRIDGE_KEYSTORE_PASSWORD=${FORCE_BRIDGE_KEYSTORE_PASSWORD} ${forcecli} rpc -cfg ${path.join(
+          configPath,
+          'watcher/force_bridge.json',
+      )}`,
+      false,
+  );
+}
 async function startChangeVal(
   forcecli: string,
   configPath: string,
@@ -355,9 +361,10 @@ async function main() {
   );
   await handleDb('drop', MULTISIG_NUMBER);
   await handleDb('create', MULTISIG_NUMBER);
-  await startService(FORCE_BRIDGE_KEYSTORE_PASSWORD, forcecli, configPath, MULTISIG_NUMBER);
+  await startVerifierService(FORCE_BRIDGE_KEYSTORE_PASSWORD, forcecli, configPath, MULTISIG_NUMBER);
   await asyncSleep(50000);
   await startChangeVal(forcecli, configPath, bridgeEthAddress, CKB_TEST_PRIVKEY, ETH_TEST_PRIVKEY, multisigConfig);
+  await startCollectorService(FORCE_BRIDGE_KEYSTORE_PASSWORD, forcecli, configPath);
   await ethBatchTest(ETH_TEST_PRIVKEY, CKB_TEST_PRIVKEY, ETH_RPC_URL, CKB_RPC_URL, CKB_INDEXER_URL, FORCE_BRIDGE_URL);
   await rpcTest(FORCE_BRIDGE_URL, CKB_RPC_URL, ETH_RPC_URL, CKB_TEST_PRIVKEY, ETH_TEST_PRIVKEY);
   logger.info('integration test pass!');
