@@ -278,6 +278,7 @@ export class CkbHandler {
         output.type.codeHash === ForceBridgeCore.config.ckb.ownerCellTypescript.code_hash &&
         output.type.args === ForceBridgeCore.config.ckb.ownerCellTypescript.args
       ) {
+        const oldLockScriptArgs = ForceBridgeCore.config.ckb.multisigLockscript.args;
         ForceBridgeCore.config.ckb.multisigLockscript = {
           args: output.lock.args,
           code_hash: output.lock.codeHash,
@@ -285,6 +286,9 @@ export class CkbHandler {
         };
         if (ForceBridgeCore.config.configPath) {
           writeJsonToFile({ forceBridge: ForceBridgeCore.config }, ForceBridgeCore.config.configPath);
+          logger.info(
+            `validators have been changed, and saved in ${ForceBridgeCore.config.configPath}. args from ${oldLockScriptArgs} to ${output.lock.args}.`,
+          );
         }
       }
     }
