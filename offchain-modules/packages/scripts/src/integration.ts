@@ -258,7 +258,7 @@ async function startChangeVal(
       M: params.threshold,
       publicKeyHashes: multiSigner.verifiers.map((v) => v.ckbPubkeyHash).slice(0, params.multiSigAmount),
     };
-    writeJsonToFile({ forceBridge: collectorConfig }, path.join(configPath, 'collector/force_bridge.json'));
+    writeJsonToFile(collectorConfig, path.join(configPath, 'collector/force_bridge.json'));
     oldMultiSigAmount = params.multiSigAmount;
     oldThreshold = params.threshold;
     await asyncSleep(30000);
