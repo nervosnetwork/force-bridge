@@ -350,6 +350,7 @@ function generateCases(
       description: 'burn ETH should return error when recipient is zero address',
       payload: {
         network: 'Ethereum',
+        sender: CKB_TEST_ADDRESS,
         recipient: '0x0000000000000000000000000000000000000000',
         asset: ETH_TOKEN_ADDRESS,
         amount: '1000000000000000',
@@ -360,6 +361,7 @@ function generateCases(
       description: 'burn ETH should return error when recipient is contract address',
       payload: {
         network: 'Ethereum',
+        sender: CKB_TEST_ADDRESS,
         recipient: bridgeEthAddress,
         asset: ETH_TOKEN_ADDRESS,
         amount: '1000000000000000',
@@ -791,7 +793,7 @@ async function burn(
       burnResult = await client.request('generateBridgeOutNervosTransaction', testcase.payload);
     } catch (e) {
       if (testcase.error) {
-        logger.info(`error for testcase ${i} ${testcase.description}, error: ${e}`);
+        logger.info(`error for testcase ${i} ${testcase.description}, error: ${e}, expected: ${testcase.error}`);
         assert(e.toString() == testcase.error);
         continue;
       }
