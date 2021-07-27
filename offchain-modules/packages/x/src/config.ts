@@ -39,7 +39,7 @@ export interface CkbConfig {
   ckbIndexerUrl: string;
   privateKey: string;
   multiSignHosts: MultiSignHost[];
-  multisigScript: MultisigItem;
+  multisigScript?: MultisigItem;
   multisigLockscript: Script;
   ownerCellTypescript: Script;
   deps: CkbDeps;

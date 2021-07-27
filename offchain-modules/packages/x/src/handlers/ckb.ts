@@ -52,7 +52,7 @@ export class CkbHandler {
     this.multisigMgr = new MultiSigMgr(
       'CKB',
       ForceBridgeCore.config.ckb.multiSignHosts,
-      ForceBridgeCore.config.ckb.multisigScript.M,
+      ForceBridgeCore.config.ckb.multisigScript!.M | 0,
     );
   }
 
@@ -510,15 +510,17 @@ export class CkbHandler {
           break;
         }
         const signatures = sigs as string[];
-        if (signatures.length < ForceBridgeCore.config.ckb.multisigScript.M) {
+        if (signatures.length < ForceBridgeCore.config.ckb.multisigScript!.M) {
           const mintTxHash = txSkeleton.get('signingEntries').get(1)!.message;
           mintRecords.map((r) => {
             r.status = 'error';
-            r.message = `sig number:${signatures.length} less than:${ForceBridgeCore.config.ckb.multisigScript.M}`;
+            r.message = `sig number:${signatures.length} less than:${ForceBridgeCore.config.ckb.multisigScript!.M}`;
             r.mintHash = mintTxHash;
           });
           logger.error(
-            `CkbHandler doHandleMintRecords sig number:${signatures.length} less than:${ForceBridgeCore.config.ckb.multisigScript.M}, mintIds:${mintIds}`,
+            `CkbHandler doHandleMintRecords sig number:${signatures.length} less than:${
+              ForceBridgeCore.config.ckb.multisigScript!.M
+            }, mintIds:${mintIds}`,
           );
           break;
         }
@@ -527,7 +529,7 @@ export class CkbHandler {
           txSkeleton.get('signingEntries').get(0)!.message,
           ForceBridgeCore.config.ckb.privateKey,
         );
-        let content1 = serializeMultisigScript(ForceBridgeCore.config.ckb.multisigScript);
+        let content1 = serializeMultisigScript(ForceBridgeCore.config.ckb.multisigScript!);
         content1 += signatures.join('');
 
         logger.debug(`txSkeleton: ${transactionSkeletonToJSON(txSkeleton)}`);
@@ -683,7 +685,7 @@ export class CkbHandler {
     const txSkeleton = await generator.createBridgeCell(scripts);
     const message0 = txSkeleton.get('signingEntries').get(0)!.message;
     const content0 = key.signRecoverable(message0, ForceBridgeCore.config.ckb.privateKey);
-    let content1 = serializeMultisigScript(ForceBridgeCore.config.ckb.multisigScript);
+    let content1 = serializeMultisigScript(ForceBridgeCore.config.ckb.multisigScript!);
     const sigs = await this.multisigMgr.collectSignatures({
       rawData: txSkeleton.get('signingEntries').get(1)!.message,
       payload: {
@@ -693,9 +695,11 @@ export class CkbHandler {
       },
     });
     const signatures = sigs as string[];
-    if (signatures.length < ForceBridgeCore.config.ckb.multisigScript.M) {
+    if (signatures.length < ForceBridgeCore.config.ckb.multisigScript!.M) {
       throw new Error(
-        `createBridgeCell collect signatures failed, expected:${ForceBridgeCore.config.ckb.multisigScript.M}, collected:${signatures.length}`,
+        `createBridgeCell collect signatures failed, expected:${
+          ForceBridgeCore.config.ckb.multisigScript!.M
+        }, collected:${signatures.length}`,
       );
     }
     content1 += signatures.join('');

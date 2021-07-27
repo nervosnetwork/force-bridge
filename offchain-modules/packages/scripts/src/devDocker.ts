@@ -103,6 +103,7 @@ async function generateConfig(
   multisigConfig.verifiers.map((v, i) => {
     const verifierIndex = i + 1;
     const verifierConfig: Config = lodash.cloneDeep(baseConfig);
+    verifierConfig.ckb.multisigScript = undefined;
     verifierConfig.common.role = 'verifier';
     verifierConfig.common.orm.host = `verifier${verifierIndex}_db`;
     verifierConfig.eth.privateKey = 'verifier';
