@@ -9,14 +9,6 @@ import { asserts } from './errors';
 import { ServerSingleton } from './server/serverSingleton';
 import { initLog } from './utils/logger';
 
-interface DepCellInfo {
-  hashType: CKBComponents.ScriptHashType;
-  codeHash: CKBComponents.Hash256;
-  typeHash?: CKBComponents.Hash256;
-  outPoint: CKBComponents.OutPoint;
-  depType: CKBComponents.DepType;
-}
-
 export function bootstrapKeyStore(
   keystorePath = 'keystore.json',
   password = process.env.FORCE_BRIDGE_KEYSTORE_PASSWORD || '',
@@ -68,7 +60,6 @@ export class ForceBridgeCore {
   private static _ckb: CKB;
   private static _ckbIndexer: CkbIndexer;
   private static _keystore: KeyStore;
-  private static _secp256k1Dep: DepCellInfo;
   private static _xChainHandler: XChainHandlers;
 
   static get config(): Config {
@@ -91,13 +82,8 @@ export class ForceBridgeCore {
     return ForceBridgeCore._keystore;
   }
 
-  static get secp256k1Dep(): DepCellInfo {
-    asserts(ForceBridgeCore._secp256k1Dep, 'ForceBridgeCore secp256k1Dep is not init yet');
-    return ForceBridgeCore._secp256k1Dep;
-  }
-
   static getXChainHandler(): XChainHandlers {
-    asserts(ForceBridgeCore._keystore, 'ForceBridgeCore is not init yet');
+    asserts(ForceBridgeCore._xChainHandler, 'ForceBridgeCore xChainHandler is not init yet');
     return ForceBridgeCore._xChainHandler;
   }
 
@@ -117,19 +103,20 @@ export class ForceBridgeCore {
       ServerSingleton.getInstance().start(config.common.port);
     }
     // decrypt private key
-    console.log('keystorePath', config.common.keystorePath);
-    const keystore = bootstrapKeyStore(config.common.keystorePath);
-    config.ckb.privateKey = keystore.getDecryptedByKeyID(config.ckb.privateKey);
-    if (config.eth !== undefined) {
-      config.eth.privateKey = keystore.getDecryptedByKeyID(config.eth.privateKey);
+    let keystore;
+    if (config.common.role != 'watcher') {
+      keystore = bootstrapKeyStore(config.common.keystorePath);
+      if (config.ckb.privateKey) {
+        config.ckb.privateKey = keystore.getDecryptedByKeyID(config.ckb.privateKey);
+      }
+      if (config.eth && config.eth.privateKey) {
+        config.eth.privateKey = keystore.getDecryptedByKeyID(config.eth.privateKey);
+      }
     }
 
     // write static
     ForceBridgeCore.initiated = true;
     ForceBridgeCore._ckb = new CKB(config.ckb.ckbRpcUrl);
-    const { secp256k1Dep } = await ForceBridgeCore._ckb.loadDeps();
-    asserts(secp256k1Dep);
-    ForceBridgeCore._secp256k1Dep = secp256k1Dep;
     ForceBridgeCore._ckbIndexer = new CkbIndexer(config.ckb.ckbRpcUrl, config.ckb.ckbIndexerUrl);
     ForceBridgeCore._config = config;
     ForceBridgeCore._keystore = keystore;

@@ -60,7 +60,7 @@ async function generateConfig(
   collectorConfig.common.orm.host = 'collector_db';
   collectorConfig.collector = {
     gasLimit: 250000,
-    batchGasLimit: 100000,
+    batchGasLimit: 120000,
     gasPriceGweiLimit: 100,
   };
   collectorConfig.common.collectorPubKeyHash.push(privateKeyToCkbPubkeyHash(CKB_PRIVATE_KEY));
@@ -240,7 +240,7 @@ async function main() {
   // const FORCE_BRIDGE_URL = getFromEnv('FORCE_BRIDGE_URL');
 
   const MULTISIG_NUMBER = 3;
-  const MULTISIG_THRESHOLD = 2;
+  const MULTISIG_THRESHOLD = 3;
   const FORCE_BRIDGE_KEYSTORE_PASSWORD = '123456';
 
   const configPath = pathFromProjectRoot('workdir/testnet-docker');
@@ -290,6 +290,12 @@ async function main() {
       sudtSize: 150,
     },
   };
+
+  let ckbDepsFromFile = undefined;
+  if (process.env.CKB_DEPS) {
+    ckbDepsFromFile = JSON.parse(fs.readFileSync(process.env.CKB_DEPS, 'utf8'));
+  }
+
   const { assetWhiteList, ckbDeps, ownerConfig, bridgeEthAddress, multisigConfig, ckbStartHeight, ethStartHeight } =
     await deployDev(
       ETH_RPC_URL,
@@ -301,6 +307,7 @@ async function main() {
       CKB_PRIVATE_KEY,
       'AGGRON4',
       path.join(configPath, 'deployConfig.json'),
+      ckbDepsFromFile,
     );
   await generateConfig(
     initConfig as unknown as Config,
