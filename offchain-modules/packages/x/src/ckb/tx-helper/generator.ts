@@ -10,7 +10,6 @@ import {
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import { Reader, normalizers } from 'ckb-js-toolkit';
 import * as lodash from 'lodash';
-import { getMultisigLock } from '../../../dist/ckb/tx-helper/multisig/multisig_helper';
 import { ForceBridgeCore } from '../../core';
 import { asserts } from '../../errors';
 import { asyncSleep, fromHexString, stringToUint8Array, toHexString, transactionSkeletonToJSON } from '../../utils';
@@ -20,7 +19,7 @@ import { IndexerCollector } from './collector';
 import { SerializeRecipientCellData } from './generated/eth_recipient_cell';
 import { SerializeMintWitness } from './generated/mint_witness';
 import { CkbIndexer, ScriptType } from './indexer';
-import { getFromAddr, getOwnerTypeHash } from './multisig/multisig_helper';
+import { getFromAddr, getMultisigLock, getOwnerTypeHash } from './multisig/multisig_helper';
 
 export interface MintAssetRecord {
   lockTxHash: string;
