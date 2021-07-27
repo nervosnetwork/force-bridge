@@ -1,3 +1,4 @@
+import fs from 'fs';
 import path from 'path';
 import { ValInfos } from '@force-bridge/cli/src/changeVal';
 import { KeyStore } from '@force-bridge/keystore/dist';
@@ -247,6 +248,15 @@ async function startChangeVal(
     logger.info(
       `------ end change validators from ${oldThreshold}/${oldMultiSigAmount} to ${params.threshold}/${params.multiSigAmount} successfully -------`,
     );
+    const collectorConfig: { forceBridge: Config } = JSON.parse(
+      fs.readFileSync(path.join(configPath, 'collector/force_bridge.json'), 'utf8').toString(),
+    );
+    collectorConfig.forceBridge.ckb.multisigScript = {
+      R: 0,
+      M: params.threshold,
+      publicKeyHashes: multiSigner.verifiers.map((v) => v.ckbPubkeyHash).slice(0, params.multiSigAmount),
+    };
+    writeJsonToFile({ forceBridge: collectorConfig }, path.join(configPath, 'collector/force_bridge.json'));
     oldMultiSigAmount = params.multiSigAmount;
     oldThreshold = params.threshold;
     await asyncSleep(30000);
