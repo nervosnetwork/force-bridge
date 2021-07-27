@@ -226,7 +226,9 @@ async function startChangeVal(
       newValRpcURLs: sigServerHost.slice(0, params.multiSigAmount),
     };
     writeJsonToFile(valInfos, validatorInfosPath);
-
+    logger.info(
+      `------ start change validators from ${oldThreshold}/${oldMultiSigAmount} to ${params.threshold}/${params.multiSigAmount}. save validator info to ${validatorInfosPath} ------ `,
+    );
     await execShellCmd(
       `${forcecli} change-val set  --ckbPrivateKey ${CKB_PRIVKEY} --input ${validatorInfosPath} --output ${changeValRawTxPath}`,
       true,
@@ -243,7 +245,7 @@ async function startChangeVal(
       true,
     );
     logger.info(
-      `------ change validators from ${oldThreshold}/${oldMultiSigAmount} to ${params.threshold}/${params.multiSigAmount} successfully -------`,
+      `------ end change validators from ${oldThreshold}/${oldMultiSigAmount} to ${params.threshold}/${params.multiSigAmount} successfully -------`,
     );
     oldMultiSigAmount = params.multiSigAmount;
     oldThreshold = params.threshold;
