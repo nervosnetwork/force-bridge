@@ -318,13 +318,6 @@ export class Monitor {
           isSend = true;
         }
 
-        if (ckbMintPendingEvents.length === 0 && ckbBurnPendingEvents.length === 0) {
-          this.durationConfig.ckb.lastHandledBlock = this.ckbLastScannedBlock;
-        }
-        if (ethLockPendingEvents.length === 0 && ethUnlockPendingEvents.length) {
-          this.durationConfig.eth.lastHandledBlock = this.ethLastScannedBlock;
-        }
-
         const filterPendingEvents = (pendingEvents: monitorEvent[], lastHandledBlock: number): monitorEvent[] => {
           return pendingEvents.filter((event) => {
             return event.blockNumber !== lastHandledBlock;
@@ -455,6 +448,9 @@ export class Monitor {
         }
 
         this.ckbLastScannedBlock = toBlock;
+        if (ckbEventRecords.length === 0) {
+          this.durationConfig.ckb.lastHandledBlock = toBlock;
+        }
 
         for (;;) {
           blockNumber =
@@ -512,7 +508,11 @@ export class Monitor {
           }
           this.durationConfig.eth.lastHandledBlock = record.blockNumber;
         }
+
         this.ethLastScannedBlock = toBlock;
+        if (ethMonitorRecords.length === 0) {
+          this.durationConfig.eth.lastHandledBlock = toBlock;
+        }
 
         for (;;) {
           blockNumber = (await this.ethProvider.getBlockNumber()) - ForceBridgeCore.config.eth.confirmNumber;
