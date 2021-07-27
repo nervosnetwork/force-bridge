@@ -264,7 +264,7 @@ async function startChangeVal(
     writeJsonToFile(collectorConfig, path.join(configPath, 'collector/force_bridge.json'));
     oldMultiSigAmount = params.multiSigAmount;
     oldThreshold = params.threshold;
-    await asyncSleep(30000);
+    await asyncSleep(5000);
   }
 }
 
@@ -361,7 +361,7 @@ async function main() {
   await handleDb('drop', MULTISIG_NUMBER);
   await handleDb('create', MULTISIG_NUMBER);
   await startVerifierService(FORCE_BRIDGE_KEYSTORE_PASSWORD, forcecli, configPath, MULTISIG_NUMBER);
-  await asyncSleep(50000);
+  await asyncSleep(30000);
   await startChangeVal(forcecli, configPath, bridgeEthAddress, CKB_TEST_PRIVKEY, ETH_TEST_PRIVKEY, multisigConfig);
   await startCollectorService(FORCE_BRIDGE_KEYSTORE_PASSWORD, forcecli, configPath);
   await ethBatchTest(ETH_TEST_PRIVKEY, CKB_TEST_PRIVKEY, ETH_RPC_URL, CKB_RPC_URL, CKB_INDEXER_URL, FORCE_BRIDGE_URL);
