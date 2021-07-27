@@ -141,6 +141,7 @@ async function generateConfig(
     discordWebHook: '',
     expiredTime: 300000, //5 min
     scanStep: 100,
+    expiredCheckInterval: 20000, //20s
   };
   writeJsonToFile({ forceBridge: monitorConfig }, path.join(configPath, 'monitor/force_bridge.json'));
   // verifiers

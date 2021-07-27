@@ -1,21 +1,61 @@
 import * as fs from 'fs';
-import { ckbMonitorEvent, ethMonitorEvent } from './monitor';
+import { CkbBurnRecord, CkbMintRecord, EthLockRecord, EthUnlockRecord } from '@force-bridge/reconc/dist';
+import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 
 export interface EthConfig {
   lastHandledBlock: number;
-  pendingEvents: ethMonitorEvent[];
-  expiredEvents: ethMonitorEvent[];
+  pending: {
+    locks: EthLockRecord[];
+    unlocks: EthUnlockRecord[];
+  };
+  expired: {
+    locks: EthLockRecord[];
+    unlocks: EthUnlockRecord[];
+  };
 }
 
 export interface CkbConfig {
   lastHandledBlock: number;
-  pendingEvents: ckbMonitorEvent[];
-  expiredEvents: ckbMonitorEvent[];
+  pending: {
+    mints: CkbMintRecord[];
+    burns: CkbBurnRecord[];
+  };
+  expired: {
+    mints: CkbMintRecord[];
+    burns: CkbBurnRecord[];
+  };
 }
 
 export interface Duration {
   eth: EthConfig;
   ckb: CkbConfig;
+}
+
+export function NewDurationCfg(): Duration {
+  return {
+    eth: {
+      lastHandledBlock: ForceBridgeCore.config.eth.startBlockHeight,
+      pending: {
+        locks: [],
+        unlocks: [],
+      },
+      expired: {
+        locks: [],
+        unlocks: [],
+      },
+    },
+    ckb: {
+      lastHandledBlock: ForceBridgeCore.config.ckb.startBlockHeight,
+      pending: {
+        mints: [],
+        burns: [],
+      },
+      expired: {
+        mints: [],
+        burns: [],
+      },
+    },
+  };
 }
 
 export const forceBridgeBotName = 'ForceBridge-Monitor';

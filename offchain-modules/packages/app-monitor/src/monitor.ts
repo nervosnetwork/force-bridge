@@ -10,12 +10,14 @@ import {
   createETHRecordObservable,
   EthRecordObservable,
 } from '@force-bridge/xchain-eth/dist/reconc';
+import { BigNumber } from 'bignumber.js';
 import { ethers } from 'ethers';
 import { WebHook } from './discord';
-import { Duration, readMonitorConfig, writeMonitorConfig } from './duration';
+import { Duration, NewDurationCfg, readMonitorConfig, writeMonitorConfig } from './duration';
 
 let step = 100;
 let expiredTime = 1200 * 1000;
+let expiredCheckInterval = 10 * 1000;
 
 export type ckbMonitorEvent = CkbMintRecord | CkbBurnRecord;
 export type ethMonitorEvent = EthLockRecord | EthUnlockRecord;
@@ -79,10 +81,10 @@ class eventCache {
 
 export class Monitor {
   private ethProvider: ethers.providers.JsonRpcProvider;
-  private ethLockCache: eventCache;
-  private ethUnlockCache: eventCache;
-  private ckbBurnCache: eventCache;
-  private ckbMintCache: eventCache;
+  private readonly ethLockCache: eventCache;
+  private readonly ethUnlockCache: eventCache;
+  private readonly ckbBurnCache: eventCache;
+  private readonly ckbMintCache: eventCache;
   private ownerTypeHash: string;
   private ethLastScannedBlock: number;
   private ckbLastScannedBlock: number;
@@ -97,7 +99,7 @@ export class Monitor {
     this.ownerTypeHash = getOwnerTypeHash();
   }
 
-  onEthLockRecord(lock: EthLockRecord, expired = false): void {
+  async onEthLockRecord(lock: EthLockRecord, expired = false): Promise<void> {
     logger.info(`Receive ethLock:${JSON.stringify(lock)}`);
 
     const id = lock.txId;
@@ -107,15 +109,14 @@ export class Monitor {
       return;
     }
     const mint = event as CkbMintRecord;
-    const compared = this.compareEthLockAndMint(lock, mint);
-    if (compared !== '') {
-      throw new Error(compared);
+    const compared = await this.compareEthLockAndCkbMint(lock, mint);
+    if (compared) {
+      this.ethLockCache.delEvent(id);
+      this.ckbMintCache.delEvent(id);
     }
-    this.ethLockCache.delEvent(id);
-    this.ckbMintCache.delEvent(id);
   }
 
-  onEthUnlockRecord(unlock: EthUnlockRecord, expired = false): void {
+  async onEthUnlockRecord(unlock: EthUnlockRecord, expired = false): Promise<void> {
     logger.info(`Receive ethUnlock:${JSON.stringify(unlock)}`);
 
     const id = unlock.fromTxId!;
@@ -126,15 +127,14 @@ export class Monitor {
     }
 
     const burn = event as CkbBurnRecord;
-    const compared = this.compareCkbBurnAndUnlock(burn, unlock);
-    if (compared !== '') {
-      throw new Error(compared);
+    const compared = await this.compareCkbBurnAndEthUnlock(burn, unlock);
+    if (compared) {
+      this.ckbBurnCache.delEvent(id);
+      this.ethUnlockCache.delEvent(id);
     }
-    this.ckbBurnCache.delEvent(id);
-    this.ethUnlockCache.delEvent(id);
   }
 
-  onCkbMintRecord(mint: CkbMintRecord, expired = false): void {
+  async onCkbMintRecord(mint: CkbMintRecord, expired = false): Promise<void> {
     logger.info(`Receive ckbMint:${JSON.stringify(mint)}`);
 
     const id = mint.fromTxId!;
@@ -144,15 +144,14 @@ export class Monitor {
       return;
     }
     const lock = event as EthLockRecord;
-    const compared = this.compareEthLockAndMint(lock, mint);
-    if (compared !== '') {
-      throw new Error(compared);
+    const compared = await this.compareEthLockAndCkbMint(lock, mint);
+    if (compared) {
+      this.ethLockCache.delEvent(id);
+      this.ckbMintCache.delEvent(id);
     }
-    this.ethLockCache.delEvent(id);
-    this.ckbMintCache.delEvent(id);
   }
 
-  onCkbBurnRecord(burn: CkbBurnRecord, expired = false): void {
+  async onCkbBurnRecord(burn: CkbBurnRecord, expired = false): Promise<void> {
     logger.info(`Receive ckbBurn:${JSON.stringify(burn)}`);
 
     const id = burn.txId;
@@ -162,37 +161,55 @@ export class Monitor {
       return;
     }
     const unlock = event as EthUnlockRecord;
-    const compared = this.compareCkbBurnAndUnlock(burn, unlock);
-    if (compared !== '') {
-      throw new Error(compared);
+    const compared = await this.compareCkbBurnAndEthUnlock(burn, unlock);
+    if (compared) {
+      this.ckbBurnCache.delEvent(id);
+      this.ethUnlockCache.delEvent(id);
     }
-    this.ckbBurnCache.delEvent(id);
-    this.ethUnlockCache.delEvent(id);
   }
 
-  compareEthLockAndMint(lock: EthLockRecord, mint: CkbMintRecord): string {
-    if (lock.recipient != mint.recipient) {
-      return `lock.recipient:${lock.recipient} != mint.recipient:${mint.recipient}`;
+  async compareEthLockAndCkbMint(lock: EthLockRecord, mint: CkbMintRecord): Promise<boolean> {
+    const checker = (lock: EthLockRecord, mint: CkbMintRecord): string => {
+      if (lock.recipient.toLowerCase() != mint.recipient.toLowerCase()) {
+        return `lock.recipient:${lock.recipient} != mint.recipient:${mint.recipient}`;
+      }
+      const fee = new EthAsset(lock.token, this.ownerTypeHash).getBridgeFee('in');
+      if (!new BigNumber(lock.amount).eq(new BigNumber(fee).plus(new BigNumber(mint.amount)))) {
+        return `mint.amount:${mint.amount} + fee:${fee} != lock.amount:${lock.amount}`;
+      }
+      return '';
+    };
+
+    const res = checker(lock, mint);
+    if (res === '') {
+      return true;
     }
-    const fee = new EthAsset(lock.token, this.ownerTypeHash).getBridgeFee('in');
-    if (BigInt(lock.amount) !== BigInt(fee) + BigInt(mint.amount)) {
-      return `mint.amount:${mint.amount} + fee:${fee} != lock.amount:${lock.amount}`;
-    }
-    return '';
+    await new WebHook().setTitle('compareEthLockAndCkbMint error').setDescription(res).addTimeStamp().error().send();
+    logger.error(`lock:${JSON.stringify(lock)} mint:${JSON.stringify(mint)} error:${res}`);
+    return false;
   }
 
-  compareCkbBurnAndUnlock(burn: CkbBurnRecord, unlock: EthUnlockRecord): string {
-    if (burn.recipient !== unlock.recipient) {
-      return `burn.recipient:${burn.recipient} !== unlock.recipient:${unlock.recipient}`;
+  async compareCkbBurnAndEthUnlock(burn: CkbBurnRecord, unlock: EthUnlockRecord): Promise<boolean> {
+    const checker = (burn: CkbBurnRecord, unlock: EthUnlockRecord): string => {
+      if (burn.recipient.toLowerCase() !== unlock.recipient.toLowerCase()) {
+        return `burn.recipient:${burn.recipient} !== unlock.recipient:${unlock.recipient}`;
+      }
+      if (!new BigNumber(burn.amount).eq(new BigNumber(unlock.fee!).plus(new BigNumber(unlock.amount)))) {
+        return `burn.amount:${burn.amount} != unlock.amount:${unlock.amount} + fee:${unlock.fee}`;
+      }
+      return '';
+    };
+    const res = checker(burn, unlock);
+    if (res === '') {
+      return true;
     }
-    if (BigInt(burn.amount) !== BigInt(unlock.amount) + BigInt(unlock.fee!)) {
-      return `burn.amount:${burn.amount} != unlock.amount:${unlock.amount} + fee:${unlock.fee}`;
-    }
-    return '';
+    await new WebHook().setTitle('compareCkbBurnAndEthUnlock error').setDescription(res).addTimeStamp().error().send();
+    logger.error(`burn:${JSON.stringify(burn)} unlock:${JSON.stringify(unlock)} error:${res}`);
+    return false;
   }
 
   async start(): Promise<void> {
-    this.init();
+    await this.init();
     this.observeEthEvent().catch((err) => {
       logger.error(`Monitor observeEthEvent error:${err.stack}`);
     });
@@ -204,21 +221,10 @@ export class Monitor {
     }, 1000);
   }
 
-  init(): void {
+  async init(): Promise<void> {
     let durationConfig = readMonitorConfig();
     if (!durationConfig) {
-      durationConfig = {
-        eth: {
-          lastHandledBlock: ForceBridgeCore.config.eth.startBlockHeight,
-          pendingEvents: [],
-          expiredEvents: [],
-        },
-        ckb: {
-          lastHandledBlock: ForceBridgeCore.config.ckb.startBlockHeight,
-          pendingEvents: [],
-          expiredEvents: [],
-        },
-      };
+      durationConfig = NewDurationCfg();
     }
     this.durationConfig = durationConfig;
     if (ForceBridgeCore.config.monitor!.expiredTime > 0) {
@@ -227,35 +233,35 @@ export class Monitor {
     if (ForceBridgeCore.config.monitor!.scanStep > 0) {
       step = ForceBridgeCore.config.monitor!.scanStep;
     }
+    if (ForceBridgeCore.config.monitor!.expiredCheckInterval > 0) {
+      expiredCheckInterval = ForceBridgeCore.config.monitor!.expiredCheckInterval;
+    }
 
-    this.durationConfig.ckb.expiredEvents.forEach((record) => {
-      if ((record as CkbMintRecord).fromTxId) {
-        this.onCkbMintRecord(record, true);
-      } else {
-        this.onCkbBurnRecord(record as unknown as CkbBurnRecord, true);
-      }
-    });
-    this.durationConfig.ckb.pendingEvents.forEach((record) => {
-      if ((record as CkbMintRecord).fromTxId) {
-        this.onCkbMintRecord(record);
-      } else {
-        this.onCkbBurnRecord(record as unknown as CkbBurnRecord);
-      }
-    });
-    this.durationConfig.eth.expiredEvents.forEach((record) => {
-      if ((record as EthUnlockRecord).fromTxId) {
-        this.onEthUnlockRecord(record, true);
-      } else {
-        this.onEthLockRecord(record as unknown as EthLockRecord, true);
-      }
-    });
-    this.durationConfig.eth.pendingEvents.forEach((record) => {
-      if ((record as EthUnlockRecord).fromTxId) {
-        this.onEthUnlockRecord(record);
-      } else {
-        this.onEthLockRecord(record as unknown as EthLockRecord);
-      }
-    });
+    for (const record of this.durationConfig.ckb.expired.mints) {
+      await this.onCkbMintRecord(record, true);
+    }
+    for (const record of this.durationConfig.ckb.expired.burns) {
+      await this.onCkbBurnRecord(record, true);
+    }
+    for (const record of this.durationConfig.ckb.pending.mints) {
+      await this.onCkbMintRecord(record);
+    }
+    for (const record of this.durationConfig.ckb.pending.burns) {
+      await this.onCkbBurnRecord(record);
+    }
+    for (const record of this.durationConfig.eth.expired.locks) {
+      await this.onEthLockRecord(record, true);
+    }
+    for (const record of this.durationConfig.eth.expired.unlocks) {
+      await this.onEthUnlockRecord(record, true);
+    }
+    for (const record of this.durationConfig.eth.pending.locks) {
+      await this.onEthLockRecord(record);
+    }
+    for (const record of this.durationConfig.eth.pending.unlocks) {
+      await this.onEthUnlockRecord(record);
+    }
+
     this.ckbLastScannedBlock = this.durationConfig.ckb.lastHandledBlock;
     this.ethLastScannedBlock = this.durationConfig.eth.lastHandledBlock;
   }
@@ -263,95 +269,108 @@ export class Monitor {
   checkExpiredEvent(): void {
     foreverPromise(
       async () => {
-        const ckbPendingEvents: ckbMonitorEvent[] = [];
-        const ethPendingEvents: ethMonitorEvent[] = [];
-        const ckbExpiredEvents: eventItem[] = [];
-        const ethExpiredEvents: eventItem[] = [];
+        const ckbBurnPendingEvents: CkbBurnRecord[] = [];
+        const ckbBurnExpiredEvents: eventItem[] = [];
+        const ckbMintPendingEvents: CkbMintRecord[] = [];
+        const ckbMintExpiredEvents: eventItem[] = [];
+        const ethLockPendingEvents: EthLockRecord[] = [];
+        const ethLockExpiredEvents: eventItem[] = [];
+        const ethUnlockPendingEvents: EthUnlockRecord[] = [];
+        const ethUnlockExpiredEvents: eventItem[] = [];
 
-        const ckbChecker = (value: eventItem): void => {
-          if (value.isExpired || value.expired()) {
-            ckbExpiredEvents.push(value);
-            return;
-          }
-          if (!value.isExpired) {
-            ckbPendingEvents.push(value.event as ckbMonitorEvent);
+        const checker = (cache: eventCache, expiredItems: eventItem[], pendingEvents: monitorEvent[]): void => {
+          cache.forEach((item) => {
+            if (item.isExpired || item.expired()) {
+              expiredItems.push(item);
+              return;
+            }
+            if (!item.isExpired) {
+              pendingEvents.push(item.event);
+            }
+          });
+        };
+
+        checker(this.ethLockCache, ethLockExpiredEvents, ethLockPendingEvents);
+        checker(this.ethUnlockCache, ethUnlockExpiredEvents, ethUnlockPendingEvents);
+        checker(this.ckbBurnCache, ckbBurnExpiredEvents, ckbBurnPendingEvents);
+        checker(this.ckbMintCache, ckbMintExpiredEvents, ckbMintPendingEvents);
+
+        const onExpired = async (expiredEvents: eventItem[], msg: string): Promise<void> => {
+          for (const item of expiredEvents) {
+            const detail = JSON.stringify(item.event);
+            logger.error(msg, detail);
+            await new WebHook().setTitle(msg).setDescription(detail).addTimeStamp().error().send();
+            item.resetAddTime();
           }
         };
-        const ethChecker = (value: eventItem): void => {
-          if (value.isExpired || value.expired()) {
-            ethExpiredEvents.push(value);
-            return;
-          }
-          if (!value.isExpired) {
-            ethPendingEvents.push(value.event as ethMonitorEvent);
-          }
-        };
-        this.ckbBurnCache.forEach(ckbChecker);
-        this.ckbMintCache.forEach(ckbChecker);
-        this.ethLockCache.forEach(ethChecker);
-        this.ethUnlockCache.forEach(ethChecker);
 
         let isSend = false;
-        if (ethExpiredEvents.length > 0) {
-          for (const item of ethExpiredEvents) {
-            const detail = JSON.stringify(item.event);
-            if ((item.event as unknown as EthUnlockRecord).fromTxId) {
-              const msg = `ETH unlock timeout`;
-              logger.error(msg, detail);
-              await new WebHook().setTitle(msg).setDescription(detail).addTimeStamp().error().send();
-            } else {
-              const msg = `ETH lock timeout`;
-              logger.error(msg, detail);
-              await new WebHook().setTitle(msg).setDescription(detail).addTimeStamp().error().send();
-            }
-          }
+        if (
+          ethUnlockExpiredEvents.length > 0 ||
+          ethLockExpiredEvents.length > 0 ||
+          ckbMintExpiredEvents.length > 0 ||
+          ckbBurnExpiredEvents.length > 0
+        ) {
+          await onExpired(ethUnlockExpiredEvents, 'ETH unlock timeout');
+          await onExpired(ethLockExpiredEvents, 'ETH lock timeout');
+          await onExpired(ckbMintExpiredEvents, 'CKB Mint timeout');
+          await onExpired(ckbBurnExpiredEvents, 'CKB Burn timeout');
           isSend = true;
-          ethExpiredEvents.forEach((value) => {
-            value.resetAddTime();
-          });
-        }
-        if (ckbExpiredEvents.length > 0) {
-          for (const item of ckbExpiredEvents) {
-            const detail = JSON.stringify(item.event);
-            if ((item.event as unknown as CkbMintRecord).fromTxId) {
-              const msg = `CKB mint timeout`;
-              logger.error(msg, detail);
-              await new WebHook().setTitle(msg).setDescription(detail).addTimeStamp().error().send();
-            } else {
-              const msg = `CKB burn timeout`;
-              logger.error(msg, detail);
-              await new WebHook().setTitle(msg).setDescription(detail).addTimeStamp().error().send();
-            }
-          }
-          isSend = true;
-          ckbExpiredEvents.forEach((value) => {
-            value.resetAddTime();
-          });
         }
 
-        if (ckbPendingEvents.length === 0) {
+        if (ckbMintPendingEvents.length === 0 && ckbBurnPendingEvents.length === 0) {
           this.durationConfig.ckb.lastHandledBlock = this.ckbLastScannedBlock;
         }
-        if (ethPendingEvents.length === 0) {
+        if (ethLockPendingEvents.length === 0 && ethUnlockPendingEvents.length) {
           this.durationConfig.eth.lastHandledBlock = this.ethLastScannedBlock;
         }
 
-        this.durationConfig.eth.pendingEvents = ethPendingEvents.filter((event) => {
-          return event.blockNumber != this.durationConfig.eth.lastHandledBlock;
-        });
-        this.durationConfig.eth.expiredEvents = ethExpiredEvents
-          .filter((item) => {
-            return item.event.blockNumber != this.durationConfig.eth.lastHandledBlock;
-          })
-          .map((item) => item.event as ethMonitorEvent);
-        this.durationConfig.ckb.pendingEvents = ckbPendingEvents.filter((event) => {
-          return event.blockNumber != this.durationConfig.ckb.lastHandledBlock;
-        });
-        this.durationConfig.ckb.expiredEvents = ckbExpiredEvents
-          .filter((item) => {
-            return item.event.blockNumber != this.durationConfig.ckb.lastHandledBlock;
-          })
-          .map((item) => item.event as ckbMonitorEvent);
+        const filterPendingEvents = (pendingEvents: monitorEvent[], lastHandledBlock: number): monitorEvent[] => {
+          return pendingEvents.filter((event) => {
+            return event.blockNumber !== lastHandledBlock;
+          });
+        };
+        this.durationConfig.eth.pending.locks = filterPendingEvents(
+          ethLockPendingEvents,
+          this.durationConfig.eth.lastHandledBlock,
+        ) as EthLockRecord[];
+        this.durationConfig.eth.pending.unlocks = filterPendingEvents(
+          ethUnlockPendingEvents,
+          this.durationConfig.eth.lastHandledBlock,
+        ) as EthUnlockRecord[];
+        this.durationConfig.ckb.pending.mints = filterPendingEvents(
+          ckbMintPendingEvents,
+          this.durationConfig.ckb.lastHandledBlock,
+        ) as CkbMintRecord[];
+        this.durationConfig.ckb.pending.burns = filterPendingEvents(
+          ckbBurnPendingEvents,
+          this.durationConfig.ckb.lastHandledBlock,
+        ) as CkbBurnRecord[];
+
+        const filterExpiredEvents = (expiredItems: eventItem[], lastHandledBlock: number): monitorEvent[] => {
+          return expiredItems
+            .filter((item) => {
+              return item.event.blockNumber != lastHandledBlock;
+            })
+            .map((item) => item.event);
+        };
+
+        this.durationConfig.eth.expired.locks = filterExpiredEvents(
+          ethLockExpiredEvents,
+          this.durationConfig.eth.lastHandledBlock,
+        ) as EthLockRecord[];
+        this.durationConfig.eth.expired.unlocks = filterExpiredEvents(
+          ethUnlockExpiredEvents,
+          this.durationConfig.eth.lastHandledBlock,
+        ) as EthUnlockRecord[];
+        this.durationConfig.ckb.expired.mints = filterExpiredEvents(
+          ckbMintExpiredEvents,
+          this.durationConfig.ckb.lastHandledBlock,
+        ) as CkbMintRecord[];
+        this.durationConfig.ckb.expired.burns = filterExpiredEvents(
+          ckbBurnExpiredEvents,
+          this.durationConfig.ckb.lastHandledBlock,
+        ) as CkbBurnRecord[];
 
         writeMonitorConfig(this.durationConfig);
 
@@ -369,7 +388,7 @@ export class Monitor {
       },
       {
         onRejectedInterval: 5000,
-        onResolvedInterval: 10000,
+        onResolvedInterval: expiredCheckInterval,
         onRejected: (e: Error) => {
           logger.error(`Monitor observeEthLock error:${e.stack}`);
         },
@@ -426,14 +445,14 @@ export class Monitor {
           });
 
         await fillBlockNumbers(ckbEventRecords);
-        ckbEventRecords.forEach((record) => {
+        for (const record of ckbEventRecords) {
           if ((record as CkbMintRecord).fromTxId) {
-            this.onCkbMintRecord(record);
+            await this.onCkbMintRecord(record);
           } else {
-            this.onCkbBurnRecord(record as unknown as CkbBurnRecord);
+            await this.onCkbBurnRecord(record as unknown as CkbBurnRecord);
           }
           this.durationConfig.ckb.lastHandledBlock = record.blockNumber!;
-        });
+        }
 
         this.ckbLastScannedBlock = toBlock;
 
@@ -485,15 +504,14 @@ export class Monitor {
         ethMonitorRecords.sort((a, b) => {
           return a.blockNumber - b.blockNumber;
         });
-        ethMonitorRecords.forEach((record) => {
+        for (const record of ethMonitorRecords) {
           if ((record as EthUnlockRecord).fromTxId) {
-            this.onEthUnlockRecord(record);
+            await this.onEthUnlockRecord(record);
           } else {
-            this.onEthLockRecord(record as EthLockRecord);
+            await this.onEthLockRecord(record as EthLockRecord);
           }
           this.durationConfig.eth.lastHandledBlock = record.blockNumber;
-        });
-
+        }
         this.ethLastScannedBlock = toBlock;
 
         for (;;) {

@@ -156,6 +156,7 @@ export interface collectorConfig {
 
 export interface monitorConfig {
   expiredTime: number;
+  expiredCheckInterval: number;
   discordWebHook: string;
   scanStep: number;
 }
