@@ -205,7 +205,7 @@ async function startChangeVal(
   ];
   const validatorInfosPath = `${configPath}/change-val/validatorInfos.json`;
   const changeValRawTxPath = `${configPath}/change-val/changeValidatorRawTx.json`;
-  const changeValTxWithSigDir = `${configPath}/change-val/sig`;
+  const changeValTxWithSigDir = `${configPath}/change-val/sig/`;
   let oldThreshold = multiSigner.threshold;
   let oldMultiSigAmount = multiSigner.verifiers.length;
   for (const params of changeParams) {
@@ -233,7 +233,7 @@ async function startChangeVal(
     );
     for (let i = 0; i < multiSigner.verifiers.length; i++) {
       await execShellCmd(
-        `${forcecli} change-val sign --ckbPrivateKey ${multiSigner.verifiers[i].privkey} --ethPrivateKey ${multiSigner.verifiers[i].privkey}  --input ${changeValRawTxPath} --output ${changeValTxWithSigDir}/changeValidatorTxWithSig-${i}.json`,
+        `${forcecli} change-val sign --ckbPrivateKey ${multiSigner.verifiers[i].privkey} --ethPrivateKey ${multiSigner.verifiers[i].privkey}  --input ${changeValRawTxPath} --output ${changeValTxWithSigDir}changeValidatorTxWithSig-${i}.json`,
         true,
       );
     }
