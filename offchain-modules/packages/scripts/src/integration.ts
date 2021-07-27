@@ -62,16 +62,8 @@ async function generateConfig(
   logger.debug(`baseConfig: ${JSON.stringify(baseConfig, null, 2)}`);
   baseConfig.eth.assetWhiteList = assetWhiteList;
   baseConfig.eth.contractAddress = ethContractAddress;
-  baseConfig.eth.multiSignThreshold = multisigConfig.threshold;
-  baseConfig.eth.multiSignAddresses = multisigConfig.verifiers.map((v) => v.ethAddress);
   baseConfig.ckb.deps = ckbDeps;
-  baseConfig.ckb.multisigScript = {
-    R: 0,
-    M: multisigConfig.threshold,
-    publicKeyHashes: multisigConfig.verifiers.map((v) => v.ckbPubkeyHash),
-  };
   baseConfig.ckb.ownerCellTypescript = ownerCellConfig.ownerCellTypescript;
-  baseConfig.ckb.multisigLockscript = ownerCellConfig.multisigLockscript;
   baseConfig.ckb.startBlockHeight = ckbStartHeight;
   baseConfig.eth.startBlockHeight = ethStartHeight;
   // collector
@@ -80,6 +72,16 @@ async function generateConfig(
   collectorConfig.common.orm.database = 'collector';
   collectorConfig.common.port = 8090;
   collectorConfig.common.collectorPubKeyHash.push(privateKeyToCkbPubkeyHash(CKB_PRIVATE_KEY));
+  collectorConfig.eth.privateKey = 'eth';
+  collectorConfig.ckb.privateKey = 'ckb';
+  collectorConfig.eth.multiSignThreshold = multisigConfig.threshold;
+  collectorConfig.eth.multiSignAddresses = multisigConfig.verifiers.map((v) => v.ethAddress);
+  collectorConfig.ckb.multisigScript = {
+    R: 0,
+    M: multisigConfig.threshold,
+    publicKeyHashes: multisigConfig.verifiers.map((v) => v.ckbPubkeyHash),
+  };
+  collectorConfig.ckb.multisigLockscript = ownerCellConfig.multisigLockscript;
   collectorConfig.collector = {
     gasLimit: 250000,
     batchGasLimit: 100000,
@@ -116,15 +118,6 @@ async function generateConfig(
   watcherConfig.common.log.logFile = path.join(configPath, 'watcher/force_bridge.log');
   watcherConfig.common.log.identity = 'watcher';
   watcherConfig.common.port = 8080;
-  watcherConfig.common.keystorePath = path.join(configPath, 'watcher/keystore.json');
-  const watcherStore = KeyStore.createFromPairs(
-    {
-      ckb: CKB_PRIVATE_KEY,
-      eth: ETH_PRIVATE_KEY,
-    },
-    password,
-  ).getEncryptedData();
-  writeJsonToFile(watcherStore, watcherConfig.common.keystorePath);
   writeJsonToFile({ forceBridge: watcherConfig }, path.join(configPath, 'watcher/force_bridge.json'));
   // verifiers
   multisigConfig.verifiers.map((v, i) => {
@@ -227,7 +220,6 @@ async function main() {
     },
     eth: {
       rpcUrl: 'http://127.0.0.1:8545',
-      privateKey: 'eth',
       confirmNumber: 1,
       startBlockHeight: 1,
       batchUnlock: {
@@ -238,10 +230,9 @@ async function main() {
     ckb: {
       ckbRpcUrl: 'http://127.0.0.1:8114',
       ckbIndexerUrl: 'http://127.0.0.1:8116',
-      privateKey: 'ckb',
       startBlockHeight: 1,
       confirmNumber: 1,
-      sudtSize: 500,
+      sudtSize: 200,
     },
   };
   const { assetWhiteList, ckbDeps, ownerConfig, bridgeEthAddress, multisigConfig, ckbStartHeight, ethStartHeight } =
@@ -283,7 +274,7 @@ async function main() {
     FORCE_BRIDGE_URL,
     3,
   );
-  await rpcTest(FORCE_BRIDGE_URL, CKB_RPC_URL, ETH_RPC_URL, CKB_TEST_PRIVKEY, ETH_TEST_PRIVKEY);
+  await rpcTest(FORCE_BRIDGE_URL, CKB_RPC_URL, ETH_RPC_URL, CKB_TEST_PRIVKEY, ETH_TEST_PRIVKEY, bridgeEthAddress);
   logger.info('integration test pass!');
 }
 
