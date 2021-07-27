@@ -186,8 +186,8 @@ async function startChangeVal(
   forcecli: string,
   configPath: string,
   bridgeEthAddress: string,
-  CKB_TEST_PRIVKEY: string,
-  ETH_TEST_PRIVKEY: string,
+  CKB_PRIVKEY: string,
+  ETH_PRIVKEY: string,
   multiSigner: {
     threshold: number;
     verifiers: VerifierConfig[];
@@ -228,7 +228,7 @@ async function startChangeVal(
     writeJsonToFile(valInfos, validatorInfosPath);
 
     await execShellCmd(
-      `${forcecli} change-val set  --ckbPrivateKey ${CKB_TEST_PRIVKEY} --input ${validatorInfosPath} --output ${changeValRawTxPath}`,
+      `${forcecli} change-val set  --ckbPrivateKey ${CKB_PRIVKEY} --input ${validatorInfosPath} --output ${changeValRawTxPath}`,
       true,
     );
     for (let i = 0; i < multiSigner.verifiers.length; i++) {
@@ -239,7 +239,7 @@ async function startChangeVal(
     }
 
     await execShellCmd(
-      `${forcecli} change-val send  --ckbPrivateKey ${CKB_TEST_PRIVKEY} --ethPrivateKey ${ETH_TEST_PRIVKEY} --input ${changeValTxWithSigDir} --source ${changeValRawTxPath}`,
+      `${forcecli} change-val send  --ckbPrivateKey ${CKB_PRIVKEY} --ethPrivateKey ${ETH_PRIVKEY} --input ${changeValTxWithSigDir} --source ${changeValRawTxPath}`,
       true,
     );
     logger.info(
@@ -343,7 +343,8 @@ async function main() {
   await handleDb('drop', MULTISIG_NUMBER);
   await handleDb('create', MULTISIG_NUMBER);
   await startService(FORCE_BRIDGE_KEYSTORE_PASSWORD, forcecli, configPath, MULTISIG_NUMBER);
-  await startChangeVal(forcecli, configPath, bridgeEthAddress, CKB_TEST_PRIVKEY, ETH_TEST_PRIVKEY, multisigConfig);
+  await asyncSleep(30000);
+  await startChangeVal(forcecli, configPath, bridgeEthAddress, ETH_PRIVATE_KEY, CKB_PRIVATE_KEY, multisigConfig);
   await asyncSleep(30000);
   await ethBatchTest(ETH_TEST_PRIVKEY, CKB_TEST_PRIVKEY, ETH_RPC_URL, CKB_RPC_URL, CKB_INDEXER_URL, FORCE_BRIDGE_URL);
   await rpcTest(FORCE_BRIDGE_URL, CKB_RPC_URL, ETH_RPC_URL, CKB_TEST_PRIVKEY, ETH_TEST_PRIVKEY);
