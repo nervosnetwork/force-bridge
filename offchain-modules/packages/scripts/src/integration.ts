@@ -1,6 +1,5 @@
 import * as fs from 'fs';
 import path from 'path';
-import { monitorDurationConfigPath } from '@force-bridge/app-monitor/dist/duration';
 import { KeyStore } from '@force-bridge/keystore/dist';
 import { OwnerCellConfig } from '@force-bridge/x/dist/ckb/tx-helper/deploy';
 import { Config, WhiteListEthAsset, CkbDeps } from '@force-bridge/x/dist/config';
@@ -22,12 +21,6 @@ export interface VerifierConfig {
 export interface MultisigConfig {
   threshold: number;
   verifiers: VerifierConfig[];
-}
-
-function clean() {
-  if (fs.existsSync(monitorDurationConfigPath)) {
-    fs.unlinkSync(monitorDurationConfigPath);
-  }
 }
 
 async function handleDb(action: 'create' | 'drop', MULTISIG_NUMBER: number) {
@@ -186,22 +179,21 @@ async function startService(
 ) {
   for (let i = 1; i <= MULTISIG_NUMBER; i++) {
     await execShellCmd(
-      `FORCE_BRIDGE_KEYSTORE_PASSWORD=${FORCE_BRIDGE_KEYSTORE_PASSWORD} ${forcecli} verifier -cfg ${configPath}/verifier${i}/force_bridge.json`,
-      false,
+        `FORCE_BRIDGE_KEYSTORE_PASSWORD=${FORCE_BRIDGE_KEYSTORE_PASSWORD} ${forcecli} verifier -cfg ${configPath}/verifier${i}/force_bridge.json`,
+        false,
     );
   }
   await execShellCmd(
-    `FORCE_BRIDGE_KEYSTORE_PASSWORD=${FORCE_BRIDGE_KEYSTORE_PASSWORD} ${forcecli} collector -cfg ${configPath}/collector/force_bridge.json`,
-    false,
+      `FORCE_BRIDGE_KEYSTORE_PASSWORD=${FORCE_BRIDGE_KEYSTORE_PASSWORD} ${forcecli} collector -cfg ${configPath}/collector/force_bridge.json`,
+      false,
   );
   await execShellCmd(
-    `FORCE_BRIDGE_KEYSTORE_PASSWORD=${FORCE_BRIDGE_KEYSTORE_PASSWORD} ${forcecli} rpc -cfg ${path.join(
-      configPath,
-      'watcher/force_bridge.json',
-    )}`,
-    false,
+      `FORCE_BRIDGE_KEYSTORE_PASSWORD=${FORCE_BRIDGE_KEYSTORE_PASSWORD} ${forcecli} rpc -cfg ${path.join(
+          configPath,
+          'watcher/force_bridge.json',
+      )}`,
+      false,
   );
-  await execShellCmd(`${forcecli} monitor -cfg ${path.join(configPath, 'monitor/force_bridge.json')}`, false);
 }
 
 async function main() {
@@ -295,7 +287,6 @@ async function main() {
     CKB_PRIVATE_KEY,
     FORCE_BRIDGE_KEYSTORE_PASSWORD,
   );
-  clean();
   await handleDb('drop', MULTISIG_NUMBER);
   await handleDb('create', MULTISIG_NUMBER);
   await startService(FORCE_BRIDGE_KEYSTORE_PASSWORD, forcecli, configPath, MULTISIG_NUMBER);

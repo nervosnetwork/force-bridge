@@ -336,10 +336,22 @@ export class Monitor {
           this.durationConfig.eth.lastHandledBlock = this.ethLastScannedBlock;
         }
 
-        this.durationConfig.eth.pendingEvents = ethPendingEvents;
-        this.durationConfig.eth.expiredEvents = ethExpiredEvents.map((item) => item.event as ethMonitorEvent);
-        this.durationConfig.ckb.pendingEvents = ckbPendingEvents;
-        this.durationConfig.ckb.expiredEvents = ckbExpiredEvents.map((item) => item.event as ckbMonitorEvent);
+        this.durationConfig.eth.pendingEvents = ethPendingEvents.filter((event) => {
+          return event.blockNumber != this.durationConfig.eth.lastHandledBlock;
+        });
+        this.durationConfig.eth.expiredEvents = ethExpiredEvents
+          .filter((item) => {
+            return item.event.blockNumber != this.durationConfig.eth.lastHandledBlock;
+          })
+          .map((item) => item.event as ethMonitorEvent);
+        this.durationConfig.ckb.pendingEvents = ckbPendingEvents.filter((event) => {
+          return event.blockNumber != this.durationConfig.ckb.lastHandledBlock;
+        });
+        this.durationConfig.ckb.expiredEvents = ckbExpiredEvents
+          .filter((item) => {
+            return item.event.blockNumber != this.durationConfig.ckb.lastHandledBlock;
+          })
+          .map((item) => item.event as ckbMonitorEvent);
 
         writeMonitorConfig(this.durationConfig);
 
