@@ -209,6 +209,9 @@ async function startChangeVal(
   const validatorInfosPath = `${configPath}/change-val/validatorInfos.json`;
   const changeValRawTxPath = `${configPath}/change-val/changeValidatorRawTx.json`;
   const changeValTxWithSigDir = `${configPath}/change-val/sig/`;
+  if (!fs.existsSync(changeValTxWithSigDir)) {
+    fs.mkdirSync(changeValTxWithSigDir, { recursive: true });
+  }
   let oldThreshold = multiSigner.threshold;
   let oldMultiSigAmount = multiSigner.verifiers.length;
   for (const params of changeParams) {
