@@ -52,7 +52,7 @@ export interface EthConfig {
   rpcUrl: string;
   contractAddress: string;
   privateKey: string;
-  multiSignAddresses: string[];
+  multiSignAddresses?: string[];
   multiSignHosts: MultiSignHost[];
   multiSignThreshold: number;
   confirmNumber: number;
