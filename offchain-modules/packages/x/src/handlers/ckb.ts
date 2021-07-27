@@ -49,11 +49,11 @@ export class CkbHandler {
 
   constructor(private db: CkbDb, private kvDb: KVDb, private role: forceBridgeRole) {
     this.transactionManager = new TransactionManager(this.ckbIndexer);
-    this.multisigMgr = new MultiSigMgr(
-      'CKB',
-      ForceBridgeCore.config.ckb.multiSignHosts,
-      ForceBridgeCore.config.ckb.multisigScript!.M | 0,
-    );
+    let threshold = Number.MAX_VALUE;
+    if (ForceBridgeCore.config.ckb.multisigScript) {
+      threshold = ForceBridgeCore.config.ckb.multisigScript.M;
+    }
+    this.multisigMgr = new MultiSigMgr('CKB', ForceBridgeCore.config.ckb.multiSignHosts, threshold);
   }
 
   async getLastHandledBlock(): Promise<{ blockNumber: number; blockHash: string }> {
