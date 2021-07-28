@@ -4,6 +4,10 @@ import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 
 export interface EthConfig {
   lastHandledBlock: number;
+  matchCount: {
+    lock: number;
+    unlock: number;
+  };
   pending: {
     locks: EthLockRecord[];
     unlocks: EthUnlockRecord[];
@@ -16,6 +20,10 @@ export interface EthConfig {
 
 export interface CkbConfig {
   lastHandledBlock: number;
+  matchCount: {
+    burn: number;
+    mint: number;
+  };
   pending: {
     mints: CkbMintRecord[];
     burns: CkbBurnRecord[];
@@ -35,6 +43,10 @@ export function NewDurationCfg(): Duration {
   return {
     eth: {
       lastHandledBlock: ForceBridgeCore.config.eth.startBlockHeight,
+      matchCount: {
+        lock: 0,
+        unlock: 0,
+      },
       pending: {
         locks: [],
         unlocks: [],
@@ -46,6 +58,10 @@ export function NewDurationCfg(): Duration {
     },
     ckb: {
       lastHandledBlock: ForceBridgeCore.config.ckb.startBlockHeight,
+      matchCount: {
+        mint: 0,
+        burn: 0,
+      },
       pending: {
         mints: [],
         burns: [],

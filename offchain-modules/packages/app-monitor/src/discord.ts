@@ -12,6 +12,11 @@ export interface WebHookPayload {
     description?: string;
     color?: number;
     timestamp?: Date;
+    fields?: {
+      name: string;
+      value: string;
+      inline?: boolean;
+    }[];
   }[];
 }
 
@@ -83,6 +88,27 @@ export class WebHook {
       return;
     }
     this.payload.embeds!.push({});
+  }
+
+  checkFields(): void {
+    if (this.payload.embeds!.length === 0) {
+      this.payload.embeds!.push({});
+      this.payload.embeds![0].fields = [];
+      return;
+    }
+    if (!this.payload.embeds![0].fields) {
+      this.payload.embeds![0].fields = [];
+    }
+  }
+
+  addField(name: string, value: string, inline?: boolean): WebHook {
+    this.checkFields();
+    this.payload.embeds![0].fields!.push({
+      name,
+      value,
+      inline,
+    });
+    return this;
   }
 
   send(): Promise<void> {

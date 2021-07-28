@@ -50,8 +50,37 @@ class eventItem {
 
 class eventCache {
   private cache: Map<string, eventItem>;
+  private matchTotal: number;
+  private matchCount: number;
+
   constructor() {
     this.cache = new Map<string, eventItem>();
+    this.matchTotal = 0;
+    this.matchCount = 0;
+  }
+
+  incrMatchCount(): eventCache {
+    this.matchCount++;
+    this.matchTotal++;
+    return this;
+  }
+
+  getMatchCount(): number {
+    return this.matchCount;
+  }
+
+  getMatchTotal(): number {
+    return this.matchTotal;
+  }
+
+  setMatchTotal(total: number): eventCache {
+    this.matchTotal = total;
+    return this;
+  }
+
+  matchCountReset(): eventCache {
+    this.matchCount = 0;
+    return this;
   }
 
   addEvent(id: string, event: monitorEvent, expired = false): void {
@@ -92,11 +121,11 @@ export class Monitor {
 
   constructor(private ethRecordObservable: EthRecordObservable, private ckbRecordObservable: CKBRecordObservable) {
     this.ethProvider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
+    this.ownerTypeHash = getOwnerTypeHash();
     this.ethLockCache = new eventCache();
     this.ethUnlockCache = new eventCache();
     this.ckbBurnCache = new eventCache();
     this.ckbMintCache = new eventCache();
-    this.ownerTypeHash = getOwnerTypeHash();
   }
 
   async onEthLockRecord(lock: EthLockRecord, expired = false): Promise<void> {
@@ -111,8 +140,9 @@ export class Monitor {
     const mint = event as CkbMintRecord;
     const compared = await this.compareEthLockAndCkbMint(lock, mint);
     if (compared) {
-      this.ethLockCache.delEvent(id);
       this.ckbMintCache.delEvent(id);
+      this.ethLockCache.incrMatchCount();
+      this.ckbMintCache.incrMatchCount();
     }
   }
 
@@ -130,7 +160,8 @@ export class Monitor {
     const compared = await this.compareCkbBurnAndEthUnlock(burn, unlock);
     if (compared) {
       this.ckbBurnCache.delEvent(id);
-      this.ethUnlockCache.delEvent(id);
+      this.ethUnlockCache.incrMatchCount();
+      this.ckbBurnCache.incrMatchCount();
     }
   }
 
@@ -147,7 +178,8 @@ export class Monitor {
     const compared = await this.compareEthLockAndCkbMint(lock, mint);
     if (compared) {
       this.ethLockCache.delEvent(id);
-      this.ckbMintCache.delEvent(id);
+      this.ethLockCache.incrMatchCount();
+      this.ckbMintCache.incrMatchCount();
     }
   }
 
@@ -163,8 +195,9 @@ export class Monitor {
     const unlock = event as EthUnlockRecord;
     const compared = await this.compareCkbBurnAndEthUnlock(burn, unlock);
     if (compared) {
-      this.ckbBurnCache.delEvent(id);
       this.ethUnlockCache.delEvent(id);
+      this.ethUnlockCache.incrMatchCount();
+      this.ckbBurnCache.incrMatchCount();
     }
   }
 
@@ -228,7 +261,7 @@ export class Monitor {
     });
     setTimeout(() => {
       this.checkExpiredEvent();
-    }, 1000);
+    }, ForceBridgeCore.config.monitor!.expiredCheckInterval);
   }
 
   async init(): Promise<void> {
@@ -237,6 +270,12 @@ export class Monitor {
       durationConfig = NewDurationCfg();
     }
     this.durationConfig = durationConfig;
+
+    this.ethLockCache.setMatchTotal(durationConfig.eth.matchCount.lock);
+    this.ethUnlockCache.setMatchTotal(durationConfig.eth.matchCount.unlock);
+    this.ckbBurnCache.setMatchTotal(durationConfig.ckb.matchCount.burn);
+    this.ckbMintCache.setMatchTotal(durationConfig.ckb.matchCount.mint);
+
     if (ForceBridgeCore.config.monitor!.expiredTime > 0) {
       expiredTime = ForceBridgeCore.config.monitor!.expiredTime;
     }
@@ -288,7 +327,6 @@ export class Monitor {
         const ethUnlockPendingEvents: EthUnlockRecord[] = [];
         const ethUnlockExpiredEvents: eventItem[] = [];
 
-        let isExpiredEventSend = false;
         const expiredCheck = async (
           cache: eventCache,
           expiredItems: eventItem[],
@@ -316,7 +354,6 @@ export class Monitor {
               .addTimeStamp()
               .error()
               .send();
-            isExpiredEventSend = true;
           }
         };
 
@@ -372,41 +409,13 @@ export class Monitor {
           this.durationConfig.ckb.lastHandledBlock,
         ) as CkbBurnRecord[];
 
+        this.durationConfig.eth.matchCount.lock = this.ethLockCache.getMatchTotal();
+        this.durationConfig.eth.matchCount.unlock = this.ethUnlockCache.getMatchTotal();
+        this.durationConfig.ckb.matchCount.burn = this.ckbBurnCache.getMatchTotal();
+        this.durationConfig.ckb.matchCount.mint = this.ckbMintCache.getMatchTotal();
+
         writeMonitorConfig(this.durationConfig);
-
-        const recordsNum = {
-          ethLockNum: this.ethLockCache.length(),
-          ethUnlockNum: this.ethUnlockCache.length(),
-          ckbMintNum: this.ckbMintCache.length(),
-          ckbBurnNum: this.ckbBurnCache.length(),
-        };
-        const recordsNumStr = JSON.stringify(recordsNum);
-        logger.info(`Monitor records number in cache:${recordsNumStr}`);
-
-        const lastHandledBlock = {
-          eth: this.durationConfig.eth.lastHandledBlock,
-          ckb: this.durationConfig.ckb.lastHandledBlock,
-        };
-        if (!isExpiredEventSend) {
-          const ethTipBlockNumber = await this.ethProvider.getBlockNumber();
-          const ckbTipBlockNumber = await ForceBridgeCore.ckb.rpc.getTipBlockNumber();
-
-          const tipBlockNumber = {
-            eth: ethTipBlockNumber,
-            ckb: Number(ckbTipBlockNumber),
-          };
-
-          await new WebHook()
-            .setTitle(`Monitor Summary - ${ForceBridgeCore.config.monitor!.env}`)
-            .setDescription(
-              `Records number in cache:${recordsNumStr} \n LastHandledBlock:${JSON.stringify(
-                lastHandledBlock,
-              )} \n Tip block number :${JSON.stringify(tipBlockNumber)}`,
-            )
-            .addTimeStamp()
-            .success()
-            .send();
-        }
+        await this.sendSummary();
       },
       {
         onRejectedInterval: 5000,
@@ -416,6 +425,56 @@ export class Monitor {
         },
       },
     );
+  }
+
+  async sendSummary(): Promise<void> {
+    const recordsNum = {
+      ethLockNum: this.ethLockCache.length(),
+      ethUnlockNum: this.ethUnlockCache.length(),
+      ckbMintNum: this.ckbMintCache.length(),
+      ckbBurnNum: this.ckbBurnCache.length(),
+    };
+
+    const lastHandledBlock = {
+      eth: this.durationConfig.eth.lastHandledBlock,
+      ckb: this.durationConfig.ckb.lastHandledBlock,
+    };
+
+    const tipBlockNumber = {
+      eth: await this.ethProvider.getBlockNumber(),
+      ckb: Number(await ForceBridgeCore.ckb.rpc.getTipBlockNumber()),
+    };
+
+    const matchCount = {
+      ethLock: {
+        matchCount: this.ethLockCache.getMatchCount(),
+        matchTotal: this.ethLockCache.getMatchTotal(),
+      },
+      ckbBurn: {
+        matchCount: this.ckbBurnCache.getMatchCount(),
+        matchTotal: this.ckbBurnCache.getMatchTotal(),
+      },
+    };
+
+    this.ethLockCache.matchCountReset();
+    this.ethUnlockCache.matchCountReset();
+    this.ckbBurnCache.matchCountReset();
+    this.ckbMintCache.matchCountReset();
+
+    logger.info(
+      `LastHandledBlock:${JSON.stringify(lastHandledBlock)} Tip block number :${JSON.stringify(
+        tipBlockNumber,
+      )} Match count:${JSON.stringify(matchCount)} Records number in cache:${JSON.stringify(recordsNum)} `,
+    );
+    await new WebHook()
+      .setTitle(`Monitor Summary - ${ForceBridgeCore.config.monitor!.env}`)
+      .addField('LastHandledBlock', JSON.stringify(lastHandledBlock))
+      .addField('Tip block number', JSON.stringify(tipBlockNumber))
+      .addField('Match count', JSON.stringify(matchCount))
+      .addField('Records number in cache', JSON.stringify(recordsNum))
+      .addTimeStamp()
+      .success()
+      .send();
   }
 
   async observeCkbEvent(): Promise<void> {
