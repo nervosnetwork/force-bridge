@@ -184,7 +184,12 @@ export class Monitor {
     if (res === '') {
       return true;
     }
-    await new WebHook().setTitle('compareEthLockAndCkbMint error').setDescription(res).addTimeStamp().error().send();
+    await new WebHook()
+      .setTitle('compareEthLockAndCkbMint error' + ` - ${ForceBridgeCore.config.monitor!.env}`)
+      .setDescription(res)
+      .addTimeStamp()
+      .error()
+      .send();
     logger.error(`lock:${JSON.stringify(lock)} mint:${JSON.stringify(mint)} error:${res}`);
     return false;
   }
@@ -203,7 +208,12 @@ export class Monitor {
     if (res === '') {
       return true;
     }
-    await new WebHook().setTitle('compareCkbBurnAndEthUnlock error').setDescription(res).addTimeStamp().error().send();
+    await new WebHook()
+      .setTitle('compareCkbBurnAndEthUnlock error' + ` - ${ForceBridgeCore.config.monitor!.env}`)
+      .setDescription(res)
+      .addTimeStamp()
+      .error()
+      .send();
     logger.error(`burn:${JSON.stringify(burn)} unlock:${JSON.stringify(unlock)} error:${res}`);
     return false;
   }
@@ -278,45 +288,42 @@ export class Monitor {
         const ethUnlockPendingEvents: EthUnlockRecord[] = [];
         const ethUnlockExpiredEvents: eventItem[] = [];
 
-        const checker = (cache: eventCache, expiredItems: eventItem[], pendingEvents: monitorEvent[]): void => {
+        let isExpiredEventSend = false;
+        const expiredCheck = async (
+          cache: eventCache,
+          expiredItems: eventItem[],
+          pendingEvents: monitorEvent[],
+          msg: string,
+        ): Promise<void> => {
+          const curExpired: monitorEvent[] = [];
           cache.forEach((item) => {
-            if (item.isExpired || item.expired()) {
-              expiredItems.push(item);
-              return;
+            if (item.expired()) {
+              curExpired.push(item.event);
+              item.resetAddTime();
             }
-            if (!item.isExpired) {
+            if (item.isExpired) {
+              expiredItems.push(item);
+            } else {
               pendingEvents.push(item.event);
             }
           });
-        };
-
-        checker(this.ethLockCache, ethLockExpiredEvents, ethLockPendingEvents);
-        checker(this.ethUnlockCache, ethUnlockExpiredEvents, ethUnlockPendingEvents);
-        checker(this.ckbBurnCache, ckbBurnExpiredEvents, ckbBurnPendingEvents);
-        checker(this.ckbMintCache, ckbMintExpiredEvents, ckbMintPendingEvents);
-
-        const onExpired = async (expiredEvents: eventItem[], msg: string): Promise<void> => {
-          for (const item of expiredEvents) {
-            const detail = JSON.stringify(item.event);
+          for (const expiredEvent of curExpired) {
+            const detail = JSON.stringify(expiredEvent);
             logger.error(msg, detail);
-            await new WebHook().setTitle(msg).setDescription(detail).addTimeStamp().error().send();
-            item.resetAddTime();
+            await new WebHook()
+              .setTitle(msg + ` - ${ForceBridgeCore.config.monitor!.env}`)
+              .setDescription(detail)
+              .addTimeStamp()
+              .error()
+              .send();
+            isExpiredEventSend = true;
           }
         };
 
-        let isSend = false;
-        if (
-          ethUnlockExpiredEvents.length > 0 ||
-          ethLockExpiredEvents.length > 0 ||
-          ckbMintExpiredEvents.length > 0 ||
-          ckbBurnExpiredEvents.length > 0
-        ) {
-          await onExpired(ethUnlockExpiredEvents, 'ETH unlock timeout');
-          await onExpired(ethLockExpiredEvents, 'ETH lock timeout');
-          await onExpired(ckbMintExpiredEvents, 'CKB Mint timeout');
-          await onExpired(ckbBurnExpiredEvents, 'CKB Burn timeout');
-          isSend = true;
-        }
+        await expiredCheck(this.ethLockCache, ethLockExpiredEvents, ethLockPendingEvents, 'ETH lock timeout');
+        await expiredCheck(this.ethUnlockCache, ethUnlockExpiredEvents, ethUnlockPendingEvents, 'ETH unlock timeout');
+        await expiredCheck(this.ckbBurnCache, ckbBurnExpiredEvents, ckbBurnPendingEvents, 'CKB Burn timeout');
+        await expiredCheck(this.ckbMintCache, ckbMintExpiredEvents, ckbMintPendingEvents, 'CKB Mint timeout');
 
         const filterPendingEvents = (pendingEvents: monitorEvent[], lastHandledBlock: number): monitorEvent[] => {
           return pendingEvents.filter((event) => {
@@ -380,7 +387,7 @@ export class Monitor {
           eth: this.durationConfig.eth.lastHandledBlock,
           ckb: this.durationConfig.ckb.lastHandledBlock,
         };
-        if (!isSend) {
+        if (!isExpiredEventSend) {
           const ethTipBlockNumber = await this.ethProvider.getBlockNumber();
           const ckbTipBlockNumber = await ForceBridgeCore.ckb.rpc.getTipBlockNumber();
 
@@ -390,7 +397,7 @@ export class Monitor {
           };
 
           await new WebHook()
-            .setTitle(`Monitor Summary`)
+            .setTitle(`Monitor Summary - ${ForceBridgeCore.config.monitor!.env}`)
             .setDescription(
               `Records number in cache:${recordsNumStr} \n LastHandledBlock:${JSON.stringify(
                 lastHandledBlock,

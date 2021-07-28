@@ -159,6 +159,7 @@ export interface monitorConfig {
   expiredCheckInterval: number;
   discordWebHook: string;
   scanStep: number;
+  env: string;
 }
 
 export interface Config {
