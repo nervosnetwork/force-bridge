@@ -127,24 +127,6 @@ async function generateConfig(
   ).getEncryptedData();
   writeJsonToFile(watcherStore, watcherConfig.common.keystorePath);
   writeJsonToFile({ forceBridge: watcherConfig }, path.join(configPath, 'watcher/force_bridge.json'));
-  //monitor
-  const monitorConfig: Config = lodash.cloneDeep(baseConfig);
-  monitorConfig.common.orm = undefined;
-  monitorConfig.common.port = undefined;
-  monitorConfig.common.openMetric = false;
-  monitorConfig.common.role = 'watcher';
-  monitorConfig.common.log.identity = 'monitor';
-  monitorConfig.common.log.logFile = path.join(configPath, 'monitor/force_bridge.log');
-  monitorConfig.eth.privateKey = '';
-  monitorConfig.ckb.privateKey = '';
-  monitorConfig.monitor = {
-    discordWebHook: '',
-    expiredTime: 300000, //5 min
-    scanStep: 100,
-    expiredCheckInterval: 20000, //20s
-    env: 'ci',
-  };
-  writeJsonToFile({ forceBridge: monitorConfig }, path.join(configPath, 'monitor/force_bridge.json'));
   // verifiers
   multisigConfig.verifiers.map((v, i) => {
     const verifierIndex = i + 1;
