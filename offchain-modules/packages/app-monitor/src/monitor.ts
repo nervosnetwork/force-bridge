@@ -373,10 +373,32 @@ export class Monitor {
           ckbMintNum: this.ckbMintCache.length(),
           ckbBurnNum: this.ckbBurnCache.length(),
         };
-        logger.info(`Monitor records number in cache:${JSON.stringify(recordsNum)}`);
+        const recordsNumStr = JSON.stringify(recordsNum);
+        logger.info(`Monitor records number in cache:${recordsNumStr}`);
 
+        const lastHandledBlock = {
+          eth: this.durationConfig.eth.lastHandledBlock,
+          ckb: this.durationConfig.ckb.lastHandledBlock,
+        };
         if (!isSend) {
-          await new WebHook().setTitle(`ForceBridge cross bridge success.`).addTimeStamp().success().send();
+          const ethTipBlockNumber = await this.ethProvider.getBlockNumber();
+          const ckbTipBlockNumber = await ForceBridgeCore.ckb.rpc.getTipBlockNumber();
+
+          const tipBlockNumber = {
+            eth: ethTipBlockNumber,
+            ckb: Number(ckbTipBlockNumber),
+          };
+
+          await new WebHook()
+            .setTitle(`Monitor Summary`)
+            .setDescription(
+              `Records number in cache:${recordsNumStr} \n LastHandledBlock:${JSON.stringify(
+                lastHandledBlock,
+              )} \n Tip block number :${JSON.stringify(tipBlockNumber)}`,
+            )
+            .addTimeStamp()
+            .success()
+            .send();
         }
       },
       {
