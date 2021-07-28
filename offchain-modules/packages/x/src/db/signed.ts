@@ -1,4 +1,4 @@
-import { Connection, Equal, Repository } from 'typeorm';
+import { Connection, DeleteResult, Equal, Repository } from 'typeorm';
 import { SignedTx } from './entity/SignedTx';
 import { ISigned } from './model';
 
@@ -28,6 +28,10 @@ export class SignedDb {
       .select('max(nonce) as nonce')
       .where('pub_key = :pubKey and ref_tx_hash in (:refTxHashes)', { pubKey: pubKey, refTxHashes: refTxHashes })
       .getRawOne();
+  }
+
+  async removeSignedRecordByNonce(nonce: number): Promise<DeleteResult> {
+    return this.signedRepository.createQueryBuilder().delete().where('nonce = :nonce', { nonce: nonce }).execute();
   }
 
   async getDistinctRawDataByRefTxHashes(pubKey: string, refTxHashes: string[]): Promise<string[] | null> {
