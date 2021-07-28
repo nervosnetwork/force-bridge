@@ -488,7 +488,7 @@ export class Monitor {
             await asyncSleep(10000);
             continue;
           }
-          fromBlock = toBlock + 1;
+          fromBlock = toBlock;
           toBlock = fromBlock + step > blockNumber ? blockNumber : fromBlock + step;
           break;
         }
