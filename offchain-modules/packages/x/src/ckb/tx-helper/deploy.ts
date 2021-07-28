@@ -1,8 +1,7 @@
-import { Cell, Indexer, OutPoint, Script, Script as LumosScript } from '@ckb-lumos/base';
-import { common, secp256k1Blake160 } from '@ckb-lumos/common-scripts';
+import { Cell, HashType, OutPoint, Script } from '@ckb-lumos/base';
+import { common } from '@ckb-lumos/common-scripts';
 import { key } from '@ckb-lumos/hd';
 import {
-  generateAddress,
   generateSecp256k1Blake160Address,
   minimalCellCapacity,
   parseAddress,
@@ -10,21 +9,13 @@ import {
   TransactionSkeleton,
   TransactionSkeletonType,
 } from '@ckb-lumos/helpers';
-import { RPC } from '@ckb-lumos/rpc';
-import TransactionManager from '@ckb-lumos/transaction-manager';
-import { Amount } from '@lay2/pw-core';
-import CKB from '@nervosnetwork/ckb-sdk-core';
 import * as utils from '@nervosnetwork/ckb-sdk-utils';
-import { AddressPrefix } from '@nervosnetwork/ckb-sdk-utils';
-import { RPC as ToolkitRPC } from 'ckb-js-toolkit';
 import { ConfigItem, MultisigItem } from '../../config';
 import { asserts, nonNullable } from '../../errors';
-import { blake2b, asyncSleep, privateKeyToCkbAddress, transactionSkeletonToJSON } from '../../utils';
+import { blake2b, transactionSkeletonToJSON } from '../../utils';
 import { logger } from '../../utils/logger';
 import { CkbTxHelper } from './base_generator';
-import { IndexerCollector } from './collector';
-import { CkbIndexer, ScriptType, Terminator } from './indexer';
-import { initLumosConfig } from './init_lumos_config';
+import { ScriptType } from './indexer';
 import { getMultisigLock } from './multisig/multisig_helper';
 import { generateTypeIDScript } from './multisig/typeid';
 
@@ -41,6 +32,11 @@ export interface ContractsConfig {
 export interface OwnerCellConfig {
   multisigLockscript: Script;
   ownerCellTypescript: Script;
+}
+
+export interface UpgradeParams {
+  typeidArgs: string;
+  bin: Buffer;
 }
 
 export class CkbDeployManager extends CkbTxHelper {
@@ -235,5 +231,54 @@ export class CkbDeployManager extends CkbTxHelper {
       multisigLockscript,
       ownerCellTypescript,
     };
+  }
+
+  async upgradeCkbContract(upgrade: UpgradeParams[], privateKey: string): Promise<OutPoint[]> {
+    await this.indexer.waitForSync();
+    let txSkeleton = TransactionSkeleton({ cellProvider: this.indexer });
+    // get from cells
+    const fromAddress = generateSecp256k1Blake160Address(key.privateKeyToBlake160(privateKey));
+    const fromLockscript = parseAddress(fromAddress);
+    const typeidCodeHash = '0x00000000000000000000000000000000000000000000000000545950455f4944';
+    for (const u of upgrade) {
+      // get input
+      const typeidScript = {
+        code_hash: typeidCodeHash,
+        hash_type: 'type' as HashType,
+        args: u.typeidArgs,
+      };
+      const searchKey = {
+        script: typeidScript,
+        script_type: ScriptType.type,
+      };
+      const typeidInputs = await this.indexer.getCells(searchKey);
+      asserts(typeidInputs.length === 1);
+      txSkeleton = txSkeleton.update('inputs', (inputs) => {
+        return inputs.concat(typeidInputs);
+      });
+      // add output
+      const NewContractOutput: Cell = {
+        cell_output: {
+          capacity: '0x0',
+          lock: fromLockscript,
+          type: typeidScript,
+        },
+        data: utils.bytesToHex(u.bin),
+      };
+      const sudtCellCapacity = minimalCellCapacity(NewContractOutput);
+      NewContractOutput.cell_output.capacity = `0x${sudtCellCapacity.toString(16)}`;
+      txSkeleton = txSkeleton.update('outputs', (outputs) => {
+        return outputs.push(NewContractOutput);
+      });
+    }
+    txSkeleton = await this.completeTx(txSkeleton, fromAddress);
+    const hash = await this.SignAndSendTransaction(txSkeleton, privateKey);
+    const outpoints = upgrade.map((_u, i) => {
+      return {
+        tx_hash: hash,
+        index: '0x' + i.toString(16),
+      };
+    });
+    return outpoints;
   }
 }

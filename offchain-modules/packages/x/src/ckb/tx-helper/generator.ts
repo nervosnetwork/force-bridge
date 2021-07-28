@@ -1,24 +1,17 @@
 import { Cell, Script, Indexer, WitnessArgs, core, utils } from '@ckb-lumos/base';
 import { common } from '@ckb-lumos/common-scripts';
-import {
-  generateAddress,
-  minimalCellCapacity,
-  parseAddress,
-  TransactionSkeleton,
-  TransactionSkeletonType,
-} from '@ckb-lumos/helpers';
-import CKB from '@nervosnetwork/ckb-sdk-core';
+import { minimalCellCapacity, parseAddress, TransactionSkeleton, TransactionSkeletonType } from '@ckb-lumos/helpers';
 import { Reader, normalizers } from 'ckb-js-toolkit';
 import * as lodash from 'lodash';
 import { ForceBridgeCore } from '../../core';
-import { asserts } from '../../errors';
+import { asserts, nonNullable } from '../../errors';
 import { asyncSleep, fromHexString, stringToUint8Array, toHexString, transactionSkeletonToJSON } from '../../utils';
 import { logger } from '../../utils/logger';
 import { Asset } from '../model/asset';
-import { IndexerCollector } from './collector';
+import { CkbTxHelper } from './base_generator';
 import { SerializeRecipientCellData } from './generated/eth_recipient_cell';
 import { SerializeMintWitness } from './generated/mint_witness';
-import { CkbIndexer, ScriptType } from './indexer';
+import { ScriptType } from './indexer';
 import { getFromAddr, getOwnerTypeHash } from './multisig/multisig_helper';
 
 export interface MintAssetRecord {
@@ -29,7 +22,7 @@ export interface MintAssetRecord {
   sudtExtraData: string;
 }
 
-export class CkbTxGenerator {
+export class CkbTxGenerator extends CkbTxHelper {
   sudtDep = {
     out_point: {
       tx_hash: ForceBridgeCore.config.ckb.deps.sudtType.cellDep.outPoint.txHash,
@@ -54,14 +47,12 @@ export class CkbTxGenerator {
     dep_type: ForceBridgeCore.config.ckb.deps.bridgeLock.cellDep.depType,
   };
 
-  private collector: IndexerCollector;
-
-  constructor(private ckb: CKB, private ckbIndexer: CkbIndexer) {
-    this.collector = new IndexerCollector(ckbIndexer);
+  constructor(ckbRpcUrl: string, ckbIndexerUrl: string) {
+    super(ckbRpcUrl, ckbIndexerUrl);
   }
 
   async fetchOwnerCell(): Promise<Cell | undefined> {
-    const cellCollector = this.ckbIndexer.collector({
+    const cellCollector = this.indexer.collector({
       type: ForceBridgeCore.config.ckb.ownerCellTypescript,
     });
     for await (const cell of cellCollector.collect()) {
@@ -71,7 +62,7 @@ export class CkbTxGenerator {
 
   // fixme: if not find multisig cell, create it
   async fetchMultisigCell(): Promise<Cell | undefined> {
-    const cellCollector = this.ckbIndexer.collector({
+    const cellCollector = this.indexer.collector({
       lock: ForceBridgeCore.config.ckb.multisigLockscript,
     });
     for await (const cell of cellCollector.collect()) {
@@ -82,7 +73,7 @@ export class CkbTxGenerator {
   }
 
   async fetchBridgeCell(bridgeLock: Script, maxTimes: number): Promise<Cell> {
-    const cellCollector = this.ckbIndexer.collector({
+    const cellCollector = this.indexer.collector({
       lock: bridgeLock,
     });
     let index = 0;
@@ -105,7 +96,7 @@ export class CkbTxGenerator {
     for (;;) {
       try {
         const fromAddress = getFromAddr();
-        let txSkeleton = TransactionSkeleton({ cellProvider: this.ckbIndexer });
+        let txSkeleton = TransactionSkeleton({ cellProvider: this.indexer });
         const multisig_cell = await this.fetchMultisigCell();
         txSkeleton = await common.setupInputCell(txSkeleton, multisig_cell!, ForceBridgeCore.config.ckb.multisigScript);
         const bridgeOutputs = scripts.map((script) => {
@@ -198,32 +189,6 @@ export class CkbTxGenerator {
     }
   }
 
-  async completeTx(
-    txSkeleton: TransactionSkeletonType,
-    fromAddress: string,
-    feeRate = 10000n,
-  ): Promise<TransactionSkeletonType> {
-    const inputCapacity = txSkeleton
-      .get('inputs')
-      .map((c) => BigInt(c.cell_output.capacity))
-      .reduce((a, b) => a + b, 0n);
-    const outputCapacity = txSkeleton
-      .get('outputs')
-      .map((c) => BigInt(c.cell_output.capacity))
-      .reduce((a, b) => a + b, 0n);
-    const needCapacity = outputCapacity - inputCapacity + 10n ** 8n;
-    const fromLockscript = parseAddress(fromAddress);
-    logger.debug('injectCapacity params', { fromAddress, needCapacity, fromLockscript });
-    logger.debug(`txSkeleton: ${transactionSkeletonToJSON(txSkeleton)}`);
-    txSkeleton = await common.injectCapacity(txSkeleton, [fromAddress], needCapacity, undefined, undefined, {
-      enableDeductCapacity: false,
-    });
-    logger.debug(`txSkeleton: ${transactionSkeletonToJSON(txSkeleton)}`);
-    txSkeleton = await common.payFeeByFeeRate(txSkeleton, [fromAddress], feeRate);
-    logger.debug(`txSkeleton: ${transactionSkeletonToJSON(txSkeleton)}`);
-    return txSkeleton;
-  }
-
   getMintWitness(records: MintAssetRecord[]): ArrayBuffer {
     const lockTxHashes = new Array(0);
     records.forEach((record) => {
@@ -241,11 +206,11 @@ export class CkbTxGenerator {
       asserts(record.amount !== 0n, '0 amount should be filtered');
       const recipientLockscript = parseAddress(record.recipient);
       const bridgeCellLockscript = {
-        codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
-        hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
+        code_hash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
+        hash_type: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
         args: record.asset.toBridgeLockscriptArgs(),
       };
-      const sudtArgs = this.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
+      const sudtArgs = utils.computeScriptHash(bridgeCellLockscript);
       const outputSudtCell = <Cell>{
         cell_output: {
           capacity: '0x0',
@@ -337,11 +302,11 @@ export class CkbTxGenerator {
     }
     // get sudt cells
     const bridgeCellLockscript = {
-      codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
-      hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
+      code_hash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
+      hash_type: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
       args: asset.toBridgeLockscriptArgs(),
     };
-    const args = this.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
+    const args = utils.computeScriptHash(bridgeCellLockscript);
     const searchKey = {
       script: fromLockscript,
       script_type: ScriptType.lock,
@@ -359,7 +324,7 @@ export class CkbTxGenerator {
       throw new Error('sudt amount is not enough!');
     }
     logger.debug('burn sudtCells: ', sudtCells);
-    let txSkeleton = TransactionSkeleton({ cellProvider: this.ckbIndexer });
+    let txSkeleton = TransactionSkeleton({ cellProvider: this.indexer });
     txSkeleton = txSkeleton.update('inputs', (inputs) => {
       return inputs.concat(sudtCells);
     });
@@ -422,58 +387,62 @@ export class CkbTxGenerator {
         return outputs.push(sudtChangeCell);
       });
     }
-    // change cell
-    const fromAddress = generateAddress(fromLockscript);
-    txSkeleton = await this.completeTx(txSkeleton, fromAddress);
-
-    // convert to RawTransactionToSign
-    const inputs = txSkeleton
-      .get('inputs')
-      .toArray()
-      .map((input) => {
-        return <CKBComponents.CellInput>{
-          previousOutput: {
-            txHash: input.out_point!.tx_hash,
-            index: input.out_point!.index,
+    // add cell deps
+    txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
+      const secp256k1 = nonNullable(this.lumosConfig.SCRIPTS.SECP256K1_BLAKE160);
+      return cellDeps
+        .push({
+          out_point: {
+            tx_hash: secp256k1.TX_HASH,
+            index: secp256k1.INDEX,
           },
-          since: '0x0',
-        };
-      });
-    const outputs = txSkeleton
-      .get('outputs')
-      .toArray()
-      .map((output) => {
-        return {
-          capacity: output.cell_output.capacity,
-          lock: transformScript(output.cell_output.lock),
-          type: transformScript(output.cell_output.type),
-        };
-      });
-    const outputsData = txSkeleton
-      .get('outputs')
-      .toArray()
-      .map((output) => output.data);
-    const cellDeps = [
-      {
-        outPoint: ForceBridgeCore.secp256k1Dep.outPoint,
-        depType: ForceBridgeCore.secp256k1Dep.depType,
+          dep_type: secp256k1.DEP_TYPE,
+        })
+        .push(this.sudtDep)
+        .push(this.recipientDep);
+    });
+    logger.debug(`txSkeleton: ${transactionSkeletonToJSON(txSkeleton)}`);
+    // add change output
+    const fee = 100000n;
+    const changeOutput: Cell = {
+      cell_output: {
+        capacity: '0x0',
+        lock: fromLockscript,
       },
-      // sudt dep
-      ForceBridgeCore.config.ckb.deps.sudtType.cellDep,
-      // recipient dep
-      ForceBridgeCore.config.ckb.deps.recipientType.cellDep,
-    ];
-    const rawTx = {
-      version: '0x0',
-      cellDeps,
-      headerDeps: [],
-      inputs,
-      outputs,
-      witnesses: [{ lock: '', inputType: '', outputType: '' }],
-      outputsData,
+      data: '0x',
     };
-    logger.debug(`generate burn rawTx: ${JSON.stringify(rawTx, null, 2)}`);
-    return rawTx as CKBComponents.RawTransactionToSign;
+    const minimalChangeCellCapacity = minimalCellCapacity(changeOutput);
+    changeOutput.cell_output.capacity = `0x${minimalChangeCellCapacity.toString(16)}`;
+    txSkeleton = txSkeleton.update('outputs', (outputs) => {
+      return outputs.push(changeOutput);
+    });
+    // add inputs
+    const capacityDiff = await this.calculateCapacityDiff(txSkeleton);
+    logger.debug(`capacityDiff`, capacityDiff);
+    const needCapacity = -capacityDiff + fee;
+    if (needCapacity < 0) {
+      txSkeleton = txSkeleton.update('outputs', (outputs) => {
+        changeOutput.cell_output.capacity = `0x${(minimalChangeCellCapacity - needCapacity).toString(16)}`;
+        return outputs.set(outputs.size - 1, changeOutput);
+      });
+    } else {
+      const fromCells = await this.collector.getCellsByLockscriptAndCapacity(fromLockscript, needCapacity);
+      logger.debug(`fromCells: ${JSON.stringify(fromCells, null, 2)}`);
+      txSkeleton = txSkeleton.update('inputs', (inputs) => {
+        return inputs.concat(fromCells);
+      });
+      const capacityDiff = await this.calculateCapacityDiff(txSkeleton);
+      if (capacityDiff < 0) {
+        throw new Error(`fromAddress capacity not enough, need ${capacityDiff.toString()} more`);
+      }
+      txSkeleton = txSkeleton.update('outputs', (outputs) => {
+        changeOutput.cell_output.capacity = `0x${(minimalChangeCellCapacity + capacityDiff - fee).toString(16)}`;
+        return outputs.set(outputs.size - 1, changeOutput);
+      });
+    }
+    logger.debug(`txSkeleton: ${transactionSkeletonToJSON(txSkeleton)}`);
+    logger.debug(`final fee: ${await this.calculateCapacityDiff(txSkeleton)}`);
+    return txSkeletonToRawTransactionToSign(txSkeleton);
   }
 }
 
@@ -486,4 +455,60 @@ function transformScript(script: Script | undefined | null): CKBComponents.Scrip
     codeHash: script.code_hash,
     hashType: script.hash_type,
   };
+}
+
+function txSkeletonToRawTransactionToSign(txSkeleton: TransactionSkeletonType): CKBComponents.RawTransactionToSign {
+  const inputs = txSkeleton
+    .get('inputs')
+    .toArray()
+    .map((input) => {
+      return <CKBComponents.CellInput>{
+        previousOutput: {
+          txHash: input.out_point!.tx_hash,
+          index: input.out_point!.index,
+        },
+        since: '0x0',
+      };
+    });
+  const outputs = txSkeleton
+    .get('outputs')
+    .toArray()
+    .map((output) => {
+      return {
+        capacity: output.cell_output.capacity,
+        lock: transformScript(output.cell_output.lock),
+        type: transformScript(output.cell_output.type),
+      };
+    });
+  const outputsData = txSkeleton
+    .get('outputs')
+    .toArray()
+    .map((output) => output.data);
+  const cellDeps = txSkeleton
+    .get('cellDeps')
+    .toArray()
+    .map((cellDep) => {
+      let depType = 'code';
+      if (cellDep.dep_type === 'dep_group') {
+        depType = 'depGroup';
+      }
+      return {
+        outPoint: {
+          txHash: cellDep.out_point.tx_hash,
+          index: cellDep.out_point.index,
+        },
+        depType,
+      };
+    });
+  const rawTx = {
+    version: '0x0',
+    cellDeps,
+    headerDeps: [],
+    inputs,
+    outputs,
+    witnesses: [{ lock: '', inputType: '', outputType: '' }],
+    outputsData,
+  };
+  logger.debug(`generate burn rawTx: ${JSON.stringify(rawTx, null, 2)}`);
+  return rawTx as CKBComponents.RawTransactionToSign;
 }

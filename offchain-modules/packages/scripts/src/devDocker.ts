@@ -311,6 +311,7 @@ async function main() {
       MULTISIG_THRESHOLD,
       ETH_PRIVATE_KEY,
       CKB_PRIVATE_KEY,
+      'DEV',
       path.join(configPath, 'deployConfig.json'),
     );
   await generateConfig(

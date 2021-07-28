@@ -5,7 +5,6 @@ import { ServerSingleton } from '@force-bridge/x/dist/server/serverSingleton';
 import { getDBConnection } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
 import bodyParser from 'body-parser';
-import cors from 'cors';
 import { JSONRPCServer } from 'json-rpc-2.0';
 import { ForceBridgeAPIV1Handler } from './handler';
 import { GetBalancePayload, GetBridgeTransactionSummariesPayload, XChainNetWork } from './types/apiv1';
@@ -70,7 +69,7 @@ export async function startRpcServer(configPath: string): Promise<void> {
 
   ServerSingleton.getInstance()
     .getServer()
-    .post(forceBridgePath, cors(ForceBridgeCore.config.rpc!.corsOptions), (req, res) => {
+    .post(forceBridgePath, (req, res) => {
       logger.info(`request, method: ${req.method}, body: ${JSON.stringify(req.body)}`);
       const jsonRPCRequest = req.body;
       const startTime = Date.now();

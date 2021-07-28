@@ -151,6 +151,7 @@ async function main() {
   const ETH_TEST_PRIVKEY = getFromEnv('ETH_TEST_PRIVKEY');
   const CKB_PRIV_KEYS = getFromEnv('CKB_PRIV_KEYS');
   const ckbPrivKeys = lodash.split(CKB_PRIV_KEYS, ',');
+  const TX_INTERNAL_MS = parseInt(getFromEnv('TX_INTERNAL_MS'));
   logger.info('start tx sender');
   const txSender = new TxSender(
     ETH_TEST_PRIVKEY,
@@ -160,7 +161,7 @@ async function main() {
     CKB_RPC_URL,
     CKB_INDEXER_URL,
     ETH_RPC_URL,
-    5000,
+    TX_INTERNAL_MS,
   );
   void txSender.start();
 }

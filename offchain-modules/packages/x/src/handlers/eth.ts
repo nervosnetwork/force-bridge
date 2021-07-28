@@ -155,7 +155,7 @@ export class EthHandler {
             onRejectedInterval: 3000,
             maxRetryTimes: MAX_RETRY_TIMES,
             onRejected: (e: Error) => {
-              logger.error(`Eth watchNewBlock blockHeight:${newBlock} error:${e.message}`);
+              logger.error(`Eth watchNewBlock blockHeight:${JSON.stringify(newBlock)} error:${e.stack}`);
             },
           },
         );
@@ -583,7 +583,7 @@ export class EthHandler {
         const gasPrice = await this.ethChain.getGasPrice();
         const gasPriceLimit = BigNumber.from(nonNullable(ForceBridgeCore.config.collector).gasPriceGweiLimit * 10 ** 9);
         logger.debug(`gasPrice ${gasPrice}, gasPriceLimit ${gasPriceLimit}`);
-        if (gasPrice > gasPriceLimit) {
+        if (gasPrice.gt(gasPriceLimit)) {
           const waitSeconds = 30;
           logger.warn(`gasPrice ${gasPrice} exceeds limit ${gasPriceLimit}, waiting for ${waitSeconds}s`);
           await asyncSleep(waitSeconds * 1000);

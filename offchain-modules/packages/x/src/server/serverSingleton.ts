@@ -1,3 +1,4 @@
+import cors from 'cors';
 import express from 'express';
 import { logger } from '../utils/logger';
 
@@ -11,6 +12,7 @@ export class ServerSingleton {
 
   start(port: number): void {
     this.server.listen(port);
+    this.server.use(cors());
     logger.info(`server handler started on ${port}  🚀`);
   }
 
