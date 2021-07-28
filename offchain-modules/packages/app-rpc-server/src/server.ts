@@ -1,6 +1,6 @@
 import { bootstrap, ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { startHandlers } from '@force-bridge/x/dist/handlers';
-import { responseStatus, RpcMetric } from '@force-bridge/x/dist/monitor/rpc-metric';
+import { responseStatus, RpcMetric } from '@force-bridge/x/dist/metric/rpc-metric';
 import { ServerSingleton } from '@force-bridge/x/dist/server/serverSingleton';
 import { getDBConnection } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
