@@ -5,7 +5,7 @@
     "symbol": "ETH",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=002",
-    "minimalBridgeAmount": "1000000000000000",
+    "minimalBridgeAmount": "10000000000000",
     "bridgeFee": {
       "in": "1000000000000",
       "out": "2000000000000"
