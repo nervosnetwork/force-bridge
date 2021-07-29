@@ -34,6 +34,7 @@ async function verifyDuplicateEthTx(pubKey: string, payload: ethCollectSignature
   }
   if (lastNonce === payload.nonce) {
     // sig to tx with the same nonce, only one will be success
+    await SigServer.signedDb.removeSignedRecordByNonce(payload.nonce);
     return SigErrorOk;
   }
 

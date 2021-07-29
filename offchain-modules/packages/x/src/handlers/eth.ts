@@ -6,7 +6,7 @@ import { EthDb, KVDb, BridgeFeeDB } from '../db';
 import { EthUnlockStatus } from '../db/entity/EthUnlock';
 import { EthUnlock, IEthUnlock } from '../db/model';
 import { nonNullable } from '../errors';
-import { BridgeMetricSingleton, txTokenInfo } from '../monitor/bridge-metric';
+import { BridgeMetricSingleton, txTokenInfo } from '../metric/bridge-metric';
 import { ethCollectSignaturesPayload } from '../multisig/multisig-mgr';
 import { asyncSleep, foreverPromise, fromHexString, retryPromise, uint8ArrayToString } from '../utils';
 import { logger } from '../utils/logger';
@@ -281,29 +281,10 @@ export class EthHandler {
     }
   }
 
-  async parseLockLog(log: Log, parsedLog: ParsedLog): Promise<ParsedLockLog> {
-    const txHash = log.transactionHash;
-    const { token, sudtExtraData, sender } = parsedLog.args;
-    const amount = parsedLog.args.lockedAmount.toString();
-    const asset = new EthAsset(parsedLog.args.token);
-    const recipient = uint8ArrayToString(fromHexString(parsedLog.args.recipientLockscript));
-    return {
-      txHash: txHash,
-      amount: amount,
-      token: token,
-      recipient: recipient,
-      sudtExtraData: sudtExtraData,
-      blockNumber: log.blockNumber,
-      blockHash: log.blockHash,
-      sender: sender,
-      asset,
-    };
-  }
-
   async onLockLogs(log: Log, parsedLog: ParsedLog): Promise<void> {
     for (let i = 1; i <= MAX_RETRY_TIMES; i++) {
       try {
-        const parsedLockLog = await this.parseLockLog(log, parsedLog);
+        const parsedLockLog = parseLockLog(log, parsedLog);
         const { amount, asset, token, sudtExtraData, sender, txHash, recipient, blockNumber, blockHash } =
           parsedLockLog;
         logger.info(
@@ -656,4 +637,23 @@ export class EthHandler {
     this.handleUnlockRecords();
     logger.info('eth handler started  🚀');
   }
+}
+
+export function parseLockLog(log: Log, parsedLog: ParsedLog): ParsedLockLog {
+  const txHash = log.transactionHash;
+  const { token, sudtExtraData, sender } = parsedLog.args;
+  const amount = parsedLog.args.lockedAmount.toString();
+  const asset = new EthAsset(parsedLog.args.token);
+  const recipient = uint8ArrayToString(fromHexString(parsedLog.args.recipientLockscript));
+  return {
+    txHash: txHash,
+    amount: amount,
+    token: token,
+    recipient: recipient,
+    sudtExtraData: sudtExtraData,
+    blockNumber: log.blockNumber,
+    blockHash: log.blockHash,
+    sender: sender,
+    asset,
+  };
 }

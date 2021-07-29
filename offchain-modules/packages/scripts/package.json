@@ -15,6 +15,7 @@
     "@force-bridge/keystore": "^0.0.3",
     "@force-bridge/reconc": "^0.0.3",
     "@force-bridge/x": "^0.0.3",
+    "@force-bridge/app-monitor": "^0.0.3",
     "@force-bridge/xchain-eth": "^0.0.3",
     "dotenv": "^10.0.0",
     "mustache": "^4.2.0",

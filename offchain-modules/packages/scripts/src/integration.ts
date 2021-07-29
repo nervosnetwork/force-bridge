@@ -69,7 +69,7 @@ async function generateConfig(
   // collector
   const collectorConfig: Config = lodash.cloneDeep(baseConfig);
   collectorConfig.common.role = 'collector';
-  collectorConfig.common.orm.database = 'collector';
+  collectorConfig.common.orm!.database = 'collector';
   collectorConfig.common.port = 8090;
   collectorConfig.common.collectorPubKeyHash.push(privateKeyToCkbPubkeyHash(CKB_PRIVATE_KEY));
   collectorConfig.eth.privateKey = 'eth';
@@ -114,7 +114,7 @@ async function generateConfig(
   // watcher
   const watcherConfig: Config = lodash.cloneDeep(baseConfig);
   watcherConfig.common.role = 'watcher';
-  watcherConfig.common.orm.database = 'watcher';
+  watcherConfig.common.orm!.database = 'watcher';
   watcherConfig.common.log.logFile = path.join(configPath, 'watcher/force_bridge.log');
   watcherConfig.common.log.identity = 'watcher';
   watcherConfig.common.port = 8080;
@@ -124,7 +124,7 @@ async function generateConfig(
     const verifierIndex = i + 1;
     const verifierConfig: Config = lodash.cloneDeep(baseConfig);
     verifierConfig.common.role = 'verifier';
-    verifierConfig.common.orm.database = `verifier${verifierIndex}`;
+    verifierConfig.common.orm!.database = `verifier${verifierIndex}`;
     verifierConfig.eth.privateKey = 'verifier';
     verifierConfig.ckb.privateKey = 'verifier';
     verifierConfig.common.port = 8000 + verifierIndex;

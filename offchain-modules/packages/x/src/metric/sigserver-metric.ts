@@ -6,6 +6,7 @@ export type status = 'success' | 'failed';
 export type chainType = 'ckb' | 'eth';
 
 export class SigserverMetric {
+  //eslint-disable-next-line @typescript-eslint/no-explicit-any
   private sigServerRequestDurationms: Prometheus.Histogram<any>;
   constructor(role: forceBridgeRole) {
     this.sigServerRequestDurationms = new Prometheus.Histogram({

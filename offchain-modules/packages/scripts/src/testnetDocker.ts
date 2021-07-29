@@ -49,7 +49,7 @@ async function generateConfig(
   // collector
   const collectorConfig: Config = lodash.cloneDeep(baseConfig);
   collectorConfig.common.role = 'collector';
-  collectorConfig.common.orm.host = 'collector_db';
+  collectorConfig.common.orm!.host = 'collector_db';
   collectorConfig.common.keystorePath = '/data/keystore.json';
   collectorConfig.eth.privateKey = 'eth';
   collectorConfig.ckb.privateKey = 'ckb';
@@ -92,14 +92,14 @@ async function generateConfig(
   // watcher
   const watcherConfig: Config = lodash.cloneDeep(baseConfig);
   watcherConfig.common.role = 'watcher';
-  watcherConfig.common.orm.host = 'watcher_db';
+  watcherConfig.common.orm!.host = 'watcher_db';
   writeJsonToFile({ forceBridge: watcherConfig }, path.join(configPath, 'watcher/force_bridge.json'));
   // verifiers
   multisigConfig.verifiers.map((v, i) => {
     const verifierIndex = i + 1;
     const verifierConfig: Config = lodash.cloneDeep(baseConfig);
     verifierConfig.common.role = 'verifier';
-    verifierConfig.common.orm.host = `verifier${verifierIndex}_db`;
+    verifierConfig.common.orm!.host = `verifier${verifierIndex}_db`;
     verifierConfig.common.keystorePath = '/data/keystore.json';
     verifierConfig.eth.privateKey = 'verifier';
     verifierConfig.ckb.privateKey = 'verifier';
