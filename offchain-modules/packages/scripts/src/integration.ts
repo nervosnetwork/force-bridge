@@ -214,11 +214,6 @@ async function startChangeVal(
   }
   let oldThreshold = multiSigner.threshold;
   let oldMultiSigAmount = multiSigner.verifiers.length;
-  // test eth node status
-  await execShellCmd(
-    `curl -i -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"eth_getBalance","params":["0x17c4b5CE0605F63732bfd175feCe7aC6b4620FD2","latest"],"id":1}' http://127.0.0.1:8545/`,
-    true,
-  );
   for (const params of changeParams) {
     const valInfos: ValInfos = {
       ckb: {

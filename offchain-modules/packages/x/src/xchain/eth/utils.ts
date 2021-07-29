@@ -12,7 +12,6 @@ export async function deployEthContract(
   const bridgeFactory = new ethers.ContractFactory(abi, bytecode, wallet);
   const bridgeContract = await bridgeFactory.deploy(validators, multiSignThreshold);
 
-  console.dir(`eth deploy hash is`, bridgeContract.deployTransaction.hash);
   const receipt = await bridgeContract.deployTransaction.wait();
   console.dir(receipt);
   if (receipt.status !== 1) {
