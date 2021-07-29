@@ -1,4 +1,5 @@
 import { ethers } from 'ethers';
+import { logger } from '../../utils/logger';
 import { abi, bytecode } from './abi/ForceBridge.json';
 
 export async function deployEthContract(
@@ -13,9 +14,9 @@ export async function deployEthContract(
   const bridgeContract = await bridgeFactory.deploy(validators, multiSignThreshold);
 
   const receipt = await bridgeContract.deployTransaction.wait();
-  console.dir(receipt);
+  logger.info(`deploy eth tx receipt is ${JSON.stringify(receipt)}`);
   if (receipt.status !== 1) {
-    console.error(`failed to deploy bridge contract.`);
+    logger.info(`failed to deploy bridge contract.`);
     return Promise.reject('failed to deploy bridge contract');
   }
 
