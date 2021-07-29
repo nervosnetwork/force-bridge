@@ -37,6 +37,7 @@ async function generateConfig(
   ETH_PRIVATE_KEY: string,
   CKB_PRIVATE_KEY: string,
   password,
+  monitorDiscordWebHook: string,
 ) {
   const baseConfig: Config = lodash.cloneDeep(initConfig);
   logger.debug(`baseConfig: ${JSON.stringify(baseConfig, null, 2)}`);
@@ -94,6 +95,24 @@ async function generateConfig(
   watcherConfig.common.role = 'watcher';
   watcherConfig.common.orm!.host = 'watcher_db';
   writeJsonToFile({ forceBridge: watcherConfig }, path.join(configPath, 'watcher/force_bridge.json'));
+  //monitor
+  const monitorConfig: Config = lodash.cloneDeep(baseConfig);
+  monitorConfig.common.orm = undefined;
+  monitorConfig.common.port = undefined;
+  monitorConfig.common.openMetric = false;
+  monitorConfig.common.role = 'watcher';
+  monitorConfig.common.log.identity = 'monitor';
+  monitorConfig.common.log.logFile = path.join(configPath, 'monitor/force_bridge.log');
+  monitorConfig.eth.privateKey = '';
+  monitorConfig.ckb.privateKey = '';
+  monitorConfig.monitor = {
+    discordWebHook: monitorDiscordWebHook,
+    expiredTime: 1800000, //30 minutes
+    expiredCheckInterval: 900000, //15 minutes
+    scanStep: 100,
+    env: 'testnet-docker',
+  };
+  writeJsonToFile({ forceBridge: monitorConfig }, path.join(configPath, 'monitor/force_bridge.json'));
   // verifiers
   multisigConfig.verifiers.map((v, i) => {
     const verifierIndex = i + 1;
@@ -215,31 +234,41 @@ services:
       '
     depends_on:
       - {{name}}_db
-{{/verifiers}}      
+{{/verifiers}}
+  monitor:
+    image: node:14
+    restart: on-failure
+    environment:
+      MONITOR_DURATION_CONFIG_PATH: /data/monitor.json
+    volumes:
+      - {{&projectDir}}:/app
+      - force-bridge-node-modules:/app/offchain-modules/node_modules
+      - ./monitor:/data
+    command: |
+      sh -c '
+      cd /app/offchain-modules;
+      npx ts-node ./packages/app-cli/src/index.ts monitor -cfg /data/force_bridge.json
+      '
 volumes:
   force-bridge-node-modules:
     external: true
 `;
 
 async function main() {
-  initLog({ level: 'debug', identity: 'dev-docker' });
+  initLog({ level: 'debug', identity: 'testnet-docker' });
   // used for deploy and run service
   const CKB_RPC_URL = getFromEnv('CKB_RPC_URL');
   const ETH_RPC_URL = getFromEnv('ETH_RPC_URL');
   const CKB_INDEXER_URL = getFromEnv('CKB_INDEXER_URL');
   const CKB_PRIVATE_KEY = getFromEnv('CKB_PRIVATE_KEY');
   const ETH_PRIVATE_KEY = getFromEnv('ETH_PRIVATE_KEY');
-
-  // const CKB_TEST_PRIVKEY = getFromEnv('CKB_TEST_PRIVKEY');
-  // const ETH_TEST_PRIVKEY = getFromEnv('ETH_TEST_PRIVKEY');
-  // const FORCE_BRIDGE_URL = getFromEnv('FORCE_BRIDGE_URL');
+  const MONITOR_DISCORD_WEBHOOK = getFromEnv('MONITOR_DISCORD_WEBHOOK');
 
   const MULTISIG_NUMBER = 3;
   const MULTISIG_THRESHOLD = 3;
   const FORCE_BRIDGE_KEYSTORE_PASSWORD = '123456';
 
   const configPath = pathFromProjectRoot('workdir/testnet-docker');
-  const _offchainModulePath = pathFromProjectRoot('offchain-modules');
 
   const initConfig = {
     common: {
@@ -315,6 +344,7 @@ async function main() {
     ETH_PRIVATE_KEY,
     CKB_PRIVATE_KEY,
     FORCE_BRIDGE_KEYSTORE_PASSWORD,
+    MONITOR_DISCORD_WEBHOOK,
   );
 
   const verifiers = lodash.range(MULTISIG_NUMBER).map((i) => {
