@@ -1,6 +1,7 @@
 import { EthLockRecord, EthUnlockRecord } from '@force-bridge/reconc';
 import { EthAsset } from '@force-bridge/x/dist/ckb/model/asset';
-import { filterLockLog, parseLockLog } from '@force-bridge/x/dist/handlers/eth';
+import { parseLockLog } from '@force-bridge/x/dist/handlers/eth';
+import { checkLock } from '@force-bridge/x/dist/xchain/eth/check';
 import { ethers, Contract, providers } from 'ethers';
 import { Observable, from } from 'rxjs';
 import { concatMap, map, mergeMap, filter as rxFilter } from 'rxjs/operators';
@@ -49,7 +50,7 @@ export class EthRecordObservable {
         });
       }),
       rxFilter((logRes) => {
-        return filterLockLog(logRes) === '';
+        return checkLock(logRes.amount, logRes.token, logRes.recipient, logRes.sudtExtraData) === '';
       }),
       map((logRes) => {
         return {
