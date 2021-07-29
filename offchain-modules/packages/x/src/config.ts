@@ -102,15 +102,6 @@ export interface BtcConfig {
   confirmNumber: number;
 }
 
-export interface rpcConfig {
-  corsOptions?: {
-    origin: string;
-    methods?: string;
-    preflightContinue?: boolean;
-    optionsSuccessStatus?: number;
-  };
-}
-
 export interface logConfig {
   level: string;
   logFile?: string;
@@ -137,7 +128,7 @@ export interface commonConfig {
   network: 'mainnet' | 'testnet';
   lumosConfigType: 'LINA' | 'AGGRON4' | 'DEV';
   port?: number;
-  orm: ormConfig;
+  orm?: ormConfig;
   openMetric: boolean;
   keystorePath?: string;
   collectorPubKeyHash: string[];
@@ -163,6 +154,14 @@ export interface collectorConfig {
   gasPriceGweiLimit: number;
 }
 
+export interface monitorConfig {
+  expiredTime: number;
+  expiredCheckInterval: number;
+  discordWebHook: string;
+  scanStep: number;
+  env: string;
+}
+
 export interface Config {
   common: commonConfig;
   ckb: CkbConfig;
@@ -170,7 +169,7 @@ export interface Config {
   eos: EosConfig;
   tron: TronConfig;
   btc: BtcConfig;
-  rpc?: rpcConfig;
   collector?: collectorConfig;
+  monitor?: monitorConfig;
   configPath?: string;
 }

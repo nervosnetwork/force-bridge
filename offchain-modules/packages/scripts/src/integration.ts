@@ -79,7 +79,7 @@ async function generateConfig(
   // collector
   const collectorConfig: Config = lodash.cloneDeep(baseConfig);
   collectorConfig.common.role = 'collector';
-  collectorConfig.common.orm.database = 'collector';
+  collectorConfig.common.orm!.database = 'collector';
   collectorConfig.common.port = 8090;
   collectorConfig.common.collectorPubKeyHash.push(privateKeyToCkbPubkeyHash(CKB_PRIVATE_KEY));
   collectorConfig.collector = {
@@ -114,7 +114,7 @@ async function generateConfig(
   // watcher
   const watcherConfig: Config = lodash.cloneDeep(baseConfig);
   watcherConfig.common.role = 'watcher';
-  watcherConfig.common.orm.database = 'watcher';
+  watcherConfig.common.orm!.database = 'watcher';
   watcherConfig.common.log.logFile = path.join(configPath, 'watcher/force_bridge.log');
   watcherConfig.common.log.identity = 'watcher';
   watcherConfig.common.port = 8080;
@@ -135,7 +135,7 @@ async function generateConfig(
     verifierConfig.ckb.multisigScript = undefined;
     verifierConfig.eth.multiSignAddresses = undefined;
     verifierConfig.common.role = 'verifier';
-    verifierConfig.common.orm.database = `verifier${verifierIndex}`;
+    verifierConfig.common.orm!.database = `verifier${verifierIndex}`;
     verifierConfig.eth.privateKey = 'verifier';
     verifierConfig.ckb.privateKey = 'verifier';
     verifierConfig.common.port = 8000 + verifierIndex;
@@ -347,6 +347,7 @@ async function main() {
       MULTISIG_THRESHOLD,
       ETH_PRIVATE_KEY,
       CKB_PRIVATE_KEY,
+      'DEV',
       path.join(configPath, 'deployConfig.json'),
     );
   await generateConfig(
@@ -366,10 +367,18 @@ async function main() {
   await handleDb('drop', MULTISIG_NUMBER);
   await handleDb('create', MULTISIG_NUMBER);
   await startVerifierService(FORCE_BRIDGE_KEYSTORE_PASSWORD, forcecli, configPath, MULTISIG_NUMBER);
-  await asyncSleep(30000);
+  await asyncSleep(60000);
   await startChangeVal(forcecli, configPath, bridgeEthAddress, CKB_TEST_PRIVKEY, ETH_TEST_PRIVKEY, multisigConfig);
   await startCollectorService(FORCE_BRIDGE_KEYSTORE_PASSWORD, forcecli, configPath);
-  await ethBatchTest(ETH_TEST_PRIVKEY, CKB_TEST_PRIVKEY, ETH_RPC_URL, CKB_RPC_URL, CKB_INDEXER_URL, FORCE_BRIDGE_URL);
+  await ethBatchTest(
+    ETH_TEST_PRIVKEY,
+    CKB_TEST_PRIVKEY,
+    ETH_RPC_URL,
+    CKB_RPC_URL,
+    CKB_INDEXER_URL,
+    FORCE_BRIDGE_URL,
+    3,
+  );
   await rpcTest(FORCE_BRIDGE_URL, CKB_RPC_URL, ETH_RPC_URL, CKB_TEST_PRIVKEY, ETH_TEST_PRIVKEY);
   logger.info('integration test pass!');
 }

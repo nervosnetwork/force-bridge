@@ -3,12 +3,14 @@ import path from 'path';
 import { KeyStore } from '@force-bridge/keystore/dist';
 import { OwnerCellConfig } from '@force-bridge/x/dist/ckb/tx-helper/deploy';
 import { Config, WhiteListEthAsset, CkbDeps } from '@force-bridge/x/dist/config';
-import { privateKeyToCkbPubkeyHash, writeJsonToFile } from '@force-bridge/x/dist/utils';
+import { getFromEnv, privateKeyToCkbPubkeyHash, writeJsonToFile } from '@force-bridge/x/dist/utils';
 import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
+import * as dotenv from 'dotenv';
 import * as lodash from 'lodash';
 import * as Mustache from 'mustache';
-import { execShellCmd, PATH_PROJECT_ROOT, pathFromProjectRoot } from './utils';
+import { PATH_PROJECT_ROOT, pathFromProjectRoot } from './utils';
 import { deployDev } from './utils/deploy';
+dotenv.config({ path: process.env.DOTENV_PATH || '.env' });
 
 export interface VerifierConfig {
   privkey: string;
@@ -55,14 +57,13 @@ async function generateConfig(
   // collector
   const collectorConfig: Config = lodash.cloneDeep(baseConfig);
   collectorConfig.common.role = 'collector';
-  collectorConfig.common.log.level = 'debug';
   collectorConfig.common.orm!.host = 'collector_db';
-  collectorConfig.common.collectorPubKeyHash.push(privateKeyToCkbPubkeyHash(CKB_PRIVATE_KEY));
   collectorConfig.collector = {
     gasLimit: 250000,
     batchGasLimit: 100000,
     gasPriceGweiLimit: 100,
   };
+  collectorConfig.common.collectorPubKeyHash.push(privateKeyToCkbPubkeyHash(CKB_PRIVATE_KEY));
   collectorConfig.eth.multiSignHosts = multisigConfig.verifiers.map((v, i) => {
     return {
       address: v.ethAddress,
@@ -103,8 +104,6 @@ async function generateConfig(
   multisigConfig.verifiers.map((v, i) => {
     const verifierIndex = i + 1;
     const verifierConfig: Config = lodash.cloneDeep(baseConfig);
-    verifierConfig.ckb.multisigScript = undefined;
-    verifierConfig.eth.multiSignAddresses = undefined;
     verifierConfig.common.role = 'verifier';
     verifierConfig.common.orm!.host = `verifier${verifierIndex}_db`;
     verifierConfig.eth.privateKey = 'verifier';
@@ -139,11 +138,9 @@ services:
     environment:
       DOTENV_PATH: /data/.env
       LOG_PATH: /data/script.log
-    networks:
-      - {{network}}
     command: |
       sh -c '
-      cp /app/devops/devnet-docker/.env.tx_sender.docker /data/.env
+      cp /app/workdir/testnet-docker/.env.tx_sender /data/.env
       cd /app/offchain-modules;
       yarn startTxSender
       '
@@ -153,9 +150,7 @@ services:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: forcebridge
     ports:
-      - 3299:3306
-    networks:
-      - {{network}}
+      - 4299:3306
   watcher:
     image: node:14
     restart: on-failure
@@ -166,7 +161,7 @@ services:
       - force-bridge-node-modules:/app/offchain-modules/node_modules
       - ./watcher:/data
     ports:
-      - "3199:80"
+      - "4199:80"
     command: |
       sh -c '
       cd /app/offchain-modules;
@@ -174,17 +169,13 @@ services:
       '
     depends_on:
       - watcher_db
-    networks:
-      - {{network}}
   collector_db:
     image: mysql:5.7
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: forcebridge
     ports:
-      - 3298:3306
-    networks:
-      - {{network}}
+      - 4298:3306
   collector:
     image: node:14
     restart: on-failure
@@ -195,7 +186,7 @@ services:
       - force-bridge-node-modules:/app/offchain-modules/node_modules
       - ./collector:/data
     ports:
-      - "3198:80"
+      - "4198:80"
     command: |
       sh -c '
       cd /app/offchain-modules;
@@ -203,8 +194,6 @@ services:
       '
     depends_on:
       - collector_db
-    networks:
-      - {{network}}
 {{#verifiers}}      
   {{name}}_db:
     image: mysql:5.7
@@ -213,8 +202,6 @@ services:
       MYSQL_DATABASE: forcebridge
     ports:
       - {{db_port}}:3306
-    networks:
-      - {{network}}
   {{name}}:
     image: node:14
     restart: on-failure
@@ -233,32 +220,31 @@ services:
       '
     depends_on:
       - {{name}}_db
-    networks:
-      - {{network}}
 {{/verifiers}}      
 volumes:
   force-bridge-node-modules:
-    external: true
-networks:
-  {{network}}:
     external: true
 `;
 
 async function main() {
   initLog({ level: 'debug', identity: 'dev-docker' });
   // used for deploy and run service
-  const ETH_PRIVATE_KEY = '0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed37a';
-  const CKB_PRIVATE_KEY = '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
+  const CKB_RPC_URL = getFromEnv('CKB_RPC_URL');
+  const ETH_RPC_URL = getFromEnv('ETH_RPC_URL');
+  const CKB_INDEXER_URL = getFromEnv('CKB_INDEXER_URL');
+  const CKB_PRIVATE_KEY = getFromEnv('CKB_PRIVATE_KEY');
+  const ETH_PRIVATE_KEY = getFromEnv('ETH_PRIVATE_KEY');
 
-  const MULTISIG_NUMBER = 5;
-  const MULTISIG_THRESHOLD = 3;
+  // const CKB_TEST_PRIVKEY = getFromEnv('CKB_TEST_PRIVKEY');
+  // const ETH_TEST_PRIVKEY = getFromEnv('ETH_TEST_PRIVKEY');
+  // const FORCE_BRIDGE_URL = getFromEnv('FORCE_BRIDGE_URL');
+
+  const MULTISIG_NUMBER = 3;
+  const MULTISIG_THRESHOLD = 2;
   const FORCE_BRIDGE_KEYSTORE_PASSWORD = '123456';
-  const ETH_RPC_URL = 'http://127.0.0.1:3000';
-  const CKB_RPC_URL = 'http://127.0.0.1:3001';
-  const CKB_INDEXER_URL = 'http://127.0.0.1:3002';
 
-  const configPath = pathFromProjectRoot('workdir/dev-docker');
-  const offchainModulePath = pathFromProjectRoot('offchain-modules');
+  const configPath = pathFromProjectRoot('workdir/testnet-docker');
+  const _offchainModulePath = pathFromProjectRoot('offchain-modules');
 
   const initConfig = {
     common: {
@@ -266,7 +252,7 @@ async function main() {
         level: 'info',
         logFile: '/data/force_bridge.log',
       },
-      lumosConfigType: 'DEV',
+      lumosConfigType: 'AGGRON4',
       network: 'testnet',
       role: 'watcher',
       keystorePath: '/data/keystore.json',
@@ -286,7 +272,7 @@ async function main() {
       port: 80,
     },
     eth: {
-      rpcUrl: 'http://10.4.0.10:8545',
+      rpcUrl: ETH_RPC_URL,
       privateKey: 'eth',
       confirmNumber: 12,
       startBlockHeight: 1,
@@ -296,12 +282,12 @@ async function main() {
       },
     },
     ckb: {
-      ckbRpcUrl: 'http://ckb-dev:8114',
-      ckbIndexerUrl: 'http://ckb-indexer-dev:8116',
+      ckbRpcUrl: CKB_RPC_URL,
+      ckbIndexerUrl: CKB_INDEXER_URL,
       privateKey: 'ckb',
       startBlockHeight: 1,
       confirmNumber: 15,
-      sudtSize: 500,
+      sudtSize: 150,
     },
   };
   const { assetWhiteList, ckbDeps, ownerConfig, bridgeEthAddress, multisigConfig, ckbStartHeight, ethStartHeight } =
@@ -313,7 +299,7 @@ async function main() {
       MULTISIG_THRESHOLD,
       ETH_PRIVATE_KEY,
       CKB_PRIVATE_KEY,
-      'DEV',
+      'AGGRON4',
       path.join(configPath, 'deployConfig.json'),
     );
   await generateConfig(
@@ -334,20 +320,16 @@ async function main() {
   const verifiers = lodash.range(MULTISIG_NUMBER).map((i) => {
     return {
       name: `verifier${i + 1}`,
-      db_port: 3200 + i,
-      port: 3100 + i,
+      db_port: 4200 + i + 1,
+      port: 4100 + i + 1,
     };
   });
   const dockerComposeFile = Mustache.render(dockerComposeTemplate, {
     FORCE_BRIDGE_KEYSTORE_PASSWORD,
-    network: 'docker_force-dev-net',
     projectDir: PATH_PROJECT_ROOT,
     verifiers,
   });
   fs.writeFileSync(path.join(configPath, 'docker-compose.yml'), dockerComposeFile);
-  await execShellCmd(
-    `docker run --rm -v ${offchainModulePath}:/app -v force-bridge-node-modules:/app/node_modules node:14 bash -c 'cd /app && yarn build'`,
-  );
 }
 
 main()

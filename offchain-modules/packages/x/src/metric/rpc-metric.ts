@@ -5,6 +5,7 @@ import { BridgeMetricSingleton } from './bridge-metric';
 export type responseStatus = 'success' | 'failed';
 
 export class RpcMetric {
+  //eslint-disable-next-line @typescript-eslint/no-explicit-any
   public rpcRequestDurationms: Prometheus.Histogram<any>;
 
   constructor(role: forceBridgeRole) {

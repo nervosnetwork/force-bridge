@@ -18,7 +18,7 @@ import { ForceBridgeCore } from '../core';
 import { CkbDb, KVDb } from '../db';
 import { ICkbBurn, ICkbMint, MintedRecords } from '../db/model';
 import { asserts, nonNullable } from '../errors';
-import { BridgeMetricSingleton, txTokenInfo } from '../monitor/bridge-metric';
+import { BridgeMetricSingleton, txTokenInfo } from '../metric/bridge-metric';
 import { ckbCollectSignaturesPayload, createAsset, MultiSigMgr } from '../multisig/multisig-mgr';
 import {
   asyncSleep,
@@ -405,7 +405,10 @@ export class CkbHandler {
       return;
     }
     const ownerTypeHash = getOwnerTypeHash();
-    const generator = new CkbTxGenerator(this.ckb, this.ckbIndexer);
+    const generator = new CkbTxGenerator(
+      ForceBridgeCore.config.ckb.ckbRpcUrl,
+      ForceBridgeCore.config.ckb.ckbIndexerUrl,
+    );
 
     this.handlePendingMintRecords(ownerTypeHash, generator).then(
       () => {
@@ -730,7 +733,7 @@ export class CkbHandler {
     content1 += signatures.join('');
 
     const tx = sealTransaction(txSkeleton, [content0, content1]);
-    logger.info('tx:', JSON.stringify(tx, null, 2));
+    logger.info(`tx: ${JSON.stringify(tx)}`);
     const txHash = await this.transactionManager.send_transaction(tx);
     const txStatus = await this.waitUntilCommitted(txHash, 120);
     if (txStatus === null || txStatus.txStatus.status !== 'committed') {

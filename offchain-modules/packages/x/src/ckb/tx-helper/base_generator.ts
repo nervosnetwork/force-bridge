@@ -1,27 +1,14 @@
-import { Cell, Indexer, OutPoint, Script, Script as LumosScript, TransactionWithStatus } from '@ckb-lumos/base';
-import { common, secp256k1Blake160 } from '@ckb-lumos/common-scripts';
-import { getConfig, Config, initializeConfig } from '@ckb-lumos/config-manager';
+import { Cell, Script, TransactionWithStatus } from '@ckb-lumos/base';
+import { common } from '@ckb-lumos/common-scripts';
+import { getConfig, Config } from '@ckb-lumos/config-manager';
 import { key } from '@ckb-lumos/hd';
-import {
-  minimalCellCapacity,
-  parseAddress,
-  sealTransaction,
-  TransactionSkeleton,
-  TransactionSkeletonType,
-} from '@ckb-lumos/helpers';
+import { minimalCellCapacity, parseAddress, TransactionSkeletonType } from '@ckb-lumos/helpers';
 import { RPC } from '@ckb-lumos/rpc';
 import TransactionManager from '@ckb-lumos/transaction-manager';
-import { Amount } from '@lay2/pw-core';
-import CKB from '@nervosnetwork/ckb-sdk-core';
-import * as utils from '@nervosnetwork/ckb-sdk-utils';
-import { AddressPrefix } from '@nervosnetwork/ckb-sdk-utils';
-import { asserts, nonNullable } from '../../errors';
-import { asyncSleep, privateKeyToCkbAddress, transactionSkeletonToJSON } from '../../utils';
+import { asyncSleep, transactionSkeletonToJSON } from '../../utils';
 import { logger } from '../../utils/logger';
 import { IndexerCollector } from './collector';
 import { CkbIndexer, ScriptType, Terminator } from './indexer';
-import { initLumosConfig } from './init_lumos_config';
-import { generateTypeIDScript } from './multisig/typeid';
 
 // you have to initialize lumos config before use this generator
 export class CkbTxHelper {
@@ -69,7 +56,7 @@ export class CkbTxHelper {
       }
     };
     const fromCells = await this.indexer.getCells(searchKey, terminator);
-    logger.debug('fromCells', { fromCells });
+    logger.debug(`fromCells: ${JSON.stringify(fromCells)}`);
     return fromCells;
   }
 
@@ -90,7 +77,7 @@ export class CkbTxHelper {
     txSkeleton: TransactionSkeletonType,
     fromAddress: string,
     fromCells?: Cell[],
-    feeRate = 1000n,
+    feeRate = 1200n,
   ): Promise<TransactionSkeletonType> {
     logger.debug(`txSkeleton: ${transactionSkeletonToJSON(txSkeleton)}`);
     // freeze outputs

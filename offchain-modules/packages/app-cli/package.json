@@ -16,6 +16,7 @@
     "@force-bridge/app-multisign-server": "^0.0.3",
     "@force-bridge/app-relayer": "^0.0.3",
     "@force-bridge/app-rpc-server": "^0.0.3",
+    "@force-bridge/app-monitor": "^0.0.3",
     "@force-bridge/keystore": "^0.0.3",
     "@force-bridge/x": "^0.0.3"
   },

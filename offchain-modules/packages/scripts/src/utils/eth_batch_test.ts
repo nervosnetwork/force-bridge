@@ -274,7 +274,7 @@ export async function prepareCkbAddresses(
     outputsData.push('0x');
   }
 
-  const inputCap = needSupplyCapCells.map((cell) => BigInt(cell.cell_output.capacity)).reduce((a, b) => a + b);
+  const inputCap = needSupplyCapCells.map((cell) => BigInt(cell.cell_output.capacity)).reduce((a, b) => a + b, 0n);
   const outputCap = outputs.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
   const changeCellCapacity = inputCap - outputCap - 10000000n;
   outputs.push({
