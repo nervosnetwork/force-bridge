@@ -7,7 +7,12 @@ import { ethers } from 'ethers';
 import { JSONRPCClient } from 'json-rpc-2.0';
 import fetch from 'node-fetch/index';
 
-function generateCases(CKB_TEST_ADDRESS: string, ETH_TEST_ADDRESS: string, ETH_TOKEN_ADDRESS: string) {
+function generateCases(
+  CKB_TEST_ADDRESS: string,
+  ETH_TEST_ADDRESS: string,
+  ETH_TOKEN_ADDRESS: string,
+  bridgeEthAddress: string,
+) {
   const lockCases = [
     {
       description: 'lock ETH should be successful when amount greater than minimalBridgeAmount',
@@ -219,11 +224,25 @@ function generateCases(CKB_TEST_ADDRESS: string, ETH_TEST_ADDRESS: string, ETH_T
         recipient: CKB_TEST_ADDRESS,
         asset: {
           network: 'Ethereum',
-          ident: randomString(40, '0x', 'hex'),
+          ident: '0x1445ce35416f6d65238d78f4093e051ec6d22ec8',
           amount: '1000000000000001',
         },
       },
-      error: `Error: minimal amount not configed`,
+      error: `Error: EthAsset 0x1445ce35416f6d65238d78f4093e051ec6d22ec8 not in while list`,
+    },
+    {
+      description: 'lock ETH should return error when recipient is too long',
+      payload: {
+        sender: ETH_TEST_ADDRESS,
+        recipient:
+          'ckt1qn3qcg07nlfjc4rwqnu3dntrtrcwd6p48vy72q7rkgkqzvwt5evl5hcqqqqpqqqqqqcqqqqqxyqqqqym2zpn63k5c3jp4cmdze0n5ajgep4ky0g5mjc6fvua3wfekfz2auqj5qqqqqc8sd6pvc6r2dnzvccrqd34v9q5gs2zxfznvsj9vvmygc2yxvmnxvfc8yun2dfsvgurgputy4y',
+        asset: {
+          network: 'Ethereum',
+          ident: ETH_TOKEN_ADDRESS,
+          amount: '1000000000000001',
+        },
+      },
+      error: `Error: sudt size exceeds limit: {"sudtSizeLimit":200,"actualSudtSize":217}`,
     },
     {
       description: 'lock ETH should return error when asset.amount not number',
@@ -326,6 +345,28 @@ function generateCases(CKB_TEST_ADDRESS: string, ETH_TEST_ADDRESS: string, ETH_T
         amount: '1000000000000000',
       },
       error: 'Error: invalid ckb address',
+    },
+    {
+      description: 'burn ETH should return error when recipient is zero address',
+      payload: {
+        network: 'Ethereum',
+        sender: CKB_TEST_ADDRESS,
+        recipient: '0x0000000000000000000000000000000000000000',
+        asset: ETH_TOKEN_ADDRESS,
+        amount: '1000000000000000',
+      },
+      error: 'Error: can not unlock to zero address',
+    },
+    {
+      description: 'burn ETH should return error when recipient is contract address',
+      payload: {
+        network: 'Ethereum',
+        sender: CKB_TEST_ADDRESS,
+        recipient: bridgeEthAddress,
+        asset: ETH_TOKEN_ADDRESS,
+        amount: '1000000000000000',
+      },
+      error: 'Error: can not unlock to contract',
     },
     {
       description: 'burn ETH should return error when miss recipient',
@@ -689,7 +730,7 @@ async function lock(
       lockResult = await client.request('generateBridgeInNervosTransaction', testcase.payload);
     } catch (e) {
       if (testcase.error) {
-        logger.info(`error for testcase ${i}: ${testcase.description}, error: ${e}`);
+        logger.info(`error for testcase ${i}: ${testcase.description}, error: ${e}, expected: ${testcase.error}`);
         assert(e.toString() == testcase.error);
         continue;
       }
@@ -752,7 +793,7 @@ async function burn(
       burnResult = await client.request('generateBridgeOutNervosTransaction', testcase.payload);
     } catch (e) {
       if (testcase.error) {
-        logger.info(`error for testcase ${i} ${testcase.description}, error: ${e}`);
+        logger.info(`error for testcase ${i} ${testcase.description}, error: ${e}, expected: ${testcase.error}`);
         assert(e.toString() == testcase.error);
         continue;
       }
@@ -1018,6 +1059,7 @@ export async function rpcTest(
   ETH_NODE_URL: string,
   CKB_PRI_KEY: string,
   ETH_PRI_KEY: string,
+  bridgeEthAddress: string,
   CKB_TEST_ADDRESS: string = privateKeyToCkbAddress(CKB_PRI_KEY),
   ETH_TEST_ADDRESS: string = privateKeyToEthAddress(ETH_PRI_KEY),
   ETH_TOKEN_ADDRESS = '0x0000000000000000000000000000000000000000',
@@ -1046,6 +1088,7 @@ export async function rpcTest(
     CKB_TEST_ADDRESS,
     ETH_TEST_ADDRESS,
     ETH_TOKEN_ADDRESS,
+    bridgeEthAddress,
   );
   await lock(client, ETH_NODE_URL, ETH_PRI_KEY, CKB_TEST_ADDRESS, ETH_TEST_ADDRESS, lockCases);
   await burn(ckb, client, CKB_PRI_KEY, CKB_TEST_ADDRESS, ETH_TEST_ADDRESS, burnCases);

@@ -230,6 +230,8 @@ export class EthChain {
     };
     logger.debug(`send unlock options: ${JSON.stringify(options)}`);
     try {
+      const dryRunRes = await this.bridge.callStatic.unlock(params, nonce, signature, options);
+      logger.debug(`dryRunRes: ${JSON.stringify(dryRunRes, null, 2)}`);
       const res = await this.bridge.unlock(params, nonce, signature, options);
       return res;
     } catch (e) {

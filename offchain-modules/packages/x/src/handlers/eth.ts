@@ -1,5 +1,3 @@
-import { parseAddress } from '@ckb-lumos/helpers';
-import { Reader } from 'ckb-js-toolkit';
 import { BigNumber, ethers } from 'ethers';
 import { ChainType, EthAsset } from '../ckb/model/asset';
 import { forceBridgeRole } from '../config';
@@ -13,6 +11,7 @@ import { ethCollectSignaturesPayload } from '../multisig/multisig-mgr';
 import { asyncSleep, foreverPromise, fromHexString, retryPromise, uint8ArrayToString } from '../utils';
 import { logger } from '../utils/logger';
 import { EthChain, WithdrawBridgeFeeTopic, Log, ParsedLog } from '../xchain/eth';
+import { checkLock } from '../xchain/eth/check';
 
 const MAX_RETRY_TIMES = 3;
 const lastHandleEthBlockKey = 'lastHandleEthBlock';
@@ -296,7 +295,12 @@ export class EthHandler {
           } sudtExtraData:${parsedLog.args.sudtExtraData} sender:${parsedLog.args.sender}`,
         );
         logger.debug('EthHandler watchLockEvents eth lockEvtLog:', { log, parsedLog });
-        const filterReason = filterLockLog(parsedLockLog);
+        const filterReason = checkLock(
+          parsedLockLog.amount,
+          parsedLockLog.token,
+          parsedLockLog.recipient,
+          parsedLockLog.sudtExtraData,
+        );
         if (filterReason !== '') {
           logger.warn(`skip record ${JSON.stringify(parsedLog)}, reason: ${filterReason}`);
           return;
@@ -567,9 +571,11 @@ export class EthHandler {
         });
         await this.ethDb.saveEthUnlock(records);
         logger.debug('sendUnlockTxs res', txRes);
-        const receipt = await txRes.wait();
-        logger.info(`EthHandler doHandleUnlockRecords sendUnlockTxs receipt:${JSON.stringify(receipt.logs)}`);
-        if (receipt.status === 1) {
+        try {
+          // wait() will reject if the tx fails
+          // https://docs.ethers.io/v5/api/providers/types/#providers-TransactionResponse
+          const receipt = await txRes.wait();
+          logger.info(`EthHandler doHandleUnlockRecords sendUnlockTxs receipt:${JSON.stringify(receipt.logs)}`);
           records.map((r) => {
             r.status = 'success';
           });
@@ -582,14 +588,14 @@ export class EthHandler {
           });
           BridgeMetricSingleton.getInstance(this.role).addBridgeTokenMetrics('eth_unlock', unlockTokens);
           BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_unlock', 'success');
-        } else {
+        } catch (error) {
           records.map((r) => {
             r.status = 'error';
-            r.message = 'unlock tx failed';
+            r.message = error.toString();
           });
           BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_unlock', 'failed');
           logger.error(
-            `EthHandler doHandleUnlockRecords ckbTxHashes:${unlockTxHashes} unlock execute failed:${receipt}`,
+            `EthHandler doHandleUnlockRecords ckbTxHashes:${unlockTxHashes} unlock execute failed:${error.stack}`,
           );
         }
         break;
@@ -650,45 +656,4 @@ export function parseLockLog(log: Log, parsedLog: ParsedLog): ParsedLockLog {
     sender: sender,
     asset,
   };
-}
-
-// filter lock log, return empty string if it passes, otherwise return the reason why it fails
-export function filterLockLog(parsedLockLog: ParsedLockLog): string {
-  const { amount, asset, token, recipient, sudtExtraData } = parsedLockLog;
-  if (!asset.inWhiteList()) {
-    return `EthAsset ${token} not in while list`;
-  }
-  const minimalAmount = asset.getMinimalAmount();
-  if (BigInt(amount) < BigInt(minimalAmount)) {
-    return `asset amount less than minimal amount ${minimalAmount}`;
-  }
-  // check sudtSize
-  try {
-    const recipientLockscript = parseAddress(recipient);
-    const recipientLockscriptLen = new Reader(recipientLockscript.args).length() + 33;
-    const sudtExtraDataLen = sudtExtraData.length / 2 - 1;
-    // - capacity size: 8
-    // - sudt typescript size
-    //    - code_hash: 32
-    //    - hash_type: 1
-    //    - args: 32
-    // - sude amount size: 16
-    const sudtSizeLimit = ForceBridgeCore.config.ckb.sudtSize;
-    const actualSudtSize = recipientLockscriptLen + sudtExtraDataLen + 89;
-    logger.debug(
-      `check sudtSize: ${JSON.stringify({
-        parsedLockLog,
-        sudtSizeLimit,
-        actualSudtSize,
-        recipientLockscriptLen,
-        sudtExtraDataLen,
-      })}`,
-    );
-    if (actualSudtSize > sudtSizeLimit) {
-      return `sudt size exceeds limit: ${JSON.stringify({ sudtSizeLimit, actualSudtSize })}`;
-    }
-  } catch (e) {
-    return 'invalid recipient address';
-  }
-  return '';
 }

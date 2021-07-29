@@ -39,7 +39,7 @@ export interface CkbConfig {
   ckbIndexerUrl: string;
   privateKey: string;
   multiSignHosts: MultiSignHost[];
-  multisigScript?: MultisigItem;
+  multisigScript: MultisigItem;
   multisigLockscript: Script;
   ownerCellTypescript: Script;
   deps: CkbDeps;
@@ -52,7 +52,7 @@ export interface EthConfig {
   rpcUrl: string;
   contractAddress: string;
   privateKey: string;
-  multiSignAddresses?: string[];
+  multiSignAddresses: string[];
   multiSignHosts: MultiSignHost[];
   multiSignThreshold: number;
   confirmNumber: number;
@@ -171,5 +171,4 @@ export interface Config {
   btc: BtcConfig;
   collector?: collectorConfig;
   monitor?: monitorConfig;
-  configPath?: string;
 }

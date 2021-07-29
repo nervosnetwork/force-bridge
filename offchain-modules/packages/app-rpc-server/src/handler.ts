@@ -12,6 +12,7 @@ import { stringToUint8Array } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
 import { IBalance } from '@force-bridge/x/dist/xchain/btc';
 import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
+import { checkLock } from '@force-bridge/x/dist/xchain/eth/check';
 import { Amount } from '@lay2/pw-core';
 import { BigNumber } from 'bignumber.js';
 import bitcore from 'bitcore-lib';
@@ -76,11 +77,15 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     let tx;
     switch (network) {
       case 'Ethereum': {
-        checkETHAmount(payload.asset.ident, payload.asset.amount);
+        const sudtExtraData = '0x';
+        const checkRes = checkLock(payload.asset.amount, payload.asset.ident, payload.recipient, sudtExtraData);
+        logger.info(`checkLock: ${JSON.stringify({ payload, checkRes })}`);
+        if (checkRes !== '') {
+          throw new Error(checkRes);
+        }
         const provider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
         const bridgeContractAddr = ForceBridgeCore.config.eth.contractAddress;
         const bridge = new ethers.Contract(bridgeContractAddr, abi, provider);
-        const sudtExtraData = '0x';
         const ethAmount = ethers.utils.parseUnits(payload.asset.amount, 0);
         const recipient = stringToUint8Array(payload.recipient);
 
@@ -163,6 +168,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
       case 'Ethereum':
         checkETHAmount(assetName, amount);
         checkETHAddress(payload.recipient);
+        await checkLockEthAddr(payload.recipient);
         asset = new EthAsset(assetName, ownerTypeHash);
         break;
       case 'Tron':
@@ -560,6 +566,17 @@ function getTokenShadowIdent(XChainNetwork: XChainNetWork, XChainToken: string):
     args: asset.toBridgeLockscriptArgs(),
   };
   return ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
+}
+
+async function checkLockEthAddr(address: string) {
+  if (address === '0x0000000000000000000000000000000000000000') {
+    throw new Error('can not unlock to zero address');
+  }
+  const provider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
+  const getCodeRes = await provider.getCode(address);
+  if (getCodeRes !== '0x') {
+    throw new Error('can not unlock to contract');
+  }
 }
 
 function checkETHAddress(address) {

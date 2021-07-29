@@ -12,7 +12,7 @@ import { CkbTxHelper } from './base_generator';
 import { SerializeRecipientCellData } from './generated/eth_recipient_cell';
 import { SerializeMintWitness } from './generated/mint_witness';
 import { ScriptType } from './indexer';
-import { getFromAddr, getMultisigLock, getOwnerTypeHash } from './multisig/multisig_helper';
+import { getFromAddr, getOwnerTypeHash } from './multisig/multisig_helper';
 
 export interface MintAssetRecord {
   lockTxHash: string;
@@ -62,9 +62,8 @@ export class CkbTxGenerator extends CkbTxHelper {
 
   // fixme: if not find multisig cell, create it
   async fetchMultisigCell(): Promise<Cell | undefined> {
-    const multisigLockscript = getMultisigLock(ForceBridgeCore.config.ckb.multisigScript!);
     const cellCollector = this.indexer.collector({
-      lock: multisigLockscript,
+      lock: ForceBridgeCore.config.ckb.multisigLockscript,
     });
     for await (const cell of cellCollector.collect()) {
       if (cell.cell_output.type === null) {

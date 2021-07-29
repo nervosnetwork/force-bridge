@@ -42,25 +42,28 @@ async function generateConfig(
   logger.debug(`baseConfig: ${JSON.stringify(baseConfig, null, 2)}`);
   baseConfig.eth.assetWhiteList = assetWhiteList;
   baseConfig.eth.contractAddress = ethContractAddress;
-  baseConfig.eth.multiSignThreshold = multisigConfig.threshold;
-  baseConfig.eth.multiSignAddresses = multisigConfig.verifiers.map((v) => v.ethAddress);
   baseConfig.ckb.deps = ckbDeps;
-  baseConfig.ckb.multisigScript = {
-    R: 0,
-    M: multisigConfig.threshold,
-    publicKeyHashes: multisigConfig.verifiers.map((v) => v.ckbPubkeyHash),
-  };
   baseConfig.ckb.ownerCellTypescript = ownerCellConfig.ownerCellTypescript;
-  baseConfig.ckb.multisigLockscript = ownerCellConfig.multisigLockscript;
   baseConfig.ckb.startBlockHeight = ckbStartHeight;
   baseConfig.eth.startBlockHeight = ethStartHeight;
   // collector
   const collectorConfig: Config = lodash.cloneDeep(baseConfig);
   collectorConfig.common.role = 'collector';
   collectorConfig.common.orm!.host = 'collector_db';
+  collectorConfig.common.keystorePath = '/data/keystore.json';
+  collectorConfig.eth.privateKey = 'eth';
+  collectorConfig.ckb.privateKey = 'ckb';
+  collectorConfig.eth.multiSignThreshold = multisigConfig.threshold;
+  collectorConfig.eth.multiSignAddresses = multisigConfig.verifiers.map((v) => v.ethAddress);
+  collectorConfig.ckb.multisigScript = {
+    R: 0,
+    M: multisigConfig.threshold,
+    publicKeyHashes: multisigConfig.verifiers.map((v) => v.ckbPubkeyHash),
+  };
+  collectorConfig.ckb.multisigLockscript = ownerCellConfig.multisigLockscript;
   collectorConfig.collector = {
     gasLimit: 250000,
-    batchGasLimit: 100000,
+    batchGasLimit: 120000,
     gasPriceGweiLimit: 100,
   };
   collectorConfig.common.collectorPubKeyHash.push(privateKeyToCkbPubkeyHash(CKB_PRIVATE_KEY));
@@ -90,15 +93,6 @@ async function generateConfig(
   const watcherConfig: Config = lodash.cloneDeep(baseConfig);
   watcherConfig.common.role = 'watcher';
   watcherConfig.common.orm!.host = 'watcher_db';
-  const watcherStore = KeyStore.createFromPairs(
-    {
-      ckb: CKB_PRIVATE_KEY,
-      eth: ETH_PRIVATE_KEY,
-    },
-    password,
-  ).getEncryptedData();
-  const watcherKeystorePath = path.join(configPath, 'watcher/keystore.json');
-  writeJsonToFile(watcherStore, watcherKeystorePath);
   writeJsonToFile({ forceBridge: watcherConfig }, path.join(configPath, 'watcher/force_bridge.json'));
   // verifiers
   multisigConfig.verifiers.map((v, i) => {
@@ -106,6 +100,7 @@ async function generateConfig(
     const verifierConfig: Config = lodash.cloneDeep(baseConfig);
     verifierConfig.common.role = 'verifier';
     verifierConfig.common.orm!.host = `verifier${verifierIndex}_db`;
+    verifierConfig.common.keystorePath = '/data/keystore.json';
     verifierConfig.eth.privateKey = 'verifier';
     verifierConfig.ckb.privateKey = 'verifier';
     verifierConfig.common.collectorPubKeyHash.push(privateKeyToCkbPubkeyHash(CKB_PRIVATE_KEY));
@@ -240,7 +235,7 @@ async function main() {
   // const FORCE_BRIDGE_URL = getFromEnv('FORCE_BRIDGE_URL');
 
   const MULTISIG_NUMBER = 3;
-  const MULTISIG_THRESHOLD = 2;
+  const MULTISIG_THRESHOLD = 3;
   const FORCE_BRIDGE_KEYSTORE_PASSWORD = '123456';
 
   const configPath = pathFromProjectRoot('workdir/testnet-docker');
@@ -255,7 +250,6 @@ async function main() {
       lumosConfigType: 'AGGRON4',
       network: 'testnet',
       role: 'watcher',
-      keystorePath: '/data/keystore.json',
       orm: {
         type: 'mysql',
         host: 'db',
@@ -273,7 +267,6 @@ async function main() {
     },
     eth: {
       rpcUrl: ETH_RPC_URL,
-      privateKey: 'eth',
       confirmNumber: 12,
       startBlockHeight: 1,
       batchUnlock: {
@@ -284,12 +277,17 @@ async function main() {
     ckb: {
       ckbRpcUrl: CKB_RPC_URL,
       ckbIndexerUrl: CKB_INDEXER_URL,
-      privateKey: 'ckb',
       startBlockHeight: 1,
       confirmNumber: 15,
       sudtSize: 150,
     },
   };
+
+  let ckbDepsFromFile = undefined;
+  if (process.env.CKB_DEPS) {
+    ckbDepsFromFile = JSON.parse(fs.readFileSync(process.env.CKB_DEPS, 'utf8'));
+  }
+
   const { assetWhiteList, ckbDeps, ownerConfig, bridgeEthAddress, multisigConfig, ckbStartHeight, ethStartHeight } =
     await deployDev(
       ETH_RPC_URL,
@@ -301,6 +299,7 @@ async function main() {
       CKB_PRIVATE_KEY,
       'AGGRON4',
       path.join(configPath, 'deployConfig.json'),
+      ckbDepsFromFile,
     );
   await generateConfig(
     initConfig as unknown as Config,

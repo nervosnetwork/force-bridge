@@ -40,24 +40,27 @@ async function generateConfig(
   logger.debug(`baseConfig: ${JSON.stringify(baseConfig, null, 2)}`);
   baseConfig.eth.assetWhiteList = assetWhiteList;
   baseConfig.eth.contractAddress = ethContractAddress;
-  baseConfig.eth.multiSignThreshold = multisigConfig.threshold;
-  baseConfig.eth.multiSignAddresses = multisigConfig.verifiers.map((v) => v.ethAddress);
   baseConfig.ckb.deps = ckbDeps;
-  baseConfig.ckb.multisigScript = {
-    R: 0,
-    M: multisigConfig.threshold,
-    publicKeyHashes: multisigConfig.verifiers.map((v) => v.ckbPubkeyHash),
-  };
-  baseConfig.ckb.ownerCellTypescript = ownerCellConfig.ownerCellTypescript;
-  baseConfig.ckb.multisigLockscript = ownerCellConfig.multisigLockscript;
   baseConfig.ckb.startBlockHeight = ckbStartHeight;
   baseConfig.eth.startBlockHeight = ethStartHeight;
+  baseConfig.ckb.ownerCellTypescript = ownerCellConfig.ownerCellTypescript;
   // collector
   const collectorConfig: Config = lodash.cloneDeep(baseConfig);
   collectorConfig.common.role = 'collector';
   collectorConfig.common.log.level = 'debug';
   collectorConfig.common.orm!.host = 'collector_db';
   collectorConfig.common.collectorPubKeyHash.push(privateKeyToCkbPubkeyHash(CKB_PRIVATE_KEY));
+  collectorConfig.eth.privateKey = 'eth';
+  collectorConfig.ckb.privateKey = 'ckb';
+  collectorConfig.eth.multiSignThreshold = multisigConfig.threshold;
+  collectorConfig.eth.multiSignAddresses = multisigConfig.verifiers.map((v) => v.ethAddress);
+  collectorConfig.common.keystorePath = '/data/keystore.json';
+  collectorConfig.ckb.multisigScript = {
+    R: 0,
+    M: multisigConfig.threshold,
+    publicKeyHashes: multisigConfig.verifiers.map((v) => v.ckbPubkeyHash),
+  };
+  collectorConfig.ckb.multisigLockscript = ownerCellConfig.multisigLockscript;
   collectorConfig.collector = {
     gasLimit: 250000,
     batchGasLimit: 100000,
@@ -89,27 +92,17 @@ async function generateConfig(
   const watcherConfig: Config = lodash.cloneDeep(baseConfig);
   watcherConfig.common.role = 'watcher';
   watcherConfig.common.orm!.host = 'watcher_db';
-  const watcherStore = KeyStore.createFromPairs(
-    {
-      ckb: CKB_PRIVATE_KEY,
-      eth: ETH_PRIVATE_KEY,
-    },
-    password,
-  ).getEncryptedData();
-  const watcherKeystorePath = path.join(configPath, 'watcher/keystore.json');
-  writeJsonToFile(watcherStore, watcherKeystorePath);
   writeJsonToFile({ forceBridge: watcherConfig }, path.join(configPath, 'watcher/force_bridge.json'));
   // verifiers
   multisigConfig.verifiers.map((v, i) => {
     const verifierIndex = i + 1;
     const verifierConfig: Config = lodash.cloneDeep(baseConfig);
-    verifierConfig.ckb.multisigScript = undefined;
-    verifierConfig.eth.multiSignAddresses = undefined;
     verifierConfig.common.role = 'verifier';
     verifierConfig.common.orm!.host = `verifier${verifierIndex}_db`;
     verifierConfig.eth.privateKey = 'verifier';
     verifierConfig.ckb.privateKey = 'verifier';
     verifierConfig.common.collectorPubKeyHash.push(privateKeyToCkbPubkeyHash(CKB_PRIVATE_KEY));
+    verifierConfig.common.keystorePath = '/data/keystore.json';
     const verifierStore = KeyStore.createFromPairs(
       {
         verifier: v.privkey,
@@ -250,7 +243,7 @@ async function main() {
   const ETH_PRIVATE_KEY = '0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed37a';
   const CKB_PRIVATE_KEY = '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
 
-  const MULTISIG_NUMBER = 5;
+  const MULTISIG_NUMBER = 3;
   const MULTISIG_THRESHOLD = 3;
   const FORCE_BRIDGE_KEYSTORE_PASSWORD = '123456';
   const ETH_RPC_URL = 'http://127.0.0.1:3000';
@@ -269,7 +262,6 @@ async function main() {
       lumosConfigType: 'DEV',
       network: 'testnet',
       role: 'watcher',
-      keystorePath: '/data/keystore.json',
       orm: {
         type: 'mysql',
         host: 'db',
@@ -287,7 +279,6 @@ async function main() {
     },
     eth: {
       rpcUrl: 'http://10.4.0.10:8545',
-      privateKey: 'eth',
       confirmNumber: 12,
       startBlockHeight: 1,
       batchUnlock: {
@@ -298,7 +289,6 @@ async function main() {
     ckb: {
       ckbRpcUrl: 'http://ckb-dev:8114',
       ckbIndexerUrl: 'http://ckb-indexer-dev:8116',
-      privateKey: 'ckb',
       startBlockHeight: 1,
       confirmNumber: 15,
       sudtSize: 500,
