@@ -10,7 +10,11 @@ const nextId = () => {
 
 export type httpRequestParams = collectSignaturesParams | getPendingTxParams;
 
-export async function httpRequest(reqUrl: string, method: string, params: httpRequestParams): Promise<JSONRPCResponse> {
+export async function httpRequest(
+  reqUrl: string,
+  method: string,
+  params?: httpRequestParams,
+): Promise<JSONRPCResponse> {
   const jsonRpcRequest = {
     jsonrpc: '2.0',
     method: method,
