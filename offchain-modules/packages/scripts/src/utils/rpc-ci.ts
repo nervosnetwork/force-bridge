@@ -48,10 +48,10 @@ function generateCases(
         asset: {
           network: 'Ethereum',
           ident: ETH_TOKEN_ADDRESS,
-          amount: '999999999999999',
+          amount: '9999999999999',
         },
       },
-      error: 'Error: minimal bridge amount is 0.001 ETH',
+      error: 'Error: minimal bridge amount is 0.00001 ETH',
     },
     // {
     //   description: 'lock DAI should be successful when amount greater than minimalBridgeAmount',
@@ -289,9 +289,9 @@ function generateCases(
         sender: CKB_TEST_ADDRESS,
         recipient: ETH_TEST_ADDRESS,
         asset: ETH_TOKEN_ADDRESS,
-        amount: '999999999999999',
+        amount: '9999999999999',
       },
-      error: 'Error: minimal bridge amount is 0.001 ETH',
+      error: 'Error: minimal bridge amount is 0.00001 ETH',
     },
     // {
     //   description: 'burn DAI should be successful when amount greater than minimalBridgeAmount',
@@ -644,9 +644,9 @@ function generateCases(
       payload: {
         network: 'Ethereum',
         xchainAssetIdent: ETH_TOKEN_ADDRESS,
-        amount: '999999999999999',
+        amount: '9999999999999',
       },
-      error: 'Error: minimal bridge amount is 0.001 ETH',
+      error: 'Error: minimal bridge amount is 0.00001 ETH',
     },
     {
       description: 'should return error when miss network',
