@@ -41,6 +41,7 @@ export async function bootstrap(configPath: string | Config): Promise<void> {
   if (typeof configPath === 'string') {
     nconf.env().file({ file: configPath });
     config = nconf.get('forceBridge');
+    config.configPath = configPath;
   } else {
     config = configPath;
   }

@@ -9,12 +9,11 @@ import { Config, TronConfig } from '@force-bridge/x/dist/config';
 import { bootstrap, ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { CkbMint, TronLock, TronUnlock } from '@force-bridge/x/dist/db/model';
 import { asyncSleep, getDBConnection } from '@force-bridge/x/dist/utils';
-import { initLog, logger } from '@force-bridge/x/dist/utils/logger';
+import { logger } from '@force-bridge/x/dist/utils/logger';
 import { Amount, Script } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import nconf from 'nconf';
 import TronWeb from 'tronweb';
-import { createConnection } from 'typeorm';
 import { waitUntilCommitted } from './util';
 
 const PRI_KEY = '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
@@ -114,7 +113,7 @@ async function main() {
 
   const getBalance = async (assetName) => {
     const account = new Account(PRI_KEY);
-    const multisigLockScript = getMultisigLock(ForceBridgeCore.config.ckb.multisigScript);
+    const multisigLockScript = getMultisigLock(ForceBridgeCore.config.ckb.multisigScript!);
     const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>{
       codeHash: multisigLockScript.code_hash,
       hashType: multisigLockScript.hash_type,
@@ -186,7 +185,7 @@ async function main() {
     const burnAmount = 1;
     if (!sendBurn) {
       const account = new Account(PRI_KEY);
-      const multisigLockScript = getMultisigLock(ForceBridgeCore.config.ckb.multisigScript);
+      const multisigLockScript = getMultisigLock(ForceBridgeCore.config.ckb.multisigScript!);
       const ownLockHash = ckb.utils.scriptToHash(<CKBComponents.Script>{
         codeHash: multisigLockScript.code_hash,
         hashType: multisigLockScript.hash_type,

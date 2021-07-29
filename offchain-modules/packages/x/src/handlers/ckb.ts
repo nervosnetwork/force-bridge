@@ -27,6 +27,7 @@ import {
   toHexString,
   transactionSkeletonToJSON,
   uint8ArrayToString,
+  writeJsonToFile,
 } from '../utils';
 import { logger } from '../utils/logger';
 import { getAssetTypeByAsset } from '../xchain/tron/utils';
@@ -49,11 +50,11 @@ export class CkbHandler {
 
   constructor(private db: CkbDb, private kvDb: KVDb, private role: forceBridgeRole) {
     this.transactionManager = new TransactionManager(this.ckbIndexer);
-    this.multisigMgr = new MultiSigMgr(
-      'CKB',
-      ForceBridgeCore.config.ckb.multiSignHosts,
-      ForceBridgeCore.config.ckb.multisigScript.M,
-    );
+    let threshold = Number.MAX_VALUE;
+    if (ForceBridgeCore.config.ckb.multisigScript) {
+      threshold = ForceBridgeCore.config.ckb.multisigScript.M;
+    }
+    this.multisigMgr = new MultiSigMgr('CKB', ForceBridgeCore.config.ckb.multiSignHosts, threshold);
   }
 
   async getLastHandledBlock(): Promise<{ blockNumber: number; blockHash: string }> {
@@ -241,6 +242,7 @@ export class CkbHandler {
 
     const burnTxs = new Map();
     for (const tx of block.transactions) {
+      await this.parseChangeValTx(tx);
       const parsedMintRecords = await this.parseMintTx(tx, block);
       if (parsedMintRecords) {
         await this.onMintTx(blockNumber, parsedMintRecords);
@@ -267,6 +269,29 @@ export class CkbHandler {
     }
     await this.onBurnTxs(blockNumber, burnTxs);
     await this.setLastHandledBlock(blockNumber, blockHash);
+  }
+  async parseChangeValTx(tx: Transaction): Promise<void> {
+    for (const output of tx.outputs) {
+      if (
+        output.type &&
+        output.type.hashType === ForceBridgeCore.config.ckb.ownerCellTypescript.hash_type &&
+        output.type.codeHash === ForceBridgeCore.config.ckb.ownerCellTypescript.code_hash &&
+        output.type.args === ForceBridgeCore.config.ckb.ownerCellTypescript.args
+      ) {
+        const oldLockScriptArgs = ForceBridgeCore.config.ckb.multisigLockscript.args;
+        ForceBridgeCore.config.ckb.multisigLockscript = {
+          args: output.lock.args,
+          code_hash: output.lock.codeHash,
+          hash_type: output.lock.hashType,
+        };
+        if (ForceBridgeCore.config.configPath) {
+          writeJsonToFile({ forceBridge: ForceBridgeCore.config }, ForceBridgeCore.config.configPath);
+          logger.info(
+            `validators have been changed, and saved in ${ForceBridgeCore.config.configPath}. args from ${oldLockScriptArgs} to ${output.lock.args}.`,
+          );
+        }
+      }
+    }
   }
 
   async onMintTx(blockNumber: number, mintedRecords: MintedRecords): Promise<UpdateResult | undefined> {
@@ -513,15 +538,17 @@ export class CkbHandler {
           break;
         }
         const signatures = sigs as string[];
-        if (signatures.length < ForceBridgeCore.config.ckb.multisigScript.M) {
+        if (signatures.length < ForceBridgeCore.config.ckb.multisigScript!.M) {
           const mintTxHash = txSkeleton.get('signingEntries').get(1)!.message;
           mintRecords.map((r) => {
             r.status = 'error';
-            r.message = `sig number:${signatures.length} less than:${ForceBridgeCore.config.ckb.multisigScript.M}`;
+            r.message = `sig number:${signatures.length} less than:${ForceBridgeCore.config.ckb.multisigScript!.M}`;
             r.mintHash = mintTxHash;
           });
           logger.error(
-            `CkbHandler doHandleMintRecords sig number:${signatures.length} less than:${ForceBridgeCore.config.ckb.multisigScript.M}, mintIds:${mintIds}`,
+            `CkbHandler doHandleMintRecords sig number:${signatures.length} less than:${
+              ForceBridgeCore.config.ckb.multisigScript!.M
+            }, mintIds:${mintIds}`,
           );
           break;
         }
@@ -530,7 +557,7 @@ export class CkbHandler {
           txSkeleton.get('signingEntries').get(0)!.message,
           ForceBridgeCore.config.ckb.privateKey,
         );
-        let content1 = serializeMultisigScript(ForceBridgeCore.config.ckb.multisigScript);
+        let content1 = serializeMultisigScript(ForceBridgeCore.config.ckb.multisigScript!);
         content1 += signatures.join('');
 
         logger.debug(`txSkeleton: ${transactionSkeletonToJSON(txSkeleton)}`);
@@ -686,7 +713,7 @@ export class CkbHandler {
     const txSkeleton = await generator.createBridgeCell(scripts);
     const message0 = txSkeleton.get('signingEntries').get(0)!.message;
     const content0 = key.signRecoverable(message0, ForceBridgeCore.config.ckb.privateKey);
-    let content1 = serializeMultisigScript(ForceBridgeCore.config.ckb.multisigScript);
+    let content1 = serializeMultisigScript(ForceBridgeCore.config.ckb.multisigScript!);
     const sigs = await this.multisigMgr.collectSignatures({
       rawData: txSkeleton.get('signingEntries').get(1)!.message,
       payload: {
@@ -696,9 +723,11 @@ export class CkbHandler {
       },
     });
     const signatures = sigs as string[];
-    if (signatures.length < ForceBridgeCore.config.ckb.multisigScript.M) {
+    if (signatures.length < ForceBridgeCore.config.ckb.multisigScript!.M) {
       throw new Error(
-        `createBridgeCell collect signatures failed, expected:${ForceBridgeCore.config.ckb.multisigScript.M}, collected:${signatures.length}`,
+        `createBridgeCell collect signatures failed, expected:${
+          ForceBridgeCore.config.ckb.multisigScript!.M
+        }, collected:${signatures.length}`,
       );
     }
     content1 += signatures.join('');
