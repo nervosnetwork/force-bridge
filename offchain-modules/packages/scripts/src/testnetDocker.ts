@@ -8,7 +8,7 @@ import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
 import * as dotenv from 'dotenv';
 import * as lodash from 'lodash';
 import * as Mustache from 'mustache';
-import { PATH_PROJECT_ROOT, pathFromProjectRoot } from './utils';
+import { execShellCmd, PATH_PROJECT_ROOT, pathFromProjectRoot } from './utils';
 import { deployDev } from './utils/deploy';
 dotenv.config({ path: process.env.DOTENV_PATH || '.env' });
 
@@ -145,7 +145,7 @@ services:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: forcebridge
     ports:
-      - 4299:3306
+      - 3050:3306
   watcher:
     image: node:14
     restart: on-failure
@@ -156,7 +156,7 @@ services:
       - force-bridge-node-modules:/app/offchain-modules/node_modules
       - ./watcher:/data
     ports:
-      - "4199:80"
+      - "3060:80"
     command: |
       sh -c '
       cd /app/offchain-modules;
@@ -170,7 +170,7 @@ services:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: forcebridge
     ports:
-      - 4298:3306
+      - 3059:3306
   collector:
     image: node:14
     restart: on-failure
@@ -181,7 +181,7 @@ services:
       - force-bridge-node-modules:/app/offchain-modules/node_modules
       - ./collector:/data
     ports:
-      - "4198:80"
+      - "3069:80"
     command: |
       sh -c '
       cd /app/offchain-modules;
@@ -284,8 +284,9 @@ async function main() {
   };
 
   let ckbDepsFromFile = undefined;
-  if (process.env.CKB_DEPS) {
-    ckbDepsFromFile = JSON.parse(fs.readFileSync(process.env.CKB_DEPS, 'utf8'));
+  const ckbDepsPath = path.join(configPath, 'ckbDeps.json');
+  if (fs.existsSync(ckbDepsPath)) {
+    ckbDepsFromFile = JSON.parse(fs.readFileSync(ckbDepsPath, 'utf8'));
   }
 
   const { assetWhiteList, ckbDeps, ownerConfig, bridgeEthAddress, multisigConfig, ckbStartHeight, ethStartHeight } =
@@ -319,10 +320,11 @@ async function main() {
   const verifiers = lodash.range(MULTISIG_NUMBER).map((i) => {
     return {
       name: `verifier${i + 1}`,
-      db_port: 4200 + i + 1,
-      port: 4100 + i + 1,
+      db_port: 3050 + i + 1,
+      port: 3060 + i + 1,
     };
   });
+  await execShellCmd(`mkdir -p ${path.join(configPath, 'script')}`);
   const dockerComposeFile = Mustache.render(dockerComposeTemplate, {
     FORCE_BRIDGE_KEYSTORE_PASSWORD,
     projectDir: PATH_PROJECT_ROOT,
@@ -334,6 +336,6 @@ async function main() {
 main()
   .then(() => process.exit(0))
   .catch((error) => {
-    logger.error(`integration test failed, error: ${error.stack}`);
+    logger.error(`generate testnet docker config failed, error: ${error.stack}`);
     process.exit(1);
   });

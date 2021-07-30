@@ -110,7 +110,7 @@ export class MultiSigMgr {
               logger.error(
                 `MultiSigMgr collectSignatures chain:${this.chainType} address:${svrHost.address} rawData:${
                   params.rawData
-                } payload:${JSON.stringify(params.payload, null, 2)} sigServer:${svrHost.host}, error:${err.message}`,
+                } payload:${JSON.stringify(params.payload)} sigServer:${svrHost.host}, error:${err.message}`,
               );
               failedSigServerHosts.push(svrHost);
               resolve(null);
@@ -182,7 +182,7 @@ export class MultiSigMgr {
       }
       //retry failed hosts
       sigServerHosts = failedSigServerHosts;
-      await asyncSleep(3000);
+      await asyncSleep(10000);
     }
     return sigs.map((sig) => {
       return sig.signature;

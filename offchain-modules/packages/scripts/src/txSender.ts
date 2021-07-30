@@ -18,6 +18,7 @@ class TxSender {
   provider: providers.JsonRpcProvider;
   ethWallet: Wallet;
   ckb: CKB;
+  ethAddress: string;
 
   constructor(
     public ethPrivateKey: string,
@@ -29,6 +30,7 @@ class TxSender {
     public ethRpcUrl: string,
     public txIntervalMs: number = 1000,
   ) {
+    this.ethAddress = ethers.utils.computeAddress(ethPrivateKey);
     this.ckbAddresses = ckbPrivateKeys.map((k) => privateKeyToCkbAddress(k));
     this.ckb = new CKB(ckbRpcUrl);
     const client = new JSONRPCClient((jsonRPCRequest) =>
@@ -108,21 +110,21 @@ class TxSender {
   async lockSender(): Promise<void> {
     for (;;) {
       const ethTokenAddress = '0x0000000000000000000000000000000000000000';
-      const lockAmount = Math.floor(Math.random() * 200000 + 2000000000000000).toString();
+      const lockAmount = Math.floor(Math.random() * 200000 + 10000000000000).toString();
       await this.lock(ethTokenAddress, this.ckbAddresses, lockAmount, true, this.txIntervalMs);
     }
   }
 
   async burnSender(): Promise<void> {
+    await prepareCkbAddresses(this.ckb, this.ckbPrivateKeys, this.ckbPrivateKey, this.ckbRpcUrl, this.ckbIndexerUrl);
     for (;;) {
       const ethTokenAddress = '0x0000000000000000000000000000000000000000';
-      const recipient = '0x0000000000000000000000000000000000000000';
+      const recipient = this.ethAddress;
       const txs: Array<string> = [];
-      await prepareCkbAddresses(this.ckb, this.ckbPrivateKeys, this.ckbPrivateKey, this.ckbRpcUrl, this.ckbIndexerUrl);
       await asyncSleep(30000);
       for (const ckbPrivateKey of lodash.shuffle(this.ckbPrivateKeys)) {
         try {
-          const burnAmount = Math.floor(Math.random() * 200000 + 1000000000000000).toString();
+          const burnAmount = Math.floor(Math.random() * 200000 + 10000000000000).toString();
           const txHash = await this.burn(ckbPrivateKey, recipient, ethTokenAddress, burnAmount);
           await asyncSleep(this.txIntervalMs);
           txs.push(txHash);

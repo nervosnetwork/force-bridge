@@ -52,7 +52,8 @@
     "startDevDockerDeps": "docker-compose -f ../docker/docker-compose.dev.yml up -d",
     "destroyDevDockerDeps": "docker-compose -f ../docker/docker-compose.dev.yml down",
     "dev-docker:generate": "ts-node packages/scripts/src/devDocker.ts",
-    "testnet-docker:generate": "DOTENV_PATH=../workdir/testnet-docker/.env ts-node packages/scripts/src/testnetDocker.ts"
+    "testnet-docker:generate": "DOTENV_PATH=../workdir/testnet-docker/.env ts-node packages/scripts/src/testnetDocker.ts",
+    "testnet-docker:install": "docker run --rm -v $(pwd):/app -v force-bridge-node-modules:/app/node_modules node:14 bash -c 'cd /app && yarn build'"
   },
   "author": "",
   "license": "MIT",
