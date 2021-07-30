@@ -103,8 +103,6 @@ async function generateConfig(
   monitorConfig.common.role = 'watcher';
   monitorConfig.common.log.identity = 'monitor';
   monitorConfig.common.log.logFile = path.join(configPath, 'monitor/force_bridge.log');
-  monitorConfig.eth.privateKey = '';
-  monitorConfig.ckb.privateKey = '';
   monitorConfig.monitor = {
     discordWebHook: monitorDiscordWebHook,
     expiredTime: 1800000, //30 minutes
