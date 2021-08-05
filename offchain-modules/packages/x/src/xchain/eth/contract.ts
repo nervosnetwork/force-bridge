@@ -199,44 +199,50 @@ export class EthChain {
     records: IEthUnlock[],
     gasPrice: BigNumber,
   ): Promise<ethers.providers.TransactionResponse | boolean | Error> {
-    logger.debug('contract balance', await this.provider.getBalance(this.bridgeContractAddr));
-    const params: EthUnlockRecord[] = records.map((r) => {
-      return {
-        token: r.asset,
-        recipient: r.recipientAddress,
-        amount: BigNumber.from(r.amount),
-        ckbTxHash: r.ckbTxHash,
+    const maxTryTimes = 3;
+    for (let tryTime = 0; ; tryTime++) {
+      logger.debug('contract balance', await this.provider.getBalance(this.bridgeContractAddr));
+      const params: EthUnlockRecord[] = records.map((r) => {
+        return {
+          token: r.asset,
+          recipient: r.recipientAddress,
+          amount: BigNumber.from(r.amount),
+          ckbTxHash: r.ckbTxHash,
+        };
+      });
+      const domainSeparator = await this.bridge.DOMAIN_SEPARATOR();
+      const typeHash = await this.bridge.UNLOCK_TYPEHASH();
+      const nonce: BigNumber = await this.bridge.latestUnlockNonce_();
+      const signResult = await this.signUnlockRecords(domainSeparator, typeHash, params, nonce);
+      if (typeof signResult === 'boolean' && (signResult as boolean)) {
+        return true;
+      }
+      const signatures = signResult as string[];
+      if (signatures.length < ForceBridgeCore.config.eth.multiSignThreshold) {
+        return new Error(
+          `sig number:${signatures.length} less than multiSignThreshold:${ForceBridgeCore.config.eth.multiSignThreshold}`,
+        );
+      }
+      const signature = '0x' + signatures.join('');
+      const collectorConfig = nonNullable(ForceBridgeCore.config.collector);
+      const gasLimit = records.length === 1 ? collectorConfig.gasLimit : records.length * collectorConfig.batchGasLimit;
+      const options = {
+        gasPrice,
+        gasLimit,
       };
-    });
-    const domainSeparator = await this.bridge.DOMAIN_SEPARATOR();
-    const typeHash = await this.bridge.UNLOCK_TYPEHASH();
-    const nonce: BigNumber = await this.bridge.latestUnlockNonce_();
-    const signResult = await this.signUnlockRecords(domainSeparator, typeHash, params, nonce);
-    if (typeof signResult === 'boolean' && (signResult as boolean)) {
-      return true;
-    }
-    const signatures = signResult as string[];
-    if (signatures.length < ForceBridgeCore.config.eth.multiSignThreshold) {
-      return new Error(
-        `sig number:${signatures.length} less than multiSignThreshold:${ForceBridgeCore.config.eth.multiSignThreshold}`,
-      );
-    }
-    const signature = '0x' + signatures.join('');
-    const collectorConfig = nonNullable(ForceBridgeCore.config.collector);
-    const gasLimit = records.length === 1 ? collectorConfig.gasLimit : records.length * collectorConfig.batchGasLimit;
-    const options = {
-      gasPrice,
-      gasLimit,
-    };
-    logger.debug(`send unlock options: ${JSON.stringify(options)}`);
-    try {
-      const dryRunRes = await this.bridge.callStatic.unlock(params, nonce, signature, options);
-      logger.debug(`dryRunRes: ${JSON.stringify(dryRunRes, null, 2)}`);
-      const res = await this.bridge.unlock(params, nonce, signature, options);
-      return res;
-    } catch (e) {
-      logger.error(`send unlock tx error: ${JSON.stringify({ params, nonce, signature, options, e })}`);
-      return new Error(`send unlock tx error: ${e}`);
+      logger.debug(`send unlock options: ${JSON.stringify(options)}`);
+      try {
+        const dryRunRes = await this.bridge.callStatic.unlock(params, nonce, signature, options);
+        logger.debug(`dryRunRes: ${JSON.stringify(dryRunRes, null, 2)}`);
+        const res = await this.bridge.unlock(params, nonce, signature, options);
+        return res;
+      } catch (e) {
+        logger.error(`send unlock tx error: ${JSON.stringify({ params, nonce, signature, options, e })}`);
+        if (tryTime >= maxTryTimes) {
+          return new Error(`send unlock tx error: ${e}`);
+        }
+        await asyncSleep(5000);
+      }
     }
   }
 
