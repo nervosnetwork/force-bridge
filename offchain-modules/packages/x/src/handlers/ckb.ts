@@ -481,9 +481,9 @@ export class CkbHandler {
     const newTokens = await this.filterNewTokens(records);
     if (newTokens.length > 0) {
       logger.info(
-        `CkbHandler doHandleMintRecords bridge cell is not exist. do create bridge cell. ownerTypeHash:${ownerTypeHash.toString()}`,
+        `CkbHandler doHandleMintRecords bridge cell is not exist. do create bridge cell. ownerTypeHash: ${ownerTypeHash.toString()}`,
       );
-      logger.info(`CkbHandler doHandleMintRecords createBridgeCell newToken`, newTokens);
+      logger.info(`CkbHandler doHandleMintRecords createBridgeCell newToken: ${JSON.stringify(newTokens)}`);
       await this.waitUntilSync();
       await this.createBridgeCell(newTokens, generator);
     }
