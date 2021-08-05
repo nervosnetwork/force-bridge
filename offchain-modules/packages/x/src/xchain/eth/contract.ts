@@ -108,7 +108,11 @@ export class EthChain {
           onRejectedInterval: 3000,
           maxRetryTimes: Infinity,
           onRejected: (e: Error) => {
-            logger.warn(`Eth watchNewBlock blockHeight:${currentHeight} error:${e.stack}`);
+            if (isUnknownBlockError(e)) {
+              logger.warn(`Eth watchNewBlock blockHeight:${currentHeight} error:${e.message}`);
+            } else {
+              logger.error(`Eth watchNewBlock blockHeight:${currentHeight} error:${e.stack}`);
+            }
           },
         },
       );
@@ -276,4 +280,8 @@ export class EthChain {
       },
     });
   }
+}
+
+function isUnknownBlockError(e: Error): boolean {
+  return e.message.includes('eth_getLogs') && e.message.includes('unknown block');
 }
