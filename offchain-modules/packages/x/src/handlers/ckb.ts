@@ -458,8 +458,8 @@ export class CkbHandler {
         await this.doHandleMintRecords(mintRecords, ownerTypeHash, generator);
       },
       {
-        onRejectedInterval: 0,
-        onResolvedInterval: 0,
+        onRejectedInterval: 1000,
+        onResolvedInterval: 1000,
         onRejected: (e: Error) => {
           logger.error(`CKB handleTodoMintRecords error:${e.stack}`);
         },
@@ -481,7 +481,7 @@ export class CkbHandler {
     const newTokens = await this.filterNewTokens(records);
     if (newTokens.length > 0) {
       logger.info(
-        `CkbHandler doHandleMintRecords bridge cell is not exist. do create bridge cell. ownerTypeHash:${ownerTypeHash.toString()}`,
+        `CkbHandler doHandleMintRecords bridge cell is not exist. do create bridge cell. ownerTypeHash: ${ownerTypeHash.toString()}`,
       );
       logger.info(`CkbHandler doHandleMintRecords createBridgeCell newToken`, newTokens);
       await this.waitUntilSync();

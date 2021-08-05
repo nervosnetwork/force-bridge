@@ -8,7 +8,7 @@ import { EthUnlock, IEthUnlock } from '../db/model';
 import { nonNullable } from '../errors';
 import { BridgeMetricSingleton, txTokenInfo } from '../metric/bridge-metric';
 import { ethCollectSignaturesPayload } from '../multisig/multisig-mgr';
-import { asyncSleep, foreverPromise, fromHexString, retryPromise, uint8ArrayToString } from '../utils';
+import { asyncSleep, foreverPromise, fromHexString, uint8ArrayToString } from '../utils';
 import { logger } from '../utils/logger';
 import { EthChain, WithdrawBridgeFeeTopic, Log, ParsedLog } from '../xchain/eth';
 import { checkLock } from '../xchain/eth/check';
@@ -136,30 +136,13 @@ export class EthHandler {
     }
   }
 
-  watchNewBlock(): void {
-    void (async () => {
-      await this.init();
-      this.ethChain.watchNewBlock(this.lastHandledBlockHeight, async (newBlock: ethers.providers.Block) => {
-        await retryPromise(
-          async () => {
-            await this.onBlock(newBlock);
-            const currentBlockHeight = await this.ethChain.getCurrentBlockNumber();
-            BridgeMetricSingleton.getInstance(this.role).setBlockHeightMetrics(
-              'eth',
-              newBlock.number,
-              currentBlockHeight,
-            );
-          },
-          {
-            onRejectedInterval: 3000,
-            maxRetryTimes: MAX_RETRY_TIMES,
-            onRejected: (e: Error) => {
-              logger.error(`Eth watchNewBlock blockHeight:${JSON.stringify(newBlock)} error:${e.stack}`);
-            },
-          },
-        );
-      });
-    })();
+  async watchNewBlock(): Promise<void> {
+    await this.init();
+    await this.ethChain.watchNewBlock(this.lastHandledBlockHeight, async (newBlock: ethers.providers.Block) => {
+      await this.onBlock(newBlock);
+      const currentBlockHeight = await this.ethChain.getCurrentBlockNumber();
+      BridgeMetricSingleton.getInstance(this.role).setBlockHeightMetrics('eth', newBlock.number, currentBlockHeight);
+    });
   }
 
   isForked(confirmNumber: number, block: ethers.providers.Block): boolean {
@@ -632,7 +615,7 @@ export class EthHandler {
   }
 
   start(): void {
-    this.watchNewBlock();
+    void this.watchNewBlock();
 
     this.handleUnlockRecords();
     logger.info('eth handler started  🚀');

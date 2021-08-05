@@ -91,27 +91,32 @@ export class EthChain {
     });
   }
 
-  watchNewBlock(startHeight: number, handleBlockFunc: (newBlock: ethers.providers.Block) => void): void {
+  async watchNewBlock(
+    startHeight: number,
+    handleBlockFunc: (newBlock: ethers.providers.Block) => void,
+  ): Promise<never> {
     let currentHeight = startHeight + 1;
-    void (async () => {
-      for (;;) {
-        await retryPromise(
-          async () => {
-            const block = await this.provider.getBlock(currentHeight);
-            if (!block) return asyncSleep(5000);
-            await handleBlockFunc(block);
-            currentHeight++;
+    for (;;) {
+      await retryPromise(
+        async () => {
+          const block = await this.provider.getBlock(currentHeight);
+          if (!block) return asyncSleep(5000);
+          await handleBlockFunc(block);
+          currentHeight++;
+        },
+        {
+          onRejectedInterval: 3000,
+          maxRetryTimes: Infinity,
+          onRejected: (e: Error) => {
+            if (isUnknownBlockError(e)) {
+              logger.warn(`Eth watchNewBlock blockHeight:${currentHeight} error:${e.message}`);
+            } else {
+              logger.error(`Eth watchNewBlock blockHeight:${currentHeight} error:${e.stack}`);
+            }
           },
-          {
-            onRejectedInterval: 3000,
-            maxRetryTimes: Infinity,
-            onRejected: (e: Error) => {
-              logger.error(`Eth watchNewBlock blockHeight:${currentHeight} error:${e.message}`);
-            },
-          },
-        );
-      }
-    })();
+        },
+      );
+    }
   }
 
   async getCurrentBlockNumber(): Promise<number> {
@@ -275,4 +280,8 @@ export class EthChain {
       },
     });
   }
+}
+
+function isUnknownBlockError(e: Error): boolean {
+  return e.message.includes('eth_getLogs') && e.message.includes('unknown block');
 }
