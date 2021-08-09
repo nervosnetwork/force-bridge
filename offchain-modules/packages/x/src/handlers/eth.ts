@@ -164,9 +164,6 @@ export class EthHandler {
         } fork occur removeUnconfirmedLock events from:${block.number - confirmNumber}`,
       );
       const confirmedBlockHeight = block.number - confirmNumber;
-      await this.ethDb.removeUnconfirmedLocks(confirmedBlockHeight);
-      await this.feeDb.removeForkedWithdrawFee(confirmedBlockHeight);
-      if (this.role !== 'collector') await this.ethDb.removeUnconfirmedUnlocks(confirmedBlockHeight);
 
       const lockLogs = await this.ethChain.getLockLogs(confirmedBlockHeight + 1, block.number);
       if (
@@ -178,9 +175,6 @@ export class EthHandler {
       ) {
         throw new Error(`lock log fork occured when reorg block ${block.number}`);
       }
-      for (const log of lockLogs) {
-        await this.onLockLogs(log.log, log.parsedLog);
-      }
 
       const unlockLogs = await this.ethChain.getUnlockLogs(confirmedBlockHeight + 1, block.number);
       if (
@@ -191,6 +185,14 @@ export class EthHandler {
         )
       ) {
         throw new Error(`unlock log fork occured when reorg block ${block.number}`);
+      }
+
+      await this.ethDb.removeUnconfirmedLocks(confirmedBlockHeight);
+      await this.feeDb.removeForkedWithdrawFee(confirmedBlockHeight);
+      if (this.role !== 'collector') await this.ethDb.removeUnconfirmedUnlocks(confirmedBlockHeight);
+
+      for (const log of lockLogs) {
+        await this.onLockLogs(log.log, log.parsedLog);
       }
       for (const log of unlockLogs) {
         await this.onUnlockLogs(log.log, log.parsedLog);
