@@ -65,6 +65,8 @@ export interface IEthLock {
   sudtExtraData?: string;
   blockNumber: number;
   blockHash: string;
+  confirmNumber?: number;
+  confirmStatus?: TxConfirmStatus;
 }
 
 export interface ICkbBurn {
