@@ -159,7 +159,9 @@ export class EthHandler {
           log.transactionHash
         } amount:${parsedLog.args.lockedAmount.toString()} asset:${parsedLog.args.token} recipientLockscript:${
           parsedLog.args.recipientLockscript
-        } sudtExtraData:${parsedLog.args.sudtExtraData} sender:${parsedLog.args.sender}`,
+        } sudtExtraData:${parsedLog.args.sudtExtraData} sender:${
+          parsedLog.args.sender
+        }, confirmedNumber: ${confirmedNumber}, confirmed: ${confirmed}`,
       );
       logger.debug('EthHandler watchLockEvents eth lockEvtLog:', { log, parsedLog });
       const filterReason = checkLock(
@@ -183,8 +185,8 @@ export class EthHandler {
           blockNumber,
           blockHash,
           sender,
-          confirmedNumber,
-          confirmedStatus: confirmed ? 'confirmed' : 'unconfirmed',
+          confirmNumber: confirmedNumber,
+          confirmStatus: confirmed ? 'confirmed' : 'unconfirmed',
         },
       ]);
       BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_lock', 'success');
