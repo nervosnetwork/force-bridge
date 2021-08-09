@@ -128,9 +128,6 @@ export class MultiSigMgr {
         const sigResp = promiseResult.sigResp;
         const svrHost = promiseResult.svrHost;
         if (sigResp.error) {
-          if (retryErrorCode.has(sigResp.error.code)) {
-            failedSigServerHosts.push(svrHost);
-          }
           const errorCode = sigResp.error.code;
           const errorMsg = `MultiSigMgr collectSignatures chain:${this.chainType} address:${svrHost.address} rawData:${
             params.rawData
@@ -138,11 +135,8 @@ export class MultiSigMgr {
             sigResp.error.message
           }`;
 
-          if (
-            errorCode === SigErrorTxCompleted ||
-            errorCode === SigErrorTxUnconfirmed ||
-            errorCode === SigErrorBlockSyncUncompleted
-          ) {
+          if (retryErrorCode.has(errorCode)) {
+            failedSigServerHosts.push(svrHost);
             logger.warn(errorMsg);
           } else {
             logger.error(errorMsg);
