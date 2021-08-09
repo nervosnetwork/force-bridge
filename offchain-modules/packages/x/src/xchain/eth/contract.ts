@@ -30,14 +30,14 @@ export interface EthUnlockRecord {
 }
 
 export class EthChain {
-  protected readonly role: forceBridgeRole;
-  protected readonly config: EthConfig;
-  protected readonly provider: ethers.providers.JsonRpcProvider;
-  protected readonly bridgeContractAddr: string;
-  protected readonly iface: ethers.utils.Interface;
-  protected readonly bridge: ethers.Contract;
-  protected readonly wallet: ethers.Wallet;
-  protected readonly multisigMgr: MultiSigMgr;
+  public readonly role: forceBridgeRole;
+  public readonly config: EthConfig;
+  public readonly provider: ethers.providers.JsonRpcProvider;
+  public readonly bridgeContractAddr: string;
+  public readonly iface: ethers.utils.Interface;
+  public readonly bridge: ethers.Contract;
+  public readonly wallet: ethers.Wallet;
+  public readonly multisigMgr: MultiSigMgr;
 
   constructor(role: forceBridgeRole) {
     const config = ForceBridgeCore.config.eth;
@@ -125,6 +125,15 @@ export class EthChain {
 
   async getBlock(blockTag: ethers.providers.BlockTag): Promise<ethers.providers.Block> {
     return this.provider.getBlock(blockTag);
+  }
+
+  async getLogs(fromBlock: ethers.providers.BlockTag, toBlock: ethers.providers.BlockTag): Promise<Log[]> {
+    const logs: Log[] = await this.provider.getLogs({
+      fromBlock: fromBlock,
+      address: ForceBridgeCore.config.eth.contractAddress,
+      toBlock: toBlock,
+    });
+    return logs;
   }
 
   async getLockLogs(
