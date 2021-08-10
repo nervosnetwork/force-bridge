@@ -118,6 +118,8 @@ export class EthHandler {
           await this.handleLog(log, currentHeight);
         }
         await this.setLastHandledBlock(block.number, block.hash);
+        const actualBlockHeight = await this.ethChain.getCurrentBlockNumber();
+        BridgeMetricSingleton.getInstance(this.role).setBlockHeightMetrics('eth', currentHeight, actualBlockHeight);
         logger.info(`EthHandler onBlock blockHeight:${block.number} blockHash:${block.hash}`);
       },
       {
