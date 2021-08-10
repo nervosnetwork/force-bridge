@@ -98,7 +98,7 @@ export class EthHandler {
         logger.info(`currentHeight: ${currentHeight}, lastHandledBlock: ${this.lastHandledBlockHeight}`);
         if (currentHeight - this.lastHandledBlockHeight < 1) {
           // already handled, wait for new block
-          await asyncSleep(30000);
+          await asyncSleep(15000);
           return;
         }
         const confirmBlockNumber = this.lastHandledBlockHeight - ForceBridgeCore.config.eth.confirmNumber;
@@ -121,10 +121,10 @@ export class EthHandler {
         logger.info(`EthHandler onBlock blockHeight:${block.number} blockHash:${block.hash}`);
       },
       {
-        onRejectedInterval: 30000,
+        onRejectedInterval: 15000,
         onResolvedInterval: 0,
         onRejected: (e: Error) => {
-          logger.error(`Eth watchNewBlock blockHeight:${currentHeight} error:${e.stack}`);
+          logger.warn(`Eth watchNewBlock blockHeight:${currentHeight} error:${e.stack}`);
         },
       },
     );

@@ -176,7 +176,7 @@ export class MultiSigMgr {
       }
       //retry failed hosts
       sigServerHosts = failedSigServerHosts;
-      await asyncSleep(10000);
+      await asyncSleep(15000);
     }
     return sigs.map((sig) => {
       return sig.signature;
