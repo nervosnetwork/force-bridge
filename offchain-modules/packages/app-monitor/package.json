@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@force-bridge/x": "^0.0.3",
-    "@force-bridge/xchain-eth": "^0.0.3"
+    "@force-bridge/xchain-eth": "^0.0.3",
+    "fetch-with-proxy": "^3.0.1"
   }
 }
