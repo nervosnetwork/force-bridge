@@ -5,17 +5,19 @@ import { CkbBurnRecord, CkbMintRecord } from '@force-bridge/reconc';
 import { Amount } from '@lay2/pw-core';
 import { default as RPC } from '@nervosnetwork/ckb-sdk-rpc';
 import { Observable, from } from 'rxjs';
-import { map, expand, takeWhile, filter as rxFilter, mergeMap } from 'rxjs/operators';
+import { map, expand, takeWhile, filter as rxFilter, mergeMap, distinct } from 'rxjs/operators';
 import { Asset, BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '../ckb/model/asset';
 import { ScriptLike } from '../ckb/model/script';
 import { RecipientCellData } from '../ckb/tx-helper/generated/eth_recipient_cell';
+import { ForceBridgeLockscriptArgs } from '../ckb/tx-helper/generated/force_bridge_lockscript';
 import { MintWitness } from '../ckb/tx-helper/generated/mint_witness';
 import { getOwnerTypeHash } from '../ckb/tx-helper/multisig/multisig_helper';
 import { fromHexString, toHexString, uint8ArrayToString } from '../utils';
 
 export interface CKBRecordObservableProvider {
-  multiSigLock: ScriptLike;
+  ownerCellTypeHash: string;
   recipientType: ScriptLike;
+  bridgeLock: ScriptLike;
 
   indexer: CKBIndexerClient;
   rpc: RPC;
@@ -39,38 +41,50 @@ export interface CKBBurnFilter {
   filterRecipientData: (data: RecipientCellData) => boolean;
 }
 
+function isTypeIDCorrect(args: string, expectOwnerTypeHash: string): boolean {
+  const bridgeLockArgs = new ForceBridgeLockscriptArgs(fromHexString(args).buffer);
+  const ownerTypeHash = `0x${toHexString(new Uint8Array(bridgeLockArgs.getOwnerCellTypeHash().raw()))}`;
+  return ownerTypeHash === expectOwnerTypeHash;
+}
+
 export class CKBRecordObservable {
   constructor(private provider: CKBRecordObservableProvider) {}
 
   observeMintRecord(filter: CKBMintFilter): Observable<CkbMintRecord> {
-    const { rpc, indexer: indexer, multiSigLock } = this.provider;
+    const { rpc, indexer: indexer, ownerCellTypeHash, bridgeLock } = this.provider;
     const blockRange: SearchKeyFilter['block_range'] = [
       filter.fromBlock ? filter.fromBlock : '0x0',
       filter.toBlock ? filter.toBlock : '0xffffffffffffffff', // u64::Max
     ];
 
-    // const filterLock = filter.lock ? { script: filter.lock.toIndexerScript() } : {};
     const searchKey: SearchKey = {
       filter: { block_range: blockRange },
-      script: multiSigLock.toIndexerScript(),
+      script: bridgeLock.toIndexerScript(),
       script_type: 'lock',
     };
 
     const observable = from(indexer.get_transactions({ searchKey })).pipe(
       expand((res) => indexer.get_transactions({ searchKey, cursor: res.last_cursor })),
       takeWhile((res) => res.objects.length > 0),
-      // mint tx outputs must contains at least one multi-sig lock
-      mergeMap((res) => {
-        const txHashes = res.objects
-          .filter((cellPoint) => cellPoint.io_type === 'output')
-          .map((point) => point.tx_hash);
-        return new Set(txHashes);
+      mergeMap((res) => res.objects),
+      rxFilter((getTxResult: Indexer.GetTransactionsResult) => getTxResult.io_type === 'output'),
+      distinct((res) => res.tx_hash),
+      mergeMap(async (getTxResult) => {
+        const tx = await rpc.getTransaction(getTxResult.tx_hash);
+        return { tx, getTxResult };
+      }, 20),
+      rxFilter((res) => {
+        return res.tx.transaction.outputs.some((cell) => {
+          return (
+            cell.lock.hashType === bridgeLock.hashType &&
+            cell.lock.codeHash === bridgeLock.codeHash &&
+            isTypeIDCorrect(cell.lock.args, ownerCellTypeHash)
+          );
+        });
       }),
-      // resolve the transaction which contains the multi-sig lock cell
-      mergeMap((txHash) => rpc.getTransaction(txHash), 20),
       // filter the transactions which contains target sudt(shadow asset)
-      rxFilter((tx) => {
-        return tx.transaction.outputs.some((cell) => {
+      rxFilter((res) => {
+        return res.tx.transaction.outputs.some((cell) => {
           if (!filter.asset) {
             return true;
           }
@@ -79,8 +93,9 @@ export class CKBRecordObservable {
         });
       }),
       // parse to {@link ToRecord}
-      mergeMap((tx) => {
+      mergeMap((res) => {
         try {
+          const tx = res.tx;
           const witnessArgs = new core.WitnessArgs(fromHexString(tx.transaction.witnesses[0]).buffer);
           const inputTypeWitness = witnessArgs.getInputType().value().raw();
           const witness = new MintWitness(inputTypeWitness, { validate: true });
@@ -108,7 +123,9 @@ export class CKBRecordObservable {
             }
 
             const recipient = this.provider.scriptToAddress(ScriptLike.from(cell.lock));
-            const record: CkbMintRecord = { amount, fromTxId, txId, fee, recipient };
+            const blockHash = tx.txStatus.blockHash || '';
+            const blockNumber = parseInt(res.getTxResult.block_number, 16);
+            const record: CkbMintRecord = { amount, fromTxId, txId, fee, recipient, blockHash, blockNumber };
             return records.concat(record);
           }, [] as CkbMintRecord[]);
         } catch (e) {
@@ -117,7 +134,7 @@ export class CKBRecordObservable {
       }),
     );
 
-    return observable;
+    return observable as Observable<CkbMintRecord>;
   }
 
   observeBurnRecord(filter: CKBBurnFilter): Observable<CkbBurnRecord> {

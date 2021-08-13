@@ -4679,6 +4679,16 @@ fastq@^1.6.0:
   dependencies:
     reusify "^1.0.4"
 
+fetch-with-proxy@^3.0.1:
+  version "3.0.1"
+  resolved "https://registry.yarnpkg.com/fetch-with-proxy/-/fetch-with-proxy-3.0.1.tgz#29ed6d0e2550ef999d40b18de2ba476af4b7dee4"
+  integrity sha512-8C5JZ+Ea2eTOkFuQhB252QPgEc68LS7+8uNrFbYFs7t114Bgdj7hiYmtwkHhmN8TvafGVRbspMMD/Rg/tw0RwA==
+  dependencies:
+    node-abort-controller "^1.1.0"
+    node-fetch "^2.6.1"
+    proxy-from-env "^1.1.0"
+    tunnel-agent "^0.6.0"
+
 figlet@^1.1.1:
   version "1.5.0"
   resolved "https://registry.yarnpkg.com/figlet/-/figlet-1.5.0.tgz#2db4d00a584e5155a96080632db919213c3e003c"
@@ -7177,6 +7187,11 @@ node-abi@^2.7.0:
   dependencies:
     semver "^5.4.1"
 
+node-abort-controller@^1.1.0:
+  version "1.2.1"
+  resolved "https://registry.yarnpkg.com/node-abort-controller/-/node-abort-controller-1.2.1.tgz#1eddb57eb8fea734198b11b28857596dc6165708"
+  integrity sha512-79PYeJuj6S9+yOHirR0JBLFOgjB6sQCir10uN6xRx25iD+ZD4ULqgRn3MwWBRaQGB0vEgReJzWwJo42T1R6YbQ==
+
 node-addon-api@^2.0.0:
   version "2.0.2"
   resolved "https://registry.yarnpkg.com/node-addon-api/-/node-addon-api-2.0.2.tgz#432cfa82962ce494b132e9d72a15b29f71ff5d32"
@@ -8244,6 +8259,11 @@ proxy-addr@~2.0.5:
   dependencies:
     forwarded "0.2.0"
     ipaddr.js "1.9.1"
+
+proxy-from-env@^1.1.0:
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/proxy-from-env/-/proxy-from-env-1.1.0.tgz#e102f16ca355424865755d2c9e8ea4f24d58c3e2"
+  integrity sha512-D+zkORCbA9f1tdWRK0RaCR3GPv50cMxcrz4X8k5LTSUD1Dkw47mKJEZQNunItRTkWwgtaUSo1RVFRIG9ZXiFYg==
 
 pseudomap@^1.0.2:
   version "1.0.2"

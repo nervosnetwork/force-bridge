@@ -1,6 +1,7 @@
 import { generateAddress } from '@ckb-lumos/helpers';
 import { CKBIndexerClient, Script as IndexerScript } from '@force-bridge/ckb-indexer-client';
 import { ScriptLike } from '@force-bridge/x/dist/ckb/model/script';
+import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { CKBRecordObservable } from '@force-bridge/x/dist/reconc/CKBRecordObservable';
 import { default as CKB } from '@nervosnetwork/ckb-sdk-core';
@@ -15,6 +16,15 @@ function getRecipientTypeScript(): IndexerScript {
     args: '0x',
   };
 }
+
+function getBridgeLockscript(): IndexerScript {
+  return {
+    code_hash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
+    hash_type: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
+    args: '0x',
+  };
+}
+
 export function createProvider(): ethers.providers.JsonRpcProvider {
   return new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
 }
@@ -23,8 +33,9 @@ export function createCKBRecordObservable(): CKBRecordObservable {
   return new CKBRecordObservable({
     indexer: new CKBIndexerClient(ForceBridgeCore.ckbIndexer.ckbIndexerUrl),
     rpc: ForceBridgeCore.ckb.rpc,
-    multiSigLock: ScriptLike.from(ForceBridgeCore.config.ckb.multisigLockscript),
+    ownerCellTypeHash: getOwnerTypeHash(),
     recipientType: ScriptLike.from(getRecipientTypeScript()),
+    bridgeLock: ScriptLike.from(getBridgeLockscript()),
     scriptToAddress: (script) => generateAddress(script.toIndexerScript()),
   });
 }

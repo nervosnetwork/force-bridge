@@ -1,7 +1,7 @@
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { retryPromise } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
-import * as fetch from 'node-fetch';
+import fetch from 'fetch-with-proxy';
 import { forceBridgeBotName } from './duration';
 
 export interface WebHookPayload {
