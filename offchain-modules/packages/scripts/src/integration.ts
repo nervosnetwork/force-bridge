@@ -244,6 +244,8 @@ async function startChangeVal(
   const collectorConfig: { forceBridge: Config } = JSON.parse(
     fs.readFileSync(path.join(configPath, 'collector/force_bridge.json'), 'utf8').toString(),
   );
+  collectorConfig.forceBridge.eth.multiSignThreshold = newThreshold;
+  collectorConfig.forceBridge.eth.multiSignAddresses = newMultiSigConfig.map((v) => v.ethAddress);
   collectorConfig.forceBridge.ckb.multisigScript = {
     R: 0,
     M: newThreshold,
