@@ -85,7 +85,6 @@ async function generateConfig(
     M: multisigConfig.threshold,
     publicKeyHashes: multisigConfig.verifiers.map((v) => v.ckbPubkeyHash),
   };
-  collectorConfig.ckb.multisigLockscript = ownerCellConfig.multisigLockscript;
   collectorConfig.collector = {
     gasLimit: 250000,
     batchGasLimit: 100000,
@@ -346,7 +345,7 @@ async function main() {
     );
 
   const extraMultiSigConfig = lodash.range(EXTRA_MULTISIG_NUMBER).map((_i) => genRandomVerifierConfig());
-
+  logger.info(`extra multiSig config ${JSON.stringify(extraMultiSigConfig, null, 2)}`);
   await generateConfig(
     initConfig as unknown as Config,
     assetWhiteList,

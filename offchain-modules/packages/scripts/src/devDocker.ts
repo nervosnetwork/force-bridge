@@ -60,7 +60,6 @@ async function generateConfig(
     M: multisigConfig.threshold,
     publicKeyHashes: multisigConfig.verifiers.map((v) => v.ckbPubkeyHash),
   };
-  collectorConfig.ckb.multisigLockscript = ownerCellConfig.multisigLockscript;
   collectorConfig.collector = {
     gasLimit: 250000,
     batchGasLimit: 100000,
