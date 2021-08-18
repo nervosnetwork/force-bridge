@@ -237,10 +237,9 @@ export class CkbHandler {
     const mintTxs = await this.getTransactions(mintSearchKey);
     const burnTxs = await this.getTransactions(burnSearchKey);
     logger.info(
-      `CkbHandler onBlock handle logs from ${fromBlockNum} to ${toBlockNum}, 
-        mint txs: ${JSON.stringify(mintTxs.map((tx) => tx.info.tx_hash))},
-        burn txs: ${JSON.stringify(burnTxs.map((tx) => tx.info.tx_hash))},
-        `,
+      `CkbHandler onBlock handle logs from ${fromBlockNum} to ${toBlockNum}, mint txs: ${JSON.stringify(
+        mintTxs.map((tx) => tx.info.tx_hash),
+      )}, burn txs: ${JSON.stringify(burnTxs.map((tx) => tx.info.tx_hash))}`,
     );
 
     for (const tx of mintTxs) {
