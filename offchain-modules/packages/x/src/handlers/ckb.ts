@@ -289,7 +289,9 @@ export class CkbHandler {
     const blockNumber = Number(txInfo.info.block_number);
     const confirmedNumber = currentHeight - blockNumber;
     const confirmed = confirmedNumber >= ForceBridgeCore.config.ckb.confirmNumber;
+    logger.info(`handle burn tx ${txHash}, confirmed number: ${confirmedNumber}, confirmed: ${confirmed}`);
     // create new CkbBurn record
+    let unlockRecords = records;
     if (records.length === 0) {
       const cellData = await parseBurnTx(tx);
       if (cellData === null) {
@@ -321,6 +323,7 @@ export class CkbHandler {
         confirmStatus: confirmed ? 'confirmed' : 'unconfirmed',
       };
       await this.db.createCkbBurn([burn]);
+      unlockRecords = [burn];
       BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('ckb_burn', 'success');
       BridgeMetricSingleton.getInstance(this.role).addBridgeTokenMetrics('ckb_burn', [
         {
@@ -340,10 +343,11 @@ export class CkbHandler {
       if (confirmed) {
         await this.db.updateCkbBurnConfirmStatus([txHash]);
       }
-      logger.info(`update burn record ${txHash} status, confirmed number: ${confirmedNumber}, confirmed: ${confirmed}`);
+      logger.debug(`update burn record ${txHash} status, confirmed number: ${confirmedNumber}, confirmed: ${confirmed}`);
     }
     if (confirmed && this.role === 'collector') {
-      await this.onCkbBurnConfirmed(records);
+      await this.onCkbBurnConfirmed(unlockRecords);
+      logger.info(`save unlock successful for burn tx ${txHash}`);
     }
   }
 
