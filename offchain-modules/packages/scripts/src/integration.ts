@@ -7,6 +7,7 @@ import { Config, WhiteListEthAsset, CkbDeps } from '@force-bridge/x/dist/config'
 import { asyncSleep, privateKeyToCkbPubkeyHash, writeJsonToFile } from '@force-bridge/x/dist/utils';
 import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
 import * as lodash from 'lodash';
+import * as shelljs from 'shelljs';
 import { execShellCmd, pathFromProjectRoot } from './utils';
 import { deployDev } from './utils/deploy';
 import { ethBatchTest } from './utils/eth_batch_test';
@@ -54,7 +55,7 @@ async function generateConfig(
   ownerCellConfig: OwnerCellConfig,
   ethContractAddress: string,
   multisigConfig: MultisigConfig,
-  extraMultiSigConfig: VerifierConfig[],
+  extraMultiSigConfig: MultisigConfig,
   ckbStartHeight: number,
   ethStartHeight: number,
   configPath: string,
@@ -123,7 +124,7 @@ async function generateConfig(
   watcherConfig.common.port = 8080;
   writeJsonToFile({ forceBridge: watcherConfig }, path.join(configPath, 'watcher/force_bridge.json'));
   // verifiers
-  multisigConfig.verifiers.concat(extraMultiSigConfig).map((v, i) => {
+  multisigConfig.verifiers.concat(extraMultiSigConfig.verifiers).map((v, i) => {
     const verifierIndex = i + 1;
     const verifierConfig: Config = lodash.cloneDeep(baseConfig);
     verifierConfig.common.role = 'verifier';
@@ -177,20 +178,18 @@ async function startCollectorService(FORCE_BRIDGE_KEYSTORE_PASSWORD: string, for
     false,
   );
 }
+
 async function startChangeVal(
   forcecli: string,
   configPath: string,
   bridgeEthAddress: string,
   CKB_PRIVKEY: string,
   ETH_PRIVKEY: string,
-  oldMultiSigner: {
-    threshold: number;
-    verifiers: VerifierConfig[];
-  },
-  extraMultiSigConfig: VerifierConfig[],
+  oldMultiSigner: MultisigConfig,
+  extraMultiSigConfig: MultisigConfig,
 ) {
-  const newThreshold = 3;
-  const newMultiSigConfig: VerifierConfig[] = [oldMultiSigner.verifiers[1]].concat(extraMultiSigConfig);
+  const newThreshold = extraMultiSigConfig.threshold;
+  const newMultiSigConfig: VerifierConfig[] = [oldMultiSigner.verifiers[1]].concat(extraMultiSigConfig.verifiers);
 
   // from old 1/2 to new 3/4. 8002 is on behalf of the old. 8003,8004,8005 are on behalf of the new
   const sigServerHost: string[] = [
@@ -346,7 +345,10 @@ async function main() {
       path.join(configPath, 'deployConfig.json'),
     );
 
-  const extraMultiSigConfig = lodash.range(EXTRA_MULTISIG_NUMBER).map((_i) => genRandomVerifierConfig());
+  const extraMultiSigConfig = {
+    threshold: EXTRA_MULTISIG_NUMBER,
+    verifiers: lodash.range(EXTRA_MULTISIG_NUMBER).map((_i) => genRandomVerifierConfig()),
+  };
   logger.info(`extra multiSig config ${JSON.stringify(extraMultiSigConfig, null, 2)}`);
   await generateConfig(
     initConfig as unknown as Config,
@@ -372,6 +374,11 @@ async function main() {
     MULTISIG_NUMBER + EXTRA_MULTISIG_NUMBER,
   );
   await asyncSleep(60000);
+  const command = `FORCE_BRIDGE_KEYSTORE_PASSWORD=${FORCE_BRIDGE_KEYSTORE_PASSWORD} ${forcecli} collector -cfg ${configPath}/collector/force_bridge.json`;
+  const collectorProcess = shelljs.exec(command, { async: true });
+  await rpcTest(FORCE_BRIDGE_URL, CKB_RPC_URL, ETH_RPC_URL, CKB_TEST_PRIVKEY, ETH_TEST_PRIVKEY, bridgeEthAddress);
+  // change validator
+  collectorProcess.kill();
   await startChangeVal(
     forcecli,
     configPath,
