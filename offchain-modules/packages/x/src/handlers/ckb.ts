@@ -68,9 +68,6 @@ export class CkbHandler {
   }
 
   syncedToStartTipBlockHeight(): boolean {
-    logger.info(
-      `lastHandledBlockHeight: ${this.lastHandledBlockHeight}, startTipBlockHeight: ${this.startTipBlockHeight}`,
-    );
     return (
       Boolean(this.lastHandledBlockHeight) &&
       Boolean(this.startTipBlockHeight) &&
@@ -412,8 +409,9 @@ export class CkbHandler {
     foreverPromise(
       async () => {
         if (!this.syncedToStartTipBlockHeight()) {
-          logger.info('wait until syncing to startBlockHeight');
-          await asyncSleep(3000);
+          logger.info(
+            `wait until syncing to startBlockHeight, lastHandledBlockHeight: ${this.lastHandledBlockHeight}, startTipBlockHeight: ${this.startTipBlockHeight}`,
+          );
           return;
         }
         const mintRecords = await this.db.getCkbMintRecordsToMint('todo');
@@ -427,8 +425,8 @@ export class CkbHandler {
         await this.doHandleMintRecords(mintRecords, ownerTypeHash, generator);
       },
       {
-        onRejectedInterval: 1000,
-        onResolvedInterval: 1000,
+        onRejectedInterval: 15000,
+        onResolvedInterval: 15000,
         onRejected: (e: Error) => {
           logger.error(`CKB handleTodoMintRecords error:${e.stack}`);
         },

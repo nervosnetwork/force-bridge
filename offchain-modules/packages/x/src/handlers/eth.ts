@@ -44,9 +44,6 @@ export class EthHandler {
   }
 
   syncedToStartTipBlockHeight(): boolean {
-    logger.info(
-      `lastHandledBlockHeight: ${this.lastHandledBlockHeight}, startTipBlockHeight: ${this.startTipBlockHeight}`,
-    );
     return (
       Boolean(this.lastHandledBlockHeight) &&
       Boolean(this.startTipBlockHeight) &&
@@ -314,8 +311,9 @@ export class EthHandler {
     foreverPromise(
       async () => {
         if (!this.syncedToStartTipBlockHeight()) {
-          logger.info('wait until syncing to startBlockHeight');
-          await asyncSleep(3000);
+          logger.info(
+            `wait until syncing to startBlockHeight, lastHandledBlockHeight: ${this.lastHandledBlockHeight}, startTipBlockHeight: ${this.startTipBlockHeight}`,
+          );
           return;
         }
         logger.debug('EthHandler watchUnlockEvents get new unlock events and send tx');
