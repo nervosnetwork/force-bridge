@@ -40,7 +40,6 @@ export interface CkbConfig {
   privateKey: string;
   multiSignHosts: MultiSignHost[];
   multisigScript: MultisigItem;
-  multisigLockscript: Script;
   ownerCellTypescript: Script;
   deps: CkbDeps;
   startBlockHeight: number;
