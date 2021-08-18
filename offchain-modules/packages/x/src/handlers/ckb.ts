@@ -343,7 +343,9 @@ export class CkbHandler {
       if (confirmed) {
         await this.db.updateCkbBurnConfirmStatus([txHash]);
       }
-      logger.debug(`update burn record ${txHash} status, confirmed number: ${confirmedNumber}, confirmed: ${confirmed}`);
+      logger.debug(
+        `update burn record ${txHash} status, confirmed number: ${confirmedNumber}, confirmed: ${confirmed}`,
+      );
     }
     if (confirmed && this.role === 'collector') {
       await this.onCkbBurnConfirmed(unlockRecords);
