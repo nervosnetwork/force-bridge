@@ -50,6 +50,7 @@ export class CkbHandler {
   private multisigMgr: MultiSigMgr;
   private lastHandledBlockHeight: number;
   private lastHandledBlockHash: string;
+  private startTipBlockHeight: number;
 
   constructor(private db: CkbDb, private kvDb: KVDb, private role: forceBridgeRole) {
     this.transactionManager = new TransactionManager(this.ckbIndexer);
@@ -60,6 +61,21 @@ export class CkbHandler {
         ForceBridgeCore.config.ckb.multisigScript.M,
       );
     }
+  }
+
+  async setStartTipBlockHeight(): Promise<void> {
+    this.startTipBlockHeight = (await this.getTipBlock()).height;
+  }
+
+  syncedToStartTipBlockHeight(): boolean {
+    logger.info(
+      `lastHandledBlockHeight: ${this.lastHandledBlockHeight}, startTipBlockHeight: ${this.startTipBlockHeight}`,
+    );
+    return (
+      Boolean(this.lastHandledBlockHeight) &&
+      Boolean(this.startTipBlockHeight) &&
+      this.lastHandledBlockHeight > this.startTipBlockHeight
+    );
   }
 
   async getLastHandledBlock(): Promise<{ blockNumber: number; blockHash: string }> {
@@ -166,6 +182,7 @@ export class CkbHandler {
   }
 
   async watchNewBlock(): Promise<void> {
+    await this.setStartTipBlockHeight();
     await this.initLastHandledBlock();
     const maxBatchSize = 5000;
     let currentHeight: number | null = null;
@@ -255,86 +272,6 @@ export class CkbHandler {
     }
   }
 
-  // async onBlock(block: Block): Promise<void> {
-  //   const blockNumber = Number(block.header.number);
-  //   const blockHash = block.header.hash;
-  //   logger.info(`CkbHandler onBlock blockHeight:${blockNumber} blockHash:${blockHash}`);
-  //
-  //   const confirmNumber = ForceBridgeCore.config.ckb.confirmNumber;
-  //   const confirmedBlockHeight = blockNumber - confirmNumber >= 0 ? blockNumber - confirmNumber : 0;
-  //   if (
-  //     confirmNumber !== 0 &&
-  //     this.lastHandledBlockHeight === blockNumber - 1 &&
-  //     this.lastHandledBlockHash !== '' &&
-  //     block.header.parentHash !== this.lastHandledBlockHash
-  //   ) {
-  //     BridgeMetricSingleton.getInstance(this.role).setForkEventHeightMetrics('ckb', this.lastHandledBlockHeight);
-  //     logger.warn(
-  //       `CkbHandler onBlock blockHeight:${blockNumber} parentHash:${block.header.parentHash} != lastHandledBlockHash:${this.lastHandledBlockHash} fork occur removeUnconfirmedLock events from:${confirmedBlockHeight}`,
-  //     );
-  //     await this.db.removeUnconfirmedCkbBurn(confirmedBlockHeight);
-  //     if (this.role !== 'collector') await this.db.removeUnconfirmedCkbMint(confirmedBlockHeight);
-  //
-  //     const confirmedBlock = await this.ckb.rpc.getBlockByNumber(BigInt(confirmedBlockHeight));
-  //     await this.setLastHandledBlock(Number(confirmedBlock.header.number), confirmedBlock.header.hash);
-  //     return;
-  //   }
-  //
-  //   const unconfirmedTxs = await this.db.getUnconfirmedBurn();
-  //   if (unconfirmedTxs.length !== 0) {
-  //     const updateConfirmNumberRecords = unconfirmedTxs
-  //       .filter((record) => record.blockNumber > confirmedBlockHeight)
-  //       .map((record) => {
-  //         return { txHash: record.ckbTxHash, confirmedNumber: blockNumber - record.blockNumber };
-  //       });
-  //     if (updateConfirmNumberRecords.length !== 0) {
-  //       await this.db.updateBurnConfirmNumber(updateConfirmNumberRecords);
-  //     }
-  //
-  //     const confirmedRecords = unconfirmedTxs.filter((record) => record.blockNumber <= confirmedBlockHeight);
-  //     const confirmedTxHashes = confirmedRecords.map((burn) => {
-  //       return burn.ckbTxHash;
-  //     });
-  //
-  //     if (confirmedRecords.length !== 0) {
-  //       await this.db.updateCkbBurnConfirmStatus(confirmedTxHashes);
-  //       await this.onCkbBurnConfirmed(confirmedRecords);
-  //       logger.info(
-  //         `CkbHandler onBlock updateCkbBurnConfirmStatus height:${blockNumber} ckbTxHashes:${confirmedTxHashes}`,
-  //       );
-  //     }
-  //   }
-  //
-  //   const burnTxs = new Map();
-  //   for (const tx of block.transactions) {
-  //     const parsedMintRecords = await this.parseMintTx(tx, Number(block.header.number));
-  //     if (parsedMintRecords) {
-  //       await this.onMintTx(blockNumber, parsedMintRecords);
-  //       BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('ckb_mint', 'success');
-  //       continue;
-  //     }
-  //     const cellData = await parseBurnTx(tx);
-  //     if (cellData !== null) {
-  //       const previousOutput = nonNullable(tx.inputs[0].previousOutput);
-  //       const burnPreviousTx: TransactionWithStatus = await this.ckb.rpc.getTransaction(previousOutput.txHash);
-  //       const senderLockscript = burnPreviousTx.transaction.outputs[Number(previousOutput.index)].lock;
-  //       const senderAddress = generateAddress({
-  //         code_hash: senderLockscript.codeHash,
-  //         hash_type: senderLockscript.hashType,
-  //         args: senderLockscript.args,
-  //       });
-  //       const data: BurnDbData = {
-  //         senderAddress: senderAddress,
-  //         cellData: cellData,
-  //       };
-  //       burnTxs.set(tx.hash, data);
-  //       logger.info(`CkbHandler watchBurnEvents receive burnedTx, ckbTxHash:${tx.hash} senderAddress:${senderAddress}`);
-  //     }
-  //   }
-  //   await this.onBurnTxs(blockNumber, burnTxs);
-  //   await this.setLastHandledBlock(blockNumber, blockHash);
-  // }
-  //
   async onMintTx(blockNumber: number, mintedRecords: MintedRecords): Promise<UpdateResult | undefined> {
     if (this.role === 'collector') {
       await this.db.updateCkbMintStatus(blockNumber, mintedRecords.txHash, 'success');
@@ -413,57 +350,6 @@ export class CkbHandler {
     }
   }
 
-  // async onBurnTxs(latestHeight: number, burnTxs: Map<string, BurnDbData>): Promise<void> {
-  //   if (burnTxs.size === 0) {
-  //     return;
-  //   }
-  //   const burnTxHashes: string[] = [];
-  //   const ckbBurns: ICkbBurn[] = [];
-  //   burnTxs.forEach((v: BurnDbData, k: string) => {
-  //     const chain = v.cellData.getChain();
-  //     let burn: ICkbBurn | undefined;
-  //     switch (chain) {
-  //       case ChainType.BTC:
-  //       case ChainType.TRON:
-  //       case ChainType.ETH:
-  //       case ChainType.EOS: {
-  //         const asset = uint8ArrayToString(new Uint8Array(v.cellData.getAsset().raw()));
-  //         burn = {
-  //           senderAddress: v.senderAddress,
-  //           ckbTxHash: k,
-  //           asset: asset,
-  //           chain,
-  //           amount: utils.readBigUInt128LE(`0x${toHexString(new Uint8Array(v.cellData.getAmount().raw()))}`).toString(),
-  //           bridgeFee: this.role === 'collector' ? new EthAsset(asset).getBridgeFee('out') : '0',
-  //           recipientAddress: uint8ArrayToString(new Uint8Array(v.cellData.getRecipientAddress().raw())),
-  //           blockNumber: latestHeight,
-  //           confirmStatus: 'unconfirmed',
-  //         };
-  //         break;
-  //       }
-  //     }
-  //     if (burn) {
-  //       BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('ckb_burn', 'success');
-  //       BridgeMetricSingleton.getInstance(this.role).addBridgeTokenMetrics('ckb_burn', [
-  //         {
-  //           token: burn.asset,
-  //           amount: Number(burn.amount),
-  //         },
-  //       ]);
-  //     }
-  //
-  //     asserts(burn);
-  //
-  //     ckbBurns.push(burn);
-  //     burnTxHashes.push(k);
-  //   });
-  //   await this.db.createCkbBurn(ckbBurns);
-  //   if (this.role !== 'collector') {
-  //     await this.db.updateBurnBridgeFee(ckbBurns);
-  //   }
-  //   logger.info(`CkbHandler processBurnTxs saveBurnEvent success, burnTxHashes:${burnTxHashes.join(', ')}`);
-  // }
-
   async parseMintTx(tx: Transaction, blockNumber: number): Promise<null | MintedRecords> {
     let isInputsContainBridgeCell = false;
     for (const input of tx.inputs) {
@@ -525,6 +411,11 @@ export class CkbHandler {
   handleTodoMintRecords(ownerTypeHash: string, generator: CkbTxGenerator): void {
     foreverPromise(
       async () => {
+        if (!this.syncedToStartTipBlockHeight()) {
+          logger.info('wait until syncing to startBlockHeight');
+          await asyncSleep(3000);
+          return;
+        }
         const mintRecords = await this.db.getCkbMintRecordsToMint('todo');
         if (mintRecords.length == 0) {
           logger.debug('wait for new mint records');

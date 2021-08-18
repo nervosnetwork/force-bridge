@@ -29,6 +29,7 @@ export interface ParsedLockLog {
 export class EthHandler {
   private lastHandledBlockHeight: number;
   private lastHandledBlockHash: string;
+  private startTipBlockHeight: number;
 
   constructor(
     private ethDb: EthDb,
@@ -37,6 +38,21 @@ export class EthHandler {
     private ethChain: EthChain,
     private role: forceBridgeRole,
   ) {}
+
+  async setStartTipBlockHeight(): Promise<void> {
+    this.startTipBlockHeight = (await this.getTipBlock()).height;
+  }
+
+  syncedToStartTipBlockHeight(): boolean {
+    logger.info(
+      `lastHandledBlockHeight: ${this.lastHandledBlockHeight}, startTipBlockHeight: ${this.startTipBlockHeight}`,
+    );
+    return (
+      Boolean(this.lastHandledBlockHeight) &&
+      Boolean(this.startTipBlockHeight) &&
+      this.lastHandledBlockHeight > this.startTipBlockHeight
+    );
+  }
 
   async getLastHandledBlock(): Promise<{ blockNumber: number; blockHash: string }> {
     const lastHandledBlock = await this.kvDb.get(lastHandleEthBlockKey);
@@ -87,6 +103,7 @@ export class EthHandler {
   async watchNewBlock(): Promise<void> {
     // set lastHandledBlock
     await this.init();
+    await this.setStartTipBlockHeight();
     const maxBatchSize = 5000;
     let currentHeight: number | null = null;
     foreverPromise(
@@ -296,6 +313,11 @@ export class EthHandler {
   handleTodoUnlockRecords(): void {
     foreverPromise(
       async () => {
+        if (!this.syncedToStartTipBlockHeight()) {
+          logger.info('wait until syncing to startBlockHeight');
+          await asyncSleep(3000);
+          return;
+        }
         logger.debug('EthHandler watchUnlockEvents get new unlock events and send tx');
         const records = await this.getUnlockRecords('todo');
         if (records.length === 0) {
