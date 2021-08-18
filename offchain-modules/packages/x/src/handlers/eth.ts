@@ -7,13 +7,11 @@ import { EthUnlockStatus } from '../db/entity/EthUnlock';
 import { EthUnlock, IEthUnlock } from '../db/model';
 import { asserts, nonNullable } from '../errors';
 import { BridgeMetricSingleton, txTokenInfo } from '../metric/bridge-metric';
-import { ethCollectSignaturesPayload } from '../multisig/multisig-mgr';
-import { asyncSleep, foreverPromise, fromHexString, uint8ArrayToString } from '../utils';
+import { asyncSleep, foreverPromise, fromHexString, retryPromise, uint8ArrayToString } from '../utils';
 import { logger } from '../utils/logger';
 import { EthChain, WithdrawBridgeFeeTopic, Log, ParsedLog } from '../xchain/eth';
 import { checkLock } from '../xchain/eth/check';
 
-const MAX_RETRY_TIMES = 3;
 const lastHandleEthBlockKey = 'lastHandleEthBlock';
 
 export interface ParsedLockLog {
@@ -229,8 +227,8 @@ export class EthHandler {
   }
 
   async onUnlockLogs(log: Log, parsedLog: ParsedLog): Promise<void> {
-    for (let i = 1; i <= MAX_RETRY_TIMES; i++) {
-      try {
+    await retryPromise(
+      async () => {
         const amount = parsedLog.args.receivedAmount.toString();
         const { ckbTxHash, recipient, token } = parsedLog.args;
         const unlockTxHash = log.transactionHash;
@@ -273,15 +271,13 @@ export class EthHandler {
             token: parsedLog.args.token,
           },
         ]);
-        break;
-      } catch (e) {
-        logger.error(`EthHandler watchUnlockEvents error: ${e}`);
-        if (i == MAX_RETRY_TIMES) {
-          throw e;
-        }
-        await asyncSleep(3000);
-      }
-    }
+      },
+      {
+        onRejected: (e: Error) => {
+          logger.error(`EthHandler onUnlockLogs error:${e.stack}`);
+        },
+      },
+    );
   }
 
   async getUnlockRecords(status: EthUnlockStatus): Promise<EthUnlock[]> {
@@ -294,80 +290,26 @@ export class EthHandler {
     if (this.role !== 'collector') {
       return;
     }
-
-    this.handlePendingUnlockRecords().then(
-      () => {
-        this.handleTodoUnlockRecords();
-      },
-      (err) => {
-        logger.error(`handlePendingUnlockRecords error:${err.stack}`);
-      },
-    );
-  }
-
-  async handlePendingUnlockRecords(): Promise<void> {
-    for (;;) {
-      try {
-        const records = await this.getUnlockRecords('pending');
-        const pendingTx = await this.ethChain.getMultiSigMgr().getPendingTx({ chain: 'eth' });
-        if (pendingTx === undefined && records.length !== 0) {
-          //pendingTx has already completed
-          records.map((record) => {
-            record.status = 'success';
-          });
-          const unlockTxHashes = records.map((record) => {
-            return record.ckbTxHash;
-          });
-          await this.ethDb.saveEthUnlock(records);
-          logger.info(`EthHandler handlePendingUnlockRecords set Record to complete ckbTxHashes:${unlockTxHashes}`);
-          break;
-        }
-        if (records.length !== 0) {
-          await this.doHandleUnlockRecords(records);
-          break;
-        }
-        if (pendingTx !== undefined) {
-          logger.info(`EthHandler handlePendingUnlockRecords pendingTx:${JSON.stringify(pendingTx, undefined, 2)}`);
-          await this.doHandleUnlockRecords(
-            (pendingTx.payload as ethCollectSignaturesPayload).unlockRecords.map((ethUnlock) => {
-              return {
-                ckbTxHash: ethUnlock.ckbTxHash,
-                asset: ethUnlock.token,
-                recipientAddress: ethUnlock.recipient,
-                amount: BigNumber.from(ethUnlock.amount).toString(),
-                ethTxHash: '',
-                status: 'pending',
-                message: '',
-              };
-            }),
-          );
-        }
-        break;
-      } catch (e) {
-        logger.error(`doHandlePendingUnlockRecords error:${e.message} stack:${e.stack}`);
-        await asyncSleep(3000);
-      }
-    }
+    this.handleTodoUnlockRecords();
   }
 
   handleTodoUnlockRecords(): void {
     foreverPromise(
       async () => {
-        await asyncSleep(15000);
         logger.debug('EthHandler watchUnlockEvents get new unlock events and send tx');
         const records = await this.getUnlockRecords('todo');
-        if (records.length === 0 || this.waitForBatch(records)) {
-          logger.info('wait for batch');
+        if (records.length === 0) {
+          logger.info('wait for todo unlock records');
           return;
         }
         logger.info(`EthHandler watchUnlockEvents unlock records: ${JSON.stringify(records)}`);
         await this.doHandleUnlockRecords(records);
       },
       {
-        onRejectedInterval: 0,
-        onResolvedInterval: 0,
+        onRejectedInterval: 15000,
+        onResolvedInterval: 15000,
         onRejected: (e: Error) => {
-          logger.error(`ETH handleTodoUnlockRecords error:${e.message}`);
+          logger.error(`ETH handleTodoUnlockRecords error:${e.stack}`);
         },
       },
     );
@@ -481,19 +423,6 @@ export class EthHandler {
         await asyncSleep(3000);
       }
     }
-  }
-
-  waitForBatch(records: EthUnlock[]): boolean {
-    if (ForceBridgeCore.config.common.network === 'testnet') return false;
-    const now = new Date();
-    const maxWaitTime = ForceBridgeCore.config.eth.batchUnlock.maxWaitTime;
-    if (
-      records.find((record) => {
-        return new Date(record.createdAt).getMilliseconds() + maxWaitTime <= now.getMilliseconds();
-      })
-    )
-      return false;
-    return records.length < ForceBridgeCore.config.eth.batchUnlock.batchNumber;
   }
 
   start(): void {
