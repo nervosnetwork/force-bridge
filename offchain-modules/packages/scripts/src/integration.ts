@@ -386,8 +386,9 @@ async function main() {
     3,
   );
   await rpcTest(FORCE_BRIDGE_URL, CKB_RPC_URL, ETH_RPC_URL, CKB_TEST_PRIVKEY, ETH_TEST_PRIVKEY, bridgeEthAddress);
+  logger.info('integration test pass!');
   // only test change validator when the env is set
-  if (process.env.TEST_CHANGE_VALIDATOR === null) {
+  if (!process.env.TEST_CHANGE_VALIDATOR) {
     return;
   }
   collectorProcess.kill();
@@ -412,7 +413,7 @@ async function main() {
     3,
   );
   await rpcTest(FORCE_BRIDGE_URL, CKB_RPC_URL, ETH_RPC_URL, CKB_TEST_PRIVKEY, ETH_TEST_PRIVKEY, bridgeEthAddress);
-  logger.info('integration test pass!');
+  logger.info('change validator test pass!');
 }
 
 main()
