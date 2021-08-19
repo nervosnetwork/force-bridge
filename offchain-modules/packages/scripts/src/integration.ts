@@ -373,9 +373,9 @@ async function main() {
     configPath,
     MULTISIG_NUMBER + EXTRA_MULTISIG_NUMBER,
   );
-  await asyncSleep(60000);
   const command = `FORCE_BRIDGE_KEYSTORE_PASSWORD=${FORCE_BRIDGE_KEYSTORE_PASSWORD} ${forcecli} collector -cfg ${configPath}/collector/force_bridge.json`;
   const collectorProcess = shelljs.exec(command, { async: true });
+  await asyncSleep(120000);
   await rpcTest(FORCE_BRIDGE_URL, CKB_RPC_URL, ETH_RPC_URL, CKB_TEST_PRIVKEY, ETH_TEST_PRIVKEY, bridgeEthAddress);
   // change validator
   collectorProcess.kill();
