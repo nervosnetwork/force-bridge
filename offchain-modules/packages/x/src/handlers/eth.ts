@@ -157,7 +157,6 @@ export class EthHandler {
   async onLockLogs(log: Log, parsedLog: ParsedLog, currentHeight: number): Promise<void> {
     const parsedLockLog = parseLockLog(log, parsedLog);
     const { amount, asset, token, sudtExtraData, sender, txHash, recipient, blockNumber, blockHash } = parsedLockLog;
-    const bridgeFee = this.role === 'collector' ? asset.getBridgeFee('in') : '0';
     const records = await this.ethDb.getEthLocksByTxHashes([txHash]);
     if (records.length > 1) {
       logger.error('unexpected db find error', records);
@@ -165,6 +164,7 @@ export class EthHandler {
     }
     const confirmedNumber = currentHeight - log.blockNumber;
     const confirmed = confirmedNumber >= ForceBridgeCore.config.eth.confirmNumber;
+    let bridgeFee = '0';
     // create new EthLock record
     if (records.length === 0) {
       logger.info(
@@ -187,6 +187,7 @@ export class EthHandler {
         logger.warn(`skip record ${JSON.stringify(parsedLog)}, reason: ${filterReason}`);
         return;
       }
+      bridgeFee = asset.getBridgeFee('in');
       await this.ethDb.createEthLock([
         {
           txHash,
@@ -218,6 +219,7 @@ export class EthHandler {
       }
     }
     if (records.length === 1) {
+      bridgeFee = records[0].bridgeFee;
       await this.ethDb.updateLockConfirmNumber([{ txHash, confirmedNumber }]);
       if (confirmed) {
         await this.ethDb.updateLockConfirmStatus([txHash]);
@@ -225,7 +227,6 @@ export class EthHandler {
       logger.info(`update lock record ${txHash} status, confirmed number: ${confirmedNumber}, status: ${confirmed}`);
     }
     if (confirmed && this.role === 'collector') {
-      if (BigInt(amount) <= BigInt(bridgeFee)) throw new Error('Unexpected error: lock amount less than bridge fee');
       const mintRecords = {
         id: txHash,
         lockBlockHeight: blockNumber,
