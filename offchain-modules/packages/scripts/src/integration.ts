@@ -388,6 +388,7 @@ async function main() {
     multisigConfig,
     extraMultiSigConfig,
   );
+  await asyncSleep(60000);
   await startCollectorService(FORCE_BRIDGE_KEYSTORE_PASSWORD, forcecli, configPath);
   await ethBatchTest(
     ETH_TEST_PRIVKEY,
