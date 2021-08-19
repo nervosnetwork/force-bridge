@@ -13,11 +13,11 @@ export function pathFromProjectRoot(subPath: string): string {
 export async function execShellCmd(command: string, waitUntilFinished = true): Promise<void> {
   logger.debug('run command', command);
   const res = shelljs.exec(command, { async: true });
-  process.on('exit', () => {
-    const killRes = res.kill();
-    logger.debug(`kill cmd [${res.pid}] ${command}, res: ${killRes}`);
-  });
   if (!waitUntilFinished) {
+    process.on('exit', () => {
+      const killRes = res.kill();
+      logger.debug(`kill cmd [${res.pid}] ${command}, res: ${killRes}`);
+    });
     res.on('exit', (code) => {
       if (code !== 0) {
         logger.error(`command "${command}" failed with code ${code}`);
