@@ -280,7 +280,7 @@ async function main() {
   const CKB_TEST_PRIVKEY = '0xa6b8e0cbadda5c0d91cf82d1e8d8120b755aa06bc49030ca6e8392458c65fc80';
 
   const MULTISIG_NUMBER = 2;
-  const MULTISIG_THRESHOLD = 1;
+  const MULTISIG_THRESHOLD = 2;
   const EXTRA_MULTISIG_NUMBER = 3;
   const FORCE_BRIDGE_KEYSTORE_PASSWORD = '123456';
   const ETH_RPC_URL = 'http://127.0.0.1:8545';
@@ -375,9 +375,21 @@ async function main() {
   );
   const command = `FORCE_BRIDGE_KEYSTORE_PASSWORD=${FORCE_BRIDGE_KEYSTORE_PASSWORD} ${forcecli} collector -cfg ${configPath}/collector/force_bridge.json`;
   const collectorProcess = shelljs.exec(command, { async: true });
-  await asyncSleep(120000);
+  await asyncSleep(60000);
+  await ethBatchTest(
+    ETH_TEST_PRIVKEY,
+    CKB_TEST_PRIVKEY,
+    ETH_RPC_URL,
+    CKB_RPC_URL,
+    CKB_INDEXER_URL,
+    FORCE_BRIDGE_URL,
+    3,
+  );
   await rpcTest(FORCE_BRIDGE_URL, CKB_RPC_URL, ETH_RPC_URL, CKB_TEST_PRIVKEY, ETH_TEST_PRIVKEY, bridgeEthAddress);
-  // change validator
+  // only test change validator when the env is set
+  if (process.env.TEST_CHANGE_VALIDATOR === null) {
+    return;
+  }
   collectorProcess.kill();
   await startChangeVal(
     forcecli,
