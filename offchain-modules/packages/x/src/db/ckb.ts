@@ -70,7 +70,7 @@ export class CkbDb {
   async watcherCreateMint(blockNumber: number, mints: MintedRecords): Promise<void> {
     const dbRecords = mints.records.map((r) => {
       const mint: ICkbMint = {
-        id: r.lockTxHash,
+        id: r.id,
         chain: ChainType.ETH,
         amount: r.amount.toString(),
         sudtExtraData: '',
@@ -89,18 +89,15 @@ export class CkbDb {
     const lockQuery = this.connection.getRepository(EthLock).createQueryBuilder();
     const mintQuery = this.connection.getRepository(CkbMint).createQueryBuilder();
     for (const record of mintedRecords.records) {
-      const row = await lockQuery.select().where('tx_hash = :lockTxHash', { lockTxHash: record.lockTxHash }).getOne();
+      const lockTxHash = record.id.split('-')[0];
+      const row = await lockQuery.select().where('tx_hash = :lockTxHash', { lockTxHash }).getOne();
       if (row) {
         const bridgeFee = (BigInt(row.amount) - BigInt(record.amount)).toString();
-        await lockQuery
-          .update()
-          .set({ bridgeFee: bridgeFee })
-          .where('tx_hash = :lockTxHash', { lockTxHash: record.lockTxHash })
-          .execute();
+        await lockQuery.update().set({ bridgeFee: bridgeFee }).where('tx_hash = :lockTxHash', { lockTxHash }).execute();
         await mintQuery
           .update()
           .set({ asset: row.token, recipientLockscript: row.recipient, sudtExtraData: row.sudtExtraData })
-          .where('id = :lockTxHash', { lockTxHash: record.lockTxHash })
+          .where('id = :id', { id: record.id })
           .execute();
       }
     }

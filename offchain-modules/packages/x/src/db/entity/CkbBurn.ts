@@ -9,8 +9,7 @@ export class CkbBurn {
   @Column()
   chain: number;
 
-  @Index()
-  @Column()
+  @Column('text')
   senderAddress: string;
 
   @Column()
@@ -22,7 +21,7 @@ export class CkbBurn {
   @Column({ default: '0' })
   bridgeFee: string;
 
-  @Column()
+  @Column('varchar', { length: 10240 })
   recipientAddress: string;
 
   @Index()
@@ -50,7 +49,7 @@ export class CkbBurn {
     chain: number;
     blockNumber: number;
     senderAddress: string;
-  }) {
+  }): CkbBurn {
     const record = new CkbBurn();
     record.ckbTxHash = data.ckbTxHash;
     record.chain = data.chain;

@@ -14,7 +14,7 @@ export class EthUnlock {
   @Column()
   amount: string;
 
-  @Column()
+  @Column('varchar', { length: 10240 })
   recipientAddress: string;
 
   @Index()

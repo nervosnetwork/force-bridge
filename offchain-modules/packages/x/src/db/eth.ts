@@ -169,7 +169,7 @@ export class EthDb implements IQuery {
   async getLockRecordsByCkbAddress(ckbRecipientAddr: string, XChainAsset: string): Promise<LockRecord[]> {
     return await this.ethLockRepository
       .createQueryBuilder('eth')
-      .leftJoinAndSelect('ckb_mint', 'ckb', 'eth.tx_hash = ckb.id')
+      .leftJoinAndSelect('ckb_mint', 'ckb', 'eth.unique_id = ckb.id')
       .where('eth.recipient = :recipient AND eth.token = :asset', {
         recipient: ckbRecipientAddr,
         asset: XChainAsset,
@@ -230,7 +230,7 @@ export class EthDb implements IQuery {
   async getLockRecordsByXChainAddress(XChainSender: string, XChainAsset: string): Promise<LockRecord[]> {
     return await this.ethLockRepository
       .createQueryBuilder('eth')
-      .leftJoinAndSelect('ckb_mint', 'ckb', 'eth.tx_hash = ckb.id')
+      .leftJoinAndSelect('ckb_mint', 'ckb', 'eth.unique_id = ckb.id')
       .where('eth.sender = :sender AND eth.token = :asset', { sender: XChainSender, asset: XChainAsset })
       .select(
         `
@@ -285,10 +285,10 @@ export class EthDb implements IQuery {
       .getRawMany();
   }
 
-  async getEthLocksByTxHashes(txHashes: string[]): Promise<EthLock[]> {
+  async getEthLocksByUniqueIds(uniqueIds: string[]): Promise<EthLock[]> {
     return this.connection.getRepository(EthLock).find({
       where: {
-        txHash: In(txHashes),
+        uniqueId: In(uniqueIds),
       },
     });
   }

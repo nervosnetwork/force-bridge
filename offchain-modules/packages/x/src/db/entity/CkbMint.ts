@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryColumn, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
+import { Entity, Column, CreateDateColumn, UpdateDateColumn, Index, PrimaryColumn } from 'typeorm';
 
 export type dbTxStatus = 'todo' | 'pending' | 'success' | 'error';
 export type CkbMintStatus = dbTxStatus;
@@ -19,10 +19,6 @@ export class CkbMint {
 
   @Column('varchar', { length: 10240 })
   recipientLockscript: string;
-
-  // todo: save address when save lockscript
-  // @Column()
-  // recipientAddress: string;
 
   @Column('varchar', { length: 10240, default: '' })
   sudtExtraData: string;

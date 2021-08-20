@@ -16,7 +16,7 @@ import { getOwnerTypeHash } from '../ckb/tx-helper/multisig/multisig_helper';
 import { forceBridgeRole } from '../config';
 import { ForceBridgeCore } from '../core';
 import { CkbDb, KVDb } from '../db';
-import { ICkbBurn, ICkbMint, MintedRecords } from '../db/model';
+import { ICkbBurn, ICkbMint, MintedRecord, MintedRecords } from '../db/model';
 import { asserts, nonNullable } from '../errors';
 import { BridgeMetricSingleton, txTokenInfo } from '../metric/bridge-metric';
 import { createAsset, MultiSigMgr } from '../multisig/multisig-mgr';
@@ -322,6 +322,14 @@ export class CkbHandler {
         blockNumber: Number(txInfo.info.block_number),
         confirmStatus: confirmed ? 'confirmed' : 'unconfirmed',
       };
+      if (burn.recipientAddress.length > 10240 || burn.senderAddress.length > 10240) {
+        logger.warn(
+          `skip createCkbBurn for record ${JSON.stringify(
+            burn,
+          )}, reason: recipientAddress or senderAddress too long to fit in database`,
+        );
+        return;
+      }
       await this.db.createCkbBurn([burn]);
       unlockRecords = [burn];
       BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('ckb_burn', 'success');
@@ -390,11 +398,12 @@ export class CkbHandler {
     const inputTypeWitness = witnessArgs.getInputType().value().raw();
     const mintWitness = new MintWitness(inputTypeWitness, { validate: true });
     const lockTxHashes = mintWitness.getLockTxHashes();
-    const parsedResult = new Array(0);
+    const parsedResult: MintedRecord[] = [];
     mintedSudtCellIndexes.forEach((value, index) => {
       const amount = utils.readBigUInt128LE(tx.outputsData[value]);
-      const lockTxHash = uint8ArrayToString(new Uint8Array(lockTxHashes.indexAt(index).raw()));
-      parsedResult.push({ amount: amount, lockTxHash: lockTxHash, lockBlockHeight: blockNumber });
+      const mintId = uint8ArrayToString(new Uint8Array(lockTxHashes.indexAt(index).raw()));
+      const lockTxHash = mintId.split('-')[0];
+      parsedResult.push({ amount: amount, id: mintId, lockTxHash: lockTxHash, lockBlockHeight: blockNumber });
     });
     return { txHash: tx.hash, records: parsedResult };
   }
@@ -581,7 +590,7 @@ export class CkbHandler {
     switch (r.chain) {
       case ChainType.BTC:
         return {
-          lockTxHash: r.id,
+          id: r.id,
           asset: new BtcAsset(r.asset, ownerTypeHash),
           recipient: r.recipientLockscript,
           amount: BigInt(r.amount),
@@ -589,7 +598,7 @@ export class CkbHandler {
         };
       case ChainType.ETH:
         return {
-          lockTxHash: r.id,
+          id: r.id,
           asset: new EthAsset(r.asset, ownerTypeHash),
           recipient: r.recipientLockscript,
           amount: BigInt(r.amount),
@@ -597,7 +606,7 @@ export class CkbHandler {
         };
       case ChainType.TRON:
         return {
-          lockTxHash: r.id,
+          id: r.id,
           asset: new TronAsset(r.asset, ownerTypeHash),
           recipient: r.recipientLockscript,
           amount: BigInt(r.amount),
@@ -605,7 +614,7 @@ export class CkbHandler {
         };
       case ChainType.EOS:
         return {
-          lockTxHash: r.id,
+          id: r.id,
           asset: new EosAsset(r.asset, ownerTypeHash),
           recipient: r.recipientLockscript,
           amount: BigInt(r.amount),

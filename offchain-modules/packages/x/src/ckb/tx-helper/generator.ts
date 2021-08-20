@@ -15,7 +15,7 @@ import { ScriptType } from './indexer';
 import { getFromAddr, getMultisigLock, getOwnerTypeHash } from './multisig/multisig_helper';
 
 export interface MintAssetRecord {
-  lockTxHash: string;
+  id: string;
   asset: Asset;
   amount: bigint;
   recipient: string;
@@ -193,7 +193,7 @@ export class CkbTxGenerator extends CkbTxHelper {
   getMintWitness(records: MintAssetRecord[]): ArrayBuffer {
     const lockTxHashes = new Array(0);
     records.forEach((record) => {
-      const lockTxHash = fromHexString(toHexString(stringToUint8Array(record.lockTxHash))).buffer;
+      const lockTxHash = fromHexString(toHexString(stringToUint8Array(record.id))).buffer;
       lockTxHashes.push(lockTxHash);
     });
     return SerializeMintWitness({ lock_tx_hashes: lockTxHashes });

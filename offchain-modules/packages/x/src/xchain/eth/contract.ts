@@ -14,6 +14,7 @@ export type Log = Parameters<Interface['parseLog']>[0] & {
   transactionHash: string;
   blockHash: string;
   blockNumber: number;
+  logIndex: number;
 };
 export type ParsedLog = ReturnType<Interface['parseLog']>;
 export type HandleLogFn = (log: Log, parsedLog: ParsedLog) => Promise<void> | void;
