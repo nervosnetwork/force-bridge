@@ -54,6 +54,7 @@ export class EthRecordObservable {
       }),
       map((logRes) => {
         return {
+          mintId: `${logRes.txHash}-${logRes.logIndex}`,
           amount: logRes.amount.toString(),
           txId: logRes.txHash,
           sender: logRes.sender,

@@ -25,6 +25,7 @@ export type FromRecord = {
 
 export type EthLockRecord = FromRecord & {
   sender: string;
+  mintId: string;
   token: string;
   recipient: string;
   sudtExtraData: string;

@@ -81,15 +81,11 @@ export class CkbDb {
       const row = await lockQuery.select().where('unique_id = :uniqueId', { uniqueId: record.id }).getOne();
       if (row) {
         const bridgeFee = (BigInt(row.amount) - BigInt(record.amount)).toString();
-        await lockQuery
-          .update()
-          .set({ bridgeFee: bridgeFee })
-          .where('unique_id = :uniqueId', { uniqueId: record.id })
-          .execute();
+        await lockQuery.update().set({ bridgeFee: bridgeFee }).where({ uniqueId: record.id }).execute();
         await mintQuery
           .update()
           .set({ asset: row.token, recipientLockscript: row.recipient, sudtExtraData: row.sudtExtraData })
-          .where('id = :id', { id: record.id })
+          .where({ id: record.id })
           .execute();
       }
     }

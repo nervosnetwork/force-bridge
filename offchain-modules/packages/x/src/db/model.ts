@@ -79,6 +79,7 @@ export interface ICkbBurn {
   bridgeFee: string;
   recipientAddress: string;
   blockNumber: number;
+  confirmNumber: number;
   confirmStatus: TxConfirmStatus;
 }
 

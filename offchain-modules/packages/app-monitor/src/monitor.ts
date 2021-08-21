@@ -48,7 +48,7 @@ export class Monitor {
 
   async onEthLockRecord(lock: EthLockRecord): Promise<void> {
     logger.info(`Receive ethLock:${JSON.stringify(lock)}`);
-    this.durationConfig.eth.pending.locks.set(lock.txId, newEvent(lock));
+    this.durationConfig.eth.pending.locks.set(lock.mintId, newEvent(lock));
   }
 
   async onEthUnlockRecord(unlock: EthUnlockRecord): Promise<void> {

@@ -57,13 +57,13 @@ export class EthDb implements IQuery {
     await this.ethLockRepository.save(dbRecords);
   }
 
-  async updateCollectorUnlockStatus(blockNumber: number, unlockTxHash: string, status: EthUnlockStatus): Promise<void> {
+  async updateCollectorUnlockStatus(ckbTxHash: string, blockNumber: number, status: EthUnlockStatus): Promise<void> {
     await this.connection
       .getRepository(CollectorEthUnlock)
       .createQueryBuilder()
       .update()
       .set({ blockNumber: blockNumber, status: status })
-      .where('ethTxHash = :unlockTxHash', { unlockTxHash: unlockTxHash })
+      .where({ ckbTxHash })
       .execute();
   }
 
@@ -84,7 +84,7 @@ export class EthDb implements IQuery {
   }
 
   async updateBridgeInRecord(
-    lockTxHash: string,
+    uniqueId: string,
     amount: string,
     token: string,
     recipient: string,
@@ -94,27 +94,27 @@ export class EthDb implements IQuery {
       .getRepository(CkbMint)
       .createQueryBuilder()
       .select()
-      .where('id = :lockTxHash', { lockTxHash: lockTxHash })
+      .where({ id: uniqueId })
       .getOne();
     if (mintRecord) {
       const bridgeFee = (BigInt(amount) - BigInt(mintRecord.amount)).toString();
-      await this.updateLockBridgeFee(lockTxHash, bridgeFee);
+      await this.updateLockBridgeFee(uniqueId, bridgeFee);
       await this.connection
         .getRepository(CkbMint)
         .createQueryBuilder()
         .update()
         .set({ asset: token, recipientLockscript: recipient, sudtExtraData: sudtExtraData })
-        .where('id = :lockTxHash', { lockTxHash: lockTxHash })
+        .where({ id: uniqueId })
         .execute();
     }
   }
 
-  async updateLockBridgeFee(lockTxHash: string, bridgeFee: string): Promise<void> {
+  async updateLockBridgeFee(uniqueId: string, bridgeFee: string): Promise<void> {
     await this.ethLockRepository
       .createQueryBuilder()
       .update()
       .set({ bridgeFee: bridgeFee })
-      .where('tx_hash = :lockTxHash', { lockTxHash: lockTxHash })
+      .where({ uniqueId })
       .execute();
   }
 

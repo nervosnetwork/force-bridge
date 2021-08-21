@@ -5,7 +5,7 @@ import { generateAddress, sealTransaction, TransactionSkeletonType } from '@ckb-
 import TransactionManager from '@ckb-lumos/transaction-manager';
 import { Reader } from 'ckb-js-toolkit';
 import * as lodash from 'lodash';
-import { BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '../ckb/model/asset';
+import { BtcAsset, ChainType, EosAsset, EthAsset, getAsset, TronAsset } from '../ckb/model/asset';
 import { RecipientCellData } from '../ckb/tx-helper/generated/eth_recipient_cell';
 import { ForceBridgeLockscriptArgs } from '../ckb/tx-helper/generated/force_bridge_lockscript';
 import { MintWitness } from '../ckb/tx-helper/generated/mint_witness';
@@ -315,11 +315,12 @@ export class CkbHandler {
         senderAddress: data.senderAddress,
         ckbTxHash: txHash,
         asset: asset,
+        bridgeFee: '0',
         chain,
         amount: utils.readBigUInt128LE(`0x${toHexString(new Uint8Array(data.cellData.getAmount().raw()))}`).toString(),
-        bridgeFee: this.role === 'collector' ? new EthAsset(asset).getBridgeFee('out') : '0',
         recipientAddress: uint8ArrayToString(new Uint8Array(data.cellData.getRecipientAddress().raw())),
         blockNumber: Number(txInfo.info.block_number),
+        confirmNumber: confirmedNumber,
         confirmStatus,
       };
       if (burn.recipientAddress.length > 10240 || burn.senderAddress.length > 10240) {
@@ -331,6 +332,7 @@ export class CkbHandler {
         return;
       }
       await this.db.createCkbBurn([burn]);
+      await this.db.updateBurnBridgeFee([burn]);
       unlockRecords = [burn];
       BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('ckb_burn', 'success');
       BridgeMetricSingleton.getInstance(this.role).addBridgeTokenMetrics('ckb_burn', [
@@ -339,21 +341,28 @@ export class CkbHandler {
           amount: Number(burn.amount),
         },
       ]);
-      if (this.role !== 'collector') {
-        await this.db.updateBurnBridgeFee(records);
-      }
       logger.info(
         `CkbHandler watchBurnEvents saveBurnEvent success, ckbTxHash:${tx.hash} senderAddress:${senderAddress}`,
       );
     }
     if (records.length === 1) {
       await this.db.updateBurnConfirmNumber([{ txHash, confirmedNumber, confirmStatus }]);
-      logger.debug(
-        `update burn record ${txHash} status, confirmed number: ${confirmedNumber}, confirmed: ${confirmed}`,
-      );
+      logger.info(`update burn record ${txHash} status, confirmed number: ${confirmedNumber}, confirmed: ${confirmed}`);
     }
     if (confirmed && this.role === 'collector') {
-      await this.onCkbBurnConfirmed(unlockRecords);
+      const unlockRecord = unlockRecords[0];
+      try {
+        const asset = getAsset(unlockRecord.chain, unlockRecord.asset);
+        const fee = asset.getBridgeFee('out');
+        if (BigInt(unlockRecord.amount) <= BigInt(fee)) {
+          throw new Error(`unlock record amount ${unlockRecord.amount} low than fee ${fee}`);
+        }
+        unlockRecord.bridgeFee = fee;
+      } catch (e) {
+        logger.warn(`fail to get fee to confirm burn, err: ${e.stack}`);
+        return;
+      }
+      await this.onCkbBurnConfirmed([unlockRecord]);
       logger.info(`save unlock successful for burn tx ${txHash}`);
     }
   }

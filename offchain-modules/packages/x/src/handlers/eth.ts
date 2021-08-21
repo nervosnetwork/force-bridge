@@ -211,13 +211,8 @@ export class EthHandler {
           token: token,
         },
       ]);
+      await this.ethDb.updateBridgeInRecord(uniqueId, amount, token, recipient, sudtExtraData);
       logger.info(`EthHandler watchLockEvents save EthLock successful for eth tx ${log.transactionHash}.`);
-      if (this.role !== 'collector') {
-        await this.ethDb.updateBridgeInRecord(txHash, amount, token, recipient, sudtExtraData);
-        logger.info(
-          `Watcher update bridge in record successful while handle lock log for eth tx ${log.transactionHash}.`,
-        );
-      }
     }
     if (records.length === 1) {
       await this.ethDb.updateLockConfirmNumber([{ uniqueId, confirmedNumber, confirmStatus }]);
@@ -284,7 +279,7 @@ export class EthHandler {
         ]);
         await this.ethDb.updateBurnBridgeFee(ckbTxHash, amount);
         if (this.role === 'collector') {
-          await this.ethDb.updateCollectorUnlockStatus(log.blockNumber, unlockTxHash, 'success');
+          await this.ethDb.updateCollectorUnlockStatus(ckbTxHash, log.blockNumber, 'success');
         }
         BridgeMetricSingleton.getInstance(this.role).addBridgeTokenMetrics('eth_unlock', [
           {
