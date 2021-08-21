@@ -5,6 +5,9 @@ export type TxConfirmStatus = 'unconfirmed' | 'confirmed';
 @Entity()
 export class EthLock {
   @PrimaryColumn()
+  uniqueId: string;
+
+  @Column()
   txHash: string;
 
   @Index()
@@ -24,7 +27,7 @@ export class EthLock {
   @Column('varchar', { length: 10240 })
   recipient: string;
 
-  @Column({ type: 'text', nullable: true })
+  @Column('varchar', { length: 10240, default: '' })
   sudtExtraData: string;
 
   @Index()

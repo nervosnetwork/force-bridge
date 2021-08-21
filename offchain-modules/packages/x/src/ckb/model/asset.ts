@@ -119,6 +119,16 @@ export abstract class Asset {
   public abstract getAddress(): string;
 }
 
+export function getAsset(chain: number, asset: string): Asset {
+  switch (chain) {
+    case ChainType.ETH: {
+      return new EthAsset(asset);
+    }
+    default:
+      throw new Error(`chainType ${ChainType} not supported yet`);
+  }
+}
+
 export class EthAsset extends Asset {
   // '0x00000000000000000000' represents ETH
   // other address represents ERC20 address

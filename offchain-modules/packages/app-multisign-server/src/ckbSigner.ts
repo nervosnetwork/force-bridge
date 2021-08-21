@@ -105,7 +105,7 @@ async function verifyDuplicateMintTx(
     return mintRecord.id;
   });
 
-  const mints = await SigServer.ckbDb.getCkbMintByLockTxHashes(refTxHashes);
+  const mints = await SigServer.ckbDb.getCkbMintByIds(refTxHashes);
   if (mints.length !== 0) {
     return new SigError(SigErrorCode.TxCompleted);
   }
@@ -214,13 +214,13 @@ async function verifyMintTx(pubKey: string, rawData: string, payload: ckbCollect
 }
 
 async function verifyEthMintRecords(records: mintRecord[]): Promise<SigError> {
-  const mintTxHashes = records.map((record) => {
+  const mintIds = records.map((record) => {
     return record.id;
   });
-  const ethLocks = await SigServer.ethDb.getEthLocksByTxHashes(mintTxHashes);
+  const ethLocks = await SigServer.ethDb.getEthLocksByUniqueIds(mintIds);
   const ethLockMap = new Map<string, EthLock>();
   ethLocks.forEach((record) => {
-    return ethLockMap.set(record.txHash, record);
+    return ethLockMap.set(record.uniqueId, record);
   });
 
   for (const record of records) {

@@ -1,7 +1,8 @@
 // invoke in eth handler
-import { Connection, DeleteResult, In, Not, Repository, UpdateResult } from 'typeorm';
+import { Connection, In, Repository, UpdateResult } from 'typeorm';
 import { ForceBridgeCore } from '../core';
-import { EthUnlockStatus } from './entity/EthUnlock';
+import { CollectorCkbMint } from './entity/CkbMint';
+import { CollectorEthUnlock, EthUnlockStatus } from './entity/EthUnlock';
 import {
   CkbBurn,
   CkbMint,
@@ -12,6 +13,7 @@ import {
   IEthUnlock,
   IQuery,
   LockRecord,
+  TxConfirmStatus,
   UnlockRecord,
 } from './model';
 
@@ -19,11 +21,15 @@ export class EthDb implements IQuery {
   private ckbMintRepository: Repository<CkbMint>;
   private ethLockRepository: Repository<EthLock>;
   private ethUnlockRepository: Repository<EthUnlock>;
+  private collectorEthUnlockRepository: Repository<CollectorEthUnlock>;
+  private collectorCkbMintRepository: Repository<CollectorCkbMint>;
 
   constructor(private connection: Connection) {
     this.ckbMintRepository = connection.getRepository(CkbMint);
     this.ethLockRepository = connection.getRepository(EthLock);
     this.ethUnlockRepository = connection.getRepository(EthUnlock);
+    this.collectorEthUnlockRepository = connection.getRepository(CollectorEthUnlock);
+    this.collectorCkbMintRepository = connection.getRepository(CollectorCkbMint);
   }
 
   async getLatestHeight(): Promise<number> {
@@ -31,9 +37,9 @@ export class EthDb implements IQuery {
     return rawRes[0].max_block_number || ForceBridgeCore.config.eth.startBlockHeight;
   }
 
-  async createCkbMint(records: ICkbMint[]): Promise<void> {
-    const dbRecords = records.map((r) => this.ckbMintRepository.create(r));
-    await this.ckbMintRepository.save(dbRecords);
+  async createCollectorCkbMint(records: ICkbMint[]): Promise<void> {
+    const dbRecords = records.map((r) => this.collectorCkbMintRepository.create(r));
+    await this.collectorCkbMintRepository.save(dbRecords);
   }
 
   async createEthUnlock(records: IEthUnlock[]): Promise<void> {
@@ -42,8 +48,8 @@ export class EthDb implements IQuery {
     await ethUnlockRepo.save(dbRecords);
   }
 
-  async saveEthUnlock(records: IEthUnlock[]): Promise<void> {
-    await this.ethUnlockRepository.save(records.map((r) => this.ethUnlockRepository.create(r)));
+  async saveCollectorEthUnlock(records: IEthUnlock[]): Promise<void> {
+    await this.collectorEthUnlockRepository.save(records.map((r) => this.collectorEthUnlockRepository.create(r)));
   }
 
   async createEthLock(records: IEthLock[]): Promise<void> {
@@ -51,58 +57,26 @@ export class EthDb implements IQuery {
     await this.ethLockRepository.save(dbRecords);
   }
 
-  async updateUnlockStatus(blockNumber: number, unlockTxHash: string, status: EthUnlockStatus): Promise<void> {
+  async updateCollectorUnlockStatus(ckbTxHash: string, blockNumber: number, status: EthUnlockStatus): Promise<void> {
     await this.connection
-      .getRepository(EthUnlock)
+      .getRepository(CollectorEthUnlock)
       .createQueryBuilder()
       .update()
       .set({ blockNumber: blockNumber, status: status })
-      .where('ethTxHash = :unlockTxHash', { unlockTxHash: unlockTxHash })
+      .where({ ckbTxHash })
       .execute();
   }
 
-  async removeUnconfirmedLocks(confirmedBlockHeight: number): Promise<DeleteResult> {
-    return this.ethLockRepository
-      .createQueryBuilder()
-      .delete()
-      .where('block_number > :blockNumber And confirm_status = "unconfirmed"', { blockNumber: confirmedBlockHeight })
-      .execute();
-  }
-
-  async removeUnconfirmedUnlocks(confirmedBlockHeight: number): Promise<DeleteResult> {
-    return this.ethUnlockRepository
-      .createQueryBuilder()
-      .delete()
-      .where('block_number > :blockNumber', { blockNumber: confirmedBlockHeight })
-      .execute();
-  }
-
-  async getUnconfirmedLocks(limit = 1000): Promise<EthLock[]> {
-    return this.ethLockRepository
-      .createQueryBuilder()
-      .select()
-      .where('confirm_status = "unconfirmed"')
-      .limit(limit)
-      .getMany();
-  }
-
-  async updateLockConfirmStatus(txHashes: string[]): Promise<UpdateResult> {
-    return this.ethLockRepository
-      .createQueryBuilder()
-      .update()
-      .set({ confirmStatus: 'confirmed' })
-      .where({ txHash: In(txHashes) })
-      .execute();
-  }
-
-  async updateLockConfirmNumber(records: { txHash: string; confirmedNumber: number }[]): Promise<UpdateResult[]> {
+  async updateLockConfirmNumber(
+    records: { uniqueId: string; confirmedNumber: number; confirmStatus: TxConfirmStatus }[],
+  ): Promise<UpdateResult[]> {
     const updataResults = new Array(0);
     for (const record of records) {
       const result = await this.ethLockRepository
         .createQueryBuilder()
         .update()
-        .set({ confirmNumber: record.confirmedNumber })
-        .where('tx_hash = :txHash', { txHash: record.txHash })
+        .set({ confirmNumber: record.confirmedNumber, confirmStatus: record.confirmStatus })
+        .where('unique_id = :uniqueId', { uniqueId: record.uniqueId })
         .execute();
       updataResults.push(result);
     }
@@ -110,7 +84,7 @@ export class EthDb implements IQuery {
   }
 
   async updateBridgeInRecord(
-    lockTxHash: string,
+    uniqueId: string,
     amount: string,
     token: string,
     recipient: string,
@@ -120,32 +94,32 @@ export class EthDb implements IQuery {
       .getRepository(CkbMint)
       .createQueryBuilder()
       .select()
-      .where('id = :lockTxHash', { lockTxHash: lockTxHash })
+      .where({ id: uniqueId })
       .getOne();
     if (mintRecord) {
       const bridgeFee = (BigInt(amount) - BigInt(mintRecord.amount)).toString();
-      await this.updateLockBridgeFee(lockTxHash, bridgeFee);
+      await this.updateLockBridgeFee(uniqueId, bridgeFee);
       await this.connection
         .getRepository(CkbMint)
         .createQueryBuilder()
         .update()
         .set({ asset: token, recipientLockscript: recipient, sudtExtraData: sudtExtraData })
-        .where('id = :lockTxHash', { lockTxHash: lockTxHash })
+        .where({ id: uniqueId })
         .execute();
     }
   }
 
-  async updateLockBridgeFee(lockTxHash: string, bridgeFee: string): Promise<void> {
+  async updateLockBridgeFee(uniqueId: string, bridgeFee: string): Promise<void> {
     await this.ethLockRepository
       .createQueryBuilder()
       .update()
       .set({ bridgeFee: bridgeFee })
-      .where('tx_hash = :lockTxHash', { lockTxHash: lockTxHash })
+      .where({ uniqueId })
       .execute();
   }
 
   async updateBurnBridgeFee(burnTxHash: string, unlockAmount: string): Promise<void> {
-    const query = this.connection.getRepository(CkbBurn).createQueryBuilder();
+    const query = await this.connection.getRepository(CkbBurn).createQueryBuilder();
     const row = await query.select().where('ckb_tx_hash = :ckbTxHash', { ckbTxHash: burnTxHash }).getOne();
     if (row) {
       const bridgeFee = (BigInt(row.amount) - BigInt(unlockAmount)).toString();
@@ -158,7 +132,7 @@ export class EthDb implements IQuery {
   }
 
   async getEthUnlockRecordsToUnlock(status: EthUnlockStatus, take = 10): Promise<EthUnlock[]> {
-    return this.ethUnlockRepository.find({
+    return await this.collectorEthUnlockRepository.find({
       where: {
         status,
       },
@@ -169,7 +143,7 @@ export class EthDb implements IQuery {
   async getLockRecordsByCkbAddress(ckbRecipientAddr: string, XChainAsset: string): Promise<LockRecord[]> {
     return await this.ethLockRepository
       .createQueryBuilder('eth')
-      .leftJoinAndSelect('ckb_mint', 'ckb', 'eth.tx_hash = ckb.id')
+      .leftJoinAndSelect('ckb_mint', 'ckb', 'eth.unique_id = ckb.id')
       .where('eth.recipient = :recipient AND eth.token = :asset', {
         recipient: ckbRecipientAddr,
         asset: XChainAsset,
@@ -186,9 +160,9 @@ export class EthDb implements IQuery {
         eth.confirm_number as lock_confirm_number,
         eth.confirm_status as lock_confirm_status,
         ckb.updated_at as mint_time, 
-        ckb.status as status,
         eth.token as asset,
-        ckb.message as message,
+        case when isnull(ckb.amount) then null else 'success' end as status,
+        '' as message,
         eth.bridge_fee as bridge_fee
       `,
       )
@@ -217,9 +191,9 @@ export class EthDb implements IQuery {
         ckb.updated_at as burn_time, 
         ckb.confirm_number as burn_confirm_number,
         ckb.confirm_status as burn_confirm_status,
-        eth.status as status,
         ckb.asset as asset,
-        eth.message as message,
+        case when isnull(eth.amount) then null else 'success' end as status,
+        '' as message,
         ckb.bridge_fee as bridge_fee
       `,
       )
@@ -230,7 +204,7 @@ export class EthDb implements IQuery {
   async getLockRecordsByXChainAddress(XChainSender: string, XChainAsset: string): Promise<LockRecord[]> {
     return await this.ethLockRepository
       .createQueryBuilder('eth')
-      .leftJoinAndSelect('ckb_mint', 'ckb', 'eth.tx_hash = ckb.id')
+      .leftJoinAndSelect('ckb_mint', 'ckb', 'eth.unique_id = ckb.id')
       .where('eth.sender = :sender AND eth.token = :asset', { sender: XChainSender, asset: XChainAsset })
       .select(
         `
@@ -244,9 +218,9 @@ export class EthDb implements IQuery {
         eth.confirm_number as lock_confirm_number,
         eth.confirm_status as lock_confirm_status,
         ckb.updated_at as mint_time, 
-        ckb.status as status,
         eth.token as asset,
-        ckb.message as message,
+        case when isnull(ckb.amount) then null else 'success' end as status,
+        '' as message,
         eth.bridge_fee as bridge_fee
       `,
       )
@@ -275,9 +249,9 @@ export class EthDb implements IQuery {
         ckb.updated_at as burn_time, 
         ckb.confirm_number as burn_confirm_number,
         ckb.confirm_status as burn_confirm_status,
-        eth.status as status,
         ckb.asset as asset,
-        eth.message as message,
+        case when isnull(eth.amount) then null else 'success' end as status,
+        '' as message,
         ckb.bridge_fee as bridge_fee
       `,
       )
@@ -285,20 +259,29 @@ export class EthDb implements IQuery {
       .getRawMany();
   }
 
-  async getEthLocksByTxHashes(txHashes: string[]): Promise<EthLock[]> {
-    return this.connection.getRepository(EthLock).find({
+  async getEthLocksByUniqueIds(uniqueIds: string[]): Promise<EthLock[]> {
+    return await this.connection.getRepository(EthLock).find({
       where: {
-        txHash: In(txHashes),
+        uniqueId: In(uniqueIds),
       },
     });
   }
 
   async getEthUnlockByCkbTxHashes(ckbTxHashes: string[]): Promise<EthUnlock[]> {
-    return this.connection.getRepository(EthUnlock).find({
+    return await this.connection.getRepository(EthUnlock).find({
       where: {
         ckbTxHash: In(ckbTxHashes),
-        status: Not('error'),
       },
     });
+  }
+
+  async setCollectorEthUnlockToSuccess(ckbTxHashes: string[]): Promise<void> {
+    await this.connection
+      .getRepository(CollectorEthUnlock)
+      .createQueryBuilder()
+      .update()
+      .set({ status: 'success' })
+      .where({ ckbTxHash: In(ckbTxHashes) })
+      .execute();
   }
 }

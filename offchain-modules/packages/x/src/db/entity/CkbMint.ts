@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryColumn, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
+import { Entity, Column, CreateDateColumn, UpdateDateColumn, Index, PrimaryColumn } from 'typeorm';
 
 export type dbTxStatus = 'todo' | 'pending' | 'success' | 'error';
 export type CkbMintStatus = dbTxStatus;
@@ -20,15 +20,8 @@ export class CkbMint {
   @Column('varchar', { length: 10240 })
   recipientLockscript: string;
 
-  // todo: save address when save lockscript
-  // @Column()
-  // recipientAddress: string;
-
   @Column('varchar', { length: 10240, default: '' })
   sudtExtraData: string;
-
-  @Column({ default: 'todo' })
-  status: CkbMintStatus;
 
   @Index()
   @Column({ nullable: true })
@@ -38,12 +31,18 @@ export class CkbMint {
   @Column({ nullable: true })
   mintHash: string;
 
-  @Column({ type: 'text', nullable: true })
-  message: string;
-
   @CreateDateColumn()
   createdAt: string;
 
   @UpdateDateColumn()
   updatedAt: string;
+}
+
+@Entity()
+export class CollectorCkbMint extends CkbMint {
+  @Column({ default: 'todo' })
+  status: CkbMintStatus;
+
+  @Column({ type: 'text', nullable: true })
+  message: string;
 }

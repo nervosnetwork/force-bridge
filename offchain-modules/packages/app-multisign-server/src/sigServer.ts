@@ -158,7 +158,7 @@ export async function startSigServer(configPath: string): Promise<void> {
     try {
       return await signCkbTx(params);
     } catch (e) {
-      logger.error(`signCkbTx params:${JSON.stringify(params, undefined, 2)} error:${e.message}`);
+      logger.error(`signCkbTx params:${JSON.stringify(params)} error:${e.stack}`);
       return SigResponse.fromSigError(SigErrorCode.UnknownError, e.message);
     }
   });
@@ -166,7 +166,7 @@ export async function startSigServer(configPath: string): Promise<void> {
     try {
       return await signEthTx(params);
     } catch (e) {
-      logger.error(`signEthTx params:${JSON.stringify(params, undefined, 2)} error:${e.message}`);
+      logger.error(`signEthTx params:${JSON.stringify(params)} error:${e.stack}`);
       return SigResponse.fromSigError(SigErrorCode.UnknownError, e.message);
     }
   });

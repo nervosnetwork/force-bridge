@@ -65,6 +65,7 @@ export interface IEthLock {
   sudtExtraData?: string;
   blockNumber: number;
   blockHash: string;
+  uniqueId: string;
   confirmNumber?: number;
   confirmStatus?: TxConfirmStatus;
 }
@@ -78,6 +79,7 @@ export interface ICkbBurn {
   bridgeFee: string;
   recipientAddress: string;
   blockNumber: number;
+  confirmNumber: number;
   confirmStatus: TxConfirmStatus;
 }
 
@@ -225,9 +227,16 @@ export interface UnlockRecord {
   bridge_fee: string;
 }
 
+export interface MintedRecord {
+  amount: bigint;
+  id: string;
+  lockTxHash: string;
+  lockBlockHeight: number;
+}
+
 export interface MintedRecords {
   txHash: string;
-  records: { amount: bigint; lockTxHash: string }[];
+  records: MintedRecord[];
 }
 
 export interface IQuery {

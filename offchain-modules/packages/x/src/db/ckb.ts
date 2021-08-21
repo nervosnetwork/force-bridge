@@ -1,8 +1,9 @@
 // invoke in ckb handler
-import { Connection, DeleteResult, In, Not, UpdateResult } from 'typeorm';
+import { Connection, In, UpdateResult } from 'typeorm';
 import { ChainType } from '../ckb/model/asset';
 import { ForceBridgeCore } from '../core';
-import { dbTxStatus } from './entity/CkbMint';
+import { CollectorCkbMint, dbTxStatus } from './entity/CkbMint';
+import { CollectorEthUnlock } from './entity/EthUnlock';
 import {
   BtcUnlock,
   CkbBurn,
@@ -18,6 +19,7 @@ import {
   ITronUnlock,
   MintedRecords,
   TronUnlock,
+  TxConfirmStatus,
 } from './model';
 
 export class CkbDb {
@@ -33,8 +35,8 @@ export class CkbDb {
     return rawRes[0].max_block_number || ForceBridgeCore.config.ckb.startBlockHeight;
   }
 
-  async getCkbMintRecordsToMint(status: dbTxStatus, take = 100): Promise<CkbMint[]> {
-    return this.connection.getRepository(CkbMint).find({
+  async getCkbMintRecordsToMint(status: dbTxStatus, take = 100): Promise<CollectorCkbMint[]> {
+    return await this.connection.getRepository(CollectorCkbMint).find({
       where: {
         status: status,
       },
@@ -45,21 +47,9 @@ export class CkbDb {
     });
   }
 
-  async getMintRecordsToUpdate(mintHash: string): Promise<CkbMint[]> {
-    return this.connection.getRepository(CkbMint).find({
-      where: {
-        mintHash: mintHash,
-        status: 'pending',
-      },
-      order: {
-        createdAt: 'ASC',
-      },
-    });
-  }
-
   // update mint status
-  async updateCkbMint(records: ICkbMint[]): Promise<void> {
-    const mintRepo = this.connection.getRepository(CkbMint);
+  async updateCollectorCkbMint(records: ICkbMint[]): Promise<void> {
+    const mintRepo = this.connection.getRepository(CollectorCkbMint);
     await mintRepo.save(
       records.map((record) => {
         return mintRepo.create(record);
@@ -70,7 +60,7 @@ export class CkbDb {
   async watcherCreateMint(blockNumber: number, mints: MintedRecords): Promise<void> {
     const dbRecords = mints.records.map((r) => {
       const mint: ICkbMint = {
-        id: r.lockTxHash,
+        id: r.id,
         chain: ChainType.ETH,
         amount: r.amount.toString(),
         sudtExtraData: '',
@@ -78,7 +68,6 @@ export class CkbDb {
         recipientLockscript: '',
         blockNumber: blockNumber,
         mintHash: mints.txHash,
-        status: 'success',
       };
       return this.connection.getRepository(CkbMint).create(mint);
     });
@@ -89,18 +78,14 @@ export class CkbDb {
     const lockQuery = this.connection.getRepository(EthLock).createQueryBuilder();
     const mintQuery = this.connection.getRepository(CkbMint).createQueryBuilder();
     for (const record of mintedRecords.records) {
-      const row = await lockQuery.select().where('tx_hash = :lockTxHash', { lockTxHash: record.lockTxHash }).getOne();
+      const row = await lockQuery.select().where('unique_id = :uniqueId', { uniqueId: record.id }).getOne();
       if (row) {
         const bridgeFee = (BigInt(row.amount) - BigInt(record.amount)).toString();
-        await lockQuery
-          .update()
-          .set({ bridgeFee: bridgeFee })
-          .where('tx_hash = :lockTxHash', { lockTxHash: record.lockTxHash })
-          .execute();
+        await lockQuery.update().set({ bridgeFee: bridgeFee }).where({ uniqueId: record.id }).execute();
         await mintQuery
           .update()
           .set({ asset: row.token, recipientLockscript: row.recipient, sudtExtraData: row.sudtExtraData })
-          .where('id = :lockTxHash', { lockTxHash: record.lockTxHash })
+          .where({ id: record.id })
           .execute();
       }
     }
@@ -125,9 +110,19 @@ export class CkbDb {
     }
   }
 
-  async updateCkbMintStatus(blockNumber: number, mintTxHash: string, status: dbTxStatus): Promise<void> {
+  async setCollectorCkbMintToSuccess(ids: string[]): Promise<void> {
     await this.connection
-      .getRepository(CkbMint)
+      .getRepository(CollectorCkbMint)
+      .createQueryBuilder()
+      .update()
+      .set({ status: 'success' })
+      .where({ id: In(ids) })
+      .execute();
+  }
+
+  async updateCollectorCkbMintStatus(blockNumber: number, mintTxHash: string, status: dbTxStatus): Promise<void> {
+    await this.connection
+      .getRepository(CollectorCkbMint)
       .createQueryBuilder()
       .update()
       .set({ blockNumber: blockNumber, status: status })
@@ -142,76 +137,40 @@ export class CkbDb {
   }
 
   /* save chain specific data */
-  async createEthUnlock(records: IEthUnlock[]): Promise<void> {
-    const ethUnlockRepo = this.connection.getRepository(EthUnlock);
+  async createCollectorEthUnlock(records: IEthUnlock[]): Promise<void> {
+    const ethUnlockRepo = this.connection.getRepository(CollectorEthUnlock);
     const dbRecords = records.map((r) => ethUnlockRepo.create(r));
     await ethUnlockRepo.save(dbRecords);
   }
 
   async createEosUnlock(records: IEosUnlock[]): Promise<void> {
-    const eosUnlockRepo = this.connection.getRepository(EosUnlock);
+    const eosUnlockRepo = await this.connection.getRepository(EosUnlock);
     const dbRecords = records.map((r) => eosUnlockRepo.create(r));
     await eosUnlockRepo.save(dbRecords);
   }
 
   async createTronUnlock(records: ITronUnlock[]): Promise<void> {
-    const tronUnlockRepo = this.connection.getRepository(TronUnlock);
+    const tronUnlockRepo = await this.connection.getRepository(TronUnlock);
     const dbRecords = records.map((r) => tronUnlockRepo.create(r));
     await tronUnlockRepo.save(dbRecords);
   }
 
   async createBtcUnlock(records: IBtcUnLock[]): Promise<void> {
-    const btcUnlockRepo = this.connection.getRepository(BtcUnlock);
+    const btcUnlockRepo = await this.connection.getRepository(BtcUnlock);
     const dbRecords = records.map((r) => btcUnlockRepo.create(r));
     await btcUnlockRepo.save(dbRecords);
   }
 
-  async removeUnconfirmedCkbBurn(confirmedBlockHeight: number): Promise<DeleteResult> {
-    return this.connection
-      .getRepository(CkbBurn)
-      .createQueryBuilder()
-      .delete()
-      .where('block_number > :blockNumber And confirm_status = "unconfirmed"', { blockNumber: confirmedBlockHeight })
-      .execute();
-  }
-
-  async removeUnconfirmedCkbMint(confirmedBlockHeight: number): Promise<DeleteResult> {
-    return this.connection
-      .getRepository(CkbMint)
-      .createQueryBuilder()
-      .delete()
-      .where('block_number > :blockNumber', { blockNumber: confirmedBlockHeight })
-      .execute();
-  }
-
-  async getUnconfirmedBurn(limit = 1000): Promise<CkbBurn[]> {
-    return this.connection
-      .getRepository(CkbBurn)
-      .createQueryBuilder()
-      .select()
-      .where('confirm_status = "unconfirmed"')
-      .limit(limit)
-      .getMany();
-  }
-
-  async updateCkbBurnConfirmStatus(txHashes: string[]): Promise<UpdateResult> {
-    return this.connection
-      .getRepository(CkbBurn)
-      .createQueryBuilder()
-      .update()
-      .set({ confirmStatus: 'confirmed' })
-      .where({ ckbTxHash: In(txHashes) })
-      .execute();
-  }
-
-  async updateBurnConfirmNumber(records: { txHash: string; confirmedNumber: number }[]): Promise<UpdateResult[]> {
+  async updateBurnConfirmNumber(
+    records: { txHash: string; confirmedNumber: number; confirmStatus: TxConfirmStatus }[],
+  ): Promise<UpdateResult[]> {
     const updataResults = new Array(0);
     for (const record of records) {
       const result = await this.connection
         .getRepository(CkbBurn)
         .createQueryBuilder()
         .update()
-        .set({ confirmNumber: record.confirmedNumber })
+        .set({ confirmNumber: record.confirmedNumber, confirmStatus: record.confirmStatus })
         .where('ckb_tx_hash = :txHash', { txHash: record.txHash })
         .execute();
       updataResults.push(result);
@@ -220,18 +179,17 @@ export class CkbDb {
   }
 
   async getCkbBurnByTxHashes(ckbTxHashes: string[]): Promise<ICkbBurn[]> {
-    return this.connection.getRepository(CkbBurn).find({
+    return await this.connection.getRepository(CkbBurn).find({
       where: {
         ckbTxHash: In(ckbTxHashes),
       },
     });
   }
 
-  async getCkbMintByLockTxHashes(lockTxHashes: string[]): Promise<CkbMint[]> {
-    return this.connection.getRepository(CkbMint).find({
+  async getCkbMintByIds(ids: string[]): Promise<CkbMint[]> {
+    return await this.connection.getRepository(CkbMint).find({
       where: {
-        id: In(lockTxHashes),
-        status: Not('error'),
+        id: In(ids),
       },
     });
   }
