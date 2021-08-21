@@ -105,7 +105,7 @@ async function verifyDuplicateMintTx(
     return mintRecord.id;
   });
 
-  const mints = await SigServer.ckbDb.getCkbMintByLockTxHashes(refTxHashes);
+  const mints = await SigServer.ckbDb.getCkbMintByIds(refTxHashes);
   if (mints.length !== 0) {
     return new SigError(SigErrorCode.TxCompleted);
   }

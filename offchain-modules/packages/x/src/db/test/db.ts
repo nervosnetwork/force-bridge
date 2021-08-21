@@ -29,7 +29,7 @@ test('ckb db works', async (t) => {
   };
   // const ckbMintRecord = ckbMintRepo.create(data);
   // await ckbMintRepo.save([ckbMintRecord]);
-  await ethDb.createCkbMint([data]);
+  await ethDb.createCollectorCkbMint([data]);
   const ckbMintRecordGet = await ckbDb.getCkbMintRecordsToMint('todo');
   t.is(ckbMintRecordGet.length, 1);
   t.like(ckbMintRecordGet[0], data);

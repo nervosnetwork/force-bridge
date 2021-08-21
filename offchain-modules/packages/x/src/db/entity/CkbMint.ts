@@ -23,9 +23,6 @@ export class CkbMint {
   @Column('varchar', { length: 10240, default: '' })
   sudtExtraData: string;
 
-  @Column({ default: 'todo' })
-  status: CkbMintStatus;
-
   @Index()
   @Column({ nullable: true })
   blockNumber: number;
@@ -34,12 +31,18 @@ export class CkbMint {
   @Column({ nullable: true })
   mintHash: string;
 
-  @Column({ type: 'text', nullable: true })
-  message: string;
-
   @CreateDateColumn()
   createdAt: string;
 
   @UpdateDateColumn()
   updatedAt: string;
+}
+
+@Entity()
+export class CollectorCkbMint extends CkbMint {
+  @Column({ default: 'todo' })
+  status: CkbMintStatus;
+
+  @Column({ type: 'text', nullable: true })
+  message: string;
 }

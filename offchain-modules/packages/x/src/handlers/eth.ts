@@ -167,6 +167,7 @@ export class EthHandler {
     }
     const confirmedNumber = currentHeight - log.blockNumber;
     const confirmed = confirmedNumber >= ForceBridgeCore.config.eth.confirmNumber;
+    const confirmStatus = confirmed ? 'confirmed' : 'unconfirmed';
     // create new EthLock record
     if (records.length === 0) {
       logger.info(
@@ -200,7 +201,7 @@ export class EthHandler {
           uniqueId,
           bridgeFee: '0',
           confirmNumber: confirmedNumber,
-          confirmStatus: confirmed ? 'confirmed' : 'unconfirmed',
+          confirmStatus,
         },
       ]);
       BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_lock', 'success');
@@ -219,10 +220,7 @@ export class EthHandler {
       }
     }
     if (records.length === 1) {
-      await this.ethDb.updateLockConfirmNumber([{ txHash, confirmedNumber }]);
-      if (confirmed) {
-        await this.ethDb.updateLockConfirmStatus([txHash]);
-      }
+      await this.ethDb.updateLockConfirmNumber([{ uniqueId, confirmedNumber, confirmStatus }]);
       logger.info(`update lock record ${txHash} status, confirmed number: ${confirmedNumber}, status: ${confirmed}`);
     }
     if (confirmed && this.role === 'collector') {
@@ -246,7 +244,7 @@ export class EthHandler {
         recipientLockscript: recipient,
         sudtExtraData,
       };
-      await this.ethDb.createCkbMint([mintRecords]);
+      await this.ethDb.createCollectorCkbMint([mintRecords]);
       logger.info(`save CkbMint successful for eth tx ${txHash}`);
     }
   }
@@ -274,21 +272,19 @@ export class EthHandler {
           ]);
           return;
         }
+        await this.ethDb.createEthUnlock([
+          {
+            ckbTxHash: ckbTxHash,
+            amount: amount,
+            asset: token,
+            recipientAddress: recipient,
+            blockNumber: log.blockNumber,
+            ethTxHash: unlockTxHash,
+          },
+        ]);
+        await this.ethDb.updateBurnBridgeFee(ckbTxHash, amount);
         if (this.role === 'collector') {
-          await this.ethDb.updateUnlockStatus(log.blockNumber, unlockTxHash, 'success');
-        } else {
-          await this.ethDb.createEthUnlock([
-            {
-              ckbTxHash: ckbTxHash,
-              amount: amount,
-              asset: token,
-              recipientAddress: recipient,
-              blockNumber: log.blockNumber,
-              ethTxHash: unlockTxHash,
-              status: 'success',
-            },
-          ]);
-          await this.ethDb.updateBurnBridgeFee(ckbTxHash, amount);
+          await this.ethDb.updateCollectorUnlockStatus(log.blockNumber, unlockTxHash, 'success');
         }
         BridgeMetricSingleton.getInstance(this.role).addBridgeTokenMetrics('eth_unlock', [
           {
@@ -306,7 +302,16 @@ export class EthHandler {
   }
 
   async getUnlockRecords(status: EthUnlockStatus): Promise<EthUnlock[]> {
-    return this.ethDb.getEthUnlockRecordsToUnlock(status);
+    const toUnlockRecords = await this.ethDb.getEthUnlockRecordsToUnlock(status);
+    const unlockedRecords = (await this.ethDb.getEthUnlockByCkbTxHashes(toUnlockRecords.map((r) => r.ckbTxHash))).map(
+      (r) => r.ckbTxHash,
+    );
+    if (unlockedRecords.length > 0) {
+      await this.ethDb.setCollectorEthUnlockToSuccess(unlockedRecords);
+      return toUnlockRecords.filter((r) => unlockedRecords.indexOf(r.ckbTxHash) < 0);
+    } else {
+      return toUnlockRecords;
+    }
   }
 
   // watch the eth_unlock table and handle the new unlock events
@@ -376,7 +381,7 @@ export class EthHandler {
         records.map((r) => {
           r.status = 'pending';
         });
-        await this.ethDb.saveEthUnlock(records);
+        await this.ethDb.saveCollectorEthUnlock(records);
         const txRes = await this.ethChain.sendUnlockTxs(records, gasPrice);
         if (typeof txRes === 'boolean') {
           records.map((r) => {
@@ -407,7 +412,7 @@ export class EthHandler {
           r.status = 'pending';
           r.ethTxHash = txRes.hash;
         });
-        await this.ethDb.saveEthUnlock(records);
+        await this.ethDb.saveCollectorEthUnlock(records);
         logger.debug('sendUnlockTxs res', txRes);
         try {
           // wait() will reject if the tx fails
@@ -444,7 +449,7 @@ export class EthHandler {
     }
     for (;;) {
       try {
-        await this.ethDb.saveEthUnlock(records);
+        await this.ethDb.saveCollectorEthUnlock(records);
         logger.info(`EthHandler doHandleUnlockRecords process unlock Record completed ckbTxHashes:${unlockTxHashes}`);
         break;
       } catch (e) {

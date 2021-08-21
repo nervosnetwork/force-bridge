@@ -29,7 +29,7 @@ async function getCkbPendingTx(): Promise<SigResponse> {
     return SigResponse.fromData(undefined);
   }
   const ckbPayload = (pendingTx as collectSignaturesParams).payload as ckbCollectSignaturesPayload;
-  const mintRecords = await SigServer.ckbDb.getCkbMintByLockTxHashes([ckbPayload.mintRecords![0].id]);
+  const mintRecords = await SigServer.ckbDb.getCkbMintByIds([ckbPayload.mintRecords![0].id]);
   if (mintRecords.length > 0) {
     return SigResponse.fromData(undefined);
   }

@@ -5,7 +5,6 @@ import { generateAddress, sealTransaction, TransactionSkeletonType } from '@ckb-
 import TransactionManager from '@ckb-lumos/transaction-manager';
 import { Reader } from 'ckb-js-toolkit';
 import * as lodash from 'lodash';
-import { UpdateResult } from 'typeorm';
 import { BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '../ckb/model/asset';
 import { RecipientCellData } from '../ckb/tx-helper/generated/eth_recipient_cell';
 import { ForceBridgeLockscriptArgs } from '../ckb/tx-helper/generated/force_bridge_lockscript';
@@ -16,6 +15,7 @@ import { getOwnerTypeHash } from '../ckb/tx-helper/multisig/multisig_helper';
 import { forceBridgeRole } from '../config';
 import { ForceBridgeCore } from '../core';
 import { CkbDb, KVDb } from '../db';
+import { CollectorCkbMint } from '../db/entity/CkbMint';
 import { ICkbBurn, ICkbMint, MintedRecord, MintedRecords } from '../db/model';
 import { asserts, nonNullable } from '../errors';
 import { BridgeMetricSingleton, txTokenInfo } from '../metric/bridge-metric';
@@ -119,7 +119,7 @@ export class CkbHandler {
           ]);
           break;
         case ChainType.ETH:
-          await this.db.createEthUnlock([
+          await this.db.createCollectorEthUnlock([
             {
               ckbTxHash: burn.ckbTxHash,
               asset: burn.asset,
@@ -269,13 +269,12 @@ export class CkbHandler {
     }
   }
 
-  async onMintTx(blockNumber: number, mintedRecords: MintedRecords): Promise<UpdateResult | undefined> {
-    if (this.role === 'collector') {
-      await this.db.updateCkbMintStatus(blockNumber, mintedRecords.txHash, 'success');
-      return;
-    }
+  async onMintTx(blockNumber: number, mintedRecords: MintedRecords): Promise<void> {
     await this.db.watcherCreateMint(blockNumber, mintedRecords);
     await this.db.updateBridgeInRecords(mintedRecords);
+    if (this.role === 'collector') {
+      await this.db.updateCollectorCkbMintStatus(blockNumber, mintedRecords.txHash, 'success');
+    }
   }
 
   async onBurnTx(txInfo: CkbTxInfo, currentHeight: number): Promise<void> {
@@ -289,6 +288,7 @@ export class CkbHandler {
     const blockNumber = Number(txInfo.info.block_number);
     const confirmedNumber = currentHeight - blockNumber;
     const confirmed = confirmedNumber >= ForceBridgeCore.config.ckb.confirmNumber;
+    const confirmStatus = confirmed ? 'confirmed' : 'unconfirmed';
     logger.info(`handle burn tx ${txHash}, confirmed number: ${confirmedNumber}, confirmed: ${confirmed}`);
     // create new CkbBurn record
     let unlockRecords = records;
@@ -320,7 +320,7 @@ export class CkbHandler {
         bridgeFee: this.role === 'collector' ? new EthAsset(asset).getBridgeFee('out') : '0',
         recipientAddress: uint8ArrayToString(new Uint8Array(data.cellData.getRecipientAddress().raw())),
         blockNumber: Number(txInfo.info.block_number),
-        confirmStatus: confirmed ? 'confirmed' : 'unconfirmed',
+        confirmStatus,
       };
       if (burn.recipientAddress.length > 10240 || burn.senderAddress.length > 10240) {
         logger.warn(
@@ -347,10 +347,7 @@ export class CkbHandler {
       );
     }
     if (records.length === 1) {
-      await this.db.updateBurnConfirmNumber([{ txHash, confirmedNumber }]);
-      if (confirmed) {
-        await this.db.updateCkbBurnConfirmStatus([txHash]);
-      }
+      await this.db.updateBurnConfirmNumber([{ txHash, confirmedNumber, confirmStatus }]);
       logger.debug(
         `update burn record ${txHash} status, confirmed number: ${confirmedNumber}, confirmed: ${confirmed}`,
       );
@@ -420,6 +417,16 @@ export class CkbHandler {
     this.handleTodoMintRecords(ownerTypeHash, generator);
   }
 
+  async filterMintRecordsWithChainData(records: CollectorCkbMint[]): Promise<CollectorCkbMint[]> {
+    const inMintRecords = (await this.db.getCkbMintByIds(records.map((r) => r.id))).map((r) => r.id);
+    if (inMintRecords.length > 0) {
+      await this.db.setCollectorCkbMintToSuccess(inMintRecords);
+      return records.filter((r) => inMintRecords.indexOf(r.id) < 0);
+    } else {
+      return records;
+    }
+  }
+
   handleTodoMintRecords(ownerTypeHash: string, generator: CkbTxGenerator): void {
     foreverPromise(
       async () => {
@@ -429,7 +436,9 @@ export class CkbHandler {
           );
           return;
         }
-        const mintRecords = await this.db.getCkbMintRecordsToMint('todo');
+        const rawMintRecords = await this.db.getCkbMintRecordsToMint('todo');
+        // filter using CkbMint from chain
+        const mintRecords = await this.filterMintRecordsWithChainData(rawMintRecords);
         if (mintRecords.length == 0) {
           logger.debug('wait for new mint records');
           await asyncSleep(3000);
@@ -475,7 +484,7 @@ export class CkbHandler {
         mintRecords.map((r) => {
           r.status = 'pending';
         });
-        await this.db.updateCkbMint(mintRecords);
+        await this.db.updateCollectorCkbMint(mintRecords);
         await this.ckbIndexer.waitForSync();
         break;
       } catch (e) {
@@ -554,7 +563,7 @@ export class CkbHandler {
 
     for (;;) {
       try {
-        await this.db.updateCkbMint(mintRecords);
+        await this.db.updateCollectorCkbMint(mintRecords);
         logger.info('CkbHandler doHandleMintRecords mint execute completed, mintIds:', mintIds);
         break;
       } catch (e) {

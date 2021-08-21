@@ -24,15 +24,18 @@ export class EthUnlock {
   @Column({ nullable: true })
   ethTxHash: string;
 
-  @Column({ default: 'todo' })
-  status: EthUnlockStatus;
-
-  @Column({ type: 'text', nullable: true })
-  message: string;
-
   @CreateDateColumn()
   createdAt: string;
 
   @UpdateDateColumn()
   updatedAt: string;
+}
+
+@Entity()
+export class CollectorEthUnlock extends EthUnlock {
+  @Column({ default: 'todo' })
+  status: EthUnlockStatus;
+
+  @Column({ type: 'text', nullable: true })
+  message: string;
 }
