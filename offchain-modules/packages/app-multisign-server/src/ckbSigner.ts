@@ -20,7 +20,6 @@ import {
 } from '@force-bridge/x/dist/multisig/multisig-mgr';
 import { verifyCollector } from '@force-bridge/x/dist/multisig/utils';
 import { Amount } from '@lay2/pw-core';
-import { BigNumber } from 'ethers';
 import { SigError, SigErrorCode, SigErrorOk } from './error';
 import { SigResponse, SigServer } from './sigServer';
 
@@ -243,27 +242,14 @@ async function verifyEthMintRecords(records: mintRecord[]): Promise<SigError> {
         `ethLockTxHash:${record.id} asset:${record.asset} != ${ethLock.token}`,
       );
     }
-    const asset = new EthAsset(record.asset);
-    if (!asset.inWhiteList()) {
-      return new SigError(SigErrorCode.InvalidRecord, `asset not in white list: assetAddress:${record.asset}`);
-    }
-    if (BigNumber.from(ethLock.amount).lt(BigNumber.from(asset.getMinimalAmount()))) {
-      return new SigError(SigErrorCode.InvalidRecord, `lock amount less than minimal: burn amount ${ethLock.amount}`);
-    }
-    if (!verifyEthBridgeFee(asset, record.amount, ethLock.amount)) {
+    if (BigInt(record.amount) > BigInt(ethLock.amount)) {
       return new SigError(
         SigErrorCode.InvalidRecord,
-        `invalid bridge fee: ethLockTxHash:${record.id}, lock amount:${ethLock.amount}, mint amount:${record.amount}`,
+        `invalid mint amount ${record.amount}, greater than lock amount ${ethLock.amount}`,
       );
     }
   }
   return SigErrorOk;
-}
-
-function verifyEthBridgeFee(asset: EthAsset, mintAmount: string, lockAmount: string): boolean {
-  const bridgeFee = BigNumber.from(lockAmount).sub(BigNumber.from(mintAmount));
-  const expectedBridgeFee = BigNumber.from(asset.getBridgeFee('in'));
-  return bridgeFee.gte(expectedBridgeFee.div(4)) && bridgeFee.lte(expectedBridgeFee.mul(4));
 }
 
 async function verifyEthMintTx(mintRecord: mintRecord, output: Cell): Promise<SigError> {

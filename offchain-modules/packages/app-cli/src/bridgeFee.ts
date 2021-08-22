@@ -7,7 +7,6 @@ import { EthChain, WithdrawBridgeFeeTopic } from '@force-bridge/x/dist/xchain/et
 import { Amount } from '@lay2/pw-core';
 import commander from 'commander';
 import { ecsign, toRpcSig } from 'ethereumjs-util';
-import { BigNumber } from 'ethers';
 
 const defaultConfig = './config.json';
 
@@ -124,7 +123,7 @@ async function generateWithdrawTxSignature(opts: Record<string, string | string[
     return {
       ckbTxHash: WithdrawBridgeFeeTopic,
       token: asset,
-      amount: BigNumber.from(ethAsset.parseAmount(amount[i])),
+      amount: ethAsset.parseAmount(amount[i]),
       recipient: r,
     };
   });
@@ -153,7 +152,7 @@ async function sendWithdrawTx(opts: Record<string, string | string[] | boolean>)
     return {
       ckbTxHash: WithdrawBridgeFeeTopic,
       token: asset,
-      amount: BigNumber.from(ethAsset.parseAmount(amount[i])),
+      amount: ethAsset.parseAmount(amount[i]),
       recipient: r,
     };
   });

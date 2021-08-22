@@ -1,4 +1,4 @@
-import { ChainType, EthAsset } from '@force-bridge/x/dist/ckb/model/asset';
+import { ChainType } from '@force-bridge/x/dist/ckb/model/asset';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { ICkbBurn } from '@force-bridge/x/dist/db/model';
 import { collectSignaturesParams, ethCollectSignaturesPayload } from '@force-bridge/x/dist/multisig/multisig-mgr';
@@ -150,19 +150,10 @@ async function verifyUnlockRecord(unlockRecords: EthUnlockRecord[]): Promise<Sig
         `burnTx:${record.ckbTxHash} assetAddress:${record.token} != ${ckbBurn.asset}`,
       );
     }
-    const asset = new EthAsset(ckbBurn.asset);
-    if (!asset.inWhiteList()) {
-      return new SigError(SigErrorCode.InvalidRecord, `asset not in white list: assetAddress:${record.token}`);
-    }
-    if (BigNumber.from(ckbBurn.amount).lt(BigNumber.from(asset.getMinimalAmount()))) {
-      return new SigError(SigErrorCode.InvalidRecord, `burn amount less than minimal: burn amount ${ckbBurn.amount}`);
-    }
-    if (!verifyEthBridgeFee(asset, record.amount, ckbBurn.amount)) {
+    if (BigInt(record.amount) > BigInt(ckbBurn.amount)) {
       return new SigError(
         SigErrorCode.InvalidRecord,
-        `invalid bridge fee: burnTx amount:${BigNumber.from(ckbBurn.amount).toString()}, unlock amount:${
-          record.amount
-        }`,
+        `invalid unlock amount: ${record.amount}, greater than burn amount ${ckbBurn.amount}`,
       );
     }
     if (ckbBurn.recipientAddress !== record.recipient) {
@@ -173,12 +164,6 @@ async function verifyUnlockRecord(unlockRecords: EthUnlockRecord[]): Promise<Sig
     }
   }
   return SigErrorOk;
-}
-
-function verifyEthBridgeFee(asset: EthAsset, unlockAmount: BigNumber, burnAmount: string): boolean {
-  const bridgeFee = BigNumber.from(burnAmount).sub(unlockAmount);
-  const expectedBridgeFee = BigNumber.from(asset.getBridgeFee('out'));
-  return bridgeFee.gte(expectedBridgeFee.div(4)) && bridgeFee.lte(expectedBridgeFee.mul(4));
 }
 
 function privateKeyToPublicKey(privateKey) {
