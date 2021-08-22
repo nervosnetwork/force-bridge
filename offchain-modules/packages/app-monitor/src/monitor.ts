@@ -34,14 +34,12 @@ export class Monitor {
   private ethProvider: ethers.providers.JsonRpcProvider;
   private ownerTypeHash: string;
   private durationConfig: Duration;
-  webHookInfo: WebHook;
-  webHookError: WebHook;
+  webHookInfoUrl: string;
+  webHookErrorUrl: string;
 
   constructor(private ethRecordObservable: EthRecordObservable, private ckbRecordObservable: CKBRecordObservable) {
-    const webHookUrlInfo = ForceBridgeCore.config.monitor!.discordWebHook;
-    const webHookUrlError = ForceBridgeCore.config.monitor!.discordWebHookError || webHookUrlInfo;
-    this.webHookInfo = new WebHook(webHookUrlInfo);
-    this.webHookError = new WebHook(webHookUrlError);
+    this.webHookInfoUrl = ForceBridgeCore.config.monitor!.discordWebHook;
+    this.webHookErrorUrl = ForceBridgeCore.config.monitor!.discordWebHookError || this.webHookInfoUrl;
     this.ethProvider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
     this.ownerTypeHash = getOwnerTypeHash();
   }
@@ -82,7 +80,7 @@ export class Monitor {
     if (res === '') {
       return true;
     }
-    await this.webHookError
+    await new WebHook(this.webHookErrorUrl)
       .setTitle('compareEthLockAndCkbMint error' + ` - ${ForceBridgeCore.config.monitor!.env}`)
       .setDescription(res)
       .addTimeStamp()
@@ -106,7 +104,7 @@ export class Monitor {
     if (res === '') {
       return true;
     }
-    await this.webHookError
+    await new WebHook(this.webHookErrorUrl)
       .setTitle('compareCkbBurnAndEthUnlock error' + ` - ${ForceBridgeCore.config.monitor!.env}`)
       .setDescription(res)
       .addTimeStamp()
@@ -188,7 +186,7 @@ export class Monitor {
             }
             const detail = JSON.stringify(event);
             logger.error(msg, detail);
-            await this.webHookError
+            await new WebHook(this.webHookErrorUrl)
               .setTitle(msg + ` - ${ForceBridgeCore.config.monitor!.env}`)
               .setDescription(detail)
               .addTimeStamp()
@@ -245,7 +243,7 @@ export class Monitor {
         tipBlockNumber,
       )} Match count:${JSON.stringify(matchCount)} Records number in cache:${JSON.stringify(recordsNum)} `,
     );
-    await this.webHookInfo
+    await new WebHook(this.webHookInfoUrl)
       .setTitle(`Monitor Summary - ${ForceBridgeCore.config.monitor!.env}`)
       .addField('LastHandledBlock', JSON.stringify(lastHandledBlock))
       .addField('Tip block number', JSON.stringify(tipBlockNumber))
