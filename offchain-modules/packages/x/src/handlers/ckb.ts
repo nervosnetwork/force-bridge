@@ -792,37 +792,6 @@ export async function parseBurnTx(tx: Transaction): Promise<RecipientCellData | 
   ) {
     return null;
   }
-  let asset;
-  const assetAddress = toHexString(new Uint8Array(cellData.getAsset().raw()));
-  switch (cellData.getChain()) {
-    case ChainType.BTC:
-      asset = new BtcAsset(uint8ArrayToString(fromHexString(assetAddress)), ownerTypeHash);
-      break;
-    case ChainType.ETH:
-      asset = new EthAsset(uint8ArrayToString(fromHexString(assetAddress)), ownerTypeHash);
-      break;
-    case ChainType.TRON:
-      asset = new TronAsset(uint8ArrayToString(fromHexString(assetAddress)), ownerTypeHash);
-      break;
-    case ChainType.EOS:
-      asset = new EosAsset(uint8ArrayToString(fromHexString(assetAddress)), ownerTypeHash);
-      break;
-    default:
-      logger.warn(`burn tx ${tx.hash} with unknown chain ${cellData.getChain()}`);
-      return null;
-  }
-
-  if (!asset.inWhiteList()) {
-    logger.warn(`burn tx ${tx.hash} asset not in white list`);
-    return null;
-  }
-  if (
-    utils.readBigUInt128LE(`0x${toHexString(new Uint8Array(cellData.getAmount().raw()))}`) <
-    BigInt(asset.getMinimalAmount())
-  ) {
-    logger.warn(`burn tx ${tx.hash} amount too small`);
-    return null;
-  }
   return cellData;
 }
 

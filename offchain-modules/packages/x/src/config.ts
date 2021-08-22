@@ -56,7 +56,6 @@ export interface EthConfig {
   multiSignThreshold: number;
   confirmNumber: number;
   startBlockHeight: number;
-  batchUnlock: { batchNumber: number; maxWaitTime: number };
   assetWhiteList: WhiteListEthAsset[];
 }
 
