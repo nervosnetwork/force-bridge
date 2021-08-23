@@ -65,7 +65,6 @@ async function generateConfig(
 ) {
   const baseConfig: Config = lodash.cloneDeep(initConfig);
   logger.debug(`baseConfig: ${JSON.stringify(baseConfig, null, 2)}`);
-  baseConfig.eth.assetWhiteList = assetWhiteList;
   baseConfig.eth.contractAddress = ethContractAddress;
   baseConfig.ckb.deps = ckbDeps;
   baseConfig.ckb.ownerCellTypescript = ownerCellConfig.ownerCellTypescript;
@@ -81,6 +80,7 @@ async function generateConfig(
   collectorConfig.ckb.privateKey = 'ckb';
   collectorConfig.eth.multiSignThreshold = multisigConfig.threshold;
   collectorConfig.eth.multiSignAddresses = multisigConfig.verifiers.map((v) => v.ethAddress);
+  collectorConfig.eth.assetWhiteList = assetWhiteList;
   collectorConfig.ckb.multisigScript = {
     R: 0,
     M: multisigConfig.threshold,
@@ -122,6 +122,7 @@ async function generateConfig(
   watcherConfig.common.log.logFile = path.join(configPath, 'watcher/force_bridge.log');
   watcherConfig.common.log.identity = 'watcher';
   watcherConfig.common.port = 8080;
+  watcherConfig.eth.assetWhiteList = assetWhiteList;
   writeJsonToFile({ forceBridge: watcherConfig }, path.join(configPath, 'watcher/force_bridge.json'));
   // verifiers
   multisigConfig.verifiers.concat(extraMultiSigConfig.verifiers).map((v, i) => {
@@ -319,10 +320,6 @@ async function main() {
       rpcUrl: 'http://127.0.0.1:8545',
       confirmNumber: 1,
       startBlockHeight: 1,
-      batchUnlock: {
-        batchNumber: 100,
-        maxWaitTime: 86400000,
-      },
     },
     ckb: {
       ckbRpcUrl: 'http://127.0.0.1:8114',
