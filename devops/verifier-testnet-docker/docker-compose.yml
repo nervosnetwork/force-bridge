@@ -1,0 +1,36 @@
+version: "3.3"
+services:
+  db:
+    image: mysql:5.7
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: forcebridge
+      MYSQL_DATABASE: forcebridge
+    ports:
+      - 3090:3306
+  ckb:
+    image: nervos/perkins-tent
+    restart: always
+    environment:
+      CKB_NETWORK: testnet
+    volumes:
+      - ./ckb-data:/data
+    ports:
+      - 3091:9115
+  verifier:
+    image: node:14
+    restart: always
+    environment:
+      FORCE_BRIDGE_KEYSTORE_PASSWORD: 123456
+    volumes:
+      - ./force-bridge:/data
+    ports:
+      - 3092:80
+    command: |
+      sh -c '
+      npm install -g @force-bridge/cli@latest
+      forcecli verifier -cfg /data/force_bridge.json
+      '
+    depends_on:
+      - db
+      - ckb
