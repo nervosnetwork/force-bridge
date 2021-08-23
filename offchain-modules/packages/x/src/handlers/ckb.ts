@@ -170,6 +170,8 @@ export class CkbHandler {
         this.lastHandledBlockHeight = Number(lastHandledHead.number);
         this.lastHandledBlockHash = lastHandledHead.hash;
         return;
+      } else {
+        throw new Error(`ckb node not synced to startBlockHeight ${lastHandledBlockHeight} yet`);
       }
     }
 

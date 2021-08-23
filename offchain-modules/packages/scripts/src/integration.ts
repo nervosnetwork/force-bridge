@@ -61,7 +61,8 @@ async function generateConfig(
   configPath: string,
   ETH_PRIVATE_KEY: string,
   CKB_PRIVATE_KEY: string,
-  password,
+  password: string,
+  sudtSize = 200,
 ) {
   const baseConfig: Config = lodash.cloneDeep(initConfig);
   logger.debug(`baseConfig: ${JSON.stringify(baseConfig, null, 2)}`);
@@ -81,6 +82,7 @@ async function generateConfig(
   collectorConfig.eth.multiSignThreshold = multisigConfig.threshold;
   collectorConfig.eth.multiSignAddresses = multisigConfig.verifiers.map((v) => v.ethAddress);
   collectorConfig.eth.assetWhiteList = assetWhiteList;
+  collectorConfig.ckb.sudtSize = sudtSize;
   collectorConfig.ckb.multisigScript = {
     R: 0,
     M: multisigConfig.threshold,
@@ -123,6 +125,7 @@ async function generateConfig(
   watcherConfig.common.log.identity = 'watcher';
   watcherConfig.common.port = 8080;
   watcherConfig.eth.assetWhiteList = assetWhiteList;
+  watcherConfig.ckb.sudtSize = sudtSize;
   writeJsonToFile({ forceBridge: watcherConfig }, path.join(configPath, 'watcher/force_bridge.json'));
   // verifiers
   multisigConfig.verifiers.concat(extraMultiSigConfig.verifiers).map((v, i) => {
@@ -326,7 +329,6 @@ async function main() {
       ckbIndexerUrl: 'http://127.0.0.1:8116',
       startBlockHeight: 1,
       confirmNumber: 1,
-      sudtSize: 200,
     },
   };
   const { assetWhiteList, ckbDeps, ownerConfig, bridgeEthAddress, multisigConfig, ckbStartHeight, ethStartHeight } =

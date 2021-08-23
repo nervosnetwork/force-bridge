@@ -1,0 +1,90 @@
+{
+  "forceBridge": {
+    "common": {
+      "log": {
+        "level": "info",
+        "logFile": "/data/force_bridge.log"
+      },
+      "lumosConfigType": "AGGRON4",
+      "network": "testnet",
+      "role": "verifier",
+      "orm": {
+        "type": "mysql",
+        "host": "db",
+        "port": 3306,
+        "username": "root",
+        "password": "forcebridge",
+        "database": "forcebridge",
+        "timezone": "Z",
+        "synchronize": true,
+        "logging": false
+      },
+      "openMetric": true,
+      "collectorPubKeyHash": [
+        "0x900fee899a5462cb518eab1386c2842724cacd06"
+      ],
+      "port": 80,
+      "keystorePath": "/data/keystore.json"
+    },
+    "eth": {
+      "rpcUrl": "https://rinkeby.infura.io/v3/xxx",
+      "confirmNumber": 12,
+      "startBlockHeight": 9155326,
+      "contractAddress": "0x0670009F6126e57C679E90aEE46861D28DA2F703",
+      "privateKey": "verifier"
+    },
+    "ckb": {
+      "ckbRpcUrl": "http://ckb:9115/rpc",
+      "ckbIndexerUrl": "http://ckb:9115/indexer",
+      "startBlockHeight": 2519299,
+      "confirmNumber": 15,
+      "deps": {
+        "sudtType": {
+          "cellDep": {
+            "depType": "code",
+            "outPoint": {
+              "txHash": "0xe12877ebd2c3c364dc46c5c992bcfaf4fee33fa13eebdf82c591fc9825aab769",
+              "index": "0x0"
+            }
+          },
+          "script": {
+            "codeHash": "0xc5e5dcf215925f7ef4dfaf5f4b4f105bc321c02776d6e7d52a1db3fcd9d011a4",
+            "hashType": "type"
+          }
+        },
+        "bridgeLock": {
+          "cellDep": {
+            "depType": "code",
+            "outPoint": {
+              "txHash": "0x9b76017d200be714f5da85e8218d89d6e262c41f874f72f232941eb66b45814b",
+              "index": "0x0"
+            }
+          },
+          "script": {
+            "codeHash": "0x2170ffdb67574651c7bc51455d98f29394f2ee134a306c84533732f52e0eb50e",
+            "hashType": "type"
+          }
+        },
+        "recipientType": {
+          "cellDep": {
+            "depType": "code",
+            "outPoint": {
+              "txHash": "0x9b76017d200be714f5da85e8218d89d6e262c41f874f72f232941eb66b45814b",
+              "index": "0x1"
+            }
+          },
+          "script": {
+            "codeHash": "0x863bfb7794495fa08e06445d8b18a25538ca23448dc0d551f0687b7b8aaca698",
+            "hashType": "type"
+          }
+        }
+      },
+      "ownerCellTypescript": {
+        "code_hash": "0x00000000000000000000000000000000000000000000000000545950455f4944",
+        "hash_type": "type",
+        "args": "0x50b680eb5e7fbd8a06214e3de3cc025a81decdfc0ecb6b77e838686da9e3f49c"
+      },
+      "privateKey": "verifier"
+    }
+  }
+}
