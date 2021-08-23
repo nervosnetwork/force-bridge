@@ -16,11 +16,11 @@
     "@force-bridge/ckb-indexer-client": "^0.0.4",
     "@force-bridge/reconc": "^0.0.4",
     "@force-bridge/x": "^0.0.4",
-    "rxjs": "^7.1.0"
+    "@typechain/ethers-v5": "^7.0.0",
+    "rxjs": "^7.1.0",
+    "typechain": "^5.0.0"
   },
   "devDependencies": {
-    "@typechain/ethers-v5": "^7.0.0",
-    "typechain": "^5.0.0"
   },
   "peerDependencies": {
     "@nervosnetwork/ckb-sdk-core": "^0.39.0"
