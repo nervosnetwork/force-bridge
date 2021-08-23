@@ -13,12 +13,22 @@
     "test": "yarn run build"
   },
   "dependencies": {
+    "@ckb-lumos/base": "^0.16.0",
+    "@ckb-lumos/common-scripts": "^0.16.0",
+    "@ckb-lumos/hd": "^0.16.0",
+    "@ckb-lumos/helpers": "^0.16.0",
     "@force-bridge/app-monitor": "^0.0.5",
     "@force-bridge/app-multisign-server": "^0.0.5",
     "@force-bridge/app-relayer": "^0.0.5",
     "@force-bridge/app-rpc-server": "^0.0.5",
     "@force-bridge/keystore": "^0.0.5",
-    "@force-bridge/x": "^0.0.5"
+    "@force-bridge/x": "^0.0.5",
+    "@lay2/pw-core": "^0.3.22",
+    "@nervosnetwork/ckb-sdk-core": "^0.43.0",
+    "commander": "^8.1.0",
+    "ethereumjs-util": "^7.1.0",
+    "ethers": "^5.4.5",
+    "json-rpc-2.0": "^0.2.18"
   },
   "publishConfig": {
     "access": "public"
