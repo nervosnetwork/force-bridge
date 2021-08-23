@@ -1,6 +1,6 @@
 {
   "name": "@force-bridge/reconc",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "main": "dist",
   "scripts": {
     "build": "yarn run clean && yarn run compile",
