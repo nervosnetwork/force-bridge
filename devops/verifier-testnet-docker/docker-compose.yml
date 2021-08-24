@@ -28,7 +28,7 @@ services:
       - 3092:80
     command: |
       sh -c '
-      npm install -g @force-bridge/cli@latest
+      yarn global add @force-bridge/cli@latest
       forcecli verifier -cfg /data/force_bridge.json
       '
     depends_on:
