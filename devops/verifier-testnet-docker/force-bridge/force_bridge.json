@@ -31,7 +31,7 @@
       "confirmNumber": 12,
       "startBlockHeight": 9155326,
       "contractAddress": "0x0670009F6126e57C679E90aEE46861D28DA2F703",
-      "privateKey": "verifier"
+      "privateKey": "force-bridge"
     },
     "ckb": {
       "ckbRpcUrl": "http://ckb:9115/rpc",
@@ -84,7 +84,7 @@
         "hash_type": "type",
         "args": "0x50b680eb5e7fbd8a06214e3de3cc025a81decdfc0ecb6b77e838686da9e3f49c"
       },
-      "privateKey": "verifier"
+      "privateKey": "force-bridge"
     }
   }
 }
