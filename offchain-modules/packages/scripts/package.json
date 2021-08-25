@@ -20,7 +20,8 @@
     "dotenv": "^10.0.0",
     "mustache": "^4.2.0",
     "node-fetch": "^1.7.3",
-    "shelljs": "^0.8.4"
+    "shelljs": "^0.8.4",
+    "cheerio": "^1.0.0-rc.10"
   },
   "version": "0.0.4",
   "devDependencies": {
