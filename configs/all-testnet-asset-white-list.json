@@ -3,7 +3,7 @@
     "address": "0xdac17f958d2ee523a2206206994597c13d831ec7",
     "name": "USDT",
     "symbol": "USDT",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20210122/2b5c7d80-7bcd-4cfb-8bd9-d1760a752afc.png",
+    "logoURI": "https://cryptologos.cc/logos/tether-usdt-logo.svg?v=002",
     "decimal": 6,
     "minimalBridgeAmount": "20000000",
     "bridgeFee": {
@@ -15,7 +15,7 @@
     "address": "0x0000000000000000000000000000000000000000",
     "name": "ETH",
     "symbol": "ETH",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20201110/3a8c9fe6-2a76-4ace-aa07-415d994de6f0.png",
+    "logoURI": "https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=002",
     "decimal": 18,
     "minimalBridgeAmount": "6200000000000000",
     "bridgeFee": {
@@ -27,43 +27,43 @@
     "address": "0x9be89d2a4cd102d8fecc6bf9da793be995c22541",
     "name": "BTC",
     "symbol": "BTC",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20201110/87496d50-2408-43e1-ad4c-78b47b448a6a.png",
+    "logoURI": "https://cryptologos.cc/logos/bitcoin-btc-logo.svg?v=002",
     "decimal": 8,
     "minimalBridgeAmount": "41000",
     "bridgeFee": {
-      "in": "6200",
-      "out": "31000"
+      "in": "6100",
+      "out": "30000"
     }
   },
   {
     "address": "0x85c4EdC43724e954e5849cAAab61A26a9CB65F1B",
     "name": "BCH",
     "symbol": "BCH",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20201110/db45566d-6c97-4944-937e-1b6333be3a7f.png",
+    "logoURI": "https://cryptologos.cc/logos/bitcoin-cash-bch-logo.svg?v=002",
     "decimal": 8,
     "minimalBridgeAmount": "3000000",
     "bridgeFee": {
-      "in": "460000",
-      "out": "2300000"
+      "in": "450000",
+      "out": "2200000"
     }
   },
   {
     "address": "0x7884f51dc1410387371ce61747cb6264e1daee0b",
     "name": "DOT",
     "symbol": "DOT",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20201110/c54babae-ff1a-437e-826a-637201d6c152.png",
+    "logoURI": "https://cryptologos.cc/logos/polkadot-new-dot-logo.svg?v=013",
     "decimal": 10,
-    "minimalBridgeAmount": "7700000000",
+    "minimalBridgeAmount": "7500000000",
     "bridgeFee": {
       "in": "1100000000",
-      "out": "5800000000"
+      "out": "5600000000"
     }
   },
   {
     "address": "0x8E16bf47065Fe843A82f4399bAF5aBac4E0822B7",
     "name": "FIL",
     "symbol": "FIL",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20201014/6e56be27-4780-4dc7-ac1c-ec7f88940697.png",
+    "logoURI": "https://cryptologos.cc/logos/filecoin-fil-logo.svg?v=002",
     "decimal": 18,
     "minimalBridgeAmount": "260000000000000000",
     "bridgeFee": {
@@ -75,7 +75,7 @@
     "address": "0x6b175474e89094c44da98b954eedeac495271d0f",
     "name": "DAI",
     "symbol": "DAI",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20200723/c311a421-02e1-42c1-b023-0af8977da4d7.png",
+    "logoURI": "https://cryptologos.cc/logos/multi-collateral-dai-dai-logo.svg?v=002",
     "decimal": 18,
     "minimalBridgeAmount": "19000000000000000000",
     "bridgeFee": {
@@ -87,9 +87,9 @@
     "address": "0x514910771af9ca656af840dff83e8264ecf986ca",
     "name": "LINK",
     "symbol": "LINK",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20201110/1eda1f7f-585a-4f16-abd7-a7104221414a.png",
+    "logoURI": "https://cryptologos.cc/logos/chainlink-link-logo.svg?v=002",
     "decimal": 18,
-    "minimalBridgeAmount": "750000000000000000",
+    "minimalBridgeAmount": "740000000000000000",
     "bridgeFee": {
       "in": "110000000000000000",
       "out": "560000000000000000"
@@ -99,7 +99,7 @@
     "address": "0xba11d00c5f74255f56a5e366f4f77f5a186d7f55",
     "name": "BAND",
     "symbol": "BAND",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20210622/54096a80-55b7-4fc4-bf37-ef047e77a903.png",
+    "logoURI": "https://cryptologos.cc/logos/band-protocol-band-logo.svg?v=013",
     "decimal": 18,
     "minimalBridgeAmount": "2100000000000000000",
     "bridgeFee": {
@@ -111,19 +111,19 @@
     "address": "0x0d8775f648430679a709e98d2b0cb6250d2887ef",
     "name": "BAT",
     "symbol": "BAT",
-    "logoURI": "https://bin.bnbstatic.com/images/20191211/b87dedcf-edaa-4069-bfad-de7f88d7204e.png",
+    "logoURI": "https://cryptologos.cc/logos/basic-attention-token-bat-logo.svg?v=002",
     "decimal": 18,
-    "minimalBridgeAmount": "24000000000000000000",
+    "minimalBridgeAmount": "23000000000000000000",
     "bridgeFee": {
-      "in": "3600000000000000000",
-      "out": "18000000000000000000"
+      "in": "3500000000000000000",
+      "out": "17000000000000000000"
     }
   },
   {
     "address": "0xc011a73ee8576fb46f5e1c5751ca3b9fe0af2a6f",
     "name": "SNX",
     "symbol": "SNX",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20210128/2db1e7c6-b866-4884-aab7-7ef569fd8b12.png",
+    "logoURI": "https://cryptologos.cc/logos/synthetix-network-token-snx-logo.svg?v=002",
     "decimal": 18,
     "minimalBridgeAmount": "1500000000000000000",
     "bridgeFee": {
@@ -135,31 +135,19 @@
     "address": "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984",
     "name": "UNI",
     "symbol": "UNI",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20201110/1992e2e5-4f39-4a1a-a891-fe8afefc1e59.png",
+    "logoURI": "https://cryptologos.cc/logos/uniswap-uni-logo.svg?v=013",
     "decimal": 18,
-    "minimalBridgeAmount": "720000000000000000",
+    "minimalBridgeAmount": "730000000000000000",
     "bridgeFee": {
-      "in": "100000000000000000",
-      "out": "540000000000000000"
-    }
-  },
-  {
-    "address": "0xa1d0E215a23d7030842FC67cE582a6aFa3CCaB83",
-    "name": "YFII",
-    "symbol": "YFII",
-    "logoURI": "https://bin.bnbstatic.com/images/20200901/345109e0-723a-4c25-9016-fc69ea4b141e.png",
-    "decimal": 18,
-    "minimalBridgeAmount": "4700000000000000",
-    "bridgeFee": {
-      "in": "700000000000000",
-      "out": "3500000000000000"
+      "in": "110000000000000000",
+      "out": "550000000000000000"
     }
   },
   {
     "address": "0x0bc529c00c6401aef6d220be8c6ea1667f6ad93e",
     "name": "YFI",
     "symbol": "YFI",
-    "logoURI": "https://bin.bnbstatic.com/images/20200810/876bb636-935c-45c6-8f93-762c65985e9a.png",
+    "logoURI": "https://cryptologos.cc/logos/yearn-finance-yfi-logo.svg?v=013",
     "decimal": 18,
     "minimalBridgeAmount": "530000000000000",
     "bridgeFee": {
@@ -171,7 +159,7 @@
     "address": "0x4fabb145d64652a948d72533023f6e7a623c7c53",
     "name": "BUSD",
     "symbol": "BUSD",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20201110/3222a10d-5618-4100-8476-ee7fe0a6fb12.png",
+    "logoURI": "https://cryptologos.cc/logos/binance-usd-busd-logo.svg?v=002",
     "decimal": 18,
     "minimalBridgeAmount": "20000000000000000000",
     "bridgeFee": {
@@ -183,11 +171,11 @@
     "address": "0xc00e94cb662c3520282e6f5717214004a7f26888",
     "name": "COMP",
     "symbol": "COMP",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20201110/bbe7fb63-5b85-4f5a-9c7f-450a8cec116b.png",
+    "logoURI": "https://cryptologos.cc/logos/compound-comp-logo.svg?v=013",
     "decimal": 18,
-    "minimalBridgeAmount": "46000000000000000",
+    "minimalBridgeAmount": "45000000000000000",
     "bridgeFee": {
-      "in": "6900000000000000",
+      "in": "6800000000000000",
       "out": "34000000000000000"
     }
   },
@@ -195,55 +183,43 @@
     "address": "0x9f8f72aa9304c8b593d555f12ef6589cc3a579a2",
     "name": "MKR",
     "symbol": "MKR",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20201110/44c995cf-d2c4-40d0-a1dd-998a0d947059.png",
+    "logoURI": "https://cryptologos.cc/logos/maker-mkr-logo.svg?v=002",
     "decimal": 18,
-    "minimalBridgeAmount": "5400000000000000",
+    "minimalBridgeAmount": "5300000000000000",
     "bridgeFee": {
-      "in": "810000000000000",
+      "in": "800000000000000",
       "out": "4000000000000000"
-    }
-  },
-  {
-    "address": "0x4824a7b64e3966b0133f4f4ffb1b9d6beb75fff7",
-    "name": "TCT",
-    "symbol": "TCT",
-    "logoURI": "https://bin.bnbstatic.com/images/20200120/2500c416-b5c7-45a3-93a0-ea3d74d06352.png",
-    "decimal": 18,
-    "minimalBridgeAmount": "610000000000000000000",
-    "bridgeFee": {
-      "in": "92000000000000000000",
-      "out": "460000000000000000000"
     }
   },
   {
     "address": "0x6fb3e0a217407efff7ca062d46c26e5d60a14d69",
     "name": "IOTX",
     "symbol": "IOTX",
-    "logoURI": "https://bin.bnbstatic.com/images/20191211/86c97fe9-1b7d-41ca-b5d4-a646baa22f47.png",
+    "logoURI": "https://cryptologos.cc/logos/iotex-iotx-logo.svg?v=002",
     "decimal": 18,
-    "minimalBridgeAmount": "270000000000000000000",
+    "minimalBridgeAmount": "260000000000000000000",
     "bridgeFee": {
-      "in": "40000000000000000000",
-      "out": "200000000000000000000"
+      "in": "39000000000000000000",
+      "out": "190000000000000000000"
     }
   },
   {
     "address": "0xa91ac63d040deb1b7a5e4d4134ad23eb0ba07e14",
     "name": "BEL",
     "symbol": "BEL",
-    "logoURI": "https://bin.bnbstatic.com/images/20200908/7578b4e5-2192-4f38-a74f-f1e9843f8a99.png",
+    "logoURI": "https://cryptologos.cc/logos/belacoin-bela-logo.svg?v=013",
     "decimal": 18,
-    "minimalBridgeAmount": "7600000000000000000",
+    "minimalBridgeAmount": "7400000000000000000",
     "bridgeFee": {
       "in": "1100000000000000000",
-      "out": "5700000000000000000"
+      "out": "5600000000000000000"
     }
   },
   {
     "address": "0x8e870d67f660d95d5be530380d0ec0bd388289e1",
     "name": "PAX",
     "symbol": "PAX",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20201110/6174f1df-0fb3-4a0a-a637-0bf4e9b9b97e.png",
+    "logoURI": "https://cryptologos.cc/logos/paxos-standard-pax-logo.svg?v=002",
     "decimal": 18,
     "minimalBridgeAmount": "20000000000000000000",
     "bridgeFee": {
@@ -255,43 +231,31 @@
     "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
     "name": "USDC",
     "symbol": "USDC",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20201110/4cf7d633-92fb-4d37-80ed-458c7d1ea410.png",
+    "logoURI": "https://cryptologos.cc/logos/usd-coin-usdc-logo.svg?v=002",
     "decimal": 6,
-    "minimalBridgeAmount": "19000000",
+    "minimalBridgeAmount": "20000000",
     "bridgeFee": {
-      "in": "2900000",
-      "out": "14000000"
-    }
-  },
-  {
-    "address": "0xe28b3b32b6c345a34ff64674606124dd5aceca30",
-    "name": "INJ",
-    "symbol": "INJ",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20201019/383e18cf-53cd-44b9-b781-4e85818ecfb8.png",
-    "decimal": 18,
-    "minimalBridgeAmount": "1700000000000000000",
-    "bridgeFee": {
-      "in": "250000000000000000",
-      "out": "1200000000000000000"
+      "in": "3000000",
+      "out": "15000000"
     }
   },
   {
     "address": "0x8ce9137d39326ad0cd6491fb5cc0cba0e089b6a9",
     "name": "SXP",
     "symbol": "SXP",
-    "logoURI": "https://bin.bnbstatic.com/images/20200707/df5343d4-f372-4517-977c-2834f557a325.png",
+    "logoURI": "https://cryptologos.cc/logos/swipe-sxp-logo.svg?v=002",
     "decimal": 18,
-    "minimalBridgeAmount": "5000000000000000000",
+    "minimalBridgeAmount": "4700000000000000000",
     "bridgeFee": {
-      "in": "750000000000000000",
-      "out": "3700000000000000000"
+      "in": "710000000000000000",
+      "out": "3500000000000000000"
     }
   },
   {
     "address": "0xe3fb646fC31Ca12657B17070bC31a52E323b8543",
     "name": "EGLD",
     "symbol": "EGLD",
-    "logoURI": "https://bin.bnbstatic.com/images/20200827/3333bad6-7dc4-4687-93cf-9f57442af7ae.png",
+    "logoURI": "https://cryptologos.cc/logos/elrond-egld-egld-logo.svg?v=013",
     "decimal": 18,
     "minimalBridgeAmount": "140000000000000000",
     "bridgeFee": {
@@ -300,46 +264,10 @@
     }
   },
   {
-    "address": "0x0C6f5F7D555E7518f6841a79436BD2b1Eef03381",
-    "name": "COCOS",
-    "symbol": "COCOS",
-    "logoURI": "https://bin.bnbstatic.com/images/20191211/ad72cd9e-60a0-4a9b-b44d-86047c484495.png",
-    "decimal": 18,
-    "minimalBridgeAmount": "26000000000000000000",
-    "bridgeFee": {
-      "in": "3900000000000000000",
-      "out": "19000000000000000000"
-    }
-  },
-  {
-    "address": "0x2a4A071BCe925D210797c6FB0BC7bd08a80Cb9c2",
-    "name": "BURGER",
-    "symbol": "BURGER",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20200924/100371f3-4105-4c0b-9c06-59ce75472e19.png",
-    "decimal": 18,
-    "minimalBridgeAmount": "3700000000000000000",
-    "bridgeFee": {
-      "in": "550000000000000000",
-      "out": "2700000000000000000"
-    }
-  },
-  {
-    "address": "0x1fcdce58959f536621d76f5b7ffb955baa5a672f",
-    "name": "FOR",
-    "symbol": "FOR",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20201218/1a9d9e86-72b9-4b71-8b19-69793c142f6c.png",
-    "decimal": 18,
-    "minimalBridgeAmount": "230000000000000000000",
-    "bridgeFee": {
-      "in": "35000000000000000000",
-      "out": "170000000000000000000"
-    }
-  },
-  {
     "address": "0x6B3595068778DD592e39A122f4f5a5cF09C90fE2",
     "name": "SUSHI",
     "symbol": "SUSHI",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20210113/b0d24a0a-1ed2-41e8-b5ec-c9ddafd82186.png",
+    "logoURI": "https://cryptologos.cc/logos/sushiswap-sushi-logo.svg?v=013",
     "decimal": 18,
     "minimalBridgeAmount": "1500000000000000000",
     "bridgeFee": {
@@ -351,7 +279,7 @@
     "address": "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9",
     "name": "AAVE",
     "symbol": "AAVE",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20201016/aef99369-1a90-4af0-9c19-f3a78c4a8386.png",
+    "logoURI": "https://cryptologos.cc/logos/aave-aave-logo.svg?v=013",
     "decimal": 18,
     "minimalBridgeAmount": "52000000000000000",
     "bridgeFee": {
@@ -360,22 +288,10 @@
     }
   },
   {
-    "address": "0x43Dfc4159D86F3A37A5A4B3D4580b888ad7d4DDd",
-    "name": "DODO",
-    "symbol": "DODO",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20210218/4b7a91f3-0a9a-4ca1-8e7f-128370eba08b.png",
-    "decimal": 18,
-    "minimalBridgeAmount": "9900000000000000000",
-    "bridgeFee": {
-      "in": "1400000000000000000",
-      "out": "7400000000000000000"
-    }
-  },
-  {
     "address": "0x111111111117dC0aa78b770fA6A738034120C302",
     "name": "1INCH",
     "symbol": "1INCH",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20201225/7898209b-dbee-4ba6-8c66-804d001cf4c9.png",
+    "logoURI": "https://cryptologos.cc/logos/1inch-1inch-logo.svg?v=013",
     "decimal": 18,
     "minimalBridgeAmount": "6300000000000000000",
     "bridgeFee": {
@@ -384,46 +300,10 @@
     }
   },
   {
-    "address": "0x940a2db1b7008b6c776d4faaca729d6d4a4aa551",
-    "name": "DUSK",
-    "symbol": "DUSK",
-    "logoURI": "https://bin.bnbstatic.com/images/20191211/3376691f-fafc-4de5-afc2-74de713bc012.png",
-    "decimal": 18,
-    "minimalBridgeAmount": "120000000000000000000",
-    "bridgeFee": {
-      "in": "18000000000000000000",
-      "out": "93000000000000000000"
-    }
-  },
-  {
-    "address": "0x0258F474786DdFd37ABCE6df6BBb1Dd5dfC4434a",
-    "name": "ORN",
-    "symbol": "ORN",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20200930/c7e92fa4-b577-4318-a80e-d7fd5d84b554.png",
-    "decimal": 8,
-    "minimalBridgeAmount": "220000000",
-    "bridgeFee": {
-      "in": "33000000",
-      "out": "160000000"
-    }
-  },
-  {
-    "address": "0xde4EE8057785A7e8e800Db58F9784845A5C2Cbd6",
-    "name": "DEXE",
-    "symbol": "DEXE",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20210121/dbddb6a1-3895-4fa3-99d0-2f9f1481011b.png",
-    "decimal": 18,
-    "minimalBridgeAmount": "1700000000000000000",
-    "bridgeFee": {
-      "in": "260000000000000000",
-      "out": "1300000000000000000"
-    }
-  },
-  {
     "address": "0x3DB6Ba6ab6F95efed1a6E794caD492fAAabF294D",
     "name": "LTO",
     "symbol": "LTO",
-    "logoURI": "https://bin.bnbstatic.com/images/20200206/64d802cc-462a-4d1d-85f9-bcece8d8b501.png",
+    "logoURI": "https://cryptologos.cc/logos/lto-network-lto-logo.svg?v=002",
     "decimal": 8,
     "minimalBridgeAmount": "6800000000",
     "bridgeFee": {
@@ -432,72 +312,24 @@
     }
   },
   {
-    "address": "0xfe3e6a25e6b192a42a44ecddcd13796471735acf",
-    "name": "REEF",
-    "symbol": "REEF",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20201222/510ce59d-419e-4d00-aa95-f96cdaa55fbe.png",
-    "decimal": 18,
-    "minimalBridgeAmount": "870000000000000000000",
-    "bridgeFee": {
-      "in": "130000000000000000000",
-      "out": "650000000000000000000"
-    }
-  },
-  {
-    "address": "0x589891a198195061Cb8ad1a75357A3b7DbaDD7Bc",
-    "name": "COS",
-    "symbol": "COS",
-    "logoURI": "https://bin.bnbstatic.com/images/20191211/3cb8b31e-c6b4-4d83-b7fd-25c7a470404d.png",
-    "decimal": 18,
-    "minimalBridgeAmount": "860000000000000000000",
-    "bridgeFee": {
-      "in": "120000000000000000000",
-      "out": "640000000000000000000"
-    }
-  },
-  {
-    "address": "0x88ef27e69108b2633f8e1c184cc37940a075cc02",
-    "name": "DEGO",
-    "symbol": "DEGO",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20210310/ca7706c2-ea3f-4c6d-a27b-281259b7fa75.png",
-    "decimal": 18,
-    "minimalBridgeAmount": "2000000000000000000",
-    "bridgeFee": {
-      "in": "300000000000000000",
-      "out": "1500000000000000000"
-    }
-  },
-  {
     "address": "0x7d1afa7b718fb893db30a3abc0cfc608aacfebb0",
     "name": "MATIC",
     "symbol": "MATIC",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20210407/032e2b13-5def-4449-aaee-0180d90da7c5.jpg",
+    "logoURI": "https://cryptologos.cc/logos/matic-network-matic-logo.svg?v=002",
     "decimal": 18,
     "minimalBridgeAmount": "13000000000000000000",
     "bridgeFee": {
-      "in": "2000000000000000000",
-      "out": "10000000000000000000"
-    }
-  },
-  {
-    "address": "0x491604c0FDF08347Dd1fa4Ee062a822A5DD06B5D",
-    "name": "CTSI",
-    "symbol": "CTSI",
-    "logoURI": "https://bin.bnbstatic.com/images/20200421/d9b34d91-96e4-4539-b985-30dbfe933285.png",
-    "decimal": 18,
-    "minimalBridgeAmount": "25000000000000000000",
-    "bridgeFee": {
-      "in": "3800000000000000000",
-      "out": "19000000000000000000"
+      "in": "1900000000000000000",
+      "out": "9800000000000000000"
     }
   },
   {
     "address": "0x1f573d6fb3f13d689ff844b4ce37794d79a7ff1c",
     "name": "BNT",
     "symbol": "BNT",
-    "logoURI": "https://bin.bnbstatic.com/images/20191211/8250cbf3-31d8-47ed-ab4b-05162c794990.png",
+    "logoURI": "https://cryptologos.cc/logos/bancor-bnt-logo.svg?v=002",
     "decimal": 18,
-    "minimalBridgeAmount": "4700000000000000000",
+    "minimalBridgeAmount": "4600000000000000000",
     "bridgeFee": {
       "in": "700000000000000000",
       "out": "3500000000000000000"
@@ -507,23 +339,23 @@
     "address": "0x56d811088235F11C8920698a204A5010a788f4b3",
     "name": "BZRX",
     "symbol": "BZRX",
-    "logoURI": "https://bin.bnbstatic.com/images/20200829/fc2b12b9-3774-45c0-9d74-a4e8fd519134.png",
+    "logoURI": "https://cryptologos.cc/logos/bzx-protocol-bzrx-logo.svg?v=013",
     "decimal": 18,
-    "minimalBridgeAmount": "49000000000000000000",
+    "minimalBridgeAmount": "48000000000000000000",
     "bridgeFee": {
-      "in": "7400000000000000000",
-      "out": "37000000000000000000"
+      "in": "7200000000000000000",
+      "out": "36000000000000000000"
     }
   },
   {
     "address": "0x814e0908b12a99fecf5bc101bb5d0b8b5cdf7d26",
     "name": "MDT",
     "symbol": "MDT",
-    "logoURI": "https://bin.bnbstatic.com/images/20200605/fb52441c-c1d0-4bde-a963-7d4d47e3e70e.png",
+    "logoURI": "https://cryptologos.cc/logos/measurable-data-token-mdt-logo.svg?v=013",
     "decimal": 18,
     "minimalBridgeAmount": "480000000000000000000",
     "bridgeFee": {
-      "in": "73000000000000000000",
+      "in": "72000000000000000000",
       "out": "360000000000000000000"
     }
   },
@@ -531,11 +363,11 @@
     "address": "0x89Ab32156e46F46D02ade3FEcbe5Fc4243B9AAeD",
     "name": "PNT",
     "symbol": "PNT",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20201016/4fb5d5a6-f640-4d1c-8e89-fb6d69483df0.png",
+    "logoURI": "https://cryptologos.cc/logos/pnetwork-pnt-logo.svg?v=013",
     "decimal": 18,
-    "minimalBridgeAmount": "17000000000000000000",
+    "minimalBridgeAmount": "16000000000000000000",
     "bridgeFee": {
-      "in": "2500000000000000000",
+      "in": "2400000000000000000",
       "out": "12000000000000000000"
     }
   },
@@ -543,79 +375,55 @@
     "address": "0xeca82185adce47f39c684352b0439f030f860318",
     "name": "PERL",
     "symbol": "PERL",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20200824/5b4623be-8a3f-47be-9aad-8cf4e7faf108.png",
+    "logoURI": "https://cryptologos.cc/logos/perlin-perl-logo.svg?v=002",
     "decimal": 18,
     "minimalBridgeAmount": "210000000000000000000",
     "bridgeFee": {
-      "in": "32000000000000000000",
-      "out": "160000000000000000000"
+      "in": "31000000000000000000",
+      "out": "150000000000000000000"
     }
   },
   {
     "address": "0xba100000625a3754423978a60c9317c58a424e3d",
     "name": "BAL",
     "symbol": "BAL",
-    "logoURI": "https://bin.bnbstatic.com/images/20200806/14944293-f97c-4c9c-95e8-17a3cbdb6cd9.png",
+    "logoURI": "https://cryptologos.cc/logos/balancer-bal-logo.svg?v=013",
     "decimal": 18,
-    "minimalBridgeAmount": "700000000000000000",
+    "minimalBridgeAmount": "710000000000000000",
     "bridgeFee": {
       "in": "100000000000000000",
-      "out": "520000000000000000"
+      "out": "530000000000000000"
     }
   },
   {
     "address": "0x5732046A883704404F284Ce41FfADd5b007FD668",
     "name": "BLZ",
     "symbol": "BLZ",
-    "logoURI": "https://bin.bnbstatic.com/images/20191211/ecb68c7d-55cd-4249-a125-e0571adb6bec.png",
+    "logoURI": "https://cryptologos.cc/logos/bluzelle-blz-logo.svg?v=002",
     "decimal": 18,
-    "minimalBridgeAmount": "79000000000000000000",
+    "minimalBridgeAmount": "80000000000000000000",
     "bridgeFee": {
-      "in": "11000000000000000000",
-      "out": "59000000000000000000"
+      "in": "12000000000000000000",
+      "out": "60000000000000000000"
     }
   },
   {
     "address": "0xddb3422497e61e13543bea06989c0789117555c5",
     "name": "COTI",
     "symbol": "COTI",
-    "logoURI": "https://bin.bnbstatic.com/images/20200224/b74f4936-1145-48ee-a779-51341d1572f0.png",
+    "logoURI": "https://cryptologos.cc/logos/coti-coti-logo.svg?v=013",
     "decimal": 18,
-    "minimalBridgeAmount": "68000000000000000000",
+    "minimalBridgeAmount": "67000000000000000000",
     "bridgeFee": {
       "in": "10000000000000000000",
-      "out": "51000000000000000000"
-    }
-  },
-  {
-    "address": "0x4c19596f5aaff459fa38b0f7ed92f11ae6543784",
-    "name": "TRU",
-    "symbol": "TRU",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20210119/f5395ef0-4177-4608-8a70-9dac73fbbc50.png",
-    "decimal": 18,
-    "minimalBridgeAmount": "33000000000000000000",
-    "bridgeFee": {
-      "in": "5000000000000000000",
-      "out": "25000000000000000000"
-    }
-  },
-  {
-    "address": "0x4f9254c83eb525f9fcf346490bbb3ed28a81c667",
-    "name": "CELR",
-    "symbol": "CELR",
-    "logoURI": "https://bin.bnbstatic.com/images/20191211/5c9b1c61-4605-4795-82ad-1206d01b54a9.png",
-    "decimal": 18,
-    "minimalBridgeAmount": "430000000000000000000",
-    "bridgeFee": {
-      "in": "65000000000000000000",
-      "out": "320000000000000000000"
+      "out": "50000000000000000000"
     }
   },
   {
     "address": "0xe1be5d3f34e89de342ee97e6e90d405884da6c67",
     "name": "TRX",
     "symbol": "TRX",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20201110/dd9332e2-0a23-4228-89b2-50d188a09e2b.png",
+    "logoURI": "https://cryptologos.cc/logos/tron-trx-logo.svg?v=002",
     "decimal": 6,
     "minimalBridgeAmount": "230000000",
     "bridgeFee": {
@@ -627,48 +435,12 @@
     "address": "0x0000000000085d4780B73119b644AE5ecd22b376",
     "name": "TUSD",
     "symbol": "TUSD",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20201015/b840603c-afc6-4392-be64-18fca743326b.png",
+    "logoURI": "https://cryptologos.cc/logos/trueusd-tusd-logo.svg?v=002",
     "decimal": 18,
     "minimalBridgeAmount": "20000000000000000000",
     "bridgeFee": {
       "in": "3000000000000000000",
       "out": "15000000000000000000"
-    }
-  },
-  {
-    "address": "0x69af81e73A73B40adF4f3d4223Cd9b1ECE623074",
-    "name": "MASK",
-    "symbol": "MASK",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20210525/ff9a092b-1fa9-4cd8-a90a-70505710df8b.png",
-    "decimal": 18,
-    "minimalBridgeAmount": "1800000000000000000",
-    "bridgeFee": {
-      "in": "280000000000000000",
-      "out": "1400000000000000000"
-    }
-  },
-  {
-    "address": "0xBB0E17EF65F82Ab018d8EDd776e8DD940327B28b",
-    "name": "AXS",
-    "symbol": "AXS",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20201102/0f90eacf-704e-46bc-914d-ccb009dd1709.png",
-    "decimal": 18,
-    "minimalBridgeAmount": "280000000000000000",
-    "bridgeFee": {
-      "in": "43000000000000000",
-      "out": "210000000000000000"
-    }
-  },
-  {
-    "address": "0xCC8Fa225D80b9c7D42F96e9570156c65D6cAAa25",
-    "name": "SLP",
-    "symbol": "SLP",
-    "logoURI": "https://bin.bnbstatic.com/image/admin_mgs_image_upload/20201110/ea4ad5e9-b5d2-4228-8697-3bb6a807f95e.png",
-    "decimal": 0,
-    "minimalBridgeAmount": "140",
-    "bridgeFee": {
-      "in": "22",
-      "out": "100"
     }
   }
 ]
