@@ -1,4 +1,5 @@
 import { WhiteListEthAsset } from '@force-bridge/x/dist/config';
+import { logger } from '@force-bridge/x/dist/utils/logger';
 import axios from 'axios';
 import { BigNumber } from 'bignumber.js';
 
@@ -21,7 +22,7 @@ async function getAssetAVGPrice(token: string): Promise<number> {
     const res = await axios.get(`${BINANCE_EXCHANGE_API}?symbol=${token}USDT`);
     return res.data.price;
   } catch (err) {
-    console.error('failed to get price of ', token, ' error : ', err.response.data);
+    logger.error('failed to get price of ', token, ' error : ', err.response.data);
     return -1;
   }
 }
@@ -38,6 +39,7 @@ export async function assetListPriceChange(assetWhiteList: WhiteListEthAsset[]):
       continue;
     }
     const ticker = currentPrice / previousPrice;
+    logger.info(`${asset.symbol} ticker is ${ticker}, current price is ${currentPrice}`);
     if (ticker > upLimit || ticker < downLimit) {
       result.push({
         symbol: asset.symbol,
