@@ -12,12 +12,15 @@ import {
 } from '@force-bridge/xchain-eth/dist/reconc';
 import { BigNumber } from 'bignumber.js';
 import { ethers } from 'ethers';
+import { assetListPriceChange } from './assetPrice';
 import { WebHook } from './discord';
 import { Duration, EventItem, monitorEvent, NewDurationCfg, readMonitorConfig, writeMonitorConfig } from './duration';
 
 let step = 100;
 let expiredTime = 1200 * 1000;
 let expiredCheckInterval = 10 * 1000;
+
+const ONE_HOUR = 60 * 60 * 1000;
 
 function newEvent(event: monitorEvent): EventItem {
   return {
@@ -121,6 +124,9 @@ export class Monitor {
     });
     this.observeCkbEvent().catch((err) => {
       logger.error(`Monitor observeCkbEvent error:${err.stack}`);
+    });
+    this.observeAssetPrice().catch((err) => {
+      logger.error(`Monitor observeAssetPrice error:${err.stack}`);
     });
     setTimeout(() => {
       this.checkExpiredEvent();
@@ -335,6 +341,31 @@ export class Monitor {
         onResolvedInterval: 0,
         onRejected: (e: Error) => {
           logger.error(`Monitor observeEthLock error:${e.stack}`);
+        },
+      },
+    );
+  }
+
+  async observeAssetPrice(): Promise<void> {
+    foreverPromise(
+      async () => {
+        const priceAlertResult = await assetListPriceChange(ForceBridgeCore.config.eth.assetWhiteList);
+        if (priceAlertResult.length == 0) {
+          return;
+        }
+        logger.info(`Price fluctuation triggers an alert  :${JSON.stringify(priceAlertResult)}`);
+        await new WebHook(this.webHookInfoUrl)
+          .setTitle(`Bridge Fee Need Change  - ${ForceBridgeCore.config.monitor!.env}`)
+          .addField('Price info', JSON.stringify(priceAlertResult))
+          .addTimeStamp()
+          .warning()
+          .send();
+      },
+      {
+        onRejectedInterval: expiredCheckInterval,
+        onResolvedInterval: ONE_HOUR,
+        onRejected: (e: Error) => {
+          logger.error(`Monitor observeAssetPrice :${e.stack}`);
         },
       },
     );
