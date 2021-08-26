@@ -60,15 +60,19 @@ async function getTokens(path: string): Promise<void> {
       for (const token of tokens) {
         if (token.symbol != 'USDT') {
           price = await getAssetAVGPrice(token.symbol);
-          if (price < 0 || !logos.has(token.symbol.toLowerCase())) {
+          if (price < 0) {
             continue;
           }
+        }
+        let logo = token.icon;
+        if (logos.has(token.symbol.toLowerCase())) {
+          logo = logos.get(token.symbol.toLowerCase())!;
         }
         if (token.ethContractAddress === '') {
           if (token.symbol == 'ETH') {
             token.ethContractAddress = '0x0000000000000000000000000000000000000000';
           } else {
-            console.log(`${token.symbol} which is not erc20 token`);
+            console.log(`${token.symbol} is not erc20 token`);
             continue;
           }
         }
@@ -81,7 +85,7 @@ async function getTokens(path: string): Promise<void> {
           address: token.ethContractAddress,
           name: token.symbol,
           symbol: token.symbol,
-          logoURI: logos.get(token.symbol.toLowerCase())!,
+          logoURI: logo,
           decimal: token.ethContractDecimal,
           minimalBridgeAmount: getClosestNumber(minimalBridgeAmount),
           bridgeFee: { in: getClosestNumber(inAmount), out: getClosestNumber(outAmount) },

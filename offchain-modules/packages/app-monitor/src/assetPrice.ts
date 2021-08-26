@@ -30,6 +30,9 @@ async function getAssetAVGPrice(token: string): Promise<number> {
 export async function assetListPriceChange(assetWhiteList: WhiteListEthAsset[]): Promise<priceAlert[]> {
   const result: priceAlert[] = [];
   for (const asset of assetWhiteList) {
+    if (asset.symbol === 'USDT') {
+      continue;
+    }
     const previousPrice = new BigNumber(BRIDGE_IN_FEE)
       .multipliedBy(new BigNumber(Math.pow(10, asset.decimal)))
       .div(new BigNumber(asset.bridgeFee.in))
