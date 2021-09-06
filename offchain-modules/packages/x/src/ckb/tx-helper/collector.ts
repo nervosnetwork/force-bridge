@@ -49,6 +49,19 @@ export class IndexerCollector extends Collector {
     return cells;
   }
 
+  async getBalance(lock: Script): Promise<bigint> {
+    const searchKey = {
+      script: lock,
+      script_type: ScriptType.lock,
+    };
+    const cells = await this.indexer.getCells(searchKey);
+    let balance = 0n;
+    cells.forEach((cell) => {
+      balance += BigInt(cell.cell_output.capacity);
+    });
+    return balance;
+  }
+
   async getSUDTBalance(sudtType: Script, userLock: Script): Promise<bigint> {
     const searchKey = {
       script: userLock,
