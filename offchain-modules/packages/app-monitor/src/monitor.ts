@@ -1,6 +1,9 @@
+import { parseAddress } from '@ckb-lumos/helpers';
 import { CkbBurnRecord, CkbMintRecord, EthLockRecord, EthUnlockRecord } from '@force-bridge/reconc/dist';
 import { EthAsset } from '@force-bridge/x/dist/ckb/model/asset';
+import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
+import { verifierEndpoint, feeAccounts } from '@force-bridge/x/dist/config';
 import { bootstrap, ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { CKBRecordObservable } from '@force-bridge/x/dist/reconc';
 import { asyncSleep, foreverPromise } from '@force-bridge/x/dist/utils';
@@ -10,6 +13,7 @@ import {
   createETHRecordObservable,
   EthRecordObservable,
 } from '@force-bridge/xchain-eth/dist/reconc';
+import axios from 'axios';
 import { BigNumber } from 'bignumber.js';
 import { ethers } from 'ethers';
 import { assetListPriceChange } from './assetPrice';
@@ -21,6 +25,21 @@ let expiredTime = 1200 * 1000;
 let expiredCheckInterval = 10 * 1000;
 
 const ONE_HOUR = 60 * 60 * 1000;
+
+export interface VerifierStatus {
+  name: string;
+  error: boolean;
+  status: string;
+}
+
+export interface feeStatus {
+  ckbAddr: string;
+  ethAddr: string;
+  ckb: bigint;
+  eth: bigint;
+  ckbThreshold: bigint;
+  ethThreshold: bigint;
+}
 
 function newEvent(event: monitorEvent): EventItem {
   return {
@@ -125,9 +144,9 @@ export class Monitor {
     this.observeCkbEvent().catch((err) => {
       logger.error(`Monitor observeCkbEvent error:${err.stack}`);
     });
-    this.observeAssetPrice().catch((err) => {
-      logger.error(`Monitor observeAssetPrice error:${err.stack}`);
-    });
+    // this.observeAssetPrice().catch((err) => {
+    //   logger.error(`Monitor observeAssetPrice error:${err.stack}`);
+    // });
     setTimeout(() => {
       this.checkExpiredEvent();
     }, ForceBridgeCore.config.monitor!.expiredCheckInterval);
@@ -244,10 +263,48 @@ export class Monitor {
       ethLock: this.durationConfig.eth.matchCount.lock,
     };
 
+    // check verifiers status
+    const verifiersStatus = await this.checkVerifiersStatus(ForceBridgeCore.config.monitor!.verifierEndpoints || []);
+    for (const vs of verifiersStatus) {
+      if (vs.error) {
+        await new WebHook(this.webHookErrorUrl)
+          .setTitle(`Verifier Status Error - ${ForceBridgeCore.config.monitor!.env}`)
+          .addField('verifier status', JSON.stringify(vs))
+          .addTimeStamp()
+          .error()
+          .send();
+      }
+    }
+
+    // check accounts fee
+    let accountsFeeInfo = 'no data';
+    const accounts = ForceBridgeCore.config.monitor!.feeAccounts;
+    if (accounts) {
+      const accountsFee = await this.checkAccountsFee(accounts);
+      accountsFeeInfo = `ckb addr: ${accountsFee.ckbAddr}, balance: ${accountsFee.ckb}\neth addr: ${accountsFee.ethAddr}, balance: ${accountsFee.eth}`;
+      let send = false;
+      let hook = new WebHook(this.webHookErrorUrl).setTitle(`Fee Alarm - ${ForceBridgeCore.config.monitor!.env}`);
+      if (accountsFee.ckb < accountsFee.ckbThreshold) {
+        hook = hook.addField('ckb fee account', `addr: ${accounts.ckbAddr}, balance: ${accountsFee.ckb}`);
+        send = true;
+      }
+      if (accountsFee.eth < accountsFee.ethThreshold) {
+        hook = hook.addField('eth fee account', `addr: ${accounts.ethAddr}, balance: ${accountsFee.eth}`);
+        send = true;
+      }
+      if (send) {
+        await hook.addTimeStamp().error().send();
+      }
+    }
+
     logger.info(
-      `LastHandledBlock:${JSON.stringify(lastHandledBlock)} Tip block number :${JSON.stringify(
-        tipBlockNumber,
-      )} Match count:${JSON.stringify(matchCount)} Records number in cache:${JSON.stringify(recordsNum)} `,
+      `LastHandledBlock:${JSON.stringify(lastHandledBlock)},
+      Tip block number :${JSON.stringify(tipBlockNumber)},
+      Match count:${JSON.stringify(matchCount)},
+      Records number in cache:${JSON.stringify(recordsNum)},
+      Verifiers Status: ${JSON.stringify(verifiersStatus)},
+      Fee Accounts: ${accountsFeeInfo}
+      `,
     );
     await new WebHook(this.webHookInfoUrl)
       .setTitle(`Monitor Summary - ${ForceBridgeCore.config.monitor!.env}`)
@@ -255,6 +312,8 @@ export class Monitor {
       .addField('Tip block number', JSON.stringify(tipBlockNumber))
       .addField('Match count', JSON.stringify(matchCount))
       .addField('Records number in cache', JSON.stringify(recordsNum))
+      .addField('Verifiers Status', JSON.stringify(verifiersStatus))
+      .addField('Fee Accounts', accountsFeeInfo)
       .addTimeStamp()
       .success()
       .send();
@@ -369,6 +428,56 @@ export class Monitor {
         },
       },
     );
+  }
+
+  async checkAccountsFee(accounts: feeAccounts): Promise<feeStatus> {
+    const ethBalance = (await this.ethProvider.getBalance(accounts.ethAddr)).toBigInt();
+    const lock = parseAddress(accounts.ckbAddr);
+    const collector = new IndexerCollector(ForceBridgeCore.ckbIndexer);
+    const ckbBalance = await collector.getBalance(lock);
+    return {
+      ckb: ckbBalance,
+      eth: ethBalance,
+      ckbThreshold: BigInt(accounts.ckbThreshold),
+      ethThreshold: BigInt(accounts.ethThreshold),
+      ckbAddr: accounts.ckbAddr,
+      ethAddr: accounts.ethAddr,
+    };
+  }
+
+  async checkVerifiersStatus(endpoints: verifierEndpoint[]): Promise<VerifierStatus[]> {
+    const ethHeight = await this.ethProvider.getBlockNumber();
+    const ckbHeight = Number(await ForceBridgeCore.ckb.rpc.getTipBlockNumber());
+    const heightGapThreshold = 30;
+    const res: VerifierStatus[] = [];
+    for (const endpoint of endpoints) {
+      const verifierStatus = {
+        name: endpoint.name,
+        error: false,
+        status: '',
+      };
+      try {
+        const param = {
+          id: 0,
+          jsonrpc: '2.0',
+          method: 'status',
+        };
+        const response = (await axios.post(endpoint.url, param)).data.result;
+        logger.debug(`endpoint: ${JSON.stringify(endpoint)}, res: ${JSON.stringify(response)}`);
+        const verifierCkbHeight = response.latestChainStatus.ckb.latestCkbHeight;
+        const verifierEthHeight = response.latestChainStatus.eth.latestEthHeight;
+        if (ckbHeight - verifierCkbHeight > heightGapThreshold || ethHeight - verifierEthHeight > heightGapThreshold) {
+          verifierStatus.error = true;
+        }
+        verifierStatus.status = `ckb: ${ckbHeight - verifierCkbHeight}, eth: ${ethHeight - verifierEthHeight}`;
+      } catch (e) {
+        logger.error(`fail to get verifier status, endpoint: ${JSON.stringify(endpoint)}, error: ${e.stack}`);
+        verifierStatus.status = e.message;
+        verifierStatus.error = true;
+      }
+      res.push(verifierStatus);
+    }
+    return res;
   }
 }
 

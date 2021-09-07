@@ -152,6 +152,18 @@ export interface collectorConfig {
   gasPriceGweiLimit: number;
 }
 
+export interface verifierEndpoint {
+  name: string;
+  url: string;
+}
+
+export interface feeAccounts {
+  ethAddr: string;
+  ckbAddr: string;
+  ethThreshold: string;
+  ckbThreshold: string;
+}
+
 export interface monitorConfig {
   expiredTime: number;
   expiredCheckInterval: number;
@@ -159,6 +171,8 @@ export interface monitorConfig {
   discordWebHookError?: string;
   scanStep: number;
   env: string;
+  feeAccounts?: feeAccounts;
+  verifierEndpoints?: verifierEndpoint[];
 }
 
 export interface Config {
