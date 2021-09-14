@@ -44,6 +44,65 @@ export class CkbDeployManager extends CkbTxHelper {
     super(ckbRpcUrl, ckbIndexerUrl);
   }
 
+  async deployContractWithTypeID(contract: Buffer, privateKey: string): Promise<ConfigItem> {
+    await this.indexer.waitForSync();
+    let txSkeleton = TransactionSkeleton({ cellProvider: this.indexer });
+    logger.debug(`txSkeleton: ${transactionSkeletonToJSON(txSkeleton)}`);
+    // get from cells
+    const fromAddress = generateSecp256k1Blake160Address(key.privateKeyToBlake160(privateKey));
+    const fromLockscript = parseAddress(fromAddress);
+    const fromCells = await this.getFromCells(fromLockscript);
+    if (fromCells.length === 0) {
+      throw new Error('no available cells found');
+    }
+    const firstInputCell: Cell = nonNullable(fromCells[0]);
+    txSkeleton = await common.setupInputCell(txSkeleton, firstInputCell);
+    // setupInputCell will put an output same with input, clear it
+    txSkeleton = txSkeleton.update('outputs', (outputs) => {
+      return outputs.clear();
+    });
+    // add output
+    const firstInput = {
+      previous_output: firstInputCell.out_point,
+      since: '0x0',
+    };
+    const outputType = generateTypeIDScript(firstInput, `0x0`);
+    const codeHash = utils.scriptToHash(<CKBComponents.Script>{
+      codeHash: outputType.code_hash,
+      hashType: outputType.hash_type,
+      args: outputType.args,
+    });
+    const scriptOutput: Cell = {
+      cell_output: {
+        capacity: '0x0',
+        lock: fromLockscript,
+        type: outputType,
+      },
+      data: utils.bytesToHex(contract),
+    };
+    const scriptCapacity = minimalCellCapacity(scriptOutput);
+    scriptOutput.cell_output.capacity = `0x${scriptCapacity.toString(16)}`;
+
+    txSkeleton = txSkeleton.update('outputs', (outputs) => {
+      return outputs.push(scriptOutput);
+    });
+    txSkeleton = await this.completeTx(txSkeleton, fromAddress, fromCells.slice(1));
+    const hash = await this.SignAndSendTransaction(txSkeleton, privateKey);
+    return {
+      cellDep: {
+        depType: 'code',
+        outPoint: {
+          txHash: hash,
+          index: '0x0',
+        },
+      },
+      script: {
+        codeHash: codeHash,
+        hashType: 'type',
+      },
+    };
+  }
+
   async deployContracts(contracts: ContractsBin, privateKey: string): Promise<ContractsConfig> {
     await this.indexer.waitForSync();
     let txSkeleton = TransactionSkeleton({ cellProvider: this.indexer });
