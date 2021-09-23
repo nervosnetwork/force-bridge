@@ -112,6 +112,8 @@ export function privateKeyToCkbAddress(privkey: string, prefix: ckbAddressPrefix
     prefix = AddressPrefix.Mainnet;
   } else if (prefix === 'testnet' || prefix === 'ckt') {
     prefix = AddressPrefix.Testnet;
+  } else {
+    throw new Error('invalid ckb address prefix');
   }
   return utils.privateKeyToAddress(privkey, { prefix: prefix as AddressPrefix });
 }
