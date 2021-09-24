@@ -31,9 +31,4 @@ async function main() {
   await program.parseAsync(process.argv);
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    console.error(`failed to run command, error: ${error.message}`);
-    process.exit(1);
-  });
+void main();
