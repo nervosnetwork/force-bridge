@@ -21,24 +21,7 @@ async function verifyDuplicateEthTx(pubKey: string, payload: ethCollectSignature
   if (unlocks.length !== 0) {
     return new SigError(SigErrorCode.TxCompleted);
   }
-
-  const nonce = await SigServer.ethBridgeContract.latestUnlockNonce_();
-  if (nonce.toString() !== payload.nonce.toString()) {
-    return new SigError(SigErrorCode.InvalidParams, `nonce:${payload.nonce} doesn't match with:${nonce.toString()}`);
-  }
-
-  const lastNonceRow = await SigServer.signedDb.getMaxNonceByRefTxHashes(pubKey, refTxHashes);
-  const lastNonce = lastNonceRow.nonce;
-  if (lastNonce === null) {
-    return SigErrorOk;
-  }
-  if (lastNonce === payload.nonce) {
-    // sig to tx with the same nonce, only one will be success
-    await SigServer.signedDb.removeSignedRecordByNonce(payload.nonce);
-    return SigErrorOk;
-  }
-
-  return new SigError(SigErrorCode.DuplicateSign);
+  return SigErrorOk;
 }
 
 async function verifyEthTx(pubKey: string, params: collectSignaturesParams): Promise<SigError> {
