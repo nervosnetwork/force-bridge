@@ -98,7 +98,7 @@ async function verifyCreateCellTx(rawData: string, payload: ckbCollectSignatures
 async function verifyDuplicateMintTx(
   pubKey: string,
   mintRecords: mintRecord[],
-  txSkeleton: TransactionSkeletonObject,
+  _txSkeleton: TransactionSkeletonObject,
 ): Promise<SigError> {
   const refTxHashes = mintRecords.map((mintRecord) => {
     return mintRecord.id;
@@ -107,42 +107,6 @@ async function verifyDuplicateMintTx(
   const mints = await SigServer.ckbDb.getCkbMintByIds(refTxHashes);
   if (mints.length !== 0) {
     return new SigError(SigErrorCode.TxCompleted);
-  }
-
-  const signedRecords = await SigServer.signedDb.getSignedByRefTxHashes(pubKey, refTxHashes);
-  asserts(signedRecords);
-
-  const sigData = txSkeleton.signingEntries[1].message;
-  if (
-    signedRecords.some((signedTx) => {
-      if (signedTx.rawData === sigData) {
-        return false;
-      }
-      const inputOutPoints = signedTx.inputOutPoints;
-      if (!inputOutPoints || inputOutPoints.length === 0) {
-        return true;
-      }
-      const inputCellMap = new Map<string, string>();
-      inputOutPoints.split(';').forEach((output) => {
-        const point = output.split(':');
-        if (point.length !== 2) {
-          return;
-        }
-        inputCellMap.set(point[0], point[1]);
-      });
-
-      let overlap = false;
-      for (const cell of txSkeleton.inputs) {
-        const index = inputCellMap.get(cell.out_point!.tx_hash);
-        if (index && index === cell.out_point!.index) {
-          overlap = true;
-          break;
-        }
-      }
-      return !overlap;
-    })
-  ) {
-    return new SigError(SigErrorCode.DuplicateSign, `duplicate mint tx in ${refTxHashes.join(',')}`);
   }
 
   return SigErrorOk;
