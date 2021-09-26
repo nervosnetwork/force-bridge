@@ -83,7 +83,7 @@ async function doMakeTx(opts: Record<string, string>): Promise<void> {
     const ethRpc = nonNullable(opts.ethRpcUrl || EthNodeRpc) as string;
     const ckbRpcURL = nonNullable(opts.ckbRpcUrl || CkbNodeRpc) as string;
     const ckbPrivateKey = nonNullable(opts.ckbPrivateKey) as string;
-    const ckbIndexerRPC = nonNullable(opts.ckbIndexerRpcUrl || CkbIndexerRpc) as string;
+    const ckbIndexerRPC = nonNullable(opts.ckbIndexerUrl || CkbIndexerRpc) as string;
     const chain = nonNullable(opts.chain || 'DEV') as 'LINA' | 'AGGRON4' | 'DEV';
     initLumosConfig(chain);
     const valInfos: ValInfos = JSON.parse(fs.readFileSync(validatorInfoPath, 'utf8').toString());
@@ -190,7 +190,7 @@ async function doSendTx(opts: Record<string, string>): Promise<void> {
     const ethRpc = nonNullable(opts.ethRpcUrl || EthNodeRpc) as string;
     const ckbRpcURL = nonNullable(opts.ckbRpcUrl || CkbNodeRpc) as string;
     const ckbPrivateKey = nonNullable(opts.ckbPrivateKey) as string;
-    const ckbIndexerRPC = nonNullable(opts.ckbIndexerRpcUrl || CkbIndexerRpc) as string;
+    const ckbIndexerRPC = nonNullable(opts.ckbIndexerUrl || CkbIndexerRpc) as string;
     const ethPrivateKey = nonNullable(opts.ethPrivateKey) as string;
     const files = fs.readdirSync(changeValidatorTxSigDir);
     const ckbSignatures: string[] = [];
