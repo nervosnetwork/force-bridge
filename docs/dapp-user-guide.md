@@ -12,7 +12,7 @@ If you have a metamask account, you are ready to go. You will use this account t
 
 ## Prepare initial assets
 
-Use this [faucet](https://gliaswap-faucet-rinkeby.ckbapp.dev/) to claim CKB、ETH and ERC-20 assets. 
+Use this [faucet](https://gliaswap-faucet-rinkeby.ckbapp.dev/) to claim CKB、ETH and ERC-20 assets on Testnet. 
 
 > We also need CKB and ETH to pay transaction fee on CKB-Blockchain and Ethereum.
 
