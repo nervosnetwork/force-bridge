@@ -1,6 +1,6 @@
 {
   "name": "@force-bridge/x",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "main": "./dist/index.js",
   "license": "MIT",
   "scripts": {
@@ -21,10 +21,10 @@
     "@ckb-lumos/helpers": "^0.16.0",
     "@ckb-lumos/rpc": "^0.16.0",
     "@ckb-lumos/transaction-manager": "^0.16.0",
-    "@force-bridge/ckb-indexer-client": "^0.0.10",
-    "@force-bridge/internal": "^0.0.10",
-    "@force-bridge/keystore": "^0.0.10",
-    "@force-bridge/reconc": "^0.0.10",
+    "@force-bridge/ckb-indexer-client": "^0.0.11",
+    "@force-bridge/internal": "^0.0.11",
+    "@force-bridge/keystore": "^0.0.11",
+    "@force-bridge/reconc": "^0.0.11",
     "@lay2/pw-core": "^0.3.22",
     "@nervosnetwork/ckb-sdk-core": "^0.39.0",
     "@nervosnetwork/ckb-sdk-utils": "^0.41.1",
