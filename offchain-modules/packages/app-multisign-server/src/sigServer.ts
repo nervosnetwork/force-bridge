@@ -20,6 +20,7 @@ import { signEthTx } from './ethSigner';
 import { getPendingTx, getPendingTxResult } from './pendingTx';
 import { serverStatus, serverStatusResult } from './status';
 
+const version = '0.0.9';
 const apiPath = '/force-bridge/sign-server/api/v1';
 
 const ethPendingTxKey = 'ethPendingTx';
@@ -154,6 +155,9 @@ export async function startSigServer(configPath: string): Promise<void> {
   new SigServer(conn);
 
   const server = new JSONRPCServer();
+  server.addMethod('version', () => {
+    return version;
+  });
   server.addMethod('signCkbTx', async (params: collectSignaturesParams) => {
     try {
       return await signCkbTx(params);
