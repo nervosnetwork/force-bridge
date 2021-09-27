@@ -9,7 +9,7 @@ import { JSONRPCServer } from 'json-rpc-2.0';
 import { ForceBridgeAPIV1Handler } from './handler';
 import { GetBalancePayload, GetBridgeTransactionSummariesPayload, XChainNetWork } from './types/apiv1';
 
-const version = '0.0.10';
+const version = '0.0.11';
 const forceBridgePath = '/force-bridge/api/v1';
 
 export async function startRpcServer(configPath: string): Promise<void> {
