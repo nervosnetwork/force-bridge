@@ -1,4 +1,4 @@
-import { core, utils } from '@ckb-lumos/base';
+import { core } from '@ckb-lumos/base';
 import { CKBIndexerClient, SearchKey, SearchKeyFilter } from '@force-bridge/ckb-indexer-client';
 import type * as Indexer from '@force-bridge/ckb-indexer-client';
 import { CkbBurnRecord, CkbMintRecord } from '@force-bridge/reconc';
@@ -6,12 +6,11 @@ import { Amount } from '@lay2/pw-core';
 import { default as RPC } from '@nervosnetwork/ckb-sdk-rpc';
 import { Observable, from } from 'rxjs';
 import { map, expand, takeWhile, filter as rxFilter, mergeMap, distinct } from 'rxjs/operators';
-import { Asset, BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '../ckb/model/asset';
+import { Asset } from '../ckb/model/asset';
 import { ScriptLike } from '../ckb/model/script';
 import { RecipientCellData } from '../ckb/tx-helper/generated/eth_recipient_cell';
 import { ForceBridgeLockscriptArgs } from '../ckb/tx-helper/generated/force_bridge_lockscript';
 import { MintWitness } from '../ckb/tx-helper/generated/mint_witness';
-import { getOwnerTypeHash } from '../ckb/tx-helper/multisig/multisig_helper';
 import { fromHexString, toHexString, uint8ArrayToString } from '../utils';
 
 export interface CKBRecordObservableProvider {
@@ -165,30 +164,31 @@ export class CKBRecordObservable {
             if (!filter.filterRecipientData(tx.recipientCellData)) {
               return false;
             }
-            const assetAddress = toHexString(new Uint8Array(tx.recipientCellData.getAsset().raw()));
-            let asset;
-            const ownerTypeHash = getOwnerTypeHash();
-            switch (tx.recipientCellData.getChain()) {
-              case ChainType.BTC:
-                asset = new BtcAsset(uint8ArrayToString(fromHexString(assetAddress)), ownerTypeHash);
-                break;
-              case ChainType.ETH:
-                asset = new EthAsset(uint8ArrayToString(fromHexString(assetAddress)), ownerTypeHash);
-                break;
-              case ChainType.TRON:
-                asset = new TronAsset(uint8ArrayToString(fromHexString(assetAddress)), ownerTypeHash);
-                break;
-              case ChainType.EOS:
-                asset = new EosAsset(uint8ArrayToString(fromHexString(assetAddress)), ownerTypeHash);
-                break;
-              default:
-                return false;
-            }
-            return (
-              asset.inWhiteList() &&
-              utils.readBigUInt128LE(`0x${toHexString(new Uint8Array(tx.recipientCellData.getAmount().raw()))}`) >=
-                BigInt(asset.getMinimalAmount())
-            );
+            return true;
+            // const assetAddress = toHexString(new Uint8Array(tx.recipientCellData.getAsset().raw()));
+            // let asset;
+            // const ownerTypeHash = getOwnerTypeHash();
+            // switch (tx.recipientCellData.getChain()) {
+            //   case ChainType.BTC:
+            //     asset = new BtcAsset(uint8ArrayToString(fromHexString(assetAddress)), ownerTypeHash);
+            //     break;
+            //   case ChainType.ETH:
+            //     asset = new EthAsset(uint8ArrayToString(fromHexString(assetAddress)), ownerTypeHash);
+            //     break;
+            //   case ChainType.TRON:
+            //     asset = new TronAsset(uint8ArrayToString(fromHexString(assetAddress)), ownerTypeHash);
+            //     break;
+            //   case ChainType.EOS:
+            //     asset = new EosAsset(uint8ArrayToString(fromHexString(assetAddress)), ownerTypeHash);
+            //     break;
+            //   default:
+            //     return false;
+            // }
+            // return (
+            //   asset.inWhiteList() &&
+            //   utils.readBigUInt128LE(`0x${toHexString(new Uint8Array(tx.recipientCellData.getAmount().raw()))}`) >=
+            //     BigInt(asset.getMinimalAmount())
+            // );
           }),
 
           map((item) => {
