@@ -282,9 +282,7 @@ export class Monitor {
     if (accounts) {
       const accountsFee = await this.checkAccountsFee(accounts);
       accountsFeeInfo = `ckb addr: ${accountsFee.ckbAddr}
-      balance: ${
-        Number(accountsFee.ckb) / 10 ** 8
-      } CKB
+      balance: ${Number(accountsFee.ckb) / 10 ** 8} CKB
       eth addr: ${accountsFee.ethAddr}
       balance: ${Number(accountsFee.eth) / 10 ** 18} ETH`;
       let send = false;
