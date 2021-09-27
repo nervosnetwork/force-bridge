@@ -1,6 +1,5 @@
 import { parseAddress } from '@ckb-lumos/helpers';
 import { CkbBurnRecord, CkbMintRecord, EthLockRecord, EthUnlockRecord } from '@force-bridge/reconc/dist';
-import { EthAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { verifierEndpoint, feeAccounts } from '@force-bridge/x/dist/config';
@@ -14,7 +13,6 @@ import {
   EthRecordObservable,
 } from '@force-bridge/xchain-eth/dist/reconc';
 import axios from 'axios';
-import { BigNumber } from 'bignumber.js';
 import { ethers } from 'ethers';
 import { assetListPriceChange } from './assetPrice';
 import { WebHook } from './discord';
@@ -91,10 +89,10 @@ export class Monitor {
       if (lock.recipient.toLowerCase() != mint.recipient.toLowerCase()) {
         return `lock.recipient:${lock.recipient} != mint.recipient:${mint.recipient}`;
       }
-      const fee = new EthAsset(lock.token, this.ownerTypeHash).getBridgeFee('in');
-      if (!new BigNumber(lock.amount).eq(new BigNumber(fee).plus(new BigNumber(mint.amount)))) {
-        return `mint.amount:${mint.amount} + fee:${fee} != lock.amount:${lock.amount}`;
-      }
+      // const fee = new EthAsset(lock.token, this.ownerTypeHash).getBridgeFee('in');
+      // if (!new BigNumber(lock.amount).eq(new BigNumber(fee).plus(new BigNumber(mint.amount)))) {
+      //   return `mint.amount:${mint.amount} + fee:${fee} != lock.amount:${lock.amount}`;
+      // }
       return '';
     };
 
@@ -117,9 +115,9 @@ export class Monitor {
       if (burn.recipient.toLowerCase() !== unlock.recipient.toLowerCase()) {
         return `burn.recipient:${burn.recipient} !== unlock.recipient:${unlock.recipient}`;
       }
-      if (!new BigNumber(burn.amount).eq(new BigNumber(unlock.fee!).plus(new BigNumber(unlock.amount)))) {
-        return `burn.amount:${burn.amount} != unlock.amount:${unlock.amount} + fee:${unlock.fee}`;
-      }
+      // if (!new BigNumber(burn.amount).eq(new BigNumber(unlock.fee!).plus(new BigNumber(unlock.amount)))) {
+      //   return `burn.amount:${burn.amount} != unlock.amount:${unlock.amount} + fee:${unlock.fee}`;
+      // }
       return '';
     };
     const res = checker(burn, unlock);
