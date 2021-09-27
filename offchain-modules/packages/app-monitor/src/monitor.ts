@@ -281,9 +281,12 @@ export class Monitor {
     const accounts = ForceBridgeCore.config.monitor!.feeAccounts;
     if (accounts) {
       const accountsFee = await this.checkAccountsFee(accounts);
-      accountsFeeInfo = `ckb addr: ${accountsFee.ckbAddr}, balance: ${
+      accountsFeeInfo = `ckb addr: ${accountsFee.ckbAddr}
+      balance: ${
         Number(accountsFee.ckb) / 10 ** 8
-      } CKB\neth addr: ${accountsFee.ethAddr}, balance: ${Number(accountsFee.eth) / 10 ** 18} ETH`;
+      } CKB
+      eth addr: ${accountsFee.ethAddr}
+      balance: ${Number(accountsFee.eth) / 10 ** 18} ETH`;
       let send = false;
       let hook = new WebHook(this.webHookErrorUrl).setTitle(`Fee Alarm - ${ForceBridgeCore.config.monitor!.env}`);
       if (accountsFee.ckb < accountsFee.ckbThreshold) {
