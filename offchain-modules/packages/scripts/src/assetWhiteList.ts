@@ -12,7 +12,7 @@ export interface Token {
 }
 
 const BRIDGE_IN_CKB_FEE = 400; // 400CKB
-const BRIDGE_OUT_ETH_FEE = 0.015; //15W gas * 100Gwei
+const BRIDGE_OUT_ETH_FEE = 0.015; // 15W gas * 100Gwei
 
 async function getBridgeInFeeInUSDT(): Promise<number> {
   const price = await getAssetAVGPrice('CKB');
@@ -111,7 +111,7 @@ async function getTokens(path: string): Promise<void> {
 }
 
 function getClosestNumber(sourceNumber: string): string {
-  const decimalPlaces = 2;
+  const decimalPlaces = 3;
   let result: string = sourceNumber.slice(0, decimalPlaces);
   for (let i = 0; i < sourceNumber.length - decimalPlaces; i++) {
     result = result.concat('0');
