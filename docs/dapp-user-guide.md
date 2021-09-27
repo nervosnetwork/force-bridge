@@ -41,7 +41,7 @@ Change the bridge direction, and the following operations are similar.
 
 ## Open dapp with parameterized url
 
-- Parameterized url example: https://force-bridge-dev.ckbapp.dev/bridge/:from-network/:to-network?xchain-asset=0x0000000000000000000000000000000000000000&amount=0.05&recipient=ckt1q3vvtay34wndv9nckl8hah6fzzcltcqwcrx79apwp2a5lkd07fdx8xrv9tkdrcff8nwev8q9zzvf40xvdhsmck9seps
+- Parameterized url example: https://testnt.force-bridge.com/bridge/:from-network/:to-network?xchain-asset=0x0000000000000000000000000000000000000000&amount=0.05&recipient=ckt1q3vvtay34wndv9nckl8hah6fzzcltcqwcrx79apwp2a5lkd07fdx8xrv9tkdrcff8nwev8q9zzvf40xvdhsmck9seps
   - Explain
     - Url path
       - from-network: string (e.g. Ethereum)
