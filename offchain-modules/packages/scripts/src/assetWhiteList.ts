@@ -11,11 +11,19 @@ export interface Token {
   minAmount: number;
 }
 
-const BRIDGE_IN_FEE = 3;
-const BRIDGE_OUT_FEE = 15;
-const MinValue = 20;
+const BRIDGE_IN_CKB_FEE = 400; // 400CKB
+const BRIDGE_OUT_ETH_FEE = 0.015; //15W gas * 100Gwei
 
-const BINANCE_EXCHANGE_API = 'https://www.binance.com/api/v3/avgPrice';
+async function getBridgeInFeeInUSDT(): Promise<number> {
+  const price = await getAssetAVGPrice('CKB');
+  return price * BRIDGE_IN_CKB_FEE;
+}
+async function getBridgeOutFeeInUSDT(): Promise<number> {
+  const price = await getAssetAVGPrice('ETH');
+  return price * BRIDGE_OUT_ETH_FEE;
+}
+
+const BINANCE_EXCHANGE_API = 'https://www.binance.com/api/v3/ticker/24hr';
 const BINANCE_BRIDGE_TOKENS = 'https://api.binance.org/bridge/api/v2/tokens';
 
 const LOGO_WEB = `https://cryptologos.cc/logos/`;
@@ -23,7 +31,7 @@ const LOGO_WEB = `https://cryptologos.cc/logos/`;
 async function getAssetAVGPrice(token: string): Promise<number> {
   try {
     const res = await axios.get(`${BINANCE_EXCHANGE_API}?symbol=${token}USDT`);
-    return res.data.price;
+    return res.data.weightedAvgPrice;
   } catch (err) {
     console.error('failed to get price of ', token, ' error : ', err.response.data);
     return -1;
@@ -57,6 +65,8 @@ async function getTokens(path: string): Promise<void> {
       const tokens: Token[] = response.data.data.tokens;
       const logos = await getLogoURIs();
       let price = 1;
+      const bridgeInFee = await getBridgeInFeeInUSDT();
+      const bridgeOutFee = await getBridgeOutFeeInUSDT();
       for (const token of tokens) {
         if (token.symbol != 'USDT') {
           price = await getAssetAVGPrice(token.symbol);
@@ -77,9 +87,9 @@ async function getTokens(path: string): Promise<void> {
           }
         }
         const baseAmount = new BigNumber(Math.pow(10, token.ethContractDecimal)).div(new BigNumber(price));
-        const minimalBridgeAmount = baseAmount.multipliedBy(new BigNumber(MinValue)).toFixed(0);
-        const inAmount = baseAmount.multipliedBy(new BigNumber(BRIDGE_IN_FEE)).toFixed(0);
-        const outAmount = baseAmount.multipliedBy(new BigNumber(BRIDGE_OUT_FEE)).toFixed(0);
+        const minimalBridgeAmount = baseAmount.multipliedBy(new BigNumber(2 * bridgeOutFee)).toFixed(0);
+        const inAmount = baseAmount.multipliedBy(new BigNumber(bridgeInFee)).toFixed(0);
+        const outAmount = baseAmount.multipliedBy(new BigNumber(bridgeOutFee)).toFixed(0);
 
         const assetInfo: WhiteListEthAsset = {
           address: token.ethContractAddress,
