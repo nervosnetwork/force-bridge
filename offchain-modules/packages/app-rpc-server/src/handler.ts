@@ -614,7 +614,9 @@ function checkETHAmount(assetIdent, amount) {
   const minimalAmount = asset.getMinimalAmount();
   const assetInfo = ForceBridgeCore.config.eth.assetWhiteList.find((asset) => asset.address === assetIdent);
   if (!assetInfo) throw new Error('invalid asset');
-  const humanizeMinimalAmount = new BigNumber(minimalAmount).times(10 ** -assetInfo.decimal).toString();
+  const humanizeMinimalAmount = new BigNumber(minimalAmount)
+    .times(new BigNumber(10).pow(-assetInfo.decimal))
+    .toString();
   if (new Amount(amount, 0).lt(new Amount(minimalAmount, 0)))
     throw new Error(`minimal bridge amount is ${humanizeMinimalAmount} ${assetInfo.symbol}`);
 }
