@@ -14,7 +14,9 @@ export function checkLock(amount: string, token: string, recipient: string, sudt
   if (!assetInfo) return 'invalid asset';
   const minimalAmount = asset.getMinimalAmount();
   if (BigInt(amount) < BigInt(minimalAmount)) {
-    const humanizeMinimalAmount = new BigNumber(minimalAmount).times(10 ** -assetInfo.decimal).toString();
+    const humanizeMinimalAmount = new BigNumber(minimalAmount)
+      .times(new BigNumber(10).pow(-assetInfo.decimal))
+      .toString();
     return `minimal bridge amount is ${humanizeMinimalAmount} ${assetInfo.symbol}`;
   }
   // check sudtSize

@@ -91,7 +91,7 @@ export abstract class Asset {
       case ChainType.ETH: {
         const asset = ForceBridgeCore.config.eth.assetWhiteList.find((asset) => asset.address === this.getAddress());
         if (!asset) throw new Error('asset not in white list');
-        const humanizedAmount = new BigNumber(amount).times(10 ** -asset.decimal).toString();
+        const humanizedAmount = new BigNumber(amount).times(new BigNumber(10).pow(-asset.decimal)).toString();
         return `${humanizedAmount} ${asset.symbol}`;
       }
       case ChainType.BTC:
@@ -106,7 +106,7 @@ export abstract class Asset {
       case ChainType.ETH: {
         const asset = ForceBridgeCore.config.eth.assetWhiteList.find((asset) => asset.address === this.getAddress());
         if (!asset) throw new Error('asset not in white list');
-        return new BigNumber(amount).times(10 ** asset.decimal).toString();
+        return new BigNumber(amount).times(new BigNumber(10).pow(asset.decimal)).toString();
       }
       case ChainType.BTC:
       case ChainType.EOS:
