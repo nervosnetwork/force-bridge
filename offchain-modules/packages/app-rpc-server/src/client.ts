@@ -20,6 +20,8 @@ import {
   TransactionIdent,
   TransactionSummaryWithStatus,
   XChainNetWork,
+  GetMinimalBridgeAmountPayload,
+  GetMinimalBridgeAmountResponse,
 } from './types/apiv1';
 import { NetworkBase, NetworkTypes, RequiredAsset } from './types/network';
 
@@ -45,6 +47,10 @@ export class ForceBridgeAPIV1Client implements ForceBridgeAPIV1 {
         }
       }),
     );
+  }
+
+  getMinimalBridgeAmount(payload: GetMinimalBridgeAmountPayload): Promise<GetMinimalBridgeAmountResponse> {
+    return Promise.resolve(this.client.request('getMinimalBridgeAmount', payload));
   }
 
   getBridgeInNervosBridgeFee(payload: GetBridgeInNervosBridgeFeePayload): Promise<GetBridgeInNervosBridgeFeeResponse> {

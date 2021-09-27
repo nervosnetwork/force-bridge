@@ -88,6 +88,15 @@ export type GetBridgeTransactionStatusResponse = {
   status: BridgeTransactionStatus;
 };
 
+export interface GetMinimalBridgeAmountPayload {
+  network: string;
+  xchainAssetIdent: string;
+}
+
+export interface GetMinimalBridgeAmountResponse {
+  minimalAmount: string;
+}
+
 export interface GetBridgeInNervosBridgeFeePayload {
   network: string;
   xchainAssetIdent: string;
@@ -142,6 +151,9 @@ export interface ForceBridgeAPIV1 {
    * get the status of a transaction
    */
   getBridgeTransactionStatus: (payload: GetBridgeTransactionStatusPayload) => Promise<GetBridgeTransactionStatusResponse>;
+
+  // prettier-ignore
+  getMinimalBridgeAmount: (payload: GetMinimalBridgeAmountPayload) => Promise<GetMinimalBridgeAmountResponse>
 
   // prettier-ignore
   getBridgeInNervosBridgeFee: (payload: GetBridgeInNervosBridgeFeePayload) => Promise<GetBridgeInNervosBridgeFeeResponse>
