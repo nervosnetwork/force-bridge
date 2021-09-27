@@ -29,6 +29,8 @@ import {
   GetBalanceResponse,
   GetBridgeInNervosBridgeFeePayload,
   GetBridgeInNervosBridgeFeeResponse,
+  GetMinimalBridgeAmountPayload,
+  GetMinimalBridgeAmountResponse,
   GetBridgeOutNervosBridgeFeePayload,
   GetBridgeOutNervosBridgeFeeResponse,
   GetBridgeTransactionSummariesPayload,
@@ -213,6 +215,20 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     _payload: API.GetBridgeTransactionStatusPayload,
   ): Promise<API.GetBridgeTransactionStatusResponse> {
     throw new Error('not implemented');
+  }
+
+  async getMinimalBridgeAmount(payload: GetMinimalBridgeAmountPayload): Promise<GetMinimalBridgeAmountResponse> {
+    switch (payload.network) {
+      case 'Ethereum': {
+        checkETHAddress(payload.xchainAssetIdent);
+        const asset = new EthAsset(payload.xchainAssetIdent);
+        return {
+          minimalAmount: asset.getMinimalAmount(),
+        };
+      }
+      default:
+        throw new Error('invalid bridge chain type');
+    }
   }
 
   async getBridgeInNervosBridgeFee(
