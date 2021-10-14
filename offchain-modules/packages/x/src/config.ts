@@ -150,6 +150,7 @@ export interface collectorConfig {
   gasLimit: number;
   batchGasLimit: number;
   gasPriceGweiLimit: number;
+  maxPriorityFeePerGasGwei?: string;
 }
 
 export interface verifierEndpoint {

@@ -210,11 +210,8 @@ export class EthChain {
     return false;
   }
 
-  async sendUnlockTxs(
-    records: IEthUnlock[],
-    gasPrice: BigNumber,
-  ): Promise<ethers.providers.TransactionResponse | boolean | Error> {
-    const maxTryTimes = 3;
+  async sendUnlockTxs(records: IEthUnlock[]): Promise<ethers.providers.TransactionResponse | boolean | Error> {
+    const maxTryTimes = 30;
     for (let tryTime = 0; ; tryTime++) {
       logger.debug('contract balance', await this.provider.getBalance(this.bridgeContractAddr));
       const params: EthUnlockRecord[] = records.map((r) => {
@@ -243,9 +240,14 @@ export class EthChain {
         const collectorConfig = nonNullable(ForceBridgeCore.config.collector);
         const gasLimit =
           records.length === 1 ? collectorConfig.gasLimit : records.length * collectorConfig.batchGasLimit;
+        const maxPriorityFeePerGasGwei =
+          nonNullable(ForceBridgeCore.config.collector).maxPriorityFeePerGasGwei || '1.5';
         const options = {
-          gasPrice,
           gasLimit,
+          maxPriorityFeePerGas: BigNumber.from(
+            nonNullable(ForceBridgeCore.config.collector).gasPriceGweiLimit * 10 ** 9,
+          ),
+          maxFeePerGas: ethers.utils.parseUnits(maxPriorityFeePerGasGwei, 'gwei'),
         };
         logger.debug(`send unlock options: ${JSON.stringify(options)}`);
         const dryRunRes = await this.bridge.callStatic.unlock(params, nonce, signature, options);
@@ -257,7 +259,7 @@ export class EthChain {
         if (tryTime >= maxTryTimes) {
           return e;
         }
-        await asyncSleep(5000);
+        await asyncSleep(15000);
       }
     }
   }
