@@ -36,7 +36,7 @@ services:
         aliases:
           - ckb-indexer
   geth:
-    image: tockb/geth-priv:v1.9.23
+    image: tockb/geth-priv:v1.10.10
     volumes:
       - type: volume
         source: geth-dag

@@ -15,7 +15,7 @@ ckb-std = "0.7.2"
 sparse-merkle-tree = { version = "0.3.1-pre", default-features = false }
 mockall = { version = "0.9", optional = true }
 molecule = { version = "0.6", default-features = false }
-force-bridge-types = { path = "../../types", default-features = false, features = ["contract", "devnet"]}
+force-bridge-types = { path = "../../types", default-features = false, features = ["contract", "lina"]}
 no-std-compat = { version = "0.4.1", features = [ "alloc" ] }
 contracts-helper = { path = "../../contracts-helper", default-features = false }
 rlp = {version = "0.4.5", default-features = false }

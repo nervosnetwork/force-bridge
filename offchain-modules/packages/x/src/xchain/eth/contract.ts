@@ -255,7 +255,7 @@ export class EthChain {
         logger.info(`send unlockTx: ${JSON.stringify({ params, nonce, signature, options })}`);
         return await this.bridge.unlock(params, nonce, signature, options);
       } catch (e) {
-        logger.error(`sendUnlockTxs error: ${JSON.stringify({ params, e })}`);
+        logger.error(`sendUnlockTxs error, params: ${params}, tryTime: ${tryTime}, error: ${e.stack}`);
         if (tryTime >= maxTryTimes) {
           return e;
         }

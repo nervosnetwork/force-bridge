@@ -9,7 +9,10 @@
     "byzantiumBlock":0,
     "constantinopleBlock":0,
     "petersburgBlock":0,
-    "istanbulBlock":0
+    "istanbulBlock":0,
+    "muirGlacierBlock": 0,
+    "berlinBlock": 0,
+    "londonBlock": 0
   },
   "alloc": {
     "0x17c4b5CE0605F63732bfd175feCe7aC6b4620FD2": { "balance": "0x99999999999999999999" },

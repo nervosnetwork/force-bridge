@@ -1,4 +1,4 @@
-FROM ethereum/client-go:v1.9.23
+FROM ethereum/client-go:v1.10.10
 
 ADD entrypoint.sh ./
 
