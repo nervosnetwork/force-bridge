@@ -304,7 +304,7 @@ async function sendCkbChangeValTx(
 
   console.debug(`txSkeleton: ${transactionSkeletonToJSON(txSkeleton)}`);
   const tx = sealTransaction(txSkeleton, [content0, content1]);
-  const hash = await ckbClient.ckb.send_transaction(tx);
+  const hash = await ckbClient.ckb.send_transaction(tx, 'passthrough');
   console.log(`change tx hash ${hash}`);
   await ckbClient.waitUntilCommitted(hash);
   return;

@@ -190,7 +190,7 @@ export async function burn(
   }
 
   for (let i = 0; i < batchNum; i++) {
-    const burnETHTxHash = await ckb.rpc.sendTransaction(signedBurnTxs[i]);
+    const burnETHTxHash = await ckb.rpc.sendTransaction(signedBurnTxs[i], 'passthrough');
     await asyncSleep(intervalMs);
     burnTxHashes.push(burnETHTxHash);
   }
@@ -297,7 +297,7 @@ export async function prepareCkbAddresses(
   const signedTx = ckb.signTransaction(ckbPrivateKey)(rawTx);
   logger.info('signedTx', signedTx);
 
-  const burnTxHash = await ckb.rpc.sendTransaction(signedTx);
+  const burnTxHash = await ckb.rpc.sendTransaction(signedTx, 'passthrough');
   logger.info('tx', burnTxHash);
   return addresses;
 }

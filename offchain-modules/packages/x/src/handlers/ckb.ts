@@ -2,7 +2,7 @@ import { core, utils } from '@ckb-lumos/base';
 import { serializeMultisigScript } from '@ckb-lumos/common-scripts/lib/secp256k1_blake160_multisig';
 import { key } from '@ckb-lumos/hd';
 import { generateAddress, sealTransaction, TransactionSkeletonType } from '@ckb-lumos/helpers';
-import TransactionManager from '@ckb-lumos/transaction-manager';
+import { RPC } from '@ckb-lumos/rpc';
 import { Reader } from 'ckb-js-toolkit';
 import * as lodash from 'lodash';
 import { BtcAsset, ChainType, EosAsset, EthAsset, getAsset, TronAsset } from '../ckb/model/asset';
@@ -46,14 +46,14 @@ export interface CkbTxInfo {
 export class CkbHandler {
   private ckb = ForceBridgeCore.ckb;
   private ckbIndexer = ForceBridgeCore.ckbIndexer;
-  private transactionManager: TransactionManager;
+  private rpc: RPC;
   private multisigMgr: MultiSigMgr;
   private lastHandledBlockHeight: number;
   private lastHandledBlockHash: string;
   private startTipBlockHeight: number;
 
   constructor(private db: CkbDb, private kvDb: KVDb, private role: forceBridgeRole) {
-    this.transactionManager = new TransactionManager(this.ckbIndexer);
+    this.rpc = new RPC(ForceBridgeCore.config.ckb.ckbRpcUrl);
     if (role === 'collector') {
       this.multisigMgr = new MultiSigMgr(
         'CKB',
@@ -539,7 +539,7 @@ export class CkbHandler {
 
         logger.debug(`txSkeleton: ${transactionSkeletonToJSON(txSkeleton)}`);
         const tx = sealTransaction(txSkeleton, [content0, content1]);
-        const mintTxHash = await this.transactionManager.send_transaction(tx);
+        const mintTxHash = await this.rpc.send_transaction(tx, 'passthrough');
         logger.info(
           `CkbHandler doHandleMintRecords Mint Transaction has been sent, ckbTxHash ${mintTxHash}, mintIds:${mintIds}`,
         );
@@ -709,7 +709,7 @@ export class CkbHandler {
 
     const tx = sealTransaction(txSkeleton, [content0, content1]);
     logger.info(`tx: ${JSON.stringify(tx)}`);
-    const txHash = await this.transactionManager.send_transaction(tx);
+    const txHash = await this.rpc.send_transaction(tx, 'passthrough');
     const txStatus = await this.waitUntilCommitted(txHash, 120);
     if (txStatus === null || txStatus.txStatus.status !== 'committed') {
       throw new Error('fail to createBridgeCell');

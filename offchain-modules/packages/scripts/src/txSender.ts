@@ -100,7 +100,7 @@ class TxSender {
       recipient,
       burnAmount,
     );
-    const burnTxHash = await this.ckb.rpc.sendTransaction(burnTx);
+    const burnTxHash = await this.ckb.rpc.sendTransaction(burnTx, 'passthrough');
     if (wait) {
       await waitUntilCommitted(this.ckb, burnTxHash, 120);
     }
