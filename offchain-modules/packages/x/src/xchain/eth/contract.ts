@@ -244,10 +244,8 @@ export class EthChain {
           nonNullable(ForceBridgeCore.config.collector).maxPriorityFeePerGasGwei || '1.5';
         const options = {
           gasLimit,
-          maxPriorityFeePerGas: BigNumber.from(
-            nonNullable(ForceBridgeCore.config.collector).gasPriceGweiLimit * 10 ** 9,
-          ),
-          maxFeePerGas: ethers.utils.parseUnits(maxPriorityFeePerGasGwei, 'gwei'),
+          maxFeePerGas: BigNumber.from(nonNullable(ForceBridgeCore.config.collector).gasPriceGweiLimit * 10 ** 9),
+          maxPriorityFeePerGas: ethers.utils.parseUnits(maxPriorityFeePerGasGwei, 'gwei'),
         };
         logger.debug(`send unlock options: ${JSON.stringify(options)}`);
         const dryRunRes = await this.bridge.callStatic.unlock(params, nonce, signature, options);
