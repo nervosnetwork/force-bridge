@@ -144,7 +144,7 @@ async function doUnlock(opts: Record<string, string | boolean>) {
 
   const unlockTx = await new ForceBridgeAPIV1Client(forceBridgeRpc).generateBridgeOutNervosTransaction(burnPayload);
   const signedTx = ckb.signTransaction(privateKey)(<CKBComponents.RawTransactionToSign>unlockTx.rawTransaction);
-  const unlockTxHash = await ckb.rpc.sendTransaction(signedTx);
+  const unlockTxHash = await ckb.rpc.sendTransaction(signedTx, 'passthrough');
 
   console.log(
     `Address:${ckbAddress} unlock ${amount} ${assetInfo.info.symbol}, recipientAddress:${recipientAddress}, unlockTxHash:${unlockTxHash}`,

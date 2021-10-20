@@ -236,7 +236,7 @@ export class CkbDeployManager extends CkbTxHelper {
     const message = txSkeleton.get('signingEntries').get(0)!.message;
     const Sig = key.signRecoverable(message!, privateKey);
     const tx = sealTransaction(txSkeleton, [Sig]);
-    const hash = await this.ckb.send_transaction(tx);
+    const hash = await this.ckb.send_transaction(tx, 'passthrough');
     await this.waitUntilCommitted(hash);
     return hash;
   }

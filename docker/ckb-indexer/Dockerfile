@@ -1,10 +1,10 @@
-FROM nervos/ckb-docker-builder:bionic-rust-1.45.2 as ckb-indexer-builder
+FROM nervos/ckb-docker-builder:bionic-rust-1.51.0 as ckb-indexer-builder
 
 WORKDIR /var/lib
 
 RUN git clone https://github.com/nervosnetwork/ckb-indexer.git
 
-RUN cd ckb-indexer && git checkout ab57116 && cargo build
+RUN cd ckb-indexer && git checkout v0.3.0 && cargo build
 
 FROM ubuntu:bionic
 

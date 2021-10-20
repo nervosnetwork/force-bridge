@@ -810,7 +810,7 @@ async function burn(
 
       const signedTx = ckb.signTransaction(CKB_PRI_KEY)(burnResult.rawTransaction);
 
-      const burnTxHash = await ckb.rpc.sendTransaction(signedTx);
+      const burnTxHash = await ckb.rpc.sendTransaction(signedTx, 'passthrough');
       logger.info('burnTxHash', burnTxHash);
       await checkTx(client, testcase.payload.asset, burnTxHash, CKB_TEST_ADDRESS, ETH_TEST_ADDRESS);
 
