@@ -91,7 +91,7 @@ async function generateConfig(
   collectorConfig.collector = {
     gasLimit: 250000,
     batchGasLimit: 100000,
-    gasPriceGweiLimit: 1,
+    gasPriceGweiLimit: 2,
   };
   collectorConfig.eth.multiSignHosts = multisigConfig.verifiers.map((v, i) => {
     return {
