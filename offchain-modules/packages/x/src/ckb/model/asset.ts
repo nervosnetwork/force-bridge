@@ -10,6 +10,7 @@ export enum ChainType {
   EOS,
   TRON,
   POLKADOT,
+  CARDANO,
 }
 
 export abstract class Asset {
@@ -53,6 +54,7 @@ export abstract class Asset {
       case ChainType.EOS:
       case ChainType.TRON:
       case ChainType.POLKADOT:
+      case ChainType.CARDANO:
         return true;
     }
   }
@@ -67,6 +69,7 @@ export abstract class Asset {
       case ChainType.EOS:
       case ChainType.TRON:
       case ChainType.POLKADOT:
+      case ChainType.CARDANO:
         return '0';
     }
   }
@@ -83,6 +86,7 @@ export abstract class Asset {
       case ChainType.EOS:
       case ChainType.TRON:
       case ChainType.POLKADOT:
+      case ChainType.CARDANO:
         return '0';
     }
   }
@@ -98,6 +102,7 @@ export abstract class Asset {
       case ChainType.EOS:
       case ChainType.TRON:
       case ChainType.POLKADOT:
+      case ChainType.CARDANO:
         throw new Error('unimplement');
     }
   }
@@ -112,6 +117,7 @@ export abstract class Asset {
       case ChainType.EOS:
       case ChainType.TRON:
       case ChainType.POLKADOT:
+      case ChainType.CARDANO:
         throw new Error('unimplement');
     }
   }
@@ -198,6 +204,26 @@ export class BtcAsset extends Asset {
   constructor(public address: string, public ownerCellTypeHash: string = '') {
     super();
     this.chainType = ChainType.BTC;
+  }
+
+  toBridgeLockscriptArgs(): string {
+    const params = {
+      owner_cell_type_hash: fromHexString(this.ownerCellTypeHash).buffer,
+      chain: this.chainType,
+      asset: fromHexString(toHexString(stringToUint8Array(this.address))).buffer,
+    };
+    return `0x${toHexString(new Uint8Array(SerializeForceBridgeLockscriptArgs(params)))}`;
+  }
+
+  getAddress(): string {
+    return this.address;
+  }
+}
+
+export class AdaAsset extends Asset {
+  constructor(public address: string, public ownerCellTypeHash: string = '') {
+    super();
+    this.chainType = ChainType.CARDANO;
   }
 
   toBridgeLockscriptArgs(): string {
