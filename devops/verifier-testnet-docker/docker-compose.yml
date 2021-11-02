@@ -9,7 +9,7 @@ services:
     ports:
       - 3090:3306
   ckb:
-    image: nervos/perkins-tent
+    image: nervos/perkins-tent:v0.101.0
     restart: always
     environment:
       CKB_NETWORK: testnet
@@ -28,7 +28,7 @@ services:
       - 3092:80
     command: |
       sh -c '
-      yarn global add @force-bridge/cli@latest
+      yarn global add @force-bridge/cli@0.0.12
       forcecli verifier -cfg /data/force_bridge.json
       '
     depends_on:
