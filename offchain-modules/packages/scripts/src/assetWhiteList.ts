@@ -1,14 +1,21 @@
+import * as fs from 'fs';
+import { utils } from '@ckb-lumos/base';
+import { EthAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { WhiteListEthAsset } from '@force-bridge/x/dist/config';
 import { writeJsonToFile } from '@force-bridge/x/dist/utils';
 import axios from 'axios';
 import { BigNumber } from 'bignumber.js';
-import * as cheerio from 'cheerio';
+
 export interface Token {
+  address: string;
+  name: string;
   symbol: string;
-  icon: string;
-  ethContractAddress: string;
-  ethContractDecimal: number;
-  minAmount: number;
+  logoURI: string;
+  decimal: number;
+}
+
+export interface WhiteListEthAssetExtend extends WhiteListEthAsset {
+  sudtArgs: string;
 }
 
 const BRIDGE_IN_CKB_FEE = 400; // 400CKB
@@ -24,9 +31,6 @@ async function getBridgeOutFeeInUSDT(): Promise<number> {
 }
 
 const BINANCE_EXCHANGE_API = 'https://www.binance.com/api/v3/ticker/24hr';
-const BINANCE_BRIDGE_TOKENS = 'https://api.binance.org/bridge/api/v2/tokens';
-
-const LOGO_WEB = `https://cryptologos.cc/logos/`;
 
 async function getAssetAVGPrice(token: string): Promise<number> {
   try {
@@ -38,76 +42,37 @@ async function getAssetAVGPrice(token: string): Promise<number> {
   }
 }
 
-async function getLogoURIs(): Promise<Map<string, string>> {
-  const requestUrl = LOGO_WEB;
-  const logoURIs: Map<string, string> = new Map<string, string>();
-  const response = await axios.get(requestUrl);
-  const $ = cheerio.load(response.data);
-  const postList = $('a');
-  postList.each((_, value) => {
-    const link: string = $(value).attr('href')!;
-    let token = link.match(/-(\S*)-/)![1];
-    const index = token.lastIndexOf('-');
-    if (index != -1) {
-      token = token.substring(index + 1, token.length);
-    }
-    logoURIs.set(token, link);
-  });
-  return logoURIs;
-}
-
 //  eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function getTokens(path: string): Promise<void> {
-  try {
-    const response = await axios.get(`${BINANCE_BRIDGE_TOKENS}`);
-    if (response.data && response.data.data) {
-      const assetWhiteList: WhiteListEthAsset[] = [];
-      const tokens: Token[] = response.data.data.tokens;
-      const logos = await getLogoURIs();
-      let price = 1;
-      const bridgeInFee = await getBridgeInFeeInUSDT();
-      const bridgeOutFee = await getBridgeOutFeeInUSDT();
-      for (const token of tokens) {
-        if (token.symbol != 'USDT') {
-          price = await getAssetAVGPrice(token.symbol);
-          if (price < 0) {
-            continue;
-          }
-        }
-        let logo = token.icon;
-        if (logos.has(token.symbol.toLowerCase())) {
-          logo = logos.get(token.symbol.toLowerCase())!;
-        }
-        if (token.ethContractAddress === '') {
-          if (token.symbol == 'ETH') {
-            token.ethContractAddress = '0x0000000000000000000000000000000000000000';
-          } else {
-            console.log(`${token.symbol} is not erc20 token`);
-            continue;
-          }
-        }
-        const baseAmount = new BigNumber(Math.pow(10, token.ethContractDecimal)).div(new BigNumber(price));
-        const minimalBridgeAmount = baseAmount.multipliedBy(new BigNumber(2 * bridgeOutFee)).toFixed(0);
-        const inAmount = baseAmount.multipliedBy(new BigNumber(bridgeInFee)).toFixed(0);
-        const outAmount = baseAmount.multipliedBy(new BigNumber(bridgeOutFee)).toFixed(0);
-
-        const assetInfo: WhiteListEthAsset = {
-          address: token.ethContractAddress,
-          name: token.symbol,
-          symbol: token.symbol,
-          logoURI: logo,
-          decimal: token.ethContractDecimal,
-          minimalBridgeAmount: getClosestNumber(minimalBridgeAmount),
-          bridgeFee: { in: getClosestNumber(inAmount), out: getClosestNumber(outAmount) },
-        };
-        assetWhiteList.push(assetInfo);
+async function generateWhiteList(inPath: string, outPath: string): Promise<void> {
+  const tokens: Token[] = JSON.parse(fs.readFileSync(inPath, 'utf8'));
+  const assetWhiteList: WhiteListEthAsset[] = [];
+  let price = 1;
+  const bridgeInFee = await getBridgeInFeeInUSDT();
+  const bridgeOutFee = await getBridgeOutFeeInUSDT();
+  for (const token of tokens) {
+    if (['USDT', 'DAI'].includes(token.symbol)) {
+      price = 1;
+    } else {
+      price = await getAssetAVGPrice(token.symbol);
+      if (price <= 0) {
+        throw new Error(`wrong price for ${token.symbol}, price: ${price}`);
       }
-      writeJsonToFile(assetWhiteList, path);
     }
-  } catch (err) {
-    console.log(`failed to get erc20 tokens`, err);
-    throw err;
+    const baseAmount = new BigNumber(Math.pow(10, token.decimal)).div(new BigNumber(price));
+    const minimalBridgeAmount = baseAmount.multipliedBy(new BigNumber(2 * bridgeOutFee)).toFixed(0);
+    const inAmount = baseAmount.multipliedBy(new BigNumber(bridgeInFee)).toFixed(0);
+    const outAmount = baseAmount.multipliedBy(new BigNumber(bridgeOutFee)).toFixed(0);
+
+    const assetInfo: WhiteListEthAssetExtend = {
+      ...token,
+      minimalBridgeAmount: getClosestNumber(minimalBridgeAmount),
+      bridgeFee: { in: getClosestNumber(inAmount), out: getClosestNumber(outAmount) },
+      sudtArgs: addressToSudtArgs(token.address),
+    };
+    assetWhiteList.push(assetInfo);
+    console.log(`info: ${JSON.stringify(assetInfo)}, price: ${price}`);
   }
+  writeJsonToFile(assetWhiteList, outPath);
 }
 
 function getClosestNumber(sourceNumber: string): string {
@@ -118,3 +83,30 @@ function getClosestNumber(sourceNumber: string): string {
   }
   return result;
 }
+
+function addressToSudtArgs(address: string): string {
+  // mainnet config
+  const ownerCellTypeHash = utils.computeScriptHash({
+    code_hash: '0x00000000000000000000000000000000000000000000000000545950455f4944',
+    hash_type: 'type',
+    args: '0x36a3a692465d2fd3e855078280cba526d90c8b5c98c5da1c1f4430e1086ca602',
+  });
+  const bridgeLockscript = {
+    code_hash: '0x93bc7a915d3d8f8b9678bc6c7a1751738c99ce6e66bba4dfab56672f6d691789',
+    hash_type: 'type' as 'type' | 'data',
+    args: new EthAsset(address, ownerCellTypeHash).toBridgeLockscriptArgs(),
+  };
+  const sudtArgs = utils.computeScriptHash(bridgeLockscript);
+  return sudtArgs;
+}
+
+async function main() {
+  await generateWhiteList('../configs/raw-mainnet-asset-white-list.json', '../configs/mainnet-asset-white-list.json');
+}
+
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(`generate asset white list failed, error: ${error.stack}`);
+    process.exit(1);
+  });
