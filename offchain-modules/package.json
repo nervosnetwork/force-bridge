@@ -39,6 +39,7 @@
     "ci-config": "ts-node ./packages/scripts/src/integration-test/config/index.ts",
     "ci": "FORCE_BRIDGE_KEYSTORE_PASSWORD=123456 run-s prepare-ckb prepare-keystore ci-flow",
     "relayer-test": "CONFIG_PATH=./packages/scripts/src/integration-test/config/collector.json ts-node ./packages/app-relayer/src/index.ts",
+    "generate-asset-white-list": "ts-node ./packages/scripts/src/assetWhiteList.ts",
     "test:unit": "nyc --silent ava",
     "cov": "run-s build test:unit",
     "cov:html": "nyc report --reporter=html",

@@ -3,7 +3,7 @@ import { utils } from '@ckb-lumos/base';
 import { EthAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { WhiteListEthAsset } from '@force-bridge/x/dist/config';
 import { writeJsonToFile } from '@force-bridge/x/dist/utils';
-import axios from 'axios';
+import { getAssetAVGPrice, getClosestNumber } from '@force-bridge/x/dist/utils/price';
 import { BigNumber } from 'bignumber.js';
 
 export interface Token {
@@ -25,21 +25,10 @@ async function getBridgeInFeeInUSDT(): Promise<number> {
   const price = await getAssetAVGPrice('CKB');
   return price * BRIDGE_IN_CKB_FEE;
 }
+
 async function getBridgeOutFeeInUSDT(): Promise<number> {
   const price = await getAssetAVGPrice('ETH');
   return price * BRIDGE_OUT_ETH_FEE;
-}
-
-const BINANCE_EXCHANGE_API = 'https://www.binance.com/api/v3/ticker/24hr';
-
-async function getAssetAVGPrice(token: string): Promise<number> {
-  try {
-    const res = await axios.get(`${BINANCE_EXCHANGE_API}?symbol=${token}USDT`);
-    return res.data.weightedAvgPrice;
-  } catch (err) {
-    console.error('failed to get price of ', token, ' error : ', err.response.data);
-    return -1;
-  }
 }
 
 //  eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -73,15 +62,6 @@ async function generateWhiteList(inPath: string, outPath: string): Promise<void>
     console.log(`info: ${JSON.stringify(assetInfo)}, price: ${price}`);
   }
   writeJsonToFile(assetWhiteList, outPath);
-}
-
-function getClosestNumber(sourceNumber: string): string {
-  const decimalPlaces = 3;
-  let result: string = sourceNumber.slice(0, decimalPlaces);
-  for (let i = 0; i < sourceNumber.length - decimalPlaces; i++) {
-    result = result.concat('0');
-  }
-  return result;
 }
 
 function addressToSudtArgs(address: string): string {
