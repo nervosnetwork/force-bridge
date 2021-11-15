@@ -69,6 +69,8 @@ REACT_APP_BRIDGE_RPC_URL=http://127.0.0.1:4199/force-bridge/api/v1
 REACT_APP_CKB_RPC_URL=https://testnet.ckb.dev/rpc
 
 yarn install
+# build commons libraries
+yarn build:lib
 yarn workspace @force-bridge/ui run start
 ```
 
