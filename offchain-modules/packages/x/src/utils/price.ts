@@ -2,14 +2,34 @@ import axios from 'axios';
 
 const BINANCE_EXCHANGE_API = 'https://www.binance.com/api/v3/ticker/24hr';
 
-export async function getAssetAVGPrice(token: string): Promise<number> {
+export async function getAssetAVGPrice(token: string): Promise<string> {
   try {
     const res = await axios.get(`${BINANCE_EXCHANGE_API}?symbol=${token}USDT`);
     return res.data.weightedAvgPrice;
   } catch (err) {
-    console.error('failed to get price of ', token, ' error : ', err.response.data);
-    return -1;
+    throw new Error(`failed to get price of ${token}, error: ${err.response.data}`);
   }
+}
+
+interface CachedPrice {
+  price: string;
+  date: Date;
+}
+
+const age = 1000 * 60 * 60 * 6; // 6 hour
+const cache: { [key: string]: CachedPrice } = {};
+
+export async function getCachedAssetAVGPrice(token: string): Promise<string> {
+  const cachedPrice = cache[token];
+  if (cachedPrice && cachedPrice.date.getTime() + age > new Date().getTime()) {
+    return cachedPrice.price;
+  }
+  const price = await getAssetAVGPrice(token);
+  cache[token] = {
+    price,
+    date: new Date(),
+  };
+  return price;
 }
 
 export function getClosestNumber(sourceNumber: string): string {

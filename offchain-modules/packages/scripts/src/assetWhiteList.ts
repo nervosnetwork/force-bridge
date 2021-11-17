@@ -21,34 +21,31 @@ export interface WhiteListEthAssetExtend extends WhiteListEthAsset {
 const BRIDGE_IN_CKB_FEE = 400; // 400CKB
 const BRIDGE_OUT_ETH_FEE = 0.015; // 15W gas * 100Gwei
 
-async function getBridgeInFeeInUSDT(): Promise<number> {
+async function getBridgeInFeeInUSDT(): Promise<BigNumber> {
   const price = await getAssetAVGPrice('CKB');
-  return price * BRIDGE_IN_CKB_FEE;
+  return new BigNumber(price).times(BRIDGE_IN_CKB_FEE);
 }
 
-async function getBridgeOutFeeInUSDT(): Promise<number> {
+async function getBridgeOutFeeInUSDT(): Promise<BigNumber> {
   const price = await getAssetAVGPrice('ETH');
-  return price * BRIDGE_OUT_ETH_FEE;
+  return new BigNumber(price).times(BRIDGE_OUT_ETH_FEE);
 }
 
 //  eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function generateWhiteList(inPath: string, outPath: string): Promise<void> {
   const tokens: Token[] = JSON.parse(fs.readFileSync(inPath, 'utf8'));
   const assetWhiteList: WhiteListEthAsset[] = [];
-  let price = 1;
+  let price = new BigNumber(1);
   const bridgeInFee = await getBridgeInFeeInUSDT();
   const bridgeOutFee = await getBridgeOutFeeInUSDT();
   for (const token of tokens) {
     if (['USDT', 'DAI'].includes(token.symbol)) {
-      price = 1;
+      price = new BigNumber(1);
     } else {
-      price = await getAssetAVGPrice(token.symbol);
-      if (price <= 0) {
-        throw new Error(`wrong price for ${token.symbol}, price: ${price}`);
-      }
+      price = new BigNumber(await getAssetAVGPrice(token.symbol));
     }
     const baseAmount = new BigNumber(Math.pow(10, token.decimal)).div(new BigNumber(price));
-    const minimalBridgeAmount = baseAmount.multipliedBy(new BigNumber(2 * bridgeOutFee)).toFixed(0);
+    const minimalBridgeAmount = baseAmount.times(2).multipliedBy(bridgeOutFee).toFixed(0);
     const inAmount = baseAmount.multipliedBy(new BigNumber(bridgeInFee)).toFixed(0);
     const outAmount = baseAmount.multipliedBy(new BigNumber(bridgeOutFee)).toFixed(0);
 

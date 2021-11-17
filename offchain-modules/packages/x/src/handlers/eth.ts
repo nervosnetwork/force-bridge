@@ -1,4 +1,5 @@
 import { BigNumber } from 'ethers';
+import { TransferOutSwitch } from '../audit/switch';
 import { ChainType, EthAsset } from '../ckb/model/asset';
 import { forceBridgeRole } from '../config';
 import { ForceBridgeCore } from '../core';
@@ -321,6 +322,10 @@ export class EthHandler {
   handleTodoUnlockRecords(): void {
     foreverPromise(
       async () => {
+        if (!TransferOutSwitch.getInstance().getStatus()) {
+          logger.info('TransferOutSwitch is off, skip handleTodoUnlockRecords');
+          return;
+        }
         if (!this.syncedToStartTipBlockHeight()) {
           logger.info(
             `wait until syncing to startBlockHeight, lastHandledBlockHeight: ${this.lastHandledBlockHeight}, startTipBlockHeight: ${this.startTipBlockHeight}`,

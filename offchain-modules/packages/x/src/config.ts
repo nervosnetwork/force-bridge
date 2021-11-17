@@ -176,6 +176,14 @@ export interface monitorConfig {
   verifierEndpoints?: verifierEndpoint[];
 }
 
+export interface AuditConfig {
+  discordToken: string;
+  channelId: string;
+  auditThreshold: string;
+  sendStatusInterval: number;
+  valueAccumulateInterval: number;
+}
+
 export interface Config {
   common: commonConfig;
   ckb: CkbConfig;
@@ -185,4 +193,5 @@ export interface Config {
   btc: BtcConfig;
   collector?: collectorConfig;
   monitor?: monitorConfig;
+  audit?: AuditConfig;
 }

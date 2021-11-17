@@ -115,5 +115,8 @@
     "hooks": {
       "pre-commit": "lint-staged"
     }
+  },
+  "engines": {
+    "node": "14.x"
   }
 }

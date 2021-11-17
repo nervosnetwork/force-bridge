@@ -1,8 +1,10 @@
 import { Connection } from 'typeorm';
+import { Audit } from '../audit';
 import { ForceBridgeCore } from '../core';
 import { BridgeFeeDB, CkbDb, EthDb, KVDb, TronDb } from '../db';
 import { BtcDb } from '../db/btc';
 import { EosDb } from '../db/eos';
+import { StatDb } from '../db/stat';
 import { BtcHandler } from '../handlers/btc';
 import { CkbHandler } from '../handlers/ckb';
 import { EosHandler } from '../handlers/eos';
@@ -58,5 +60,13 @@ export function startHandlers(conn: Connection): void {
     const btcChain = new BTCChain();
     const btcHandler = new BtcHandler(btcDb, btcChain, role);
     btcHandler.start();
+  }
+
+  // start audit bot
+  if (ForceBridgeCore.config.audit !== undefined) {
+    const auditConfig = ForceBridgeCore.config.audit;
+    const statDb = new StatDb(conn);
+    const auditHandler = new Audit(statDb, ForceBridgeCore.config.eth.assetWhiteList, auditConfig);
+    auditHandler.start();
   }
 }
