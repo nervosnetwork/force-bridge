@@ -7,6 +7,7 @@ import { ForceBridgeCore } from '../core';
 import { asyncSleep } from '../utils';
 import { logger } from '../utils/logger';
 import { EthUnlockRecord } from '../xchain/eth';
+import { IAdaUnlock } from '../db/model';
 import { httpRequest } from './client';
 import { verifyCollector } from './utils';
 
@@ -52,7 +53,11 @@ export interface ckbCollectSignaturesPayload {
   txSkeleton: TransactionSkeletonObject;
 }
 
-export type collectSignaturesParamsPayload = ethCollectSignaturesPayload | ckbCollectSignaturesPayload;
+export interface adaCollectSignaturesPayload {
+  unlockRecords: IAdaUnlock[];
+}
+
+export type collectSignaturesParamsPayload = ethCollectSignaturesPayload | ckbCollectSignaturesPayload | adaCollectSignaturesPayload;
 
 export interface collectSignaturesParams {
   rawData: string;
@@ -191,6 +196,9 @@ export class MultiSigMgr {
         break;
       case 'ETH':
         method = 'signEthTx';
+        break;
+      case 'CARDANO':
+        method = 'signAdaTx';
         break;
       default:
         return Promise.reject(new Error(`chain type:${this.chainType} doesn't support`));

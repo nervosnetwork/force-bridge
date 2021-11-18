@@ -5,7 +5,7 @@ import { generateAddress, sealTransaction, TransactionSkeletonType } from '@ckb-
 import { RPC } from '@ckb-lumos/rpc';
 import { Reader } from 'ckb-js-toolkit';
 import * as lodash from 'lodash';
-import { BtcAsset, ChainType, EosAsset, EthAsset, getAsset, TronAsset } from '../ckb/model/asset';
+import { AdaAsset, BtcAsset, ChainType, EosAsset, EthAsset, getAsset, TronAsset } from '../ckb/model/asset';
 import { RecipientCellData } from '../ckb/tx-helper/generated/eth_recipient_cell';
 import { ForceBridgeLockscriptArgs } from '../ckb/tx-helper/generated/force_bridge_lockscript';
 import { MintWitness } from '../ckb/tx-helper/generated/mint_witness';
@@ -144,6 +144,16 @@ export class CkbHandler {
               ckbTxHash: burn.ckbTxHash,
               asset: burn.asset,
               assetType: getAssetTypeByAsset(burn.asset),
+              amount: unlockAmount,
+              recipientAddress: burn.recipientAddress,
+            },
+          ]);
+          break;
+        case ChainType.CARDANO:
+          await this.db.createCollectorAdaUnlock([
+            {
+              ckbTxHash: burn.ckbTxHash,
+              asset: burn.asset,
               amount: unlockAmount,
               recipientAddress: burn.recipientAddress,
             },
@@ -636,6 +646,14 @@ export class CkbHandler {
         return {
           id: r.id,
           asset: new EosAsset(r.asset, ownerTypeHash),
+          recipient: r.recipientLockscript,
+          amount: BigInt(r.amount),
+          sudtExtraData: r.sudtExtraData,
+        };
+      case ChainType.CARDANO:
+        return {
+          id: r.id,
+          asset: new AdaAsset(r.asset, ownerTypeHash),
           recipient: r.recipientLockscript,
           amount: BigInt(r.amount),
           sudtExtraData: r.sudtExtraData,
