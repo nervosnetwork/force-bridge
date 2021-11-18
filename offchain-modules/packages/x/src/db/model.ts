@@ -17,6 +17,8 @@ export { CkbMint } from './entity/CkbMint';
 export { CkbBurn } from './entity/CkbBurn';
 export { TronLock } from './entity/TronLock';
 export { TronUnlock } from './entity/TronUnlock';
+export { AdaUnlock } from './entity/AdaUnlock';
+export { AdaLock } from './entity/AdaLock';
 
 export interface ISigned {
   sigType: SigType;
@@ -191,6 +193,32 @@ export interface IBtcUnLock {
   asset: string;
   amount: string;
   recipientAddress: string;
+}
+
+export interface IAdaLock {
+  txHash: string;
+  sender: string;
+  token: string;
+  amount: string;
+  bridgeFee: string;
+  recipient: string;
+  sudtExtraData?: string;
+  blockNumber: number;
+  txTime: string;
+  uniqueId: string;
+  confirmNumber?: number;
+  confirmStatus?: TxConfirmStatus;
+}
+
+export interface IAdaUnlock {
+  ckbTxHash: string;
+  asset: string;
+  amount: string;
+  recipientAddress: string;
+  blockNumber?: number;
+  ethTxHash?: string;
+  status?: EthUnlockStatus;
+  message?: string;
 }
 
 export interface LockRecord {

@@ -22,6 +22,8 @@ import { TronUnlock } from '../db/entity/TronUnlock';
 import { WithdrawedBridgeFee } from '../db/entity/WithdrawedBridgeFee';
 import { KV } from '../db/entity/kv';
 import { nonNullable } from '../errors';
+import { AdaLock } from '../db/entity/AdaLock';
+import { AdaUnlock, CollectorAdaUnlock } from '../db/entity/AdaUnlock';
 
 export { asyncSleep, retryPromise, foreverPromise } from './promise';
 
@@ -131,6 +133,9 @@ export async function getDBConnection(): Promise<Connection> {
     synchronize: ormCfg!.synchronize,
     logging: ormCfg!.logging,
     entities: [
+      AdaLock,
+      AdaUnlock,
+      CollectorAdaUnlock,
       BtcLock,
       BtcUnlock,
       CkbBurn,
