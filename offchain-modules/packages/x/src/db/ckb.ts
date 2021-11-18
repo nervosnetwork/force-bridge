@@ -2,6 +2,7 @@
 import { Connection, In, UpdateResult } from 'typeorm';
 import { ChainType } from '../ckb/model/asset';
 import { ForceBridgeCore } from '../core';
+import { CollectorAdaUnlock } from './entity/AdaUnlock';
 import { CollectorCkbMint, dbTxStatus } from './entity/CkbMint';
 import { CollectorEthUnlock } from './entity/EthUnlock';
 import {
@@ -11,6 +12,7 @@ import {
   EosUnlock,
   EthLock,
   EthUnlock,
+  IAdaUnlock,
   IBtcUnLock,
   ICkbBurn,
   ICkbMint,
@@ -159,6 +161,12 @@ export class CkbDb {
     const btcUnlockRepo = await this.connection.getRepository(BtcUnlock);
     const dbRecords = records.map((r) => btcUnlockRepo.create(r));
     await btcUnlockRepo.save(dbRecords);
+  }
+
+  async createCollectorAdaUnlock(records: IAdaUnlock[]): Promise<void> {
+    const adaUnlockRepo = this.connection.getRepository(CollectorAdaUnlock);
+    const dbRecords = records.map((r) => adaUnlockRepo.create(r));
+    await adaUnlockRepo.save(dbRecords);
   }
 
   async updateBurnConfirmNumber(

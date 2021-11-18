@@ -9,6 +9,8 @@ import * as lodash from 'lodash';
 import { Connection, createConnection } from 'typeorm';
 import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
 import { ForceBridgeCore } from '../core';
+import { AdaLock } from '../db/entity/AdaLock';
+import { AdaUnlock, CollectorAdaUnlock } from '../db/entity/AdaUnlock';
 import { BtcLock } from '../db/entity/BtcLock';
 import { BtcUnlock } from '../db/entity/BtcUnlock';
 import { CkbBurn } from '../db/entity/CkbBurn';
@@ -145,6 +147,9 @@ export async function getDBConnection(): Promise<Connection> {
     synchronize: ormCfg!.synchronize,
     logging: ormCfg!.logging,
     entities: [
+      AdaLock,
+      AdaUnlock,
+      CollectorAdaUnlock,
       BtcLock,
       BtcUnlock,
       CkbBurn,
