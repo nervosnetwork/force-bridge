@@ -1,0 +1,16 @@
+FROM ubuntu:latest
+
+COPY --from=dfordivam/cardano-wallet:2021.9.29 /nix /nix
+COPY --from=dfordivam/cardano-wallet:2021.9.29 /bin/cardano-wallet /usr/local/bin/
+COPY --from=dfordivam/cardano-wallet:2021.9.29 /bin/cardano-cli /usr/local/bin/
+
+COPY run_cardano-wallet.sh /run_cardano-wallet.sh
+
+# the "cardano-wallet" CLI tool can only connect to localhost.
+# we use "socat" to proxy requests to a different host.
+RUN apt-get update
+RUN apt-get -y install socat netcat jq
+
+RUN mkdir -p /cardano-wallet/data
+WORKDIR /cardano-wallet
+

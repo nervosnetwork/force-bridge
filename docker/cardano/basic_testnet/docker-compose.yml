@@ -1,0 +1,59 @@
+version: "3.4"
+
+services:
+   cardano-nodes-and-cli:
+      container_name: cardano-nodes-and-cli
+      image: cardano-node
+      build:
+        context: .
+        dockerfile: Dockerfile.cardano-node
+      entrypoint: /setup_cardano-node.sh "/cardano-wallet/node-data" "/fund_user_wallet.sh"
+      ports:
+        - ${NODE_PORT:-3001}:3001
+      volumes:
+        - node-data:/cardano-node
+        - node-sockets:/cardano-node-sockets
+      logging:
+        driver: "local"
+        options:
+          max-size: "200k"
+          max-file: "10"
+
+   cardano-wallet:
+      image: cardano-wallet
+      container_name: cardano-wallet
+      build:
+        context: .
+        dockerfile: Dockerfile.cardano-wallet
+      entrypoint: /run_cardano-wallet.sh "/cardano-wallet/node-data"
+      ports:
+        - ${WALLET_SERVER_PORT:-8190}:8190
+      networks:
+         - cardano-wallet-network
+      volumes:
+        - wallet-data:/cardano-wallet/data
+        - node-data:/cardano-wallet/node-data
+        - node-sockets:/cardano-node-sockets
+
+   setup-testnet:
+      build:
+        context: .
+        dockerfile: Dockerfile.setup_testnet
+      entrypoint: /setup_testnet.sh "/cardano-wallet/node-data" "cardano-wallet" "surface column cluster fog rely clap small armor horn worry festival dawn chuckle gospel vague melt lift reduce dish razor secret gloom glide correct"
+      volumes:
+        - node-data:/cardano-wallet/node-data
+        - node-sockets:/cardano-node-sockets
+      depends_on:
+        - cardano-wallet
+        - cardano-nodes-and-cli
+      networks:
+         - cardano-wallet-network
+
+networks:
+   cardano-wallet-network:
+      driver: bridge
+
+volumes:
+  node-data:
+  wallet-data:
+  node-sockets:

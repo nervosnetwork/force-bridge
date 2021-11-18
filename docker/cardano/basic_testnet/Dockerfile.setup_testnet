@@ -1,0 +1,6 @@
+FROM cardano-wallet
+
+COPY setup_testnet.sh /
+COPY setup_wallet.sh /
+COPY fund_user_wallet.sh /
+WORKDIR /
