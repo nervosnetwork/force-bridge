@@ -1,0 +1,30 @@
+FROM bridge_nix-base
+
+# https://iohk.zendesk.com/hc/en-us/articles/900000672303-How-to-build-and-run-cardano-wallet-using-Nix
+RUN git clone https://github.com/obsidiansystems/cardano-wallet.git
+WORKDIR /cardano-wallet
+
+# Using the cardano-wallet with single-address-wallets support
+RUN git checkout de4fac8fd8a426c4d34ba530c3d3fabb8338b135
+RUN nix-env -iA cardano-cli -iA cardano-wallet -f default.nix
+
+RUN mkdir data/
+
+# used by tests
+RUN nix-env -iA nixpkgs.bash
+RUN nix-env -iA nixpkgs.jq
+
+# the "cardano-wallet" CLI tool can only connect to localhost.
+# we use "socat" to proxy requests to a different host.
+RUN nix-env -iA nixpkgs.socat
+
+# Command for running cardano-wallet:
+#
+#   cardano-wallet serve \
+#       --node-socket <path_to_cardano-node_socket> \
+#       --testnet <path_to_byron-genesis.json> \
+#       --database /cardano-wallet/data
+
+RUN nix-collect-garbage -d
+
+COPY run_cardano-wallet.sh /run_cardano-wallet.sh

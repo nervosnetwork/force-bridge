@@ -1,0 +1,12 @@
+FROM nixos/nix:2.3.12
+
+RUN nix-channel --add https://nixos.org/channels/nixpkgs-unstable nixpkgs
+# fix bug: https://github.com/NixOS/nix/issues/2651#issuecomment-458123444
+RUN echo "filter-syscalls = false" >> /etc/nix/nix.conf
+RUN nix-channel --update
+
+RUN nix-env -iA nixpkgs.gitMinimal
+
+# https://github.com/input-output-hk/cardano-node/blob/master/doc/getting-started/building-the-node-using-nix.md/#iohk-binary-cache
+RUN echo "substituters = https://cache.nixos.org https://hydra.iohk.io" >> /etc/nix/nix.conf
+RUN echo "trusted-public-keys = iohk.cachix.org-1:DpRUyj7h7V830dp/i6Nti+NEO2/nhblbov/8MW7Rqoo= hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ= cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" >> /etc/nix/nix.conf

@@ -1,0 +1,24 @@
+FROM bridge_nix-base
+
+# https://iohk.zendesk.com/hc/en-us/articles/900000672303-How-to-build-and-run-cardano-wallet-using-Nix
+RUN git clone https://github.com/input-output-hk/cardano-node.git
+WORKDIR /cardano-node
+
+# Use a recent release
+RUN git checkout 1.30.1
+RUN nix-env -iA cardano-cli -iA cardano-node -f default.nix
+
+# used by tests
+RUN nix-env -iA nixpkgs.bash
+RUN nix-env -iA nixpkgs.coreutils
+
+# Command for running cardano-node:
+#
+#   cd cardano-node && scripts/byron-to-alonzo/mkfiles.sh alonzo && example/run/all.sh
+#
+# Socket file: /cardano-node/example/node-bft1/node.sock
+
+RUN nix-collect-garbage -d
+
+COPY setup_cardano-node.sh /setup_cardano-node.sh
+COPY run_cardano-node.sh /run_cardano-node.sh
