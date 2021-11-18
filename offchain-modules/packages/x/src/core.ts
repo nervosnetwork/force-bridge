@@ -45,6 +45,7 @@ export class XChainHandlers {
   public btc?: XChainHandler;
   public eos?: XChainHandler;
   public tron?: XChainHandler;
+  public ada?: XChainHandler;
 }
 
 export interface XChainHandler {

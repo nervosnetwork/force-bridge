@@ -1,5 +1,5 @@
 import { parseAddress } from '@ckb-lumos/helpers';
-import { Asset, BtcAsset, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
+import { Asset, AdaAsset, BtcAsset, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
 import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
@@ -65,7 +65,9 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
 
   constructor(conn: Connection) {
     this.connection = conn;
-    this.web3 = new Web3(ForceBridgeCore.config.eth.rpcUrl);
+    if (ForceBridgeCore.config.eth !== undefined) {
+      this.web3 = new Web3(ForceBridgeCore.config.eth.rpcUrl);
+    }
   }
 
   async generateBridgeInNervosTransaction<T extends NetworkTypes>(
@@ -175,6 +177,9 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         break;
       case 'Tron':
         asset = new TronAsset(assetName, ownerTypeHash);
+        break;
+      case 'Cardano':
+        asset = new AdaAsset(assetName, ownerTypeHash);
         break;
       default:
         //TODO: add other chains

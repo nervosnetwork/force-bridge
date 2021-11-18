@@ -101,6 +101,18 @@ export interface BtcConfig {
   confirmNumber: number;
 }
 
+export interface AdaConfig {
+  walletRpcUrl: string;
+  walletName: string;
+  multiSignKeyHashes: string[];
+  multiSignHosts: MultiSignHost[];
+  multiSignThreshold: number;
+  confirmNumber: number;
+  startBlockHeight: number;
+  networkId: number;
+  privateKey?: string;
+}
+
 export interface logConfig {
   level: string;
   logFile?: string;
@@ -196,6 +208,7 @@ export interface Config {
   eos: EosConfig;
   tron: TronConfig;
   btc: BtcConfig;
+  ada: AdaConfig;
   collector?: collectorConfig;
   monitor?: monitorConfig;
   audit?: AuditConfig;
