@@ -17,6 +17,7 @@ import { Connection } from 'typeorm';
 import { signCkbTx } from './ckbSigner';
 import { SigError, SigErrorCode } from './error';
 import { signEthTx } from './ethSigner';
+import { signAdaTx } from './adaSigner';
 import { getPendingTx, getPendingTxResult } from './pendingTx';
 import { serverStatus, serverStatusResult } from './status';
 
@@ -25,6 +26,7 @@ const apiPath = '/force-bridge/sign-server/api/v1';
 
 const ethPendingTxKey = 'ethPendingTx';
 const ckbPendingTxKey = 'ckbPendingTx';
+const adaPendingTxKey = 'adaPendingTx';
 
 export type SigResponseData = string | serverStatusResult | getPendingTxResult;
 
@@ -61,13 +63,15 @@ export class SigServer {
   static metrics: SigserverMetric;
 
   constructor(conn: Connection) {
-    SigServer.ethProvider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
-    SigServer.ethInterface = new ethers.utils.Interface(abi);
-    SigServer.ethBridgeContract = new ethers.Contract(
-      ForceBridgeCore.config.eth.contractAddress,
-      abi,
-      SigServer.ethProvider,
-    );
+    if (ForceBridgeCore.config.eth !== undefined) {
+      SigServer.ethProvider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
+      SigServer.ethInterface = new ethers.utils.Interface(abi);
+      SigServer.ethBridgeContract = new ethers.Contract(
+        ForceBridgeCore.config.eth.contractAddress,
+        abi,
+        SigServer.ethProvider,
+      );
+    }
     SigServer.conn = conn;
     SigServer.signedDb = new SignedDb(conn);
     SigServer.ckbDb = new CkbDb(conn);
@@ -91,6 +95,11 @@ export class SigServer {
       ethKeys[ethAddress] = ethPrivateKey;
       SigServer.keys['eth'] = ethKeys;
     }
+    if (ForceBridgeCore.config.ada !== undefined) {
+      const adaKeys = new Map<string, string>();
+      adaKeys[''] = ForceBridgeCore.config.ada.privateKey!;
+      SigServer.keys['ada'] = adaKeys;
+    }
   }
 
   static getKey(chain: string, address: string): string | undefined {
@@ -109,6 +118,9 @@ export class SigServer {
         break;
       case 'eth':
         pendingTxKey = ethPendingTxKey;
+        break;
+      case 'cardano':
+        pendingTxKey = adaPendingTxKey;
         break;
       default:
         throw new Error(`invalid chain type:${chain}`);
@@ -136,6 +148,9 @@ export class SigServer {
         break;
       case 'eth':
         pendingTxKey = ethPendingTxKey;
+        break;
+      case 'cardano':
+        pendingTxKey = adaPendingTxKey;
         break;
       default:
         throw new Error(`invalid chain type:${chain}`);
@@ -171,6 +186,14 @@ export async function startSigServer(configPath: string): Promise<void> {
       return await signEthTx(params);
     } catch (e) {
       logger.error(`signEthTx params:${JSON.stringify(params)} error:${e.stack}`);
+      return SigResponse.fromSigError(SigErrorCode.UnknownError, e.message);
+    }
+  });
+  server.addMethod('signAdaTx', async (params: collectSignaturesParams) => {
+    try {
+      return await signAdaTx(params);
+    } catch (e) {
+      logger.error(`signAdaTx params:${JSON.stringify(params)} error:${e.stack}`);
       return SigResponse.fromSigError(SigErrorCode.UnknownError, e.message);
     }
   });
