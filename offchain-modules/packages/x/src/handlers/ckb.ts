@@ -363,16 +363,18 @@ export class CkbHandler {
     }
     if (confirmed && this.role === 'collector') {
       const unlockRecord = unlockRecords[0];
-      try {
-        const asset = getAsset(unlockRecord.chain, unlockRecord.asset);
-        const fee = asset.getBridgeFee('out');
-        if (BigInt(unlockRecord.amount) <= BigInt(fee)) {
-          throw new Error(`unlock record amount ${unlockRecord.amount} low than fee ${fee}`);
+      if (unlockRecord.chain != ChainType.CARDANO) {
+        try {
+          const asset = getAsset(unlockRecord.chain, unlockRecord.asset);
+          const fee = asset.getBridgeFee('out');
+          if (BigInt(unlockRecord.amount) <= BigInt(fee)) {
+            throw new Error(`unlock record amount ${unlockRecord.amount} low than fee ${fee}`);
+          }
+          unlockRecord.bridgeFee = fee;
+        } catch (e) {
+          logger.warn(`fail to get fee to confirm burn, err: ${e.stack}`);
+          return;
         }
-        unlockRecord.bridgeFee = fee;
-      } catch (e) {
-        logger.warn(`fail to get fee to confirm burn, err: ${e.stack}`);
-        return;
       }
       await this.onCkbBurnConfirmed([unlockRecord]);
       logger.info(`save unlock successful for burn tx ${txHash}`);
