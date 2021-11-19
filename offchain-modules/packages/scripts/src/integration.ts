@@ -26,7 +26,7 @@ export interface MultisigConfig {
   verifiers: VerifierConfig[];
 }
 
-async function handleDb(action: 'create' | 'drop', MULTISIG_NUMBER: number) {
+export async function handleDb(action: 'create' | 'drop', MULTISIG_NUMBER: number) {
   if (action === 'create') {
     for (let i = 0; i < MULTISIG_NUMBER; i++) {
       await execShellCmd(
@@ -155,7 +155,7 @@ async function generateConfig(
   // docker compose file
 }
 
-async function startVerifierService(
+export async function startVerifierService(
   FORCE_BRIDGE_KEYSTORE_PASSWORD: string,
   forcecli: string,
   configPath: string,
@@ -415,9 +415,9 @@ async function main() {
   logger.info('change validator test pass!');
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    logger.error(`integration test failed, error: ${error.stack}`);
-    process.exit(1);
-  });
+// main()
+//   .then(() => process.exit(0))
+//   .catch((error) => {
+//     logger.error(`integration test failed, error: ${error.stack}`);
+//     process.exit(1);
+//   });

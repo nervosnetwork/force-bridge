@@ -28,6 +28,7 @@
     "eth-test": "CONFIG_PATH=./packages/scripts/src/integration-test/config/watcher.json ts-node ./packages/scripts/src/integration-test/eth.ts",
     "eos-test": "ts-node ./packages/scripts/src/integration-test/eos.ts",
     "tron-test": "ts-node ./packages/scripts/src/integration-test/tron.ts",
+    "cardano-integ": "ts-node ./packages/scripts/src/cardano-integ.ts",
     "xchain-test": "run-s prepare-xchain-test eth-test",
     "prepare-xchain-test": "sleep 5",
     "btc-test": "ts-node ./packages/scripts/src/integration-test/btc.ts",

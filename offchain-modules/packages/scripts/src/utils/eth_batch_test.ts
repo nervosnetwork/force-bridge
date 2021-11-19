@@ -56,10 +56,11 @@ export async function generateBurnTx(
   sender: string,
   recipient: string,
   amount: string,
+  network: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
   const burnPayload = {
-    network: 'Ethereum',
+    network: network,
     sender: sender,
     recipient: recipient,
     asset: asset,
@@ -178,6 +179,7 @@ export async function burn(
   recipient: string,
   ethTokenAddress: string,
   burnAmount: string,
+  network: string,
   intervalMs = 0,
 ): Promise<Array<string>> {
   const batchNum = ckbPrivs.length;
@@ -185,7 +187,7 @@ export async function burn(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const signedBurnTxs = new Array<any>();
   for (let i = 0; i < batchNum; i++) {
-    const burnTx = await generateBurnTx(ckb, client, ethTokenAddress, ckbPrivs[i], senders[i], recipient, burnAmount);
+    const burnTx = await generateBurnTx(ckb, client, ethTokenAddress, ckbPrivs[i], senders[i], recipient, burnAmount, network);
     signedBurnTxs.push(burnTx);
   }
 
@@ -210,7 +212,7 @@ async function check(
   }
 }
 
-function prepareCkbPrivateKeys(batchNum: number): Array<string> {
+export function prepareCkbPrivateKeys(batchNum: number): Array<string> {
   const privateKeys = new Array<string>();
   for (let i = 0; i < batchNum; i++) {
     privateKeys.push(ethers.Wallet.createRandom().privateKey);
@@ -368,7 +370,7 @@ export async function ethBatchTest(
   const lockTxs = await lock(client, provider, ethWallet, ckbAddresses, ethTokenAddress, lockAmount, ethNodeUrl);
   await check(client, lockTxs, ckbAddresses, batchNum, ethTokenAddress);
 
-  const burnTxs = await burn(ckb, client, ckbPrivs, ckbAddresses, ethAddress, ethTokenAddress, burnAmount);
+  const burnTxs = await burn(ckb, client, ckbPrivs, ckbAddresses, ethAddress, ethTokenAddress, burnAmount, 'Ethereum');
   await check(client, burnTxs, ckbAddresses, batchNum, ethTokenAddress);
   logger.info('ethBatchTest pass!');
 }
