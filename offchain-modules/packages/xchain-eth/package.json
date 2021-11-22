@@ -21,7 +21,7 @@
     "typechain": "^5.0.0"
   },
   "peerDependencies": {
-    "@nervosnetwork/ckb-sdk-core": "^0.39.0"
+    "@nervosnetwork/ckb-sdk-core": "^0.101.0"
   },
   "publishConfig": {
     "access": "public"

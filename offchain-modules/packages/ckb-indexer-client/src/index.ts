@@ -22,7 +22,7 @@ export type IndexerIterableResult<T> = {
 };
 
 type ScriptType = 'lock' | 'type';
-type ScriptHashType = 'type' | 'data';
+type ScriptHashType = 'type' | 'data' | 'data1';
 export type Script = {
   code_hash: Bytes32;
   args: string;
