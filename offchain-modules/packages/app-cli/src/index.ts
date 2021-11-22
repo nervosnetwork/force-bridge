@@ -2,11 +2,11 @@
 import commander from 'commander';
 import { feeCmd } from './bridgeFee';
 import { changeValCmd } from './changeVal';
+import { relayerCmd } from './collector';
 import { configCmd } from './config';
 import { ethCmd } from './eth';
 import { keystoreCmd } from './keystore';
 import { monitorCmd } from './monitor';
-import { relayerCmd } from './relayer';
 import { rpcCmd } from './rpc';
 import { sigCmd } from './sigServer';
 
