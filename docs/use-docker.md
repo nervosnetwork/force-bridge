@@ -10,7 +10,7 @@ cd offchain-modules
 yarn startDevDockerDeps
 # deploy the contracts and generate all configs for you
 yarn dev-docker:generate
-
+# start off chain modules and ui server
 cd ../workdir/dev-docker
 docker-compose up -d
 ```
@@ -51,7 +51,7 @@ cd offchain-modules
 # generate all configs
 yarn testnet-docker:generate
 # install and build force bridge inside docker
-docker run --rm -v ${offchainModulePath}:/app -v force-bridge-node-modules:/app/node_modules node:14 bash -c 'cd /app && yarn build'
+docker run --rm -v ${offchainModulePath}:/app -v force-bridge-node-modules:/app/node_modules node:14.18.1-bullseye bash -c 'cd /app && yarn build'
 cd workdir/testnet-docker
 docker-compose up -d
 ```

@@ -24,7 +24,7 @@ If you started you verifier with docker like [this](./deploy-with-docker.md), ch
     ports:
       - 3091:9115
   verifier:
-    image: node:14
+    image: node:14.18.1-bullseye
     restart: always
     environment:
       FORCE_BRIDGE_KEYSTORE_PASSWORD: 123456
