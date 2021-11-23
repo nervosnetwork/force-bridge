@@ -32,6 +32,7 @@ export interface CkbDeps {
   bridgeLock: ConfigItem;
   recipientType: ConfigItem;
   sudtType: ConfigItem;
+  pwLock: ConfigItem;
 }
 
 export interface CkbConfig {
