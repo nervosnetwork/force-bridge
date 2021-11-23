@@ -229,6 +229,20 @@ services:
     networks:
       - {{network}}
 {{/verifiers}}      
+  ui:
+    image: node:12
+    restart: on-failure
+    volumes:
+      - {{&projectDir}}/workdir/dev-docker/ui:/app
+    ports:
+      - "3003:3003"
+    command: |
+      sh -c '
+      cd /
+      npx serve -s app -l 3003
+      '
+    networks:
+      - docker_force-dev-net
 volumes:
   force-bridge-node-modules:
     external: true
@@ -339,6 +353,6 @@ async function main() {
 main()
   .then(() => process.exit(0))
   .catch((error) => {
-    logger.error(`integration test failed, error: ${error.stack}`);
+    logger.error(`dev docker generate failed, error: ${error.stack}`);
     process.exit(1);
   });
