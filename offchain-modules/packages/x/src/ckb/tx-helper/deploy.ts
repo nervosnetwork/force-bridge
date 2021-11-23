@@ -231,6 +231,44 @@ export class CkbDeployManager extends CkbTxHelper {
     };
   }
 
+  // should only be called in dev net
+  async deployContract(contractBin: Buffer, privateKey: string): Promise<ConfigItem> {
+    await this.indexer.waitForSync();
+    let txSkeleton = TransactionSkeleton({ cellProvider: this.indexer });
+    // get from cells
+    const fromAddress = generateSecp256k1Blake160Address(key.privateKeyToBlake160(privateKey));
+    const fromLockscript = parseAddress(fromAddress);
+    // add output
+    const contractOutput: Cell = {
+      cell_output: {
+        capacity: '0x0',
+        lock: fromLockscript,
+      },
+      data: utils.bytesToHex(contractBin),
+    };
+    const contractCellCapacity = minimalCellCapacity(contractOutput);
+    contractOutput.cell_output.capacity = `0x${contractCellCapacity.toString(16)}`;
+    txSkeleton = txSkeleton.update('outputs', (outputs) => {
+      return outputs.push(contractOutput);
+    });
+    txSkeleton = await this.completeTx(txSkeleton, fromAddress);
+    const hash = await this.SignAndSendTransaction(txSkeleton, privateKey);
+    const contractCodeHash = utils.bytesToHex(blake2b(contractBin));
+    return {
+      cellDep: {
+        depType: 'code',
+        outPoint: {
+          txHash: hash,
+          index: '0x0',
+        },
+      },
+      script: {
+        codeHash: contractCodeHash,
+        hashType: 'data',
+      },
+    };
+  }
+
   async SignAndSendTransaction(txSkeleton: TransactionSkeletonType, privateKey: string): Promise<string> {
     txSkeleton = await common.prepareSigningEntries(txSkeleton);
     const message = txSkeleton.get('signingEntries').get(0)!.message;

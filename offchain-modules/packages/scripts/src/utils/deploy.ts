@@ -63,8 +63,12 @@ export async function deployDev(
       PATH_RECIPIENT_TYPESCRIPT = pathFromProjectRoot('/ckb-contracts/build/release-devnet/recipient-typescript');
       PATH_BRIDGE_LOCKSCRIPT = pathFromProjectRoot('/ckb-contracts/build/release-devnet/bridge-lockscript');
       const PATH_SUDT_DEP = pathFromProjectRoot('/offchain-modules/deps/simple_udt');
+      const PATH_PW_LOCK_DEP = pathFromProjectRoot('/offchain-modules/deps/pw_lock');
       const sudtBin = fs.readFileSync(PATH_SUDT_DEP);
+      const pwLockBin = fs.readFileSync(PATH_PW_LOCK_DEP);
       sudtDep = await ckbDeployGenerator.deploySudt(sudtBin, ckbPrivateKey);
+      const pwLockDep = await ckbDeployGenerator.deployContract(pwLockBin, ckbPrivateKey);
+      logger.info('deployed pwLockDep', { pwLockDep });
     } else if (env === 'AGGRON4') {
       PATH_RECIPIENT_TYPESCRIPT = pathFromProjectRoot('/ckb-contracts/build/release-aggron/recipient-typescript');
       PATH_BRIDGE_LOCKSCRIPT = pathFromProjectRoot('/ckb-contracts/build/release-aggron/bridge-lockscript');
@@ -105,9 +109,15 @@ export async function deployDev(
   const ownerConfig: OwnerCellConfig = await ckbDeployGenerator.createOwnerCell(multisigItem, ckbPrivateKey);
   logger.info('ownerConfig', ownerConfig);
   // generate_configs
-  const assetWhiteList: WhiteListEthAsset[] = JSON.parse(
-    fs.readFileSync(pathFromProjectRoot('/configs/testnet-asset-white-list.json'), 'utf8'),
-  );
+  let assetWhiteListPath: string;
+  if (env === 'DEV') {
+    assetWhiteListPath = pathFromProjectRoot('/configs/devnet-asset-white-list.json')
+  } else if (env === 'AGGRON4') {
+    assetWhiteListPath = pathFromProjectRoot('/configs/testnet-asset-white-list.json')
+  } else {
+    throw new Error(`wrong env: ${env}`);
+  }
+  const assetWhiteList: WhiteListEthAsset[] = JSON.parse(fs.readFileSync(assetWhiteListPath, 'utf8'));
   const multisigConfig = {
     threshold: MULTISIG_THRESHOLD,
     verifiers: verifierConfigs,

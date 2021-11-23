@@ -228,6 +228,20 @@ services:
     networks:
       - {{network}}
 {{/verifiers}}      
+  ui:
+    image: node:12
+    restart: on-failure
+    volumes:
+      - {{&projectDir}}/workdir/dev-docker/ui:/app
+    ports:
+      - "3003:3003"
+    command: |
+      sh -c '
+      cd /
+      npx serve -s app -l 3003
+      '
+    networks:
+      - docker_force-dev-net
 volumes:
   force-bridge-node-modules:
     external: true
@@ -336,6 +350,13 @@ async function main() {
   fs.writeFileSync(path.join(configPath, 'docker-compose.yml'), dockerComposeFile);
   await execShellCmd(
     `docker run --rm -v ${offchainModulePath}:/app -v force-bridge-node-modules:/app/node_modules node:14 bash -c 'cd /app && yarn build'`,
+  );
+  await execShellCmd(
+    `docker run --rm -v ${configPath}/ui:/build node:12 bash -c ' \\
+      git clone https://github.com/nervosnetwork/force-bridge-ui.git -b main /force-bridge-ui; \\
+      cd /force-bridge-ui && yarn install && yarn build:lib; \\
+      cd apps/ui && echo -e REACT_APP_BRIDGE_RPC_URL=http://localhost:3199/force-bridge/api/v1\\\\nREACT_APP_CKB_RPC_URL=http://localhost:8114/rpc\\\\nREACT_APP_CKB_CHAIN_ID=2\\\\nREACT_APP_ETHEREUM_ENABLE_CHAIN_ID=1234\\\\nREACT_APP_ETHEREUM_ENABLE_CHAIN_NAME=local > .env.local \\
+      && yarn run build && cp -rf build/* /build'`,
   );
 }
 

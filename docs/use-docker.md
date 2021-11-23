@@ -10,7 +10,7 @@ cd offchain-modules
 yarn startDevDockerDeps
 # deploy the contracts and generate all configs for you
 yarn dev-docker:generate
-
+# start off chain modules and ui server
 cd ../workdir/dev-docker
 docker-compose up -d
 ```
