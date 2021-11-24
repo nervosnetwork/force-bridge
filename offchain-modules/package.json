@@ -29,6 +29,7 @@
     "eos-test": "ts-node ./packages/scripts/src/integration-test/eos.ts",
     "tron-test": "ts-node ./packages/scripts/src/integration-test/tron.ts",
     "cardano-integ": "ts-node ./packages/scripts/src/cardano-integ.ts",
+    "cardano-native-tokens": "ts-node ./packages/scripts/src/cardano-native-tokens.ts",
     "xchain-test": "run-s prepare-xchain-test eth-test",
     "prepare-xchain-test": "sleep 5",
     "btc-test": "ts-node ./packages/scripts/src/integration-test/btc.ts",

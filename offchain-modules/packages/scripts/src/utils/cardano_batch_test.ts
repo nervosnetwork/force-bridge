@@ -58,7 +58,7 @@ export async function cardanoBatchTest(
   logger.info('adaBatchTest pass!');
 }
 
-async function getUserWallet(WALLET_SERVER_URL: string, adaWalletMnemonic: string, passphrase: string): Promise<ShelleyWallet> {
+export async function getUserWallet(WALLET_SERVER_URL: string, adaWalletMnemonic: string, passphrase: string): Promise<ShelleyWallet> {
   let walletServer = WalletServer.init(WALLET_SERVER_URL);
   let wallets: ShelleyWallet[] = await walletServer.wallets();
   let walletName = 'user_test_wallet';

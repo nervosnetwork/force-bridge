@@ -19,7 +19,8 @@ export class AdaChain {
   public readonly multisigMgr: MultiSigMgr;
   public readonly bridgeMultiSigAddr: string;
   public readonly bridgeMultiSigScript: CardanoWasm.NativeScript;
-  private walletServer: WalletServer;
+  public readonly policyId: CardanoWasm.ScriptHash;
+  public readonly walletServer: WalletServer;
   private walletId: Promise<string>;
   private singleAddressWalletClient: any;
 
@@ -33,6 +34,7 @@ export class AdaChain {
       }
       this.bridgeMultiSigScript = utils.createMultiSigScript(keyHashes, config.multiSignThreshold);
       this.bridgeMultiSigAddr = utils.getScriptAddress(this.bridgeMultiSigScript, config.networkId).to_address().to_bech32();
+      this.policyId = utils.getScriptHash(this.bridgeMultiSigScript);
     } catch (e) {
       logger.error(`AdaChain: could not create bridgeMultiSigScript from multiSignKeyHashes`);
       throw e;
@@ -147,7 +149,7 @@ export class AdaChain {
     // TODO: This should be configurable, and tracked by the verifiers
     const ttl = await this.getCurrentSlotNumber() + 1000;
 
-    return utils.makeTxBody(coinSelection, ttl);
+    return utils.makeTxBody(coinSelection, this.policyId, ttl);
   }
 
   private async signUnlockRecords(
@@ -163,6 +165,73 @@ export class AdaChain {
       },
     });
   }
+
+  async buildMintTxBody(
+    assetName: string,
+    quantity: number,
+  ): Promise<CardanoWasm.TransactionBody> {
+    let walletId = await this.walletId;
+
+    // Assuming the fees would be lesser than 1 Ada
+    const oneAda = 1000000;
+    // Get coin selection / Tx inputs for paying fees
+    const payment = {
+      address: this.bridgeMultiSigAddr,
+      amount: { quantity: oneAda,
+                unit: WalletswalletIdpaymentfeesAmountUnitEnum.Lovelace
+              },
+    };
+    const body: ApiPostTransactionFeeData = {
+      payments: [payment],
+    };
+    const resp = await this.singleAddressWalletClient.coinSelection(body, walletId);
+    const coinSelection = resp.data;
+    logger.debug("AdaChain: buildMintTxBody: coinSelection", coinSelection)
+
+    const ttl = await this.getCurrentSlotNumber() + 1000;
+
+    // TODO: use cardano-cli to calculate fee, as cardano-wallet does not have mint support
+    const fee = 1000;
+    return utils.makeMintTxBody(coinSelection, this.policyId, assetName, quantity, fee, ttl);
+  }
+
+  async buildTokenIssueTxBody(
+    recipient: string,
+    assetName: string,
+    quantity: number,
+  ): Promise<CardanoWasm.TransactionBody> {
+    let walletId = await this.walletId;
+
+    // Token transfer require min 1 Ada
+    const oneAda = 1000000;
+    // Get coin selection / Tx inputs for paying fees
+    const payment = {
+      address: recipient,
+      amount: { quantity: oneAda,
+                unit: WalletswalletIdpaymentfeesAmountUnitEnum.Lovelace
+              },
+      assets: [
+        { policy_id: Buffer.from(this.policyId.to_bytes()).toString('hex'),
+          asset_name: Buffer.from(assetName).toString('hex'),
+          quantity: quantity,
+        }
+      ]
+    };
+    const body: ApiPostTransactionFeeData = {
+      payments: [payment],
+    };
+    const resp = await this.singleAddressWalletClient.coinSelection(body, walletId);
+    const coinSelection = resp.data;
+    logger.debug("AdaChain: buildTokenIssueTxBody: coinSelection", coinSelection)
+
+    const ttl = await this.getCurrentSlotNumber() + 1000;
+    // The coin-selection by cardano-wallet does not properly calculate min-fee
+    // with assets, so add an extra amount to make Tx succeed
+    const extraFee = 1000;
+
+    return utils.makeTxBody(coinSelection, this.policyId, ttl, extraFee);
+  }
+
 
   // TODO: we could hash the address, and directly check the walletId, removing
   // the need of wallet name.
