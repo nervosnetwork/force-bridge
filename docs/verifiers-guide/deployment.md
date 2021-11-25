@@ -18,12 +18,12 @@ signatures. This documentation is a deployment guide for the service.
 
 Install dependencies below.
 
-- Node.js. The verifier process is a Node.js process. Recommend to use Node.js 12.x version.
-- MySQL. Used to store data for the service. Recommended version is 5.7. You can deploy it yourself or use some database
-  service.
+- Node.js. The verifier process is a Node.js process. It's recommended to use Node.js 14.x version.
+- MySQL. Used to store data for the service. Recommended version is 5.7. It's better to use cloud database
+  service for more features.
 - Docker. Used to run CKB full node and indexer.
-- CKB RPC and indexer endpoint. Recommend to run a full node via docker locally. 
-- Ethereum RPC endpoint. Recommend to use [infura](https://infura.io/dashboard/ethereum) service.
+- CKB RPC and indexer endpoint. It's recommended to run a full node via docker locally.
+- Ethereum RPC endpoint. It's recommended to use [infura](https://infura.io/dashboard/ethereum) or alchemy service.
 
 ```bash
 # install forcecli
@@ -168,5 +168,11 @@ http://127.0.0.1:80/force-bridge/sign-server/api/v1
 ```
 
 You can use your own process manager(systemd, [pm2](https://pm2.keymetrics.io/), [supervisor](https://github.com/petruisfan/node-supervisor), etc) to restart it when the process exits accidentally.
+
+## Other Configs
+
+- NGINX. It's recommended to use NGINX as reverse proxy for the RPC service. We should always enable `ssl` parameter
+to make the RPC service to be accessed by HTTPS for better security.
+- Firewall. The verifier machine should use strict firewall configuration which only allow specific IPs to connect.
 
 If you run into any problem, feel free to [open an issue](https://github.com/nervosnetwork/force-bridge/issues/new).
