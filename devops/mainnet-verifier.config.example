@@ -1,0 +1,88 @@
+{
+  "forceBridge": {
+    "common": {
+      "log": {
+        "level": "info",
+        "logFile": "/data/force_bridge.log"
+      },
+      "lumosConfigType": "LINA",
+      "network": "mainnet",
+      "role": "verifier",
+      "orm": {
+        "type": "mysql",
+        "host": "",
+        "port": 3306,
+        "username": "",
+        "password": "",
+        "database": "verifier",
+        "timezone": "Z",
+        "synchronize": true,
+        "logging": false
+      },
+      "openMetric": true,
+      "collectorPubKeyHash": [],
+      "port": 80,
+      "keystorePath": "/data/keystore.json"
+    },
+    "eth": {
+      "rpcUrl": "https://mainnet.infura.io/v3/xxxx",
+      "confirmNumber": 12,
+      "startBlockHeight": 13302411,
+      "contractAddress": "0x63A993502e74828ddba5710327AFC6dc78d661b2",
+      "privateKey": "verifier"
+    },
+    "ckb": {
+      "ckbRpcUrl": "http://127.0.0.1:8114/rpc",
+      "ckbIndexerUrl": "http://127.0.0.1:8114/indexer",
+      "startBlockHeight": 5451619,
+      "confirmNumber": 15,
+      "deps": {
+        "sudtType": {
+          "cellDep": {
+            "depType": "code",
+            "outPoint": {
+              "txHash": "0xc7813f6a415144643970c2e88e0bb6ca6a8edc5dd7c1022746f628284a9936d5",
+              "index": "0x0"
+            }
+          },
+          "script": {
+            "codeHash": "0x5e7a36a77e68eecc013dfa2fe6a23f3b6c344b04005808694ae6dd45eea4cfd5",
+            "hashType": "type"
+          }
+        },
+        "bridgeLock": {
+          "cellDep": {
+            "depType": "code",
+            "outPoint": {
+              "txHash": "0x3f9fd8ba3b47bd2617171d18d02c23c6f9a9e6178ebb5e1d73e99201322d0441",
+              "index": "0x0"
+            }
+          },
+          "script": {
+            "codeHash": "0x93bc7a915d3d8f8b9678bc6c7a1751738c99ce6e66bba4dfab56672f6d691789",
+            "hashType": "type"
+          }
+        },
+        "recipientType": {
+          "cellDep": {
+            "depType": "code",
+            "outPoint": {
+              "txHash": "0x3f9fd8ba3b47bd2617171d18d02c23c6f9a9e6178ebb5e1d73e99201322d0441",
+              "index": "0x1"
+            }
+          },
+          "script": {
+            "codeHash": "0x0b8f02953b4c0635c30b7365654a2e4ab063246b4b438fbbc34eacd534da5c9f",
+            "hashType": "type"
+          }
+        }
+      },
+      "ownerCellTypescript": {
+        "code_hash": "0x00000000000000000000000000000000000000000000000000545950455f4944",
+        "hash_type": "type",
+        "args": "0x36a3a692465d2fd3e855078280cba526d90c8b5c98c5da1c1f4430e1086ca602"
+      },
+      "privateKey": "verifier"
+    }
+  }
+}
