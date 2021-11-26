@@ -29,7 +29,7 @@ export async function generateLockTx(
     },
   };
   const unsignedLockTx = await client.request('generateBridgeInNervosTransaction', lockPayload);
-  logger.info('unsignedMintTx', unsignedLockTx);
+  logger.info('unsignedLockTx', unsignedLockTx);
 
   const provider = new ethers.providers.JsonRpcProvider(ethNodeURL);
 
@@ -198,19 +198,19 @@ export async function burn(
   return burnTxHashes;
 }
 
-async function check(
+export async function check(
   client: JSONRPCClient,
   txHashes: Array<string>,
   addresses: Array<string>,
-  batchNum,
-  ethTokenAddress,
-) {
+  batchNum: number,
+  ethTokenAddress: string,
+): Promise<void> {
   for (let i = 0; i < batchNum; i++) {
     await checkTx(client, ethTokenAddress, txHashes[i], addresses[i]);
   }
 }
 
-function prepareCkbPrivateKeys(batchNum: number): Array<string> {
+export function prepareCkbPrivateKeys(batchNum: number): Array<string> {
   const privateKeys = new Array<string>();
   for (let i = 0; i < batchNum; i++) {
     privateKeys.push(ethers.Wallet.createRandom().privateKey);
