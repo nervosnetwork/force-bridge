@@ -5,10 +5,14 @@
 Use docker to run the whole bridge, including CKB and Ethereum dev chain.
 
 ```bash
+make build-ckb-contracts
+
 cd offchain-modules
 # start CKB dev chain and Ethereum dev chain
 yarn startDevDockerDeps
-# deploy the contracts and generate all configs for you
+# install dependencies and build via docker
+yarn dev-docker:install
+# deploy the contracts and generate all configs for you via docker
 yarn dev-docker:generate
 
 cd ../workdir/dev-docker
