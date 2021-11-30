@@ -156,7 +156,7 @@ export async function startSigServer(configPath: string): Promise<void> {
 
   const server = new JSONRPCServer();
   server.addMethod('version', () => {
-    return version;
+    return { version };
   });
   server.addMethod('signCkbTx', async (params: collectSignaturesParams) => {
     try {
