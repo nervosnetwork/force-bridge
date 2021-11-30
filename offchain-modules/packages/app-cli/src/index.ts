@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import commander from 'commander';
 import { feeCmd } from './bridgeFee';
+import { cardanoCmd } from './cardanoCmd';
 import { changeValCmd } from './changeVal';
 import { relayerCmd } from './collector';
 import { configCmd } from './config';
@@ -26,6 +27,7 @@ async function main() {
     .addCommand(monitorCmd)
     .addCommand(configCmd)
     .addCommand(changeValCmd)
+    .addCommand(cardanoCmd)
     .addCommand(keystoreCmd);
 
   await program.parseAsync(process.argv);
