@@ -86,7 +86,13 @@ export class Monitor {
 
   async compareEthLockAndCkbMint(lock: EthLockRecord, mint: CkbMintRecord): Promise<boolean> {
     const checker = (lock: EthLockRecord, mint: CkbMintRecord): string => {
-      if (lock.recipient.toLowerCase() != mint.recipient.toLowerCase()) {
+      const lockRecipientLockscript = parseAddress(lock.recipient);
+      const mintRecipientLockscript = parseAddress(mint.recipient);
+      if (
+        lockRecipientLockscript.args !== mintRecipientLockscript.args ||
+        lockRecipientLockscript.hash_type !== mintRecipientLockscript.hash_type ||
+        lockRecipientLockscript.code_hash !== mintRecipientLockscript.code_hash
+      ) {
         return `lock.recipient:${lock.recipient} != mint.recipient:${mint.recipient}`;
       }
       // const fee = new EthAsset(lock.token, this.ownerTypeHash).getBridgeFee('in');
