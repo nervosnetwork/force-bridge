@@ -105,6 +105,7 @@ async function stressLock(
       ethNodeUrl,
       intervalMs,
     );
+    await check(client, lockEthTxs, recipients, batchNumber, ethTokenAddress);
     const lockErc20Txs = await lock(
       client,
       provider,
@@ -115,7 +116,6 @@ async function stressLock(
       ethNodeUrl,
       intervalMs,
     );
-    await check(client, lockEthTxs, recipients, batchNumber, ethTokenAddress);
     await check(client, lockErc20Txs, recipients, batchNumber, erc20TokenAddress);
     logger.info(`${i + 1} round stress lock test succeed`);
   }
