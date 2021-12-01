@@ -7,7 +7,9 @@ import { JSONRPCClient } from 'json-rpc-2.0';
 import fetch from 'node-fetch/index';
 import { burn, lock, prepareCkbAddresses, prepareCkbPrivateKeys, check } from './utils/eth_batch_test';
 
+// send lock tx
 const ethPrivateKey = '0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed37a';
+// transfer ckb to recipients
 const ckbPrivateKey = '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
 const ethNodeUrl = 'http://127.0.0.1:3000';
 const ckbNodeUrl = 'http://127.0.0.1:3001';
@@ -15,8 +17,10 @@ const ckbIndexerUrl = 'http://127.0.0.1:3002';
 const forceBridgeUrl = 'http://127.0.0.1:3199/force-bridge/api/v1';
 const ethTokenAddress = '0x0000000000000000000000000000000000000000';
 const erc20TokenAddress = '0x7Af456bf0065aADAB2E6BEc6DaD3731899550b84';
-const lockAmount = '2000000000000000';
-const burnAmount = '100000000000000';
+const lockEthAmount = '30000000000000';
+const burnEthSudtAmount = '10000000000000';
+const lockErc20Amount = '3000000000000000';
+const burnErc20SudtAmount = '1000000000000000';
 
 // ts-node stress-test.ts [bridgeDirection] [batchNumber] [roundNumber]
 // bridgeDirection: in = only test bridge in, both = test bridge in and out
@@ -65,32 +69,14 @@ async function main() {
   })();
 
   logger.info('start initial round of stress lock test');
-  await stressLock(1, batchNumber, client, provider, ethWallet, ckbAddresses, lockAmount, ethNodeUrl);
+  await stressLock(1, batchNumber, client, provider, ethWallet, ckbAddresses, ethNodeUrl);
   logger.info('initial round of stress lock test succeed');
 
   const stressPromise: PromiseLike<void>[] = [];
-  const lockPromise = stressLock(
-    roundNumber - 1,
-    batchNumber,
-    client,
-    provider,
-    ethWallet,
-    ckbAddresses,
-    lockAmount,
-    ethNodeUrl,
-  );
+  const lockPromise = stressLock(roundNumber - 1, batchNumber, client, provider, ethWallet, ckbAddresses, ethNodeUrl);
   stressPromise.push(lockPromise);
   if (bridgeDirection === 'both') {
-    const burnPromise = stressBurn(
-      roundNumber,
-      batchNumber,
-      ckb,
-      client,
-      ckbPrivs,
-      ckbAddresses,
-      ethAddress,
-      burnAmount,
-    );
+    const burnPromise = stressBurn(roundNumber, batchNumber, ckb, client, ckbPrivs, ckbAddresses, ethAddress);
     stressPromise.push(burnPromise);
   }
   await Promise.all(stressPromise);
@@ -104,7 +90,6 @@ async function stressLock(
   provider: ethers.providers.JsonRpcProvider,
   ethWallet: ethers.Wallet,
   recipients: Array<string>,
-  lockAmount: string,
   ethNodeUrl: string,
   intervalMs = 0,
 ) {
@@ -116,22 +101,22 @@ async function stressLock(
       ethWallet,
       recipients,
       ethTokenAddress,
-      lockAmount,
+      lockEthAmount,
       ethNodeUrl,
       intervalMs,
     );
-    // const lockErc20Txs = await lock(
-    //   client,
-    //   provider,
-    //   ethWallet,
-    //   recipients,
-    //   erc20TokenAddress,
-    //   lockAmount,
-    //   ethNodeUrl,
-    //   intervalMs,
-    // );
+    const lockErc20Txs = await lock(
+      client,
+      provider,
+      ethWallet,
+      recipients,
+      erc20TokenAddress,
+      lockErc20Amount,
+      ethNodeUrl,
+      intervalMs,
+    );
     await check(client, lockEthTxs, recipients, batchNumber, ethTokenAddress);
-    // await check(client, lockErc20Txs, recipients, batchNumber, erc20TokenAddress);
+    await check(client, lockErc20Txs, recipients, batchNumber, erc20TokenAddress);
     logger.info(`${i + 1} round stress lock test succeed`);
   }
   logger.info(`stress lock test succeed!`);
@@ -145,7 +130,6 @@ async function stressBurn(
   ckbPrivs: Array<string>,
   senders: Array<string>,
   recipient: string,
-  burnAmount: string,
   intervalMs = 0,
 ) {
   for (let i = 0; i < roundNumber; i++) {
@@ -157,7 +141,7 @@ async function stressBurn(
       senders,
       recipient,
       ethTokenAddress,
-      burnAmount,
+      burnEthSudtAmount,
       intervalMs,
     );
     await check(client, burnEthSudtTxs, senders, batchNumber, ethTokenAddress);
@@ -168,7 +152,7 @@ async function stressBurn(
       senders,
       recipient,
       erc20TokenAddress,
-      burnAmount,
+      burnErc20SudtAmount,
       intervalMs,
     );
     await check(client, burnErc20SudtTxs, senders, batchNumber, erc20TokenAddress);
