@@ -7,14 +7,16 @@
       "HASH_TYPE": "type",
       "TX_HASH": "0xa777fd1964ffa98a7b0b6c09ff71691705d84d5ed1badfb14271a3a870bdd06b",
       "INDEX": "0x0",
-      "DEP_TYPE": "dep_group"
+      "DEP_TYPE": "dep_group",
+      "SHORT_ID": 0
     },
     "SECP256K1_BLAKE160_MULTISIG": {
       "CODE_HASH": "0x5c5069eb0857efc65e1bca0c07df34c31663b3622fd3876c876320fc9634e2a8",
       "HASH_TYPE": "type",
       "TX_HASH": "0xa777fd1964ffa98a7b0b6c09ff71691705d84d5ed1badfb14271a3a870bdd06b",
       "INDEX": "0x1",
-      "DEP_TYPE": "dep_group"
+      "DEP_TYPE": "dep_group",
+      "SHORT_ID": 1
     },
     "DAO": {
       "CODE_HASH": "0x82d76d1b75fe2fd9a27dfbaa65a039221a380d76c926f378d3f81cf3e7e13f2e",
