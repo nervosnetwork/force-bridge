@@ -17,8 +17,10 @@ export async function startRpcServer(configPath: string): Promise<void> {
   ForceBridgeCore.config.common.role = 'watcher';
   const metrics = new RpcMetric(ForceBridgeCore.config.common.role);
   const conn = await getDBConnection();
-  //start chain handlers
-  void startHandlers(conn);
+  // start chain handlers
+  if (!ForceBridgeCore.config.common.readonly) {
+    void startHandlers(conn);
+  }
   const forceBridgeRpc = new ForceBridgeAPIV1Handler(conn);
 
   const server = new JSONRPCServer();
