@@ -491,5 +491,11 @@ export function parseLockLog(log: Log, parsedLog: ParsedLog): ParsedLockLog {
 }
 
 function toCKBAddress2021(address: string): string {
-  return generateAddress(parseAddress(address));
+  try {
+    const newAddress = generateAddress(parseAddress(address));
+    return newAddress;
+  } catch (e) {
+    logger.warn(`parse recipient address from ethereum log failed, recipient address ${address}, error ${e}`);
+    return address;
+  }
 }
