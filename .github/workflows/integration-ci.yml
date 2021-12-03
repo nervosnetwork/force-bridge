@@ -16,6 +16,9 @@ jobs:
 #          key: node-modules-${{ hashFiles('*/yarn.lock') }}
 #          restore-keys: |
 #            node-modules-
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '14'
       - name: install dependencies
         run: make install-node-modules
 #        if: steps.yarn-cache.outputs.cache-hit != 'true'
