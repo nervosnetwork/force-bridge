@@ -3,6 +3,9 @@ import axios from 'axios';
 const BINANCE_EXCHANGE_API = 'https://www.binance.com/api/v3/ticker/24hr';
 
 export async function getAssetAVGPrice(token: string): Promise<string> {
+  if (token === 'USDT') {
+    return '1';
+  }
   try {
     const res = await axios.get(`${BINANCE_EXCHANGE_API}?symbol=${token}USDT`);
     return res.data.weightedAvgPrice;
