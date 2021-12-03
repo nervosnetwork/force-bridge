@@ -19,6 +19,7 @@ import {
   mintRecord,
 } from '@force-bridge/x/dist/multisig/multisig-mgr';
 import { verifyCollector } from '@force-bridge/x/dist/multisig/utils';
+import { compareCkbAddress } from '@force-bridge/x/dist/utils';
 import { Amount } from '@lay2/pw-core';
 import { SigError, SigErrorCode, SigErrorOk } from './error';
 import { SigResponse, SigServer } from './sigServer';
@@ -194,7 +195,7 @@ async function verifyEthMintRecords(records: mintRecord[]): Promise<SigError> {
     if (ethLock.confirmStatus !== 'confirmed') {
       return new SigError(SigErrorCode.TxUnconfirmed, `ethLockTx:${ethLock.txHash} doesn't confirmed`);
     }
-    if (record.recipientLockscript != ethLock.recipient) {
+    if (!compareCkbAddress(record.recipientLockscript, ethLock.recipient)) {
       return new SigError(
         SigErrorCode.InvalidRecord,
         `ethLockTxHash:${record.id} recipientLockscript:${record.recipientLockscript} != ${ethLock.recipient}`,
