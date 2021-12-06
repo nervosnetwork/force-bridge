@@ -7,15 +7,16 @@ import { JSONRPCClient } from 'json-rpc-2.0';
 import fetch from 'node-fetch/index';
 import { burn, lock, prepareCkbAddresses, prepareCkbPrivateKeys, check } from './utils/eth_batch_test';
 
-// send lock tx
-const ethPrivateKey = '0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed37a';
-// transfer ckb to recipients
-const ckbPrivateKey = '0xa800c82df5461756ae99b5c6677d019c98cc98c7786b80d7b2e77256e46ea1fe';
+// your send lock tx account privkey
+const ethPrivateKey = '';
+// your transfer ckb to recipients account privkey
+const ckbPrivateKey = '';
 const ethNodeUrl = 'http://127.0.0.1:3000';
 const ckbNodeUrl = 'http://127.0.0.1:3001';
 const ckbIndexerUrl = 'http://127.0.0.1:3002';
 const forceBridgeUrl = 'http://127.0.0.1:3199/force-bridge/api/v1';
 const ethTokenAddress = '0x0000000000000000000000000000000000000000';
+// Dai token
 const erc20TokenAddress = '0x7Af456bf0065aADAB2E6BEc6DaD3731899550b84';
 const lockEthAmount = '30000000000000';
 const burnEthSudtAmount = '10000000000000';
