@@ -1,3 +1,4 @@
+import { generateAddress, parseAddress } from '@ckb-lumos/helpers';
 import { BigNumber } from 'ethers';
 import { TransferOutSwitch } from '../audit/switch';
 import { ChainType, EthAsset } from '../ckb/model/asset';
@@ -479,7 +480,7 @@ export function parseLockLog(log: Log, parsedLog: ParsedLog): ParsedLockLog {
     txHash: txHash,
     amount: amount,
     token: token,
-    recipient: recipient,
+    recipient: toCKBAddress2021(recipient),
     sudtExtraData: sudtExtraData,
     blockNumber: log.blockNumber,
     blockHash: log.blockHash,
@@ -487,4 +488,14 @@ export function parseLockLog(log: Log, parsedLog: ParsedLog): ParsedLockLog {
     sender: sender,
     asset,
   };
+}
+
+function toCKBAddress2021(address: string): string {
+  try {
+    const newAddress = generateAddress(parseAddress(address));
+    return newAddress;
+  } catch (e) {
+    logger.warn(`parse recipient address from ethereum log failed, recipient address ${address}, error ${e}`);
+    return address;
+  }
 }

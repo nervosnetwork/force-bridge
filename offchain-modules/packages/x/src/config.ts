@@ -127,6 +127,9 @@ export interface commonConfig {
   lumosConfigType: 'LINA' | 'AGGRON4' | 'DEV';
   port?: number;
   orm?: ormConfig;
+  // if readonly is true, the server will not listen to chain events and update the database.
+  // used for readonly watcher mode.
+  readonly?: boolean;
   openMetric: boolean;
   keystorePath?: string;
   collectorPubKeyHash: string[];
