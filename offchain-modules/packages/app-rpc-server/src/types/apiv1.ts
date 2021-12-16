@@ -174,13 +174,12 @@ export interface NervosAsset {
 // TODO: change to the higher order generic when it impl
 // https://github.com/microsoft/TypeScript/issues/1213
 export interface ForceBridgeAPIV1 {
-  /*
-      // prettier-ignore
-      generateBridgeInNervosTransaction: <T extends NetworkTypes>(payload: GenerateBridgeInTransactionPayload) => Promise<GenerateTransactionResponse<T>>
-      // prettier-ignore
-      generateBridgeOutNervosTransaction: <T extends NetworkTypes>(payload: GenerateBridgeOutNervosTransactionPayload) => Promise<GenerateTransactionResponse<T>>
-    
-      /* send transaction */
+  // prettier-ignore
+  generateBridgeInNervosTransaction: <T extends NetworkTypes>(payload: GenerateBridgeInTransactionPayload) => Promise<GenerateTransactionResponse<T>>
+  // prettier-ignore
+  generateBridgeOutNervosTransaction: <T extends NetworkTypes>(payload: GenerateBridgeOutNervosTransactionPayload) => Promise<GenerateTransactionResponse<T>>
+
+  /* send transaction */
   sendSignedTransaction: <T extends NetworkBase>(payload: SignedTransactionPayload<T>) => Promise<TransactionIdent>;
 
   /* get transaction summary */
