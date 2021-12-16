@@ -37,6 +37,10 @@ import {
   TransactionSummary,
   TransactionSummaryWithStatus,
   XChainNetWork,
+  GenerateBridgeNervosToXchainLockTxPayload,
+  GenerateTransactionResponse,
+  GenerateBridgeNervosToXchainBurnTxPayload,
+  GetBridgeNervosToXchainTxSummariesPayload,
 } from './types/apiv1';
 
 // The minimum ABI to get ERC20 Token balance
@@ -458,6 +462,28 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         },
       },
     };
+  }
+
+  /* Bridge nervos asset to xchain */
+  async generateBridgeNervosToXchainLockTx<T extends NetworkTypes>(
+    _payload: GenerateBridgeNervosToXchainLockTxPayload,
+  ): Promise<GenerateTransactionResponse<T>> {
+    // TODO
+    throw new Error('unimplement');
+  }
+
+  async generateBridgeNervosToXchainBurnTx<T extends NetworkTypes>(
+    _payload: GenerateBridgeNervosToXchainBurnTxPayload,
+  ): Promise<GenerateTransactionResponse<T>> {
+    // TODO
+    throw new Error('unimplement');
+  }
+
+  async getBridgeNervosToXchainTxSummaries(
+    _payload: GetBridgeNervosToXchainTxSummariesPayload,
+  ): Promise<TransactionSummaryWithStatus[]> {
+    // TODO
+    throw new Error('unimplement');
   }
 }
 
