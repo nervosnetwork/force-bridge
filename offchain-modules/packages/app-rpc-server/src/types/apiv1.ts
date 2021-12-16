@@ -133,16 +133,54 @@ export interface GetBridgeConfigResponse {
   };
 }
 
+export interface GenerateBridgeNervosToXchainLockTxPayload {
+  // Xchain network name
+  asset: NervosAsset;
+  amount: string;
+  xchain: 'Ethereum';
+  // Xchain user address
+  recipient: string;
+  // Nervos address
+  sender: string;
+}
+
+export interface GenerateBridgeNervosToXchainBurnTxPayload {
+  // Xchain asset address
+  asset: string;
+  amount: string;
+  xchain: 'Ethereum';
+  // Nervos address
+  recipient: string;
+  // Xchain user address
+  sender: string;
+}
+
+export interface GetBridgeNervosToXchainTxSummariesPayload {
+  xchain: 'Ethereum';
+  nervosAsset: NervosAsset;
+  user: {
+    network: 'Nervos' | 'Ethereum';
+    // nervos or xchain address
+    ident: string;
+  };
+}
+
+export interface NervosAsset {
+  kind: 'CKB' | 'SUDT';
+  // asset typescript args, empty string for CKB
+  ident: string;
+}
+
 // TODO: change to the higher order generic when it impl
 // https://github.com/microsoft/TypeScript/issues/1213
 export interface ForceBridgeAPIV1 {
   /*
-  // prettier-ignore
-  generateBridgeInNervosTransaction: <T extends NetworkTypes>(payload: GenerateBridgeInTransactionPayload) => Promise<GenerateTransactionResponse<T>>
-  // prettier-ignore
-  generateBridgeOutNervosTransaction: <T extends NetworkTypes>(payload: GenerateBridgeOutNervosTransactionPayload) => Promise<GenerateTransactionResponse<T>>
-
-  /* send transaction */
+      // prettier-ignore
+      generateBridgeInNervosTransaction: <T extends NetworkTypes>(payload: GenerateBridgeInTransactionPayload) => Promise<GenerateTransactionResponse<T>>
+      // prettier-ignore
+      generateBridgeOutNervosTransaction: <T extends NetworkTypes>(payload: GenerateBridgeOutNervosTransactionPayload) => Promise<GenerateTransactionResponse<T>>
+    
+      /* send transaction */
   sendSignedTransaction: <T extends NetworkBase>(payload: SignedTransactionPayload<T>) => Promise<TransactionIdent>;
 
   /* get transaction summary */
@@ -170,4 +208,17 @@ export interface ForceBridgeAPIV1 {
   getBalance: (payload: GetBalancePayload) => Promise<GetBalanceResponse>;
 
   getBridgeConfig: () => Promise<GetBridgeConfigResponse>;
+
+  /* Bridge nervos asset to xchain */
+  generateBridgeNervosToXchainLockTx: <T extends NetworkTypes>(
+    payload: GenerateBridgeNervosToXchainLockTxPayload,
+  ) => Promise<GenerateTransactionResponse<T>>;
+
+  generateBridgeNervosToXchainBurnTx: <T extends NetworkTypes>(
+    payload: GenerateBridgeNervosToXchainBurnTxPayload,
+  ) => Promise<GenerateTransactionResponse<T>>;
+
+  getBridgeNervosToXchainTxSummaries: (
+    payload: GetBridgeNervosToXchainTxSummariesPayload,
+  ) => Promise<TransactionSummaryWithStatus[]>;
 }
