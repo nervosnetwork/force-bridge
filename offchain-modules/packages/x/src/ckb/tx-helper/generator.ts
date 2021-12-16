@@ -1,5 +1,7 @@
 import { Cell, Script, Indexer, WitnessArgs, core, utils } from '@ckb-lumos/base';
+import { SerializeWitnessArgs } from '@ckb-lumos/base/lib/core';
 import { common } from '@ckb-lumos/common-scripts';
+import { SECP_SIGNATURE_PLACEHOLDER } from '@ckb-lumos/common-scripts/lib/helper';
 import { minimalCellCapacity, parseAddress, TransactionSkeleton, TransactionSkeletonType } from '@ckb-lumos/helpers';
 import { Reader, normalizers } from 'ckb-js-toolkit';
 import * as lodash from 'lodash';
@@ -7,12 +9,15 @@ import { ForceBridgeCore } from '../../core';
 import { asserts, nonNullable } from '../../errors';
 import { asyncSleep, fromHexString, stringToUint8Array, toHexString, transactionSkeletonToJSON } from '../../utils';
 import { logger } from '../../utils/logger';
-import { Asset } from '../model/asset';
+import { Asset, NervosAsset } from '../model/asset';
+
 import { CkbTxHelper } from './base_generator';
 import { SerializeRecipientCellData } from './generated/eth_recipient_cell';
+import { SerializeLockMemo } from './generated/lock_memo';
 import { SerializeMintWitness } from './generated/mint_witness';
 import { ScriptType } from './indexer';
 import { getFromAddr, getMultisigLock, getOwnerTypeHash } from './multisig/multisig_helper';
+import { calculateFee, getTransactionSize } from './utils';
 
 export interface MintAssetRecord {
   id: string;
@@ -157,7 +162,11 @@ export class CkbTxGenerator extends CkbTxHelper {
         });
 
         const mintWitness = this.getMintWitness(records);
-        const mintWitnessArgs = core.SerializeWitnessArgs({ lock: null, input_type: mintWitness, output_type: null });
+        const mintWitnessArgs = core.SerializeWitnessArgs({
+          lock: null,
+          input_type: mintWitness,
+          output_type: null,
+        });
         txSkeleton = txSkeleton.update('witnesses', (witnesses) => {
           if (witnesses.isEmpty()) {
             return witnesses.push(`0x${toHexString(new Uint8Array(mintWitnessArgs))}`);
@@ -283,15 +292,15 @@ export class CkbTxGenerator extends CkbTxHelper {
   }
 
   /*
-  table RecipientCellData {
-    recipient_address: Bytes,
-    chain: byte,
-    asset: Bytes,
-    bridge_lock_code_hash: Byte32,
-    owner_lock_hash: Byte32,
-    amount: Uint128,
-  }
-   */
+      table RecipientCellData {
+        recipient_address: Bytes,
+        chain: byte,
+        asset: Bytes,
+        bridge_lock_code_hash: Byte32,
+        owner_lock_hash: Byte32,
+        amount: Uint128,
+      }
+       */
   async burn(
     fromLockscript: Script,
     recipientAddress: string,
@@ -444,6 +453,148 @@ export class CkbTxGenerator extends CkbTxHelper {
     logger.debug(`txSkeleton: ${transactionSkeletonToJSON(txSkeleton)}`);
     logger.debug(`final fee: ${await this.calculateCapacityDiff(txSkeleton)}`);
     return txSkeletonToRawTransactionToSign(txSkeleton);
+  }
+
+  async lock(
+    senderLockscript: Script,
+    recipientAddress: string,
+    asset: NervosAsset,
+    amount: bigint,
+    xchain: string,
+  ): Promise<CKBComponents.RawTransactionToSign> {
+    switch (asset.kind) {
+      case 'CKB':
+        return this.lockCKB(senderLockscript, recipientAddress, amount, xchain);
+      case 'SUDT':
+        return this.lockSUDT(senderLockscript, recipientAddress, asset.ident, amount, xchain);
+      default:
+        throw new Error('unsuppored nervos asset');
+    }
+  }
+
+  async lockCKB(
+    senderLockscript: Script,
+    recipientAddress: string,
+    amount: bigint,
+    xchain: string,
+  ): Promise<CKBComponents.RawTransactionToSign> {
+    if (xchain !== 'Ethereum') throw new Error('only support bridge to Ethereum for now');
+    if (amount <= 0n) {
+      throw new Error('amount should larger then zero!');
+    }
+
+    let txSkeleton = TransactionSkeleton({ cellProvider: this.indexer });
+
+    // add cellDeps
+    const secp256k1 = nonNullable(this.lumosConfig.SCRIPTS.SECP256K1_BLAKE160);
+    if (senderLockscript.code_hash === secp256k1.CODE_HASH && senderLockscript.hash_type === secp256k1.HASH_TYPE) {
+      txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
+        return cellDeps.push({
+          out_point: {
+            tx_hash: secp256k1.TX_HASH,
+            index: secp256k1.INDEX,
+          },
+          dep_type: secp256k1.DEP_TYPE,
+        });
+      });
+    } else if (
+      senderLockscript.code_hash === ForceBridgeCore.config.ckb.deps.pwLock?.script.codeHash &&
+      senderLockscript.hash_type === ForceBridgeCore.config.ckb.deps.pwLock?.script.hashType
+    ) {
+      txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
+        return cellDeps.push({
+          out_point: {
+            tx_hash: ForceBridgeCore.config.ckb.deps.pwLock!.cellDep.outPoint.txHash,
+            index: ForceBridgeCore.config.ckb.deps.pwLock!.cellDep.outPoint.index,
+          },
+          dep_type: ForceBridgeCore.config.ckb.deps.pwLock!.cellDep.depType,
+        });
+      });
+    } else {
+      throw new Error('unsupported sender address!');
+    }
+
+    // add inputs
+    const senderOutputChangeCell: Cell = {
+      cell_output: {
+        capacity: '0x0',
+        lock: senderLockscript,
+      },
+      data: '0x',
+    };
+    const senderOutputChangeCellCapacity = minimalCellCapacity(senderOutputChangeCell);
+    const senderNeedSupplyCapacity =
+      amount +
+      BigInt(ForceBridgeCore.config.eth.lockNervosAssetFee) +
+      senderOutputChangeCellCapacity +
+      1n * BigInt(100000000); // tx fee
+    const searchedSenderCells = await this.collector.getCellsByLockscriptAndCapacity(
+      senderLockscript,
+      senderNeedSupplyCapacity,
+    );
+    const searchedSenderCellsCapacity = searchedSenderCells
+      .map((cell) => BigInt(cell.cell_output.capacity))
+      .reduce((a, b) => a + b, 0n);
+    if (searchedSenderCellsCapacity < senderNeedSupplyCapacity)
+      throw new Error(
+        `sender ckb capacity not enough, need ${senderNeedSupplyCapacity.toString()}, found ${searchedSenderCellsCapacity.toString()}`,
+      );
+    txSkeleton = txSkeleton.update('inputs', (inputs) => {
+      return inputs.push(...searchedSenderCells);
+    });
+
+    // add outputs
+    const committeeMultisigLockscript = parseAddress(ForceBridgeCore.config.ckb.omniLockMultisigAddress);
+    const committeeMultisigCell: Cell = {
+      cell_output: {
+        capacity: `0x${(amount + BigInt(ForceBridgeCore.config.eth.lockNervosAssetFee)).toString(16)}`,
+        lock: committeeMultisigLockscript,
+      },
+      data: '0x',
+    };
+    senderOutputChangeCell.cell_output.capacity = `0x${(
+      searchedSenderCellsCapacity -
+      amount -
+      BigInt(ForceBridgeCore.config.eth.lockNervosAssetFee)
+    ).toString(16)}`;
+    txSkeleton = txSkeleton.update('outputs', (outputs) => {
+      return outputs.push(committeeMultisigCell, senderOutputChangeCell);
+    });
+
+    // add witnesses
+    const witnesses = new Array(searchedSenderCells.length);
+    witnesses[0] = new Reader(
+      SerializeWitnessArgs(
+        normalizers.NormalizeWitnessArgs({
+          lock: SECP_SIGNATURE_PLACEHOLDER,
+        }),
+      ),
+    ).serializeJson();
+    const lockMemo = SerializeLockMemo({ xchain: 1, recipient: new Reader(recipientAddress).toArrayBuffer() });
+    witnesses.push(new Reader(lockMemo).serializeJson());
+
+    // tx fee
+    const txFee = calculateFee(getTransactionSize(txSkeleton));
+    txSkeleton = txSkeleton.update('outputs', (outputs) => {
+      return outputs.map((cell, index) => {
+        if (index === 1) {
+          cell.cell_output.capacity = `0x${(BigInt(cell.cell_output.capacity) - txFee).toString(16)}`;
+        }
+        return cell;
+      });
+    });
+
+    return txSkeletonToRawTransactionToSign(txSkeleton);
+  }
+
+  async lockSUDT(
+    _senderLockscript: Script,
+    _recipientAddress: string,
+    _sudtArgs: string,
+    _amount: bigint,
+    _xchain: string,
+  ): Promise<CKBComponents.RawTransactionToSign> {
+    throw new Error('unimplement');
   }
 }
 

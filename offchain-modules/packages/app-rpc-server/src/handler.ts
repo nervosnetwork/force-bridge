@@ -466,10 +466,42 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
 
   /* Bridge nervos asset to xchain */
   async generateBridgeNervosToXchainLockTx<T extends NetworkTypes>(
-    _payload: GenerateBridgeNervosToXchainLockTxPayload,
+    payload: GenerateBridgeNervosToXchainLockTxPayload,
   ): Promise<GenerateTransactionResponse<T>> {
-    // TODO
-    throw new Error('unimplement');
+    logger.info(`generateBridgeNervosToXchainLockTx, payload: ${JSON.stringify(payload)}`);
+    const { xchain, asset, amount, recipient, sender } = payload;
+
+    checkCKBAddress(sender);
+    const senderLockscript = parseAddress(sender);
+
+    switch (xchain) {
+      case 'Ethereum':
+        checkETHAddress(recipient);
+        await checkLockEthAddr(recipient);
+        if (asset.kind === 'CKB') {
+          if (BigInt(amount) < BigInt(ForceBridgeCore.config.eth.lockNervosAssetFee))
+            throw new Error('lock CKB less than bridge fee');
+        } else if (asset.kind === 'SUDT') {
+          // TODO check sudt in white list
+        } else {
+          throw new Error('unsupported ckb asset');
+        }
+        break;
+      default:
+        throw new Error('unimplement chain type');
+    }
+
+    const ckbTxGenerator = new CkbTxGenerator(
+      ForceBridgeCore.config.ckb.ckbRpcUrl,
+      ForceBridgeCore.config.ckb.ckbIndexerUrl,
+    );
+
+    const lockTx = await ckbTxGenerator.lock(senderLockscript, recipient, asset, BigInt(amount), xchain);
+
+    return {
+      network: 'Nervos',
+      rawTransaction: lockTx,
+    };
   }
 
   async generateBridgeNervosToXchainBurnTx<T extends NetworkTypes>(

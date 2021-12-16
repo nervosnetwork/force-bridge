@@ -46,6 +46,7 @@ export interface CkbConfig {
   startBlockHeight: number;
   confirmNumber: number;
   sudtSize: number;
+  omniLockMultisigAddress: string; // committee multisig lockscript address(invariable) for bridge from nervos to xchain
 }
 
 export interface EthConfig {
@@ -58,6 +59,8 @@ export interface EthConfig {
   confirmNumber: number;
   startBlockHeight: number;
   assetWhiteList: WhiteListEthAsset[];
+  lockNervosAssetFee: string; // bridge fee paid by CKB, unit: shannon
+  burnNervosAssetFee: string; // bridge fee paid by ETH, unit: wei
 }
 
 export interface EosConfig {

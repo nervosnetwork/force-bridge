@@ -1,0 +1,8 @@
+vector Bytes <byte>;
+vector BytesVec <Bytes>;
+
+// Used in unlock-asset-tx witness when bridge Nervos assets to Xchain
+table UnlockMemo {
+    xchain: byte,  // 1 = Ethereum
+    burnIds: BytesVec,   // if xchain == 1, burnIds = [${burnTxhashes}-${logIndex}]
+}

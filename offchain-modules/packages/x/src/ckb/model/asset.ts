@@ -213,3 +213,9 @@ export class BtcAsset extends Asset {
     return this.address;
   }
 }
+
+export interface NervosAsset {
+  kind: 'CKB' | 'SUDT';
+  // asset typescript args, empty string for CKB
+  ident: string;
+}
