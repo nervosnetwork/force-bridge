@@ -502,13 +502,22 @@ export class CkbTxGenerator extends CkbTxHelper {
       senderLockscript.hash_type === ForceBridgeCore.config.ckb.deps.pwLock?.script.hashType
     ) {
       txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
-        return cellDeps.push({
-          out_point: {
-            tx_hash: ForceBridgeCore.config.ckb.deps.pwLock!.cellDep.outPoint.txHash,
-            index: ForceBridgeCore.config.ckb.deps.pwLock!.cellDep.outPoint.index,
+        return cellDeps.push(
+          {
+            out_point: {
+              tx_hash: ForceBridgeCore.config.ckb.deps.pwLock!.cellDep.outPoint.txHash,
+              index: ForceBridgeCore.config.ckb.deps.pwLock!.cellDep.outPoint.index,
+            },
+            dep_type: ForceBridgeCore.config.ckb.deps.pwLock!.cellDep.depType,
           },
-          dep_type: ForceBridgeCore.config.ckb.deps.pwLock!.cellDep.depType,
-        });
+          {
+            out_point: {
+              tx_hash: secp256k1.TX_HASH,
+              index: secp256k1.INDEX,
+            },
+            dep_type: secp256k1.DEP_TYPE,
+          },
+        );
       });
     } else {
       throw new Error('unsupported sender address!');
@@ -522,12 +531,10 @@ export class CkbTxGenerator extends CkbTxHelper {
       },
       data: '0x',
     };
-    const senderOutputChangeCellCapacity = minimalCellCapacity(senderOutputChangeCell);
+    const senderOutputChangeCellMinimalCapacity = minimalCellCapacity(senderOutputChangeCell);
+    const bridgeFee = BigInt(ForceBridgeCore.config.eth.lockNervosAssetFee);
     const senderNeedSupplyCapacity =
-      amount +
-      BigInt(ForceBridgeCore.config.eth.lockNervosAssetFee) +
-      senderOutputChangeCellCapacity +
-      1n * BigInt(100000000); // tx fee
+      amount + bridgeFee + senderOutputChangeCellMinimalCapacity + 1n * BigInt(100000000); // tx fee
     const searchedSenderCells = await this.collector.getCellsByLockscriptAndCapacity(
       senderLockscript,
       senderNeedSupplyCapacity,
@@ -547,16 +554,14 @@ export class CkbTxGenerator extends CkbTxHelper {
     const committeeMultisigLockscript = parseAddress(ForceBridgeCore.config.ckb.omniLockMultisigAddress);
     const committeeMultisigCell: Cell = {
       cell_output: {
-        capacity: `0x${(amount + BigInt(ForceBridgeCore.config.eth.lockNervosAssetFee)).toString(16)}`,
+        capacity: `0x${(amount + bridgeFee).toString(16)}`,
         lock: committeeMultisigLockscript,
       },
       data: '0x',
     };
-    senderOutputChangeCell.cell_output.capacity = `0x${(
-      searchedSenderCellsCapacity -
-      amount -
-      BigInt(ForceBridgeCore.config.eth.lockNervosAssetFee)
-    ).toString(16)}`;
+    senderOutputChangeCell.cell_output.capacity = `0x${(searchedSenderCellsCapacity - amount - bridgeFee).toString(
+      16,
+    )}`;
     txSkeleton = txSkeleton.update('outputs', (outputs) => {
       return outputs.push(committeeMultisigCell, senderOutputChangeCell);
     });
@@ -571,6 +576,7 @@ export class CkbTxGenerator extends CkbTxHelper {
       ),
     ).serializeJson();
     const lockMemo = SerializeLockMemo({ xchain: 1, recipient: new Reader(recipientAddress).toArrayBuffer() });
+    // put lockMemo in witnesses[inputs.len]
     witnesses.push(new Reader(lockMemo).serializeJson());
 
     // tx fee
