@@ -434,7 +434,9 @@ export class CkbTxGenerator extends CkbTxHelper {
       });
       const capacityDiff = await this.calculateCapacityDiff(txSkeleton);
       if (capacityDiff < 0) {
-        throw new Error(`fromAddress capacity not enough, need ${capacityDiff.toString()} more`);
+        throw new Error(
+          `fromAddress capacity insufficient, need ${(-capacityDiff / 100000000n + 1n).toString()} CKB more`,
+        );
       }
       txSkeleton = txSkeleton.update('outputs', (outputs) => {
         changeOutput.cell_output.capacity = `0x${(minimalChangeCellCapacity + capacityDiff - fee).toString(16)}`;
