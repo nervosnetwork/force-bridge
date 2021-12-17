@@ -473,18 +473,14 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
 
     checkCKBAddress(sender);
     const senderLockscript = parseAddress(sender);
+    if (BigInt(amount) <= 0) throw new Error('lock amount should greater than 0');
 
     switch (xchain) {
       case 'Ethereum':
         checkETHAddress(recipient);
         await checkLockEthAddr(recipient);
-        if (asset.kind === 'CKB') {
-          if (BigInt(amount) < BigInt(ForceBridgeCore.config.eth.lockNervosAssetFee))
-            throw new Error('lock CKB less than bridge fee');
-        } else if (asset.kind === 'SUDT') {
+        if (asset.kind === 'SUDT') {
           // TODO check sudt in white list
-        } else {
-          throw new Error('unsupported ckb asset');
         }
         break;
       default:
@@ -495,7 +491,6 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
       ForceBridgeCore.config.ckb.ckbRpcUrl,
       ForceBridgeCore.config.ckb.ckbIndexerUrl,
     );
-
     const lockTx = await ckbTxGenerator.lock(senderLockscript, recipient, asset, BigInt(amount), xchain);
 
     return {

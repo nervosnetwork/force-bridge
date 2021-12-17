@@ -1,3 +1,4 @@
+import { NervosAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { NervosNetwork, NetworkBase, NetworkTypes, RequiredAsset } from './network';
 
 export enum BridgeTransactionStatus {
@@ -163,12 +164,6 @@ export interface GetBridgeNervosToXchainTxSummariesPayload {
     // nervos or xchain address
     ident: string;
   };
-}
-
-export interface NervosAsset {
-  kind: 'CKB' | 'SUDT';
-  // asset typescript args, empty string for CKB
-  ident: string;
 }
 
 // TODO: change to the higher order generic when it impl
