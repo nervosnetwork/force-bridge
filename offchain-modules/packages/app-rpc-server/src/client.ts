@@ -22,9 +22,6 @@ import {
   XChainNetWork,
   GetMinimalBridgeAmountPayload,
   GetMinimalBridgeAmountResponse,
-  GenerateBridgeNervosToXchainLockTxPayload,
-  GenerateBridgeNervosToXchainBurnTxPayload,
-  GetBridgeNervosToXchainTxSummariesPayload,
 } from './types/apiv1';
 import { NetworkBase, NetworkTypes, RequiredAsset } from './types/network';
 
@@ -79,8 +76,7 @@ export class ForceBridgeAPIV1Client implements ForceBridgeAPIV1 {
         }
         break;
       default:
-        //TODO add other chains
-        Promise.reject(new Error('not yet'));
+        throw new Error('only support Ethereum for now');
     }
     return result;
   }
@@ -121,36 +117,5 @@ export class ForceBridgeAPIV1Client implements ForceBridgeAPIV1 {
 
   async getBridgeConfig(): Promise<GetBridgeConfigResponse> {
     return this.client.request('getBridgeConfig');
-  }
-
-  /* Bridge nervos asset to xchain */
-  async generateBridgeNervosToXchainLockTx<T extends NetworkTypes>(
-    payload: GenerateBridgeNervosToXchainLockTxPayload,
-  ): Promise<GenerateTransactionResponse<T>> {
-    return await this.client.request('generateBridgeNervosToXchainLockTx', payload);
-  }
-
-  async generateBridgeNervosToXchainBurnTx<T extends NetworkTypes>(
-    payload: GenerateBridgeNervosToXchainBurnTxPayload,
-  ): Promise<GenerateTransactionResponse<T>> {
-    const result = await this.client.request('generateBridgeNervosToXchainBurnTx', payload);
-    switch (result.network) {
-      case 'Ethereum':
-        {
-          const rawTx = result.rawTransaction;
-          rawTx.value = ethers.BigNumber.from(rawTx.value.hex ? rawTx.value.hex : 0);
-          result.rawTransaction = rawTx;
-        }
-        break;
-      default:
-        throw new Error('unimplement');
-    }
-    return result;
-  }
-
-  async getBridgeNervosToXchainTxSummaries(
-    payload: GetBridgeNervosToXchainTxSummariesPayload,
-  ): Promise<TransactionSummaryWithStatus[]> {
-    return await this.client.request('getBridgeNervosToXchainTxSummaries', payload);
   }
 }
