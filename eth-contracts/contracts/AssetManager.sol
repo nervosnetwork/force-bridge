@@ -63,8 +63,10 @@ contract AssetManager is Ownable, ReentrancyGuard {
         bytes32 assetId = tokenToAssetIdMap[token];
         require(assetId != 0x0, "token not supported");
         // pay the fee to bridge committee
-        (bool success, ) = payable(owner()).call{ value: msg.value }("");
-        require(success, "fee payment to bridge committee failed");
+        if(msg.value > 0) {
+            (bool success, ) = payable(owner()).call{ value: msg.value }("");
+            require(success, "fee payment to bridge committee failed");
+        }
         // burn the asset
         IMirrorToken(token).burn(_msgSender(), amount);
         emit Burn(assetId, token, _msgSender(), amount, msg.value);
