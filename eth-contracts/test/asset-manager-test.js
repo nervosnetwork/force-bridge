@@ -131,9 +131,10 @@ describe('AssetManager', () => {
     );
 
     // burn
+    const fee = ethers.utils.parseUnits('0.001', 18);
     const burnTx1 = await assetManager
       .connect(user1)
-      .burn(ckb.address, 100000000);
+      .burn(ckb.address, 100000000, { value: fee });
     const burnReceipt1 = await burnTx1.wait();
     const burnEvents1 = burnReceipt1.events
       .filter(e => e.event === 'Burn')
@@ -144,6 +145,7 @@ describe('AssetManager', () => {
     expect(burnEvents1[0].from).to.equal(user1.address);
     expect(burnEvents1[0].amount).to.equal(100000000);
     expect(burnEvents1[0].token).to.equal(ckb.address);
+    expect(burnEvents1[0].fee).to.equal(fee);
   });
 
   it('Nervos to Ethereum cross chain with multi signature admin', async () => {
@@ -199,7 +201,7 @@ describe('AssetManager', () => {
     // should success with gnosis multisig
     const partialTx = {
       to: assetManager.address,
-      value: '0',
+      value: 0,
       data: assetManager.interface.encodeFunctionData('mint', [mintRecords])
     };
     // collect signatures
