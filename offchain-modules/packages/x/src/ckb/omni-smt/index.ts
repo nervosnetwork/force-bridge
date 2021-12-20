@@ -18,7 +18,6 @@ export function getSmtRootAndProof(multisigScript: MultisigScript): { root: HexS
   const keyOnWl1 = new H256([
     111, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   ]);
-
   const keyOnWl2 = new H256([
     222, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   ]);
@@ -30,18 +29,28 @@ export function getSmtRootAndProof(multisigScript: MultisigScript): { root: HexS
 
   const root = tree.root;
   const proof = tree.merkle_proof([authSmtKeyH256]);
-  const compiled_proof = proof.compile([[authSmtKeyH256, authSmtValue]]);
-  const rootFromProof = compiled_proof.compute_root([[authSmtKeyH256, authSmtValue]]);
-  if (rootFromProof !== root) throw new Error('smt root generated from smt proof not equal to original root');
+  const compiledProof = proof.compile([[authSmtKeyH256, authSmtValue]]);
+  const rootFromProof = compiledProof.compute_root([[authSmtKeyH256, authSmtValue]]);
+  if (h256ToHex(rootFromProof) !== h256ToHex(root))
+    throw new Error(
+      `smt root generated from smt proof not equal to original root, root from proof ${h256ToHex(
+        rootFromProof,
+      )}, original root ${h256ToHex(root)}`,
+    );
 
   return {
-    root:
-      '0x' +
-      Array.from(root)
-        .map((x) => x.toString(16).padStart(2, '0'))
-        .join(''),
-    proof: '0x' + compiled_proof.map((x) => x.toString(16).padStart(2, '0')).join(''),
+    root: h256ToHex(root),
+    proof: '0x' + compiledProof.map((x) => x.toString(16).padStart(2, '0')).join(''),
   };
+}
+
+function h256ToHex(data: H256): HexString {
+  return (
+    '0x' +
+    Array.from(data)
+      .map((x) => x.toString(16).padStart(2, '0'))
+      .join('')
+  );
 }
 
 class Blake2bHasher extends Hasher {
