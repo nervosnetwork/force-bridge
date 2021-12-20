@@ -17,7 +17,7 @@ import { blake2b, transactionSkeletonToJSON } from '../../utils';
 import { logger } from '../../utils/logger';
 import { getSmtRootAndProof } from '../omni-smt';
 import { CkbTxHelper } from './base_generator';
-import { SerializeRCData } from './generated/rc-lock';
+import { SerializeRCData } from './generated/rc_lock';
 import { ScriptType } from './indexer';
 import { getMultisigLock } from './multisig/multisig_helper';
 import { generateTypeIDScript } from './multisig/typeid';

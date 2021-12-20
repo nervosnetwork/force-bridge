@@ -75,7 +75,6 @@ export async function deployDev(
         [sudtBin, pwLockBin, omniLockBin],
         ckbPrivateKey,
       );
-      // pwLockDep = await ckbDeployGenerator.deployContract(pwLockBin, ckbPrivateKey);
       logger.info('deployed pwLockDep', JSON.stringify(pwLockDep, null, 2));
     } else if (env === 'AGGRON4') {
       PATH_RECIPIENT_TYPESCRIPT = pathFromProjectRoot('/ckb-contracts/build/release-aggron/recipient-typescript');
