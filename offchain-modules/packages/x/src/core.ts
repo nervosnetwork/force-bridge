@@ -49,6 +49,7 @@ export class XChainHandlers {
 
 export interface XChainHandler {
   getHandledBlock(): { height: number; hash: string };
+
   getTipBlock(): Promise<{ height: number; hash: string }>;
 }
 
@@ -61,6 +62,7 @@ export class ForceBridgeCore {
   private static _ckbIndexer: CkbIndexer;
   private static _keystore: KeyStore;
   private static _xChainHandler: XChainHandlers;
+  private static _smtProof: string; // TODO get smtProof when init ForceBridgeCore
 
   static get config(): Config {
     asserts(ForceBridgeCore._config, 'ForceBridgeCore config is not init yet');
@@ -85,6 +87,11 @@ export class ForceBridgeCore {
   static getXChainHandler(): XChainHandlers {
     asserts(ForceBridgeCore._xChainHandler, 'ForceBridgeCore xChainHandler is not init yet');
     return ForceBridgeCore._xChainHandler;
+  }
+
+  static getSmtProof(): string {
+    asserts(ForceBridgeCore._smtProof, 'ForceBridgeCore SmtProof is not init yet');
+    return ForceBridgeCore._smtProof;
   }
 
   /**
