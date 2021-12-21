@@ -443,7 +443,8 @@ export class CkbTxGenerator extends CkbTxHelper {
       });
       const capacityDiff = await this.calculateCapacityDiff(txSkeleton);
       if (capacityDiff < 0) {
-        throw new Error(`fromAddress capacity not enough, need ${capacityDiff.toString()} more`);
+        const humanReadableCapacityDiff = -capacityDiff / 100000000n + (-capacityDiff % 100000000n === 0n ? 0n : 1n);
+        throw new Error(`fromAddress capacity insufficient, need ${humanReadableCapacityDiff.toString()} CKB more`);
       }
       txSkeleton = txSkeleton.update('outputs', (outputs) => {
         changeOutput.cell_output.capacity = `0x${(minimalChangeCellCapacity + capacityDiff - fee).toString(16)}`;
