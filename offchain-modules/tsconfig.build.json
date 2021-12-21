@@ -9,8 +9,7 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "types": [],
-    "resolveJsonModule": true,
-    "allowJs": true
+    "resolveJsonModule": true
   },
   "exclude": [
     "node_modules",

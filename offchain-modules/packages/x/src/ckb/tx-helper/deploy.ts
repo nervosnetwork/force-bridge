@@ -17,7 +17,7 @@ import { blake2b, transactionSkeletonToJSON } from '../../utils';
 import { logger } from '../../utils/logger';
 import { getSmtRootAndProof } from '../omni-smt';
 import { CkbTxHelper } from './base_generator';
-import { SerializeRCData } from './generated/rc_lock';
+import { SerializeRCData } from './generated/omni_lock';
 import { ScriptType } from './indexer';
 import { getMultisigLock } from './multisig/multisig_helper';
 import { generateTypeIDScript } from './multisig/typeid';
@@ -228,7 +228,6 @@ export class CkbDeployManager extends CkbTxHelper {
 
     txSkeleton = await this.completeTx(txSkeleton, fromAddress);
     const hash = await this.SignAndSendTransaction(txSkeleton, privateKey);
-    // const sudtCodeHash = ;
     return scriptBins.map((bin, index) => ({
       cellDep: {
         depType: 'code',
