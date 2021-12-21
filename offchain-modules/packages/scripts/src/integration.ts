@@ -3,7 +3,7 @@ import path from 'path';
 import { ValInfos } from '@force-bridge/cli/src/changeVal';
 import { KeyStore } from '@force-bridge/keystore/dist';
 import { OwnerCellConfig } from '@force-bridge/x/dist/ckb/tx-helper/deploy';
-import { Config, WhiteListEthAsset, CkbDeps } from '@force-bridge/x/dist/config';
+import { Config, WhiteListEthAsset, WhiteListNervosAsset, CkbDeps } from '@force-bridge/x/dist/config';
 import { asyncSleep, privateKeyToCkbPubkeyHash, writeJsonToFile } from '@force-bridge/x/dist/utils';
 import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
 import * as lodash from 'lodash';
@@ -51,6 +51,7 @@ async function handleDb(action: 'create' | 'drop', MULTISIG_NUMBER: number) {
 async function generateConfig(
   initConfig: Config,
   assetWhiteList: WhiteListEthAsset[],
+  nervosAssetWhiteList: WhiteListNervosAsset[],
   ckbDeps: CkbDeps,
   ownerCellConfig: OwnerCellConfig,
   ethContractAddress: string,
@@ -82,6 +83,7 @@ async function generateConfig(
   collectorConfig.eth.multiSignThreshold = multisigConfig.threshold;
   collectorConfig.eth.multiSignAddresses = multisigConfig.verifiers.map((v) => v.ethAddress);
   collectorConfig.eth.assetWhiteList = assetWhiteList;
+  collectorConfig.eth.nervosAssetWhiteList = nervosAssetWhiteList;
   collectorConfig.ckb.sudtSize = sudtSize;
   collectorConfig.ckb.multisigScript = {
     R: 0,
@@ -125,6 +127,7 @@ async function generateConfig(
   watcherConfig.common.log.identity = 'watcher';
   watcherConfig.common.port = 8080;
   watcherConfig.eth.assetWhiteList = assetWhiteList;
+  watcherConfig.eth.nervosAssetWhiteList = nervosAssetWhiteList;
   watcherConfig.ckb.sudtSize = sudtSize;
   writeJsonToFile({ forceBridge: watcherConfig }, path.join(configPath, 'watcher/force_bridge.json'));
   // verifiers
@@ -331,18 +334,26 @@ async function main() {
       confirmNumber: 1,
     },
   };
-  const { assetWhiteList, ckbDeps, ownerConfig, bridgeEthAddress, multisigConfig, ckbStartHeight, ethStartHeight } =
-    await deployDev(
-      ETH_RPC_URL,
-      CKB_RPC_URL,
-      CKB_INDEXER_URL,
-      MULTISIG_NUMBER,
-      MULTISIG_THRESHOLD,
-      ETH_PRIVATE_KEY,
-      CKB_PRIVATE_KEY,
-      'DEV',
-      path.join(configPath, 'deployConfig.json'),
-    );
+  const {
+    assetWhiteList,
+    nervosAssetWhiteList,
+    ckbDeps,
+    ownerConfig,
+    bridgeEthAddress,
+    multisigConfig,
+    ckbStartHeight,
+    ethStartHeight,
+  } = await deployDev(
+    ETH_RPC_URL,
+    CKB_RPC_URL,
+    CKB_INDEXER_URL,
+    MULTISIG_NUMBER,
+    MULTISIG_THRESHOLD,
+    ETH_PRIVATE_KEY,
+    CKB_PRIVATE_KEY,
+    'DEV',
+    path.join(configPath, 'deployConfig.json'),
+  );
 
   const extraMultiSigConfig = {
     threshold: EXTRA_MULTISIG_NUMBER,
@@ -352,6 +363,7 @@ async function main() {
   await generateConfig(
     initConfig as unknown as Config,
     assetWhiteList,
+    nervosAssetWhiteList,
     ckbDeps,
     ownerConfig,
     bridgeEthAddress,

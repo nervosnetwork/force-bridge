@@ -9,14 +9,15 @@ import { ForceBridgeCore } from '../../core';
 import { asserts, nonNullable } from '../../errors';
 import { asyncSleep, fromHexString, stringToUint8Array, toHexString, transactionSkeletonToJSON } from '../../utils';
 import { logger } from '../../utils/logger';
-import { Asset, NervosAsset } from '../model/asset';
-
+import { Asset, ChainType } from '../model/asset';
+import { NervosAsset } from '../model/nervos-asset';
 import { CkbTxHelper } from './base_generator';
 import { SerializeRecipientCellData } from './generated/eth_recipient_cell';
 import { SerializeLockMemo } from './generated/lock_memo';
 import { SerializeMintWitness } from './generated/mint_witness';
 import { ScriptType } from './indexer';
 import { getFromAddr, getMultisigLock, getOwnerTypeHash } from './multisig/multisig_helper';
+import { getOmniLockMultisigAddress } from './multisig/omni-lock';
 import { calculateFee, getTransactionSize } from './utils';
 
 export interface MintAssetRecord {
@@ -292,15 +293,15 @@ export class CkbTxGenerator extends CkbTxHelper {
   }
 
   /*
-      table RecipientCellData {
-        recipient_address: Bytes,
-        chain: byte,
-        asset: Bytes,
-        bridge_lock_code_hash: Byte32,
-        owner_lock_hash: Byte32,
-        amount: Uint128,
-      }
-       */
+          table RecipientCellData {
+            recipient_address: Bytes,
+            chain: byte,
+            asset: Bytes,
+            bridge_lock_code_hash: Byte32,
+            owner_lock_hash: Byte32,
+            amount: Uint128,
+          }
+           */
   async burn(
     fromLockscript: Script,
     recipientAddress: string,
@@ -459,18 +460,17 @@ export class CkbTxGenerator extends CkbTxHelper {
   async lock(
     senderLockscript: Script,
     recipientAddress: string,
-    asset: NervosAsset,
+    assetIdent: string,
     amount: bigint,
     xchain: string,
   ): Promise<CKBComponents.RawTransactionToSign> {
-    switch (asset.kind) {
-      case 'CKB':
-        return this.lockCKB(senderLockscript, recipientAddress, amount, xchain);
-      case 'SUDT':
-        return this.lockSUDT(senderLockscript, recipientAddress, asset.ident, amount, xchain);
-      default:
-        throw new Error('unsuppored nervos asset');
-    }
+    if (xchain !== 'Ethereum') throw new Error('only support bridge to Ethereum for now');
+    const assetInfo = new NervosAsset(assetIdent).getAssetInfo(ChainType.ETH);
+    if (!assetInfo) throw new Error('asset not in white list');
+
+    if (assetInfo.typescript)
+      return this.lockSUDT(senderLockscript, recipientAddress, assetInfo.typescript.args, amount, xchain);
+    return this.lockCKB(senderLockscript, recipientAddress, amount, xchain);
   }
 
   async lockCKB(
@@ -552,7 +552,7 @@ export class CkbTxGenerator extends CkbTxHelper {
     });
 
     // add outputs
-    const committeeMultisigLockscript = parseAddress(ForceBridgeCore.config.ckb.omniLockMultisigAddress);
+    const committeeMultisigLockscript = parseAddress(getOmniLockMultisigAddress());
     const committeeMultisigCell: Cell = {
       cell_output: {
         capacity: `0x${(amount + bridgeFee).toString(16)}`,

@@ -1,5 +1,6 @@
 import { parseAddress } from '@ckb-lumos/helpers';
-import { Asset, BtcAsset, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
+import { Asset, BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
+import { NervosAsset } from '@force-bridge/x/dist/ckb/model/nervos-asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
 import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
@@ -469,20 +470,22 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     payload: GenerateBridgeNervosToXchainLockTxPayload,
   ): Promise<GenerateTransactionResponse<T>> {
     logger.info(`generateBridgeNervosToXchainLockTx, payload: ${JSON.stringify(payload)}`);
-    const { xchain, asset, amount, recipient, sender } = payload;
+    const { xchain, assetIdent, amount, recipient, sender } = payload;
 
     checkCKBAddress(sender);
     const senderLockscript = parseAddress(sender);
-    if (BigInt(amount) <= 0) throw new Error('lock amount should greater than 0');
 
     switch (xchain) {
-      case 'Ethereum':
+      case 'Ethereum': {
         checkETHAddress(recipient);
         await checkLockEthAddr(recipient);
-        if (asset.kind === 'SUDT') {
-          // TODO check sudt in white list
-        }
+        const nervosAssetInfo = new NervosAsset(assetIdent).getAssetInfo(ChainType.ETH);
+        if (!nervosAssetInfo) throw new Error('asset not in white list');
+        if (BigInt(amount) <= BigInt(nervosAssetInfo.minimalBridgeAmount))
+          throw new Error('lock amount should greater than minimal bridge amount');
         break;
+      }
+
       default:
         throw new Error('unimplement chain type');
     }
@@ -491,7 +494,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
       ForceBridgeCore.config.ckb.ckbRpcUrl,
       ForceBridgeCore.config.ckb.ckbIndexerUrl,
     );
-    const lockTx = await ckbTxGenerator.lock(senderLockscript, recipient, asset, BigInt(amount), xchain);
+    const lockTx = await ckbTxGenerator.lock(senderLockscript, recipient, assetIdent, BigInt(amount), xchain);
 
     return {
       network: 'Nervos',
