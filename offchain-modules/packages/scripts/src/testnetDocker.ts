@@ -10,6 +10,7 @@ import * as lodash from 'lodash';
 import * as Mustache from 'mustache';
 import { execShellCmd, PATH_PROJECT_ROOT, pathFromProjectRoot } from './utils';
 import { deployDev } from './utils/deploy';
+import {nonNullable} from "@force-bridge/x";
 dotenv.config({ path: process.env.DOTENV_PATH || '.env' });
 
 export interface VerifierConfig {
@@ -254,6 +255,8 @@ volumes:
 async function main() {
   initLog({ level: 'debug', identity: 'testnet-docker' });
   // used for deploy and run service
+  // passed through: docker run -e FORCE_BRIDGE_PROJECT_DIR=$(dirname "$(pwd)")
+  nonNullable(process.env.FORCE_BRIDGE_PROJECT_DIR);
   const CKB_RPC_URL = getFromEnv('CKB_RPC_URL');
   const ETH_RPC_URL = getFromEnv('ETH_RPC_URL');
   const CKB_INDEXER_URL = getFromEnv('CKB_INDEXER_URL');
@@ -354,7 +357,7 @@ async function main() {
   await execShellCmd(`mkdir -p ${path.join(configPath, 'script')}`);
   const dockerComposeFile = Mustache.render(dockerComposeTemplate, {
     FORCE_BRIDGE_KEYSTORE_PASSWORD,
-    projectDir: PATH_PROJECT_ROOT,
+    projectDir: process.env.FORCE_BRIDGE_PROJECT_DIR,
     verifiers,
   });
   fs.writeFileSync(path.join(configPath, 'docker-compose.yml'), dockerComposeFile);
