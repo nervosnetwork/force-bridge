@@ -10,7 +10,8 @@ import * as lodash from 'lodash';
 import * as Mustache from 'mustache';
 import { execShellCmd, PATH_PROJECT_ROOT, pathFromProjectRoot } from './utils';
 import { deployDev } from './utils/deploy';
-import {nonNullable} from "@force-bridge/x";
+import { nonNullable } from '@force-bridge/x';
+
 dotenv.config({ path: process.env.DOTENV_PATH || '.env' });
 
 export interface VerifierConfig {
@@ -296,7 +297,7 @@ async function main() {
     },
     eth: {
       rpcUrl: ETH_RPC_URL,
-      confirmNumber: 12,  // 1 if Bsc
+      confirmNumber: 12, // 1 if Bsc
       startBlockHeight: 1,
       batchUnlock: {
         batchNumber: 100,
