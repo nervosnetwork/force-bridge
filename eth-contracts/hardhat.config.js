@@ -1,3 +1,4 @@
+require('dotenv').config();
 require('@nomiclabs/hardhat-waffle');
 require('solidity-coverage');
 
@@ -10,6 +11,45 @@ task('accounts', 'Prints the list of accounts', async () => {
     console.log(account.address);
   }
 });
+
+task("claimERC20TestToken", "claim ERC20 test token on bsc_testnet or rinkeby")
+    .addParam("account", "The account's address you want to fund")
+    .setAction(async (taskArgs) => {
+      const account = ethers.utils.getAddress(taskArgs.account);
+
+      const USDC = await ethers.getContractFactory('USDC');
+      const DAI = await ethers.getContractFactory('DAI');
+      const USDT = await ethers.getContractFactory('USDT');
+
+      const { chainId } = await ethers.provider.getNetwork()
+      console.log(`Chain ID: ${chainId}`);
+
+      const deployedTestTokens = {
+        97: {
+          usdc: '0x6b13CFD491917f2527748d29bF4C84362Ef6c7c8',
+          dai: '0x5dc281E4bbcED8F433699F320a3272089737dF8B',
+          usdt: '0x7A3d9d4303985554f75FA0DF1069417B8106d851',
+        },
+        4: {
+          usdc: '0x6b13CFD491917f2527748d29bF4C84362Ef6c7c8',
+          dai: '0x5dc281E4bbcED8F433699F320a3272089737dF8B',
+          usdt: '0x7A3d9d4303985554f75FA0DF1069417B8106d851',
+        }
+      }
+      if(!deployedTestTokens[chainId]) {
+        console.log(`No test tokens deployed for chain ${chainId}`);
+        return;
+      }
+      const usdc = await USDC.attach(deployedTestTokens[chainId].usdc);
+      const dai = await DAI.attach(deployedTestTokens[chainId].dai);
+      const usdt = await USDT.attach(deployedTestTokens[chainId].usdt);
+
+      await usdc.claimTestToken(account);
+      await dai.claimTestToken(account);
+      await usdt.claimTestToken(account);
+
+      console.log(`claimed USDC, DAI, USDT for ${account}`);
+    });
 
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
@@ -38,7 +78,13 @@ module.exports = {
     hardhat: {},
     bsc_testnet: {
       network_id: 97,
-      url: `https://data-seed-prebsc-1-s1.binance.org:8545`,
+      url: process.env.RPC_URL ? process.env.RPC_URL : `https://data-seed-prebsc-1-s1.binance.org:8545`,
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+    },
+    rinkeby: {
+      network_id: 4,
+      url: process.env.RPC_URL ? process.env.RPC_URL : `https://rinkeby-light.eth.linkpool.io/`,
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
     },
     geth: {
       url: `http://127.0.0.1:8545`,
