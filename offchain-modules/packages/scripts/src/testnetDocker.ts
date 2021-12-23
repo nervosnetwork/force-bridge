@@ -140,7 +140,7 @@ const dockerComposeTemplate = `
 version: "3.3"
 services:
   script:
-    image: node:14
+    image: node:14.18.1-bullseye
     restart: on-failure
     volumes:
       - ./script:/data
@@ -163,7 +163,7 @@ services:
     ports:
       - 3050:3306
   watcher:
-    image: node:14
+    image: node:14.18.1-bullseye
     restart: on-failure
     environment:
       FORCE_BRIDGE_KEYSTORE_PASSWORD: {{FORCE_BRIDGE_KEYSTORE_PASSWORD}}
@@ -188,7 +188,7 @@ services:
     ports:
       - 3059:3306
   collector:
-    image: node:14
+    image: node:14.18.1-bullseye
     restart: on-failure
     environment:
       FORCE_BRIDGE_KEYSTORE_PASSWORD: {{FORCE_BRIDGE_KEYSTORE_PASSWORD}}
@@ -214,7 +214,7 @@ services:
     ports:
       - {{db_port}}:3306
   {{name}}:
-    image: node:14
+    image: node:14.18.1-bullseye
     restart: on-failure
     environment:
       FORCE_BRIDGE_KEYSTORE_PASSWORD: {{FORCE_BRIDGE_KEYSTORE_PASSWORD}}
@@ -233,7 +233,7 @@ services:
       - {{name}}_db
 {{/verifiers}}
   monitor:
-    image: node:14
+    image: node:14.18.1-bullseye
     restart: on-failure
     environment:
       MONITOR_DURATION_CONFIG_PATH: /data/monitor.json
@@ -293,7 +293,7 @@ async function main() {
     },
     eth: {
       rpcUrl: ETH_RPC_URL,
-      confirmNumber: 12,
+      confirmNumber: 1,
       startBlockHeight: 1,
       batchUnlock: {
         batchNumber: 100,
@@ -305,7 +305,7 @@ async function main() {
       ckbIndexerUrl: CKB_INDEXER_URL,
       startBlockHeight: 1,
       confirmNumber: 15,
-      sudtSize: 150,
+      sudtSize: 400,
     },
   };
 
