@@ -153,6 +153,7 @@ export interface WhiteListEthAsset {
 export interface collectorConfig {
   gasLimit: number;
   batchGasLimit: number;
+  disableEIP1559Style?: boolean; // disable EIP1559 gas price style, default to be false
   gasPriceGweiLimit: number;
   maxPriorityFeePerGasGwei?: string;
 }
