@@ -31,9 +31,9 @@ task("claimERC20TestToken", "claim ERC20 test token on bsc_testnet or rinkeby")
           usdt: '0x7A3d9d4303985554f75FA0DF1069417B8106d851',
         },
         4: {
-          usdc: '0x6b13CFD491917f2527748d29bF4C84362Ef6c7c8',
-          dai: '0x5dc281E4bbcED8F433699F320a3272089737dF8B',
-          usdt: '0x7A3d9d4303985554f75FA0DF1069417B8106d851',
+          usdc: '0x265566D4365d80152515E800ca39424300374A83',
+          dai: '0x7Af456bf0065aADAB2E6BEc6DaD3731899550b84',
+          usdt: '0x74a3dbd5831f45CD0F3002Bb87a59B7C15b1B5E6',
         }
       }
       if(!deployedTestTokens[chainId]) {
