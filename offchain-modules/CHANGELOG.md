@@ -1,3 +1,10 @@
+## v0.0.16 (2021-12-20)
+
+### Bug fixes
+
+- [Fix version api of verifiers](https://github.com/nervosnetwork/force-bridge/pull/260)
+- [Better hint of CKB insufficient error message](https://github.com/nervosnetwork/force-bridge/pull/262)
+
 ## v0.0.15 (2021-12-03)
 
 ### Features
