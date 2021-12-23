@@ -578,17 +578,25 @@ export class CkbTxGenerator extends CkbTxHelper {
     });
 
     // add witnesses
-    const witnesses = new Array(searchedSenderCells.length);
-    witnesses[0] = new Reader(
-      SerializeWitnessArgs(
-        normalizers.NormalizeWitnessArgs({
-          lock: SECP_SIGNATURE_PLACEHOLDER,
-        }),
-      ),
-    ).serializeJson();
+    const witnesses = lodash.range(searchedSenderCells.length).map((index) => {
+      if (index === 0) {
+        return new Reader(
+          SerializeWitnessArgs(
+            normalizers.NormalizeWitnessArgs({
+              lock: SECP_SIGNATURE_PLACEHOLDER,
+            }),
+          ),
+        ).serializeJson();
+      }
+      return '0x';
+    });
+
     const lockMemo = SerializeLockMemo({ xchain: 1, recipient: new Reader(recipientAddress).toArrayBuffer() });
     // put lockMemo in witnesses[inputs.len]
     witnesses.push(new Reader(lockMemo).serializeJson());
+    txSkeleton = txSkeleton.update('witnesses', (witnesses) => {
+      return witnesses.push(...witnesses);
+    });
 
     // tx fee
     const txFee = calculateFee(getTransactionSize(txSkeleton));
@@ -601,7 +609,7 @@ export class CkbTxGenerator extends CkbTxHelper {
       });
     });
 
-    return txSkeletonToRawTransactionToSign(txSkeleton);
+    return txSkeletonToRawTransactionToSign(txSkeleton, false);
   }
 
   async lockSUDT(
@@ -807,7 +815,10 @@ function transformScript(script: Script | undefined | null): CKBComponents.Scrip
   };
 }
 
-function txSkeletonToRawTransactionToSign(txSkeleton: TransactionSkeletonType): CKBComponents.RawTransactionToSign {
+function txSkeletonToRawTransactionToSign(
+  txSkeleton: TransactionSkeletonType,
+  clearWitness = true,
+): CKBComponents.RawTransactionToSign {
   const inputs = txSkeleton
     .get('inputs')
     .toArray()
@@ -850,15 +861,16 @@ function txSkeletonToRawTransactionToSign(txSkeleton: TransactionSkeletonType): 
         depType,
       };
     });
+  const witnesses = clearWitness ? [{ lock: '', inputType: '', outputType: '' }] : txSkeleton.witnesses.toArray();
   const rawTx = {
     version: '0x0',
     cellDeps,
     headerDeps: [],
     inputs,
     outputs,
-    witnesses: [{ lock: '', inputType: '', outputType: '' }],
+    witnesses: witnesses,
     outputsData,
   };
-  logger.debug(`generate burn rawTx: ${JSON.stringify(rawTx, null, 2)}`);
+  logger.debug(`generate rawTx: ${JSON.stringify(rawTx, null, 2)}`);
   return rawTx as CKBComponents.RawTransactionToSign;
 }
