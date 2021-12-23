@@ -296,7 +296,7 @@ async function main() {
     },
     eth: {
       rpcUrl: ETH_RPC_URL,
-      confirmNumber: 1,
+      confirmNumber: 12,  // 1 if Bsc
       startBlockHeight: 1,
       batchUnlock: {
         batchNumber: 100,
