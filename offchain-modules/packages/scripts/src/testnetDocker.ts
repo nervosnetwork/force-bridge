@@ -10,6 +10,8 @@ import * as lodash from 'lodash';
 import * as Mustache from 'mustache';
 import { execShellCmd, PATH_PROJECT_ROOT, pathFromProjectRoot } from './utils';
 import { deployDev } from './utils/deploy';
+import { nonNullable } from '@force-bridge/x';
+
 dotenv.config({ path: process.env.DOTENV_PATH || '.env' });
 
 export interface VerifierConfig {
@@ -140,7 +142,7 @@ const dockerComposeTemplate = `
 version: "3.3"
 services:
   script:
-    image: node:14
+    image: node:14.18.1-bullseye
     restart: on-failure
     volumes:
       - ./script:/data
@@ -163,7 +165,7 @@ services:
     ports:
       - 3050:3306
   watcher:
-    image: node:14
+    image: node:14.18.1-bullseye
     restart: on-failure
     environment:
       FORCE_BRIDGE_KEYSTORE_PASSWORD: {{FORCE_BRIDGE_KEYSTORE_PASSWORD}}
@@ -188,7 +190,7 @@ services:
     ports:
       - 3059:3306
   collector:
-    image: node:14
+    image: node:14.18.1-bullseye
     restart: on-failure
     environment:
       FORCE_BRIDGE_KEYSTORE_PASSWORD: {{FORCE_BRIDGE_KEYSTORE_PASSWORD}}
@@ -214,7 +216,7 @@ services:
     ports:
       - {{db_port}}:3306
   {{name}}:
-    image: node:14
+    image: node:14.18.1-bullseye
     restart: on-failure
     environment:
       FORCE_BRIDGE_KEYSTORE_PASSWORD: {{FORCE_BRIDGE_KEYSTORE_PASSWORD}}
@@ -233,7 +235,7 @@ services:
       - {{name}}_db
 {{/verifiers}}
   monitor:
-    image: node:14
+    image: node:14.18.1-bullseye
     restart: on-failure
     environment:
       MONITOR_DURATION_CONFIG_PATH: /data/monitor.json
@@ -254,6 +256,8 @@ volumes:
 async function main() {
   initLog({ level: 'debug', identity: 'testnet-docker' });
   // used for deploy and run service
+  // passed through: docker run -e FORCE_BRIDGE_PROJECT_DIR=$(dirname "$(pwd)")
+  nonNullable(process.env.FORCE_BRIDGE_PROJECT_DIR);
   const CKB_RPC_URL = getFromEnv('CKB_RPC_URL');
   const ETH_RPC_URL = getFromEnv('ETH_RPC_URL');
   const CKB_INDEXER_URL = getFromEnv('CKB_INDEXER_URL');
@@ -293,7 +297,7 @@ async function main() {
     },
     eth: {
       rpcUrl: ETH_RPC_URL,
-      confirmNumber: 12,
+      confirmNumber: 12, // 1 if Bsc
       startBlockHeight: 1,
       batchUnlock: {
         batchNumber: 100,
@@ -305,7 +309,7 @@ async function main() {
       ckbIndexerUrl: CKB_INDEXER_URL,
       startBlockHeight: 1,
       confirmNumber: 15,
-      sudtSize: 150,
+      sudtSize: 400,
     },
   };
 
@@ -354,7 +358,7 @@ async function main() {
   await execShellCmd(`mkdir -p ${path.join(configPath, 'script')}`);
   const dockerComposeFile = Mustache.render(dockerComposeTemplate, {
     FORCE_BRIDGE_KEYSTORE_PASSWORD,
-    projectDir: PATH_PROJECT_ROOT,
+    projectDir: process.env.FORCE_BRIDGE_PROJECT_DIR,
     verifiers,
   });
   fs.writeFileSync(path.join(configPath, 'docker-compose.yml'), dockerComposeFile);
