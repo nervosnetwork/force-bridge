@@ -1,3 +1,9 @@
+## v0.0.17 (2021-12-24)
+
+### Features
+
+- [bsc compatability support](https://github.com/nervosnetwork/force-bridge/pull/269)
+
 ## v0.0.16 (2021-12-20)
 
 ### Bug fixes
