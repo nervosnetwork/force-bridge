@@ -48,4 +48,5 @@ Nervos chain and collect the signatures off-chain.
   - `NervosMirrorToken.sol`: The default mirror token contract used for Nervos assets.
 - test
   - `test_asset_manager.js`: Test cases for `AssetManager` contract. The `Nervos to Ethereum cross chain with multi signature admin`
-    test case shows how we will do the process with gonosis-safe.
+    test case shows how we will do the process with gonosis-safe. You can run the tests with command
+    `npx hardhat test ./test/asset-manager-test.js`.
