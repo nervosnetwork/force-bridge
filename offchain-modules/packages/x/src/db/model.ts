@@ -1,4 +1,4 @@
-import { getRepository } from 'typeorm';
+import { Column, CreateDateColumn, getRepository, Index, PrimaryColumn, UpdateDateColumn } from 'typeorm';
 import { ChainType } from '../ckb/model/asset';
 import { SigType } from '../multisig/multisig-mgr';
 import { BtcUnlock } from './entity/BtcUnlock';
@@ -6,6 +6,8 @@ import { CkbMint, CkbMintStatus, dbTxStatus } from './entity/CkbMint';
 import { EosUnlock } from './entity/EosUnlock';
 import { EthLock, TxConfirmStatus } from './entity/EthLock';
 import { EthUnlock, EthUnlockStatus } from './entity/EthUnlock';
+import Timestamp = CKBComponents.Timestamp;
+import { CkbUnlockStatus } from './entity/CkbUnlock';
 
 export { EthUnlock } from './entity/EthUnlock';
 export { EthLock, TxConfirmStatus } from './entity/EthLock';
@@ -17,6 +19,8 @@ export { CkbMint } from './entity/CkbMint';
 export { CkbBurn } from './entity/CkbBurn';
 export { TronLock } from './entity/TronLock';
 export { TronUnlock } from './entity/TronUnlock';
+export { CkbLock } from './entity/CkbLock';
+export { CkbUnlock } from './entity/CkbUnlock';
 
 export interface ISigned {
   sigType: SigType;
@@ -114,6 +118,45 @@ export interface ITronUnlock {
 }
 
 export type XchainUnlock = EthUnlock | BtcUnlock | EosUnlock;
+
+export interface ICkbLock {
+  ckbTxHash: string;
+  chain: number; // bridge to which chain
+  senderAddress: string;
+  assetIdent: string; // sudt/xudt typescript hash
+  amount: string;
+  bridgeFee: string;
+  recipientAddress: string;
+  blockNumber: number;
+  blockTimestamp: number;
+  confirmNumber: number;
+  confirmStatus: TxConfirmStatus;
+}
+
+export interface ICkbUnlock {
+  id: string;
+  burnTxHash: string;
+  chain: number;
+  assetIdent: string;
+  amount: string;
+  recipientAddress: string;
+  extraData: string;
+  blockNumber: number;
+  blockTimestamp: number;
+  unlockHash: string;
+  status?: CkbUnlockStatus;
+  message?: string;
+}
+
+export interface IEthereumMint {
+  ckbTxHash: string;
+  asset: string;
+  amount: string;
+  recipientAddress: string;
+  blockNumber: number;
+  blockTimestamp: number;
+  ethTxHash: string;
+}
 
 // export async function transformBurnEvent(burn: CkbBurn): Promise<XchainUnlock> {
 //   throw new Error('Method not implemented.');

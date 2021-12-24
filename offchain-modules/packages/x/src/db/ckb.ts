@@ -3,11 +3,15 @@ import { Connection, In, UpdateResult } from 'typeorm';
 import { ChainType } from '../ckb/model/asset';
 import { ForceBridgeCore } from '../core';
 import { CollectorCkbMint, dbTxStatus } from './entity/CkbMint';
-import { CollectorEthUnlock } from './entity/EthUnlock';
+import { CkbUnlockStatus, CollectorCkbUnlock } from './entity/CkbUnlock';
+import { CollectorEthUnlock, EthUnlockStatus } from './entity/EthUnlock';
+import { CollectorEthereumMint } from './entity/EthereumMint';
 import {
   BtcUnlock,
   CkbBurn,
   CkbMint,
+  CkbLock,
+  CkbUnlock,
   EosUnlock,
   EthLock,
   EthUnlock,
@@ -20,6 +24,10 @@ import {
   MintedRecords,
   TronUnlock,
   TxConfirmStatus,
+  IEthLock,
+  ICkbLock,
+  IEthereumMint,
+  ICkbUnlock,
 } from './model';
 
 export class CkbDb {
@@ -192,5 +200,73 @@ export class CkbDb {
         id: In(ids),
       },
     });
+  }
+
+  async getCkbLockByTxHashes(ckbTxHashes: string[]): Promise<ICkbLock[]> {
+    return await this.connection.getRepository(CkbLock).find({
+      where: {
+        ckbTxHash: In(ckbTxHashes),
+      },
+    });
+  }
+
+  async saveCollectorCkbUnlock(records: ICkbUnlock[]): Promise<void> {
+    await this.connection
+      .getRepository(CollectorCkbUnlock)
+      .save(records.map((r) => this.connection.getRepository(CollectorCkbUnlock).create(r)));
+  }
+
+  async createCkbLock(records: ICkbLock[]): Promise<void> {
+    const dbRecords = records.map((r) => this.connection.getRepository(CkbLock).create(r));
+    await this.connection.getRepository(CkbLock).save(dbRecords);
+  }
+
+  async updateLockConfirmNumber(
+    records: { ckbTxHash: string; confirmedNumber: number; confirmStatus: TxConfirmStatus }[],
+  ): Promise<UpdateResult[]> {
+    const updataResults = new Array(0);
+    for (const record of records) {
+      const result = await this.connection
+        .getRepository(CkbLock)
+        .createQueryBuilder()
+        .update()
+        .set({ confirmNumber: record.confirmedNumber, confirmStatus: record.confirmStatus })
+        .where('ckb_tx_hash = :ckbTxHash', { ckbTxHash: record.ckbTxHash })
+        .execute();
+      updataResults.push(result);
+    }
+    return updataResults;
+  }
+
+  async createCollectorEthMint(records: IEthereumMint[]): Promise<void> {
+    const dbRecords = records.map((r) => this.connection.getRepository(CollectorEthereumMint).create(r));
+    await this.connection.getRepository(CollectorEthereumMint).save(dbRecords);
+  }
+
+  async getCkbUnlockRecordsToUnlock(status: CkbUnlockStatus, take = 10): Promise<CkbUnlock[]> {
+    return await this.connection.getRepository(CollectorCkbUnlock).find({
+      where: {
+        status,
+      },
+      take,
+    });
+  }
+
+  async getCkbUnlockByEthTxHashes(ethTxHashes: string[]): Promise<CkbUnlock[]> {
+    return await this.connection.getRepository(CkbUnlock).find({
+      where: {
+        burnTxHash: In(ethTxHashes),
+      },
+    });
+  }
+
+  async setCollectorCkbUnlockToSuccess(ethTxHashes: string[]): Promise<void> {
+    await this.connection
+      .getRepository(CollectorCkbUnlock)
+      .createQueryBuilder()
+      .update()
+      .set({ status: 'success' })
+      .where({ burnTxHash: In(ethTxHashes) })
+      .execute();
   }
 }
