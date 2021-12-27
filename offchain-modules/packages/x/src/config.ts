@@ -58,6 +58,8 @@ export interface EthConfig {
   confirmNumber: number;
   startBlockHeight: number;
   assetWhiteList: WhiteListEthAsset[];
+  assetManagerContractAddress: string;
+  safeMultisignContractAddress: string;
 }
 
 export interface EosConfig {

@@ -14,5 +14,5 @@
     "outDir": "dist",
     "skipLibCheck": true
   },
-  "include": ["src", "src/**/*.json"]
+  "include": ["src", "src/**/*.json", "test"]
 }
