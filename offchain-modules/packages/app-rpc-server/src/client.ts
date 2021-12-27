@@ -76,8 +76,7 @@ export class ForceBridgeAPIV1Client implements ForceBridgeAPIV1 {
         }
         break;
       default:
-        //TODO add other chains
-        Promise.reject(new Error('not yet'));
+        throw new Error('only support Ethereum for now');
     }
     return result;
   }

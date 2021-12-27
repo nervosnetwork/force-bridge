@@ -58,10 +58,11 @@ Check <https://hub.docker.com/r/nervos/perkins-tent>.
 
 ```bash
 cd offchain-modules
+# install node modules
+yarn testnet-docker:install
 # generate all configs
 yarn testnet-docker:generate
-# install and build force bridge inside docker
-docker run --rm -v ${offchainModulePath}:/app -v force-bridge-node-modules:/app/node_modules node:14.18.1-bullseye bash -c 'cd /app && yarn build'
+
 cd workdir/testnet-docker
 docker-compose up -d
 ```

@@ -136,7 +136,6 @@ export interface GetBridgeConfigResponse {
 // TODO: change to the higher order generic when it impl
 // https://github.com/microsoft/TypeScript/issues/1213
 export interface ForceBridgeAPIV1 {
-  /*
   // prettier-ignore
   generateBridgeInNervosTransaction: <T extends NetworkTypes>(payload: GenerateBridgeInTransactionPayload) => Promise<GenerateTransactionResponse<T>>
   // prettier-ignore

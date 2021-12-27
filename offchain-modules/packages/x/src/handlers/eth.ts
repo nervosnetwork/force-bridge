@@ -383,7 +383,7 @@ export class EthHandler {
           r.status = 'pending';
         });
         await this.ethDb.saveCollectorEthUnlock(records);
-        const txRes = await this.ethChain.sendUnlockTxs(records);
+        const txRes = await this.ethChain.sendUnlockTxs(records, gasPrice);
         if (typeof txRes === 'boolean') {
           records.map((r) => {
             r.status = 'success';
