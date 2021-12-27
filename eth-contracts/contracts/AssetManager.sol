@@ -9,7 +9,7 @@ import "./interfaces/IMirrorToken.sol";
 /// @title Asset Manager - The entry to manage all bridged tokens from Nervos chain
 /// The owner of this contract should be transferred to the gnosis multi-sig wallet of Force Bridge committee when the
 /// initializing is done.
-/// All tokens recorded in this contract should be authorized to mint and burn by the this contract.
+/// All tokens recorded in this contract should be authorized to mint, and burn through this contract to make bridge action.
 contract AssetManager is Ownable, ReentrancyGuard {
     // Mapping to keep track of the mirror tokens
     // token is the address of the mirror token on Ethereum
