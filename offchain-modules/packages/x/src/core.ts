@@ -4,6 +4,7 @@ import CKB from '@nervosnetwork/ckb-sdk-core';
 import nconf from 'nconf';
 import { CkbIndexer } from './ckb/tx-helper/indexer';
 import { initLumosConfig } from './ckb/tx-helper/init_lumos_config';
+import { getSmtRootAndProof } from './ckb/tx-helper/omni-smt';
 import { Config } from './config';
 import { asserts } from './errors';
 import { ServerSingleton } from './server/serverSingleton';
@@ -62,7 +63,7 @@ export class ForceBridgeCore {
   private static _ckbIndexer: CkbIndexer;
   private static _keystore: KeyStore;
   private static _xChainHandler: XChainHandlers;
-  private static _smtProof: string; // TODO get smtProof when init ForceBridgeCore
+  private static _smtProof: string;
 
   static get config(): Config {
     asserts(ForceBridgeCore._config, 'ForceBridgeCore config is not init yet');
@@ -119,6 +120,9 @@ export class ForceBridgeCore {
       if (config.eth && config.eth.privateKey) {
         config.eth.privateKey = keystore.getDecryptedByKeyID(config.eth.privateKey);
       }
+
+      const { proof } = getSmtRootAndProof(config.ckb.multisigScript);
+      ForceBridgeCore._smtProof = proof;
     }
 
     // write static
