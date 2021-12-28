@@ -477,11 +477,11 @@ function transferDbRecordToResponse(
   let bridgeTxRecord: TransactionSummary;
   if ('lock_hash' in record) {
     const confirmStatus = record.lock_confirm_status === 'confirmed' ? 'confirmed' : record.lock_confirm_number;
-    const bridgeFee = new EthAsset(record.asset).getBridgeFee('in');
-    const mintAmount =
-      record.mint_amount === null
-        ? new Amount(record.lock_amount, 0).sub(new Amount(bridgeFee, 0)).toString(0)
-        : record.mint_amount;
+    // const bridgeFee = new EthAsset(record.asset).getBridgeFee('in');
+    const mintAmount = record.mint_amount;
+    // record.mint_amount === null
+    //   ? new Amount(record.lock_amount, 0).sub(new Amount(bridgeFee, 0)).toString(0)
+    //   : record.mint_amount;
     bridgeTxRecord = {
       txSummary: {
         fromAsset: {
@@ -509,11 +509,11 @@ function transferDbRecordToResponse(
     }
   } else if ('burn_hash' in record) {
     const confirmStatus = record.burn_confirm_status === 'confirmed' ? 'confirmed' : record.burn_confirm_number;
-    const bridgeFee = new EthAsset(record.asset).getBridgeFee('out');
-    const unlockAmount =
-      record.unlock_amount === null
-        ? new Amount(record.burn_amount, 0).sub(new Amount(bridgeFee, 0)).toString(0)
-        : record.unlock_amount;
+    // const bridgeFee = new EthAsset(record.asset).getBridgeFee('out');
+    const unlockAmount = record.unlock_amount;
+    // record.unlock_amount === null
+    //   ? new Amount(record.burn_amount, 0).sub(new Amount(bridgeFee, 0)).toString(0)
+    //   : record.unlock_amount;
     bridgeTxRecord = {
       txSummary: {
         fromAsset: {
