@@ -4,10 +4,10 @@ const { keccak256, defaultAbiCoder, toUtf8Bytes } = ethers.utils;
 const {
   EthersAdapter,
   SafeFactory,
-  SafeAccountConfig
+  SafeAccountConfig,
 } = require('@gnosis.pm/safe-core-sdk');
-const EthSafeTransaction = require('@gnosis.pm/safe-core-sdk/dist/src/utils/transactions/SafeTransaction')
-  .default;
+const EthSafeTransaction =
+  require('@gnosis.pm/safe-core-sdk/dist/src/utils/transactions/SafeTransaction').default;
 const Safe = require('@gnosis.pm/safe-core-sdk').default;
 
 async function setupGnosis() {
@@ -22,8 +22,8 @@ async function setupGnosis() {
     [chainId]: {
       multiSendAddress: multiSend.address,
       safeMasterCopyAddress: gnosisSafe.address,
-      safeProxyFactoryAddress: proxyFactory.address
-    }
+      safeProxyFactoryAddress: proxyFactory.address,
+    },
   };
   return contractNetworks;
 }
@@ -31,12 +31,12 @@ async function setupGnosis() {
 async function getSignature(signer, safeAddress, contractNetworks, partialTx) {
   const ethAdapter = new EthersAdapter({
     ethers,
-    signer
+    signer,
   });
   const safeSdk = await Safe.create({
     ethAdapter,
     safeAddress,
-    contractNetworks
+    contractNetworks,
   });
   const tx = await safeSdk.createTransaction(partialTx);
   const txHash = await safeSdk.getTransactionHash(tx);
@@ -63,7 +63,7 @@ describe('AssetManager', () => {
       multisig3,
       multisig4,
       multisig5,
-      collector
+      collector,
     ] = await ethers.getSigners();
     // create ckb mirror token
     const NervosMirrorToken = await ethers.getContractFactory(
@@ -92,23 +92,23 @@ describe('AssetManager', () => {
         to: user1.address,
         amount: 100000000,
         lockId:
-          '0x0000000000000000000000000000000000000000000000000000000000000001'
+          '0x0000000000000000000000000000000000000000000000000000000000000001',
       },
       {
         assetId: sudtAssetId,
         to: user2.address,
         amount: ethers.utils.parseUnits('1', 18),
         lockId:
-          '0x0000000000000000000000000000000000000000000000000000000000000002'
-      }
+          '0x0000000000000000000000000000000000000000000000000000000000000002',
+      },
     ];
     // console.log({mintRecords})
     const mintTx = await assetManager.mint(mintRecords);
     const mintReceipt = await mintTx.wait();
     // console.log({ mintTx, mintReceipt })
     const mintEvents = mintReceipt.events
-      .filter(e => e.event === 'Mint')
-      .map(e => e.args);
+      .filter((e) => e.event === 'Mint')
+      .map((e) => e.args);
     // console.log(mintEvents)
     expect(mintEvents).to.have.lengthOf(2);
     expect(mintEvents[0].assetId).to.equal(ckbAssetId);
@@ -137,8 +137,8 @@ describe('AssetManager', () => {
       .burn(ckb.address, 100000000, '0x', '0x', { value: fee });
     const burnReceipt1 = await burnTx1.wait();
     const burnEvents1 = burnReceipt1.events
-      .filter(e => e.event === 'Burn')
-      .map(e => e.args);
+      .filter((e) => e.event === 'Burn')
+      .map((e) => e.args);
     // console.log({ burnEvents1 })
     expect(burnEvents1).to.have.lengthOf(1);
     expect(burnEvents1[0].assetId).to.equal(ckbAssetId);
@@ -152,23 +152,23 @@ describe('AssetManager', () => {
     // create gnosis multisig contract
     const ethAdapter = new EthersAdapter({
       ethers,
-      signer: collector
+      signer: collector,
     });
     const owners = [
       multisig1.address,
       multisig2.address,
       multisig3.address,
       multisig4.address,
-      multisig5.address
+      multisig5.address,
     ];
     const threshold = 3;
     const safeAccountConfig = {
       owners,
-      threshold
+      threshold,
     };
     const safeFactory = await SafeFactory.create({
       ethAdapter,
-      contractNetworks
+      contractNetworks,
     });
     const safeSdk = await safeFactory.deploySafe(safeAccountConfig);
     const safeAddress = safeSdk.getAddress();
@@ -184,15 +184,15 @@ describe('AssetManager', () => {
         to: user1.address,
         amount: 100000000,
         lockId:
-          '0x0000000000000000000000000000000000000000000000000000000000000001'
+          '0x0000000000000000000000000000000000000000000000000000000000000001',
       },
       {
         assetId: sudtAssetId,
         to: user2.address,
         amount: ethers.utils.parseUnits('1', 18),
         lockId:
-          '0x0000000000000000000000000000000000000000000000000000000000000002'
-      }
+          '0x0000000000000000000000000000000000000000000000000000000000000002',
+      },
     ];
     await expect(assetManager.mint(mintRecords)).to.be.revertedWith(
       'Ownable: caller is not the owner'
@@ -202,7 +202,7 @@ describe('AssetManager', () => {
     const partialTx = {
       to: assetManager.address,
       value: 0,
-      data: assetManager.interface.encodeFunctionData('mint', [mintRecords])
+      data: assetManager.interface.encodeFunctionData('mint', [mintRecords]),
     };
     // collect signatures
     const sig1 = await getSignature(
@@ -232,8 +232,8 @@ describe('AssetManager', () => {
     const mintReceipt = await mintTx.transactionResponse.wait();
     // console.log({ mintTx, mintReceipt })
     const mintEvents = mintReceipt.events
-      .filter(e => e.address === assetManager.address)
-      .map(e => assetManager.interface.parseLog(e).args);
+      .filter((e) => e.address === assetManager.address)
+      .map((e) => assetManager.interface.parseLog(e).args);
     // console.log(mintEvents)
     expect(mintEvents).to.have.lengthOf(2);
     expect(mintEvents[0].assetId).to.equal(ckbAssetId);
