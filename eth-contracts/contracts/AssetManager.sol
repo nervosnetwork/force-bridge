@@ -19,7 +19,7 @@ contract AssetManager is Ownable, ReentrancyGuard {
 
     event Mint(bytes32 indexed assetId, address indexed token, address indexed to, uint256 amount, bytes lockId);
 
-    event Burn(bytes32 indexed assetId, address indexed token, address indexed from, uint256 amount, uint256 fee);
+    event Burn(bytes32 indexed assetId, address indexed token, address indexed from, uint256 amount, bytes recipient, bytes udtExtraData, uint256 fee);
 
     struct MintRecord {
         bytes32 assetId;    // asset id locked on Nervos chain
