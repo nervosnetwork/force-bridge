@@ -41,7 +41,8 @@ export async function signAdaTx(params: collectSignaturesParams): Promise<SigRes
 
   const adaHandler = ForceBridgeCore.getXChainHandler().ada!;
   const networkTip = (await adaHandler.getTipBlock()).height;
-  if (networkTip - adaHandler.getHandledBlock().height >= 10) {
+  if (networkTip - adaHandler.getHandledBlock().height >= 30) {
+    // TODO: Make this configurable for integration tests
     return SigResponse.fromSigError(SigErrorCode.BlockSyncUncompleted);
   }
 
