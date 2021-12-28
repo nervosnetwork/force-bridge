@@ -19,7 +19,7 @@ contract AssetManager is Ownable, ReentrancyGuard {
 
     event Mint(bytes32 indexed assetId, address indexed token, address indexed to, uint256 amount, bytes lockId);
 
-    event Burn(bytes32 indexed assetId, address indexed token, address indexed from, uint256 amount, bytes recipient, bytes udtExtraData, uint256 fee);
+    event Burn(bytes32 indexed assetId, address indexed token, address indexed from, uint256 amount, uint256 fee, bytes recipient, bytes extraData);
 
     struct MintRecord {
         bytes32 assetId;    // asset id locked on Nervos chain
@@ -59,7 +59,9 @@ contract AssetManager is Ownable, ReentrancyGuard {
     /// @dev Burn an asset and get the locked amount back on Nervos chain.
     /// @param token The address of the token to burn.
     /// @param amount The amount to burn.
-    function burn(address token, uint256 amount) public nonReentrant payable {
+    /// @param recipient The recipient on Nervos Chain.
+    /// @params extraData Extra data to be sent to the recipient.
+    function burn(address token, uint256 amount, bytes calldata recipient, bytes calldata extraData) public nonReentrant payable {
         bytes32 assetId = tokenToAssetIdMap[token];
         require(assetId != 0x0, "token not supported");
         // pay the fee to bridge committee
@@ -69,6 +71,6 @@ contract AssetManager is Ownable, ReentrancyGuard {
         }
         // burn the asset
         IMirrorToken(token).burn(_msgSender(), amount);
-        emit Burn(assetId, token, _msgSender(), amount, msg.value);
+        emit Burn(assetId, token, _msgSender(), amount, msg.value, recipient, extraData);
     }
 }

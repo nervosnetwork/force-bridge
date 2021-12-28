@@ -134,7 +134,7 @@ describe('AssetManager', () => {
     const fee = ethers.utils.parseUnits('0.001', 18);
     const burnTx1 = await assetManager
       .connect(user1)
-      .burn(ckb.address, 100000000, { value: fee });
+      .burn(ckb.address, 100000000, '0x', '0x', { value: fee });
     const burnReceipt1 = await burnTx1.wait();
     const burnEvents1 = burnReceipt1.events
       .filter(e => e.event === 'Burn')
