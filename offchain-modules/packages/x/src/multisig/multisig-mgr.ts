@@ -4,10 +4,10 @@ import * as utils from '@nervosnetwork/ckb-sdk-utils';
 import { JSONRPCResponse } from 'json-rpc-2.0';
 import { MultiSignHost } from '../config';
 import { ForceBridgeCore } from '../core';
+import { IAdaUnlock } from '../db/model';
 import { asyncSleep } from '../utils';
 import { logger } from '../utils/logger';
 import { EthUnlockRecord } from '../xchain/eth';
-import { IAdaUnlock } from '../db/model';
 import { httpRequest } from './client';
 import { verifyCollector } from './utils';
 
@@ -57,7 +57,10 @@ export interface adaCollectSignaturesPayload {
   unlockRecords: IAdaUnlock[];
 }
 
-export type collectSignaturesParamsPayload = ethCollectSignaturesPayload | ckbCollectSignaturesPayload | adaCollectSignaturesPayload;
+export type collectSignaturesParamsPayload =
+  | ethCollectSignaturesPayload
+  | ckbCollectSignaturesPayload
+  | adaCollectSignaturesPayload;
 
 export interface collectSignaturesParams {
   rawData: string;
