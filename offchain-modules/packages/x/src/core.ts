@@ -120,7 +120,9 @@ export class ForceBridgeCore {
       if (config.eth && config.eth.privateKey) {
         config.eth.privateKey = keystore.getDecryptedByKeyID(config.eth.privateKey);
       }
+    }
 
+    if (config.common.role === 'collector') {
       const { proof } = getSmtRootAndProof(config.ckb.multisigScript);
       ForceBridgeCore._smtProof = proof;
     }
