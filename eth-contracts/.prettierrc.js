@@ -1,13 +1,12 @@
 module.exports = {
   tabWidth: 2,
   singleQuote: true,
-  semi: true,
   overrides: [
     {
       files: '*.sol',
       options: {
         tabWidth: 2,
-        singleQuote: true,
+        singleQuote: false,
         explicitTypes: 'always',
       },
     },

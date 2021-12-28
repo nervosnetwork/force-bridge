@@ -1,10 +1,10 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
-import '@openzeppelin/contracts/access/Ownable.sol';
-import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
-import './interfaces/IMirrorToken.sol';
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "./interfaces/IMirrorToken.sol";
 
 /// @title Asset Manager - The entry to manage all bridged tokens from Nervos chain
 /// The owner of this contract should be transferred to the gnosis multi-sig wallet of Force Bridge committee when the
@@ -64,7 +64,7 @@ contract AssetManager is Ownable, ReentrancyGuard {
   function mint(MintRecord[] calldata records) public onlyOwner {
     for (uint256 i = 0; i < records.length; i++) {
       address tokenAddr = assetIdToTokenMap[records[i].assetId];
-      require(tokenAddr != address(0), 'Asset not found');
+      require(tokenAddr != address(0), "Asset not found");
       IMirrorToken(tokenAddr).mint(records[i].to, records[i].amount);
       emit Mint(
         records[i].assetId,
@@ -88,11 +88,11 @@ contract AssetManager is Ownable, ReentrancyGuard {
     bytes calldata extraData
   ) public payable nonReentrant {
     bytes32 assetId = tokenToAssetIdMap[token];
-    require(assetId != 0x0, 'token not supported');
+    require(assetId != 0x0, "token not supported");
     // pay the fee to bridge committee
     if (msg.value > 0) {
-      (bool success, ) = payable(owner()).call{value: msg.value}('');
-      require(success, 'fee payment to bridge committee failed');
+      (bool success, ) = payable(owner()).call{value: msg.value}("");
+      require(success, "fee payment to bridge committee failed");
     }
     // burn the asset
     IMirrorToken(token).burn(_msgSender(), amount);
