@@ -80,7 +80,7 @@ contract AssetManager is Ownable, ReentrancyGuard {
   /// @param token The address of the token to burn.
   /// @param amount The amount to burn.
   /// @param recipient The recipient on Nervos Chain.
-  /// @params extraData Extra data to be sent to the recipient.
+  /// @param extraData Extra data to be sent to the recipient.
   function burn(
     address token,
     uint256 amount,
