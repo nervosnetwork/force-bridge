@@ -25,4 +25,9 @@ module.exports = {
     'no-constant-condition': 'warn',
     'deprecation/deprecation': 'warn'
   },
+  ignorePatterns: [
+    '**/generated',
+    '**/*.js',
+    '**/*.d.ts'
+  ]
 };

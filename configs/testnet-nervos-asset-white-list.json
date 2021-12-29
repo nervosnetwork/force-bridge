@@ -1,0 +1,11 @@
+[
+  {
+    "typescriptHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "xchainTokenAddress": "",
+    "name": "CKB",
+    "symbol": "CKB",
+    "decimal": 8,
+    "logoURI": "",
+    "minimalBridgeAmount": "0"
+  }
+]

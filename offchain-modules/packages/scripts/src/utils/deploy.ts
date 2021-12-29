@@ -1,7 +1,7 @@
 import fs from 'fs';
-import { CkbDeployManager, OwnerCellConfig } from '@force-bridge/x/dist/ckb/tx-helper/deploy';
+import { CkbDeployManager, OwnerCellConfig, OmniLockCellConfig } from '@force-bridge/x/dist/ckb/tx-helper/deploy';
 import { initLumosConfig } from '@force-bridge/x/dist/ckb/tx-helper/init_lumos_config';
-import { CkbDeps, WhiteListEthAsset } from '@force-bridge/x/dist/config';
+import { CkbDeps, WhiteListEthAsset, WhiteListNervosAsset } from '@force-bridge/x/dist/config';
 import { writeJsonToFile } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
 import { deployEthContract } from '@force-bridge/x/dist/xchain/eth';
@@ -13,8 +13,10 @@ import { pathFromProjectRoot } from './index';
 
 export interface DeployDevResult {
   assetWhiteList: WhiteListEthAsset[];
+  nervosAssetWhiteList: WhiteListNervosAsset[];
   ckbDeps: CkbDeps;
   ownerConfig: OwnerCellConfig;
+  omniLockConfig: OmniLockCellConfig;
   bridgeEthAddress: string;
   multisigConfig: {
     threshold: number;
@@ -58,6 +60,7 @@ export async function deployDev(
     // deploy ckb contracts
     let sudtDep;
     let pwLockDep;
+    let omniLockDep;
     let PATH_BRIDGE_LOCKSCRIPT;
     let PATH_RECIPIENT_TYPESCRIPT;
     if (env === 'DEV') {
@@ -65,10 +68,14 @@ export async function deployDev(
       PATH_BRIDGE_LOCKSCRIPT = pathFromProjectRoot('/ckb-contracts/build/release-devnet/bridge-lockscript');
       const PATH_SUDT_DEP = pathFromProjectRoot('/offchain-modules/deps/simple_udt');
       const PATH_PW_LOCK_DEP = pathFromProjectRoot('/offchain-modules/deps/pw_lock');
+      const PATH_OMNI_LOCK_DEP = pathFromProjectRoot('/offchain-modules/deps/omni_lock');
       const sudtBin = fs.readFileSync(PATH_SUDT_DEP);
       const pwLockBin = fs.readFileSync(PATH_PW_LOCK_DEP);
-      sudtDep = await ckbDeployGenerator.deploySudt(sudtBin, ckbPrivateKey);
-      pwLockDep = await ckbDeployGenerator.deployContract(pwLockBin, ckbPrivateKey);
+      const omniLockBin = fs.readFileSync(PATH_OMNI_LOCK_DEP);
+      [sudtDep, pwLockDep, omniLockDep] = await ckbDeployGenerator.deployScripts(
+        [sudtBin, pwLockBin, omniLockBin],
+        ckbPrivateKey,
+      );
       logger.info('deployed pwLockDep', JSON.stringify(pwLockDep, null, 2));
     } else if (env === 'AGGRON4') {
       PATH_RECIPIENT_TYPESCRIPT = pathFromProjectRoot('/ckb-contracts/build/release-aggron/recipient-typescript');
@@ -113,6 +120,7 @@ export async function deployDev(
     ckbDeps = {
       sudtType: sudtDep,
       pwLock: pwLockDep,
+      omniLock: omniLockDep,
       ...contractsDeps,
     };
   }
@@ -123,16 +131,27 @@ export async function deployDev(
   };
   const ownerConfig: OwnerCellConfig = await ckbDeployGenerator.createOwnerCell(multisigItem, ckbPrivateKey);
   logger.info('ownerConfig', ownerConfig);
+  const omniLockConfig: OmniLockCellConfig = await ckbDeployGenerator.createOmniLockAdminCell(
+    multisigItem,
+    ckbPrivateKey,
+    ckbDeps.omniLock!.script,
+  );
+  logger.info('omniLockConfig', omniLockConfig);
+
   // generate_configs
   let assetWhiteListPath: string;
+  let nervosAssetWhiteListPath: string;
   if (env === 'DEV') {
     assetWhiteListPath = pathFromProjectRoot('/configs/devnet-asset-white-list.json');
+    nervosAssetWhiteListPath = pathFromProjectRoot('/configs/devnet-nervos-asset-white-list.json');
   } else if (env === 'AGGRON4') {
     assetWhiteListPath = pathFromProjectRoot('/configs/testnet-asset-white-list.json');
+    nervosAssetWhiteListPath = pathFromProjectRoot('/configs/testnet-nervos-asset-white-list.json');
   } else {
     throw new Error(`wrong env: ${env}`);
   }
   const assetWhiteList: WhiteListEthAsset[] = JSON.parse(fs.readFileSync(assetWhiteListPath, 'utf8'));
+  const nervosAssetWhiteList: WhiteListNervosAsset[] = JSON.parse(fs.readFileSync(nervosAssetWhiteListPath, 'utf8'));
   const multisigConfig = {
     threshold: MULTISIG_THRESHOLD,
     verifiers: verifierConfigs,
@@ -146,8 +165,10 @@ export async function deployDev(
   logger.debug('start height', { ethStartHeight, ckbStartHeight });
   const data = {
     assetWhiteList,
+    nervosAssetWhiteList,
     ckbDeps,
     ownerConfig,
+    omniLockConfig,
     bridgeEthAddress,
     multisigConfig,
     ckbStartHeight,
