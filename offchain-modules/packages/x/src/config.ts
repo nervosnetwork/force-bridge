@@ -33,6 +33,7 @@ export interface CkbDeps {
   recipientType: ConfigItem;
   sudtType: ConfigItem;
   pwLock?: ConfigItem;
+  omniLock?: ConfigItem;
 }
 
 export interface CkbConfig {
@@ -42,6 +43,7 @@ export interface CkbConfig {
   multiSignHosts: MultiSignHost[];
   multisigScript: MultisigItem;
   ownerCellTypescript: Script;
+  omniLockAdminCellTypescript: Script;
   deps: CkbDeps;
   startBlockHeight: number;
   confirmNumber: number;

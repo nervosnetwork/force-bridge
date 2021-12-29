@@ -53,6 +53,7 @@
     "rpc-bitcoin": "^2.0.0",
     "rxjs": "^7.1.0",
     "snappy": "^6.3.5",
+    "sparse-merkle-tree-ts": "^0.0.5",
     "sqlite3": "^5.0.2",
     "trongrid": "^1.2.6",
     "tronweb": "^3.2.3",

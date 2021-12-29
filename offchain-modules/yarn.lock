@@ -9448,6 +9448,13 @@ source-map@^0.6.0, source-map@^0.6.1:
   resolved "https://registry.yarnpkg.com/source-map/-/source-map-0.6.1.tgz#74722af32e9614e9c287a8d0bbde48b5e2f1a263"
   integrity sha512-UjgapumWlbMhkBgzT7Ykc5YXUT46F0iKu8SGXq0bcwP5dz/h0Plj6enJqjz1Zbq2l5WaqYnrVbwWOWMyF3F47g==
 
+sparse-merkle-tree-ts@^0.0.5:
+  version "0.0.5"
+  resolved "https://registry.yarnpkg.com/sparse-merkle-tree-ts/-/sparse-merkle-tree-ts-0.0.5.tgz#f47ca3a517f210a70596c39dec48666591c08dc8"
+  integrity sha512-a7TI7LtCRfekLUGcmJcklzAQYbsBiWl5cRVZEM2eizc66IXdTtZDyr2SbkPKqh7Znw7cgSUqU4AAH1Z42JBBLg==
+  dependencies:
+    "@nervosnetwork/ckb-sdk-utils" "^0.101.0"
+
 spawn-wrap@^2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/spawn-wrap/-/spawn-wrap-2.0.0.tgz#103685b8b8f9b79771318827aa78650a610d457e"
