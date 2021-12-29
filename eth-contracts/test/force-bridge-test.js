@@ -8,7 +8,7 @@ const {
   getUnlockMsgHash,
   generateSignatures,
   assertRevert,
-  getChangeValidatorsMsgHash
+  getChangeValidatorsMsgHash,
 } = require('./utils');
 
 describe('ForceBridge', () => {
@@ -22,7 +22,7 @@ describe('ForceBridge', () => {
   let abi, iface;
   let erc20Token, tokenAddress;
 
-  before(async function() {
+  before(async function () {
     // disable timeout
     this.timeout(0);
 
@@ -31,7 +31,7 @@ describe('ForceBridge', () => {
 
     // get validators
     wallets = generateWallets(7);
-    validators = wallets.map(wallet => wallet.address);
+    validators = wallets.map((wallet) => wallet.address);
     multisigThreshold = 5;
     chainId = await signer.getChainId();
 
@@ -46,8 +46,8 @@ describe('ForceBridge', () => {
     contractAddress = forceBridge.address;
     provider = forceBridge.provider;
 
-    abi = require('../artifacts/contracts/ForceBridge.sol/ForceBridge.json')
-      .abi;
+    abi =
+      require('../artifacts/contracts/ForceBridge.sol/ForceBridge.json').abi;
     iface = new ethers.utils.Interface(abi);
 
     // deploy ERC20 token
@@ -62,7 +62,7 @@ describe('ForceBridge', () => {
     console.log('tokenAddress', tokenAddress);
   });
 
-  describe('correct case', async function() {
+  describe('correct case', async function () {
     // disable timeout
     this.timeout(0);
 
@@ -100,13 +100,13 @@ describe('ForceBridge', () => {
             keccak256(toUtf8Bytes(name)),
             keccak256(toUtf8Bytes('1')),
             chainId,
-            forceBridge.address
+            forceBridge.address,
           ]
         )
       );
       expect(await forceBridge.DOMAIN_SEPARATOR()).to.eq(DOMAIN_SEPARATOR);
     });
-    it('should work well for lock and unlock ETH', async function() {
+    it('should work well for lock and unlock ETH', async function () {
       // lock
       const recipientLockscript = '0x00';
       const sudtExtraData = '0x01';
@@ -115,7 +115,7 @@ describe('ForceBridge', () => {
         recipientLockscript,
         sudtExtraData,
         {
-          value: amount
+          value: amount,
         }
       );
 
@@ -136,14 +136,14 @@ describe('ForceBridge', () => {
           token: '0x0000000000000000000000000000000000000000',
           recipient: '0x1000000000000000000000000000000000000001',
           amount: ethers.utils.parseEther('0.06'),
-          ckbTxHash: '0x1000000000000000000000000000000000000008'
+          ckbTxHash: '0x1000000000000000000000000000000000000008',
         },
         {
           token: '0x0000000000000000000000000000000000000000',
           recipient: '0x1000000000000000000000000000000000000002',
           amount: ethers.utils.parseEther('0.04'),
-          ckbTxHash: '0x1000000000000000000000000000000000000009'
-        }
+          ckbTxHash: '0x1000000000000000000000000000000000000009',
+        },
       ];
 
       const nonce = await forceBridge.latestUnlockNonce_();
@@ -165,7 +165,7 @@ describe('ForceBridge', () => {
 
       const receiptUnlock = await waitingForReceipt(provider, resUnlock);
       // console.dir(receiptUnlock, {depth: null});
-      const unlockLogs = receiptUnlock.logs.map(l => iface.parseLog(l).args);
+      const unlockLogs = receiptUnlock.logs.map((l) => iface.parseLog(l).args);
       // console.dir(unlockLogs, {depth: null});
       for (let i = 0; i < records.length; i++) {
         const r = records[i];
@@ -177,7 +177,7 @@ describe('ForceBridge', () => {
       }
       expect(await forceBridge.latestUnlockNonce_()).to.equal(1);
     });
-    it('should work well for lock and unlock ERC20', async function() {
+    it('should work well for lock and unlock ERC20', async function () {
       // lock
       const recipientLockscript = '0x00';
       const sudtExtraData = '0x01';
@@ -206,14 +206,14 @@ describe('ForceBridge', () => {
           token: tokenAddress,
           recipient: '0x1000000000000000000000000000000000000001',
           amount: 1,
-          ckbTxHash: '0x1000000000000000000000000000000000000008'
+          ckbTxHash: '0x1000000000000000000000000000000000000008',
         },
         {
           token: tokenAddress,
           recipient: '0x1000000000000000000000000000000000000002',
           amount: 1,
-          ckbTxHash: '0x1000000000000000000000000000000000000009'
-        }
+          ckbTxHash: '0x1000000000000000000000000000000000000009',
+        },
       ];
 
       const nonce = await forceBridge.latestUnlockNonce_();
@@ -243,9 +243,9 @@ describe('ForceBridge', () => {
         expect(r.ckbTxHash).to.equal(res.ckbTxHash);
       }
     });
-    it('should change validators', async function() {
+    it('should change validators', async function () {
       const newWallets = generateWallets(7);
-      newValidators = newWallets.map(wallet => wallet.address);
+      newValidators = newWallets.map((wallet) => wallet.address);
       newMultisigThreshold = 6;
 
       const nonce = 0;
@@ -274,7 +274,7 @@ describe('ForceBridge', () => {
     });
   });
 
-  describe('abnormal case', async function() {
+  describe('abnormal case', async function () {
     // disable timeout
     this.timeout(0);
 
@@ -315,9 +315,9 @@ describe('ForceBridge', () => {
         )
       ).to.be.true;
     });
-    it('should not change validators when validators are repeated', async function() {
+    it('should not change validators when validators are repeated', async function () {
       const newWallets = generateWallets(7);
-      newValidators = newWallets.map(wallet => wallet.address);
+      newValidators = newWallets.map((wallet) => wallet.address);
       newValidators[6] = newValidators[1];
       newMultisigThreshold = 6;
 
@@ -345,21 +345,21 @@ describe('ForceBridge', () => {
         )
       ).to.be.true;
     });
-    it('should not unlock when nonce used', async function() {
+    it('should not unlock when nonce used', async function () {
       // unlock
       const records = [
         {
           token: '0x0000000000000000000000000000000000000000',
           recipient: '0x1000000000000000000000000000000000000001',
           amount: ethers.utils.parseEther('0.06'),
-          ckbTxHash: '0x1000000000000000000000000000000000000008'
+          ckbTxHash: '0x1000000000000000000000000000000000000008',
         },
         {
           token: '0x0000000000000000000000000000000000000000',
           recipient: '0x1000000000000000000000000000000000000002',
           amount: ethers.utils.parseEther('0.04'),
-          ckbTxHash: '0x1000000000000000000000000000000000000009'
-        }
+          ckbTxHash: '0x1000000000000000000000000000000000000009',
+        },
       ];
 
       const nonce = (await forceBridge.latestUnlockNonce_()) - 1;
@@ -384,21 +384,21 @@ describe('ForceBridge', () => {
         )
       ).to.be.true;
     });
-    it('should not unlock when nonce is not continuous', async function() {
+    it('should not unlock when nonce is not continuous', async function () {
       // unlock
       const records = [
         {
           token: '0x0000000000000000000000000000000000000000',
           recipient: '0x1000000000000000000000000000000000000001',
           amount: ethers.utils.parseEther('0.06'),
-          ckbTxHash: '0x1000000000000000000000000000000000000008'
+          ckbTxHash: '0x1000000000000000000000000000000000000008',
         },
         {
           token: '0x0000000000000000000000000000000000000000',
           recipient: '0x1000000000000000000000000000000000000002',
           amount: ethers.utils.parseEther('0.04'),
-          ckbTxHash: '0x1000000000000000000000000000000000000009'
-        }
+          ckbTxHash: '0x1000000000000000000000000000000000000009',
+        },
       ];
 
       const nonce = (await forceBridge.latestUnlockNonce_()) + 1;
@@ -423,9 +423,9 @@ describe('ForceBridge', () => {
         )
       ).to.be.true;
     });
-    it('should not change validators when nonce used', async function() {
+    it('should not change validators when nonce used', async function () {
       const newWallets = generateWallets(7);
-      newValidators = newWallets.map(wallet => wallet.address);
+      newValidators = newWallets.map((wallet) => wallet.address);
       newValidators[6] = newValidators[1];
       newMultisigThreshold = 6;
 
