@@ -134,10 +134,9 @@ export interface GetBridgeConfigResponse {
 }
 
 export interface GenerateBridgeNervosToXchainLockTxPayload {
-  // Xchain network name
-  asset: NervosAsset;
+  assetIdent: string; // UDT typescript hash
   amount: string;
-  xchain: 'Ethereum';
+  xchain: 'Ethereum'; // only support Ethereum for now
   // Xchain user address
   recipient: string;
   // Nervos address
@@ -148,7 +147,7 @@ export interface GenerateBridgeNervosToXchainBurnTxPayload {
   // Xchain asset address
   asset: string;
   amount: string;
-  xchain: 'Ethereum';
+  xchain: 'Ethereum'; // only support Ethereum for now
   // Nervos address
   recipient: string;
   // Xchain user address
@@ -156,19 +155,13 @@ export interface GenerateBridgeNervosToXchainBurnTxPayload {
 }
 
 export interface GetBridgeNervosToXchainTxSummariesPayload {
-  xchain: 'Ethereum';
-  nervosAsset: NervosAsset;
+  xchain: 'Ethereum'; // only support Ethereum for now
+  nervosAssetIdent: string; // udt typescript hash
   user: {
     network: 'Nervos' | 'Ethereum';
     // nervos or xchain address
     ident: string;
   };
-}
-
-export interface NervosAsset {
-  kind: 'CKB' | 'SUDT';
-  // asset typescript args, empty string for CKB
-  ident: string;
 }
 
 // TODO: change to the higher order generic when it impl

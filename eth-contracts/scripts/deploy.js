@@ -47,9 +47,9 @@ async function main() {
     forceBridge: {
       eth: {
         startBlockHeight: blockNumber,
-        contractAddress: bridge.address
-      }
-    }
+        contractAddress: bridge.address,
+      },
+    },
   };
   const outputConfigPath = getFromEnv('CONFIG_PATH', '/tmp/force-bridge');
   const ethContractConfig = path.join(
@@ -64,7 +64,7 @@ async function main() {
 
 main()
   .then(() => process.exit(0))
-  .catch(error => {
+  .catch((error) => {
     console.error(error);
     process.exit(1);
   });

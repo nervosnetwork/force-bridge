@@ -4,6 +4,7 @@ import CKB from '@nervosnetwork/ckb-sdk-core';
 import nconf from 'nconf';
 import { CkbIndexer } from './ckb/tx-helper/indexer';
 import { initLumosConfig } from './ckb/tx-helper/init_lumos_config';
+import { getSmtRootAndProof } from './ckb/tx-helper/omni-smt';
 import { Config } from './config';
 import { asserts } from './errors';
 import { ServerSingleton } from './server/serverSingleton';
@@ -49,6 +50,7 @@ export class XChainHandlers {
 
 export interface XChainHandler {
   getHandledBlock(): { height: number; hash: string };
+
   getTipBlock(): Promise<{ height: number; hash: string }>;
 }
 
@@ -61,6 +63,7 @@ export class ForceBridgeCore {
   private static _ckbIndexer: CkbIndexer;
   private static _keystore: KeyStore;
   private static _xChainHandler: XChainHandlers;
+  private static _smtProof: string;
 
   static get config(): Config {
     asserts(ForceBridgeCore._config, 'ForceBridgeCore config is not init yet');
@@ -85,6 +88,11 @@ export class ForceBridgeCore {
   static getXChainHandler(): XChainHandlers {
     asserts(ForceBridgeCore._xChainHandler, 'ForceBridgeCore xChainHandler is not init yet');
     return ForceBridgeCore._xChainHandler;
+  }
+
+  static getSmtProof(): string {
+    asserts(ForceBridgeCore._smtProof, 'ForceBridgeCore SmtProof is not init yet');
+    return ForceBridgeCore._smtProof;
   }
 
   /**
@@ -112,6 +120,11 @@ export class ForceBridgeCore {
       if (config.eth && config.eth.privateKey) {
         config.eth.privateKey = keystore.getDecryptedByKeyID(config.eth.privateKey);
       }
+    }
+
+    if (config.common.role === 'collector') {
+      const { proof } = getSmtRootAndProof(config.ckb.multisigScript);
+      ForceBridgeCore._smtProof = proof;
     }
 
     // write static

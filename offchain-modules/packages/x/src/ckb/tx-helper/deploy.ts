@@ -1,4 +1,4 @@
-import { Cell, HashType, OutPoint, Script } from '@ckb-lumos/base';
+import { Cell, HashType, OutPoint, Script, utils as lumosUtils } from '@ckb-lumos/base';
 import { common } from '@ckb-lumos/common-scripts';
 import { key } from '@ckb-lumos/hd';
 import {
@@ -10,11 +10,14 @@ import {
   TransactionSkeletonType,
 } from '@ckb-lumos/helpers';
 import * as utils from '@nervosnetwork/ckb-sdk-utils';
+import { Reader } from 'ckb-js-toolkit';
 import { ConfigItem, MultisigItem } from '../../config';
 import { asserts, nonNullable } from '../../errors';
 import { blake2b, transactionSkeletonToJSON } from '../../utils';
 import { logger } from '../../utils/logger';
+import { getSmtRootAndProof } from '../omni-smt';
 import { CkbTxHelper } from './base_generator';
+import { SerializeRCData } from './generated/omni_lock';
 import { ScriptType } from './indexer';
 import { getMultisigLock } from './multisig/multisig_helper';
 import { generateTypeIDScript } from './multisig/typeid';
@@ -32,6 +35,13 @@ export interface ContractsConfig {
 export interface OwnerCellConfig {
   multisigLockscript: Script;
   ownerCellTypescript: Script;
+}
+
+export interface OmniLockCellConfig {
+  omniMultisigLockscript: Script;
+  adminCellTypescript: Script;
+  smtRoot: string;
+  smtProof: string;
 }
 
 export interface UpgradeParams {
@@ -194,79 +204,43 @@ export class CkbDeployManager extends CkbTxHelper {
   }
 
   // should only be called in dev net
-  async deploySudt(sudtBin: Buffer, privateKey: string): Promise<ConfigItem> {
+  async deployScripts(scriptBins: Buffer[], privateKey: string): Promise<ConfigItem[]> {
     await this.indexer.waitForSync();
     let txSkeleton = TransactionSkeleton({ cellProvider: this.indexer });
     // get from cells
     const fromAddress = generateSecp256k1Blake160Address(key.privateKeyToBlake160(privateKey));
     const fromLockscript = parseAddress(fromAddress);
     // add output
-    const sudtOutput: Cell = {
-      cell_output: {
-        capacity: '0x0',
-        lock: fromLockscript,
-      },
-      data: utils.bytesToHex(sudtBin),
-    };
-    const sudtCellCapacity = minimalCellCapacity(sudtOutput);
-    sudtOutput.cell_output.capacity = `0x${sudtCellCapacity.toString(16)}`;
-    txSkeleton = txSkeleton.update('outputs', (outputs) => {
-      return outputs.push(sudtOutput);
-    });
-    txSkeleton = await this.completeTx(txSkeleton, fromAddress);
-    const hash = await this.SignAndSendTransaction(txSkeleton, privateKey);
-    const sudtCodeHash = utils.bytesToHex(blake2b(sudtBin));
-    return {
-      cellDep: {
-        depType: 'code',
-        outPoint: {
-          txHash: hash,
-          index: '0x0',
+    scriptBins.forEach((bin) => {
+      const binOutput: Cell = {
+        cell_output: {
+          capacity: '0x0',
+          lock: fromLockscript,
         },
-      },
-      script: {
-        codeHash: sudtCodeHash,
-        hashType: 'data',
-      },
-    };
-  }
+        data: utils.bytesToHex(bin),
+      };
+      const binCellCapacity = minimalCellCapacity(binOutput);
+      binOutput.cell_output.capacity = `0x${binCellCapacity.toString(16)}`;
+      txSkeleton = txSkeleton.update('outputs', (outputs) => {
+        return outputs.push(binOutput);
+      });
+    });
 
-  // should only be called in dev net
-  async deployContract(contractBin: Buffer, privateKey: string): Promise<ConfigItem> {
-    await this.indexer.waitForSync();
-    let txSkeleton = TransactionSkeleton({ cellProvider: this.indexer });
-    // get from cells
-    const fromAddress = generateSecp256k1Blake160Address(key.privateKeyToBlake160(privateKey));
-    const fromLockscript = parseAddress(fromAddress);
-    // add output
-    const contractOutput: Cell = {
-      cell_output: {
-        capacity: '0x0',
-        lock: fromLockscript,
-      },
-      data: utils.bytesToHex(contractBin),
-    };
-    const contractCellCapacity = minimalCellCapacity(contractOutput);
-    contractOutput.cell_output.capacity = `0x${contractCellCapacity.toString(16)}`;
-    txSkeleton = txSkeleton.update('outputs', (outputs) => {
-      return outputs.push(contractOutput);
-    });
     txSkeleton = await this.completeTx(txSkeleton, fromAddress);
     const hash = await this.SignAndSendTransaction(txSkeleton, privateKey);
-    const contractCodeHash = utils.bytesToHex(blake2b(contractBin));
-    return {
+    return scriptBins.map((bin, index) => ({
       cellDep: {
         depType: 'code',
         outPoint: {
           txHash: hash,
-          index: '0x0',
+          index: `0x${index}`,
         },
       },
       script: {
-        codeHash: contractCodeHash,
+        codeHash: utils.bytesToHex(blake2b(bin)),
         hashType: 'data',
       },
-    };
+    }));
   }
 
   async SignAndSendTransaction(txSkeleton: TransactionSkeletonType, privateKey: string): Promise<string> {
@@ -327,6 +301,86 @@ export class CkbDeployManager extends CkbTxHelper {
     return {
       multisigLockscript,
       ownerCellTypescript,
+    };
+  }
+
+  async createOmniLockAdminCell(
+    multisigItem: MultisigItem,
+    privateKey: string,
+    omniLockscriptConfig: ConfigItem['script'],
+  ): Promise<OmniLockCellConfig> {
+    await this.indexer.waitForSync();
+    const fromAddress = generateSecp256k1Blake160Address(key.privateKeyToBlake160(privateKey));
+    const fromLockscript = parseAddress(fromAddress);
+    let txSkeleton = TransactionSkeleton({ cellProvider: this.indexer });
+    const fromCells = await this.getFromCells(fromLockscript);
+    if (fromCells.length === 0) {
+      throw new Error('no available cells found');
+    }
+    const firstInputCell: Cell = nonNullable(fromCells[0]);
+    txSkeleton = await common.setupInputCell(txSkeleton, firstInputCell);
+    // setupInputCell will put an output same with input, clear it
+    txSkeleton = txSkeleton.update('outputs', (outputs) => {
+      return outputs.clear();
+    });
+
+    // add admin cell
+    const firstInput = {
+      previous_output: firstInputCell.out_point,
+      since: '0x0',
+    };
+    const adminCellTypescript = generateTypeIDScript(firstInput, `0x0`);
+
+    // omni lockscript of admin cell
+    const typeIdHash = lumosUtils.computeScriptHash(adminCellTypescript);
+    const omniLockArgs = `0x000000000000000000000000000000000000000000` + `01` + `${typeIdHash.substring(2)}`;
+    const omniLockscript: Script = {
+      code_hash: omniLockscriptConfig.codeHash,
+      hash_type: omniLockscriptConfig.hashType,
+      args: omniLockArgs,
+    };
+
+    // data of admin cell
+    const { root, proof } = getSmtRootAndProof(multisigItem);
+    const serializedRcData = SerializeRCData({
+      type: 'RCRule',
+      value: {
+        smt_root: new Reader(root).toArrayBuffer(),
+        flags: 2,
+      },
+    });
+    const serializedRcDataHexString = new Reader(serializedRcData).serializeJson();
+
+    const adminCell: Cell = {
+      cell_output: {
+        capacity: '0x0',
+        lock: omniLockscript,
+        type: adminCellTypescript,
+      },
+      data: serializedRcDataHexString,
+    };
+    adminCell.cell_output.capacity = `0x${minimalCellCapacity(adminCell).toString(16)}`;
+
+    // create an empty omniMultisigCell
+    const omniMultisigCell: Cell = {
+      cell_output: {
+        capacity: '0x0',
+        lock: omniLockscript,
+      },
+      data: '0x',
+    };
+    omniMultisigCell.cell_output.capacity = `0x${minimalCellCapacity(omniMultisigCell).toString(16)}`;
+    txSkeleton = txSkeleton.update('outputs', (outputs) => {
+      return outputs.push(adminCell).push(omniMultisigCell);
+    });
+    txSkeleton = await this.completeTx(txSkeleton, fromAddress, fromCells.slice(1));
+    const _hash = await this.SignAndSendTransaction(txSkeleton, privateKey);
+
+    return {
+      omniMultisigLockscript: omniLockscript,
+      adminCellTypescript: adminCellTypescript,
+      smtRoot: root,
+      smtProof: proof,
     };
   }
 

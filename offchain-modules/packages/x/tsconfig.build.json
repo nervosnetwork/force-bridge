@@ -12,7 +12,8 @@
     "declaration": true,
     "declarationMap": true,
     "outDir": "dist",
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "allowJs": true
   },
   "include": ["src", "src/**/*.json", "test"]
 }
