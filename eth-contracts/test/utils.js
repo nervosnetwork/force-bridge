@@ -5,7 +5,7 @@ const { keccak256, defaultAbiCoder, solidityPack } = ethers.utils;
 
 async function sleep(seconds) {
   // console.log(`waiting for block confirmations, about ${seconds}s`)
-  await new Promise(resolve => setTimeout(resolve, seconds * 1000));
+  await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
 }
 
 async function waitingForReceipt(provider, res) {
@@ -25,7 +25,7 @@ async function waitingForReceipt(provider, res) {
   return txReceipt;
 }
 
-const generateWallets = size => {
+const generateWallets = (size) => {
   const wallets = [];
   for (let i = 0; i < size; i++) {
     const wallet = ethers.Wallet.createRandom();
@@ -65,16 +65,16 @@ const getUnlockMsgHash = (DOMAIN_SEPARATOR, typeHash, records, nonce) => {
                   { name: 'token', type: 'address' },
                   { name: 'recipient', type: 'address' },
                   { name: 'amount', type: 'uint256' },
-                  { name: 'ckbTxHash', type: 'bytes' }
+                  { name: 'ckbTxHash', type: 'bytes' },
                 ],
                 name: 'records',
-                type: 'tuple[]'
+                type: 'tuple[]',
               },
-              'uint256'
+              'uint256',
             ],
             [typeHash, records, nonce]
           )
-        )
+        ),
       ]
     )
   );
@@ -99,7 +99,7 @@ const getChangeValidatorsMsgHash = (
             ['bytes32', 'address[]', 'uint256', 'uint256'],
             [typeHash, validators, multisigThreshold, nonce]
           )
-        )
+        ),
       ]
     )
   );
@@ -127,5 +127,5 @@ module.exports = {
   generateSignatures,
   getUnlockMsgHash,
   getChangeValidatorsMsgHash,
-  assertRevert
+  assertRevert,
 };
