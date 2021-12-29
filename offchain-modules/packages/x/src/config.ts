@@ -1,4 +1,4 @@
-import { DepType, HashType, Script } from '@ckb-lumos/base';
+import { DepType, Hash, HashType, Script } from '@ckb-lumos/base';
 
 export type forceBridgeRole = 'watcher' | 'collector' | 'verifier';
 
@@ -32,8 +32,8 @@ export interface CkbDeps {
   bridgeLock: ConfigItem;
   recipientType: ConfigItem;
   sudtType: ConfigItem;
-  pwLock?: ConfigItem;
   omniLock?: ConfigItem;
+  pwLock?: ConfigItem;
 }
 
 export interface CkbConfig {
@@ -60,6 +60,9 @@ export interface EthConfig {
   confirmNumber: number;
   startBlockHeight: number;
   assetWhiteList: WhiteListEthAsset[];
+  nervosAssetWhiteList: WhiteListNervosAsset[];
+  lockNervosAssetFee: string; // bridge fee paid by CKB, unit: shannon
+  burnNervosAssetFee: string; // bridge fee paid by ETH, unit: wei
 }
 
 export interface EosConfig {
@@ -150,6 +153,17 @@ export interface WhiteListEthAsset {
   decimal: number;
   minimalBridgeAmount: string;
   bridgeFee: { in: string; out: string };
+}
+
+export interface WhiteListNervosAsset {
+  typescriptHash: Hash; // udt typescript hash, 0x0000000000000000000000000000000000000000000000000000000000000000 for CKB
+  typescript?: Script; // udt typescript, undefined for CKB
+  xchainTokenAddress: string; // image token address
+  name: string;
+  symbol: string;
+  logoURI: string;
+  decimal: number;
+  minimalBridgeAmount: string;
 }
 
 export interface collectorConfig {

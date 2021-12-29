@@ -23,7 +23,11 @@ module.exports = {
     'import/order': ['warn', { alphabetize: { order: 'asc' } }],
     'no-console': 'warn',
     'no-constant-condition': 'warn',
-    'deprecation/deprecation': 'warn',
+    'deprecation/deprecation': 'warn'
   },
-  ignorePatterns: ['**/generated', '**/*.js'],
+  ignorePatterns: [
+    '**/generated',
+    '**/*.js',
+    '**/*.d.ts'
+  ]
 };

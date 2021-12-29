@@ -1,0 +1,7 @@
+vector Bytes <byte>;
+
+// Used in lock-asset-tx witness when bridge Nervos assets to Xchain
+table LockMemo {
+    xchain: byte,      // 1 = Ethereum
+    recipient: Bytes,  // recipient address
+}

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import { CkbDeployManager, OwnerCellConfig, OmniLockCellConfig } from '@force-bridge/x/dist/ckb/tx-helper/deploy';
 import { initLumosConfig } from '@force-bridge/x/dist/ckb/tx-helper/init_lumos_config';
-import { CkbDeps, WhiteListEthAsset } from '@force-bridge/x/dist/config';
+import { CkbDeps, WhiteListEthAsset, WhiteListNervosAsset } from '@force-bridge/x/dist/config';
 import { writeJsonToFile } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
 import { deployEthContract } from '@force-bridge/x/dist/xchain/eth';
@@ -13,6 +13,7 @@ import { pathFromProjectRoot } from './index';
 
 export interface DeployDevResult {
   assetWhiteList: WhiteListEthAsset[];
+  nervosAssetWhiteList: WhiteListNervosAsset[];
   ckbDeps: CkbDeps;
   ownerConfig: OwnerCellConfig;
   omniLockConfig: OmniLockCellConfig;
@@ -139,14 +140,18 @@ export async function deployDev(
 
   // generate_configs
   let assetWhiteListPath: string;
+  let nervosAssetWhiteListPath: string;
   if (env === 'DEV') {
     assetWhiteListPath = pathFromProjectRoot('/configs/devnet-asset-white-list.json');
+    nervosAssetWhiteListPath = pathFromProjectRoot('/configs/devnet-nervos-asset-white-list.json');
   } else if (env === 'AGGRON4') {
     assetWhiteListPath = pathFromProjectRoot('/configs/testnet-asset-white-list.json');
+    nervosAssetWhiteListPath = pathFromProjectRoot('/configs/testnet-nervos-asset-white-list.json');
   } else {
     throw new Error(`wrong env: ${env}`);
   }
   const assetWhiteList: WhiteListEthAsset[] = JSON.parse(fs.readFileSync(assetWhiteListPath, 'utf8'));
+  const nervosAssetWhiteList: WhiteListNervosAsset[] = JSON.parse(fs.readFileSync(nervosAssetWhiteListPath, 'utf8'));
   const multisigConfig = {
     threshold: MULTISIG_THRESHOLD,
     verifiers: verifierConfigs,
@@ -160,6 +165,7 @@ export async function deployDev(
   logger.debug('start height', { ethStartHeight, ckbStartHeight });
   const data = {
     assetWhiteList,
+    nervosAssetWhiteList,
     ckbDeps,
     ownerConfig,
     omniLockConfig,

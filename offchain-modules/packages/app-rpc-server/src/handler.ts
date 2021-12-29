@@ -1,5 +1,6 @@
 import { parseAddress } from '@ckb-lumos/helpers';
-import { Asset, BtcAsset, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
+import { Asset, BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
+import { NervosAsset } from '@force-bridge/x/dist/ckb/model/nervos-asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
 import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
@@ -466,10 +467,39 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
 
   /* Bridge nervos asset to xchain */
   async generateBridgeNervosToXchainLockTx<T extends NetworkTypes>(
-    _payload: GenerateBridgeNervosToXchainLockTxPayload,
+    payload: GenerateBridgeNervosToXchainLockTxPayload,
   ): Promise<GenerateTransactionResponse<T>> {
-    // TODO
-    throw new Error('unimplement');
+    logger.info(`generateBridgeNervosToXchainLockTx, payload: ${JSON.stringify(payload)}`);
+    const { xchain, assetIdent, amount, recipient, sender } = payload;
+
+    checkCKBAddress(sender);
+    const senderLockscript = parseAddress(sender);
+
+    switch (xchain) {
+      case 'Ethereum': {
+        checkETHAddress(recipient);
+        await checkLockEthAddr(recipient);
+        const nervosAssetInfo = new NervosAsset(assetIdent).getAssetInfo(ChainType.ETH);
+        if (!nervosAssetInfo) throw new Error('asset not in white list');
+        if (BigInt(amount) <= BigInt(nervosAssetInfo.minimalBridgeAmount))
+          throw new Error('lock amount should greater than minimal bridge amount');
+        break;
+      }
+
+      default:
+        throw new Error('unimplement chain type');
+    }
+
+    const ckbTxGenerator = new CkbTxGenerator(
+      ForceBridgeCore.config.ckb.ckbRpcUrl,
+      ForceBridgeCore.config.ckb.ckbIndexerUrl,
+    );
+    const lockTx = await ckbTxGenerator.lock(senderLockscript, recipient, assetIdent, BigInt(amount), xchain);
+
+    return {
+      network: 'Nervos',
+      rawTransaction: lockTx,
+    };
   }
 
   async generateBridgeNervosToXchainBurnTx<T extends NetworkTypes>(
