@@ -699,6 +699,11 @@ export class CkbTxGenerator extends CkbTxHelper {
     }
     logger.debug('lock sudtCells: ', sudtCells);
 
+    // add sudt inputs
+    txSkeleton = txSkeleton.update('inputs', (inputs) => {
+      return inputs.concat(sudtCells);
+    });
+
     // ckb change output cell
     const senderOutputCkbChangeCell: Cell = {
       cell_output: {
@@ -727,40 +732,54 @@ export class CkbTxGenerator extends CkbTxHelper {
       });
     }
     // collect ckb
-    const senderNeedCkbSupplyCapacity =
+    const totalCapacityOfSudtCellsInInputs = sudtCells
+      .map((cell) => minimalCellCapacity(cell))
+      .reduce((a, b) => a + b, 0n);
+    const outputNeedCapacity =
       bridgeFee +
       senderOutputSudtChangeCellMinimalCapacity +
       senderOutputCkbChangeCellMinimalCapacity +
       1n * BigInt(100000000); // tx fee
-    const searchedSenderCkbCells = await this.collector.getCellsByLockscriptAndCapacity(
-      senderLockscript,
-      senderNeedCkbSupplyCapacity,
-    );
-    const searchedSenderCkbCellsCapacity = searchedSenderCkbCells
-      .map((cell) => BigInt(cell.cell_output.capacity))
-      .reduce((a, b) => a + b, 0n);
-    if (searchedSenderCkbCellsCapacity < senderNeedCkbSupplyCapacity)
-      throw new Error(
-        `sender ckb capacity not enough, need ${senderNeedCkbSupplyCapacity.toString()}, found ${searchedSenderCkbCellsCapacity.toString()}`,
+
+    let senderNeedCkbSupplyCapacity = BigInt(0);
+    let searchedSenderCkbCellsCapacity = BigInt(0);
+    let inputCellLength = sudtCells.length;
+    if (totalCapacityOfSudtCellsInInputs < outputNeedCapacity) {
+      // inputs capacity does not offset outputs capacity, collect ckb
+      senderNeedCkbSupplyCapacity = outputNeedCapacity - totalCapacityOfSudtCellsInInputs;
+      const searchedSenderCkbCells = await this.collector.getCellsByLockscriptAndCapacity(
+        senderLockscript,
+        senderNeedCkbSupplyCapacity,
       );
+      searchedSenderCkbCellsCapacity = searchedSenderCkbCells
+        .map((cell) => BigInt(cell.cell_output.capacity))
+        .reduce((a, b) => a + b, 0n);
+      inputCellLength += searchedSenderCkbCells.length;
+      if (searchedSenderCkbCellsCapacity < senderNeedCkbSupplyCapacity)
+        throw new Error(
+          `sender ckb capacity not enough, need ${senderNeedCkbSupplyCapacity.toString()}, found ${searchedSenderCkbCellsCapacity.toString()}`,
+        );
 
-    // add inputs
-    txSkeleton = txSkeleton.update('inputs', (inputs) => {
-      return inputs.concat(sudtCells).concat(searchedSenderCkbCells);
-    });
-
+      // add ckb inputs
+      txSkeleton = txSkeleton.update('inputs', (inputs) => {
+        return inputs.concat(searchedSenderCkbCells);
+      });
+    }
     // add ckb change output
     senderOutputCkbChangeCell.cell_output.capacity = `0x${(
+      totalCapacityOfSudtCellsInInputs +
       searchedSenderCkbCellsCapacity -
+      senderOutputCkbChangeCellMinimalCapacity -
       senderOutputSudtChangeCellMinimalCapacity -
       bridgeFee
     ).toString(16)}`;
+
     txSkeleton = txSkeleton.update('outputs', (outputs) => {
       return outputs.push(senderOutputCkbChangeCell);
     });
 
     // add witnesses
-    const witnesses = lodash.range(sudtCells.length + searchedSenderCkbCells.length).map((index) => {
+    const witnesses = lodash.range(inputCellLength).map((index) => {
       if (index === 0 || index === sudtCells.length) {
         return new Reader(
           SerializeWitnessArgs(
@@ -775,8 +794,8 @@ export class CkbTxGenerator extends CkbTxHelper {
     const lockMemo = SerializeLockMemo({ xchain: 1, recipient: new Reader(recipientAddress).toArrayBuffer() });
     // put lockMemo in witnesses[inputs.len]
     witnesses.push(new Reader(lockMemo).serializeJson());
-    txSkeleton = txSkeleton.update('witnesses', (witnesses) => {
-      return witnesses.push(...witnesses);
+    txSkeleton = txSkeleton.update('witnesses', (w) => {
+      return w.push(...witnesses);
     });
 
     // tx fee
