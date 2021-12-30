@@ -6,7 +6,6 @@ import { RPC } from '@ckb-lumos/rpc';
 import { Reader } from 'ckb-js-toolkit';
 import * as lodash from 'lodash';
 import { BtcAsset, ChainType, EosAsset, EthAsset, getAsset, TronAsset } from '../ckb/model/asset';
-import { CkbLockCellData } from '../ckb/tx-helper/generated/ckb_lock_cell_data';
 import { RecipientCellData } from '../ckb/tx-helper/generated/eth_recipient_cell';
 import { ForceBridgeLockscriptArgs } from '../ckb/tx-helper/generated/force_bridge_lockscript';
 import { MintWitness } from '../ckb/tx-helper/generated/mint_witness';
@@ -19,6 +18,7 @@ import { ForceBridgeCore } from '../core';
 import { CkbDb, KVDb } from '../db';
 import { CollectorCkbMint } from '../db/entity/CkbMint';
 import {
+  NervosLockAssetTxMetaData,
   CkbUnlock,
   EthUnlock,
   ICkbBurn,
@@ -29,6 +29,7 @@ import {
   MintedRecords,
   TxConfirmStatus,
 } from '../db/model';
+
 import { asserts, nonNullable } from '../errors';
 import { BridgeMetricSingleton, txTokenInfo } from '../metric/bridge-metric';
 import { createAsset, MultiSigMgr } from '../multisig/multisig-mgr';
@@ -407,7 +408,10 @@ export class CkbHandler {
       throw new Error(`unexpected db find error, records.length = ${records.length}`);
     }
     const cellData = await this.parseLockTx(tx);
-    const { chain, recipientAddress, recipientCapacity, asset, senderAddress, recipientLockscript } = cellData!;
+    if (!cellData) {
+      return;
+    }
+    const { amount, chain, recipientAddress, recipientCapacity, asset, senderAddress, recipientLockscript } = cellData;
     const ckbTxHash = tx.hash;
     const blockNumber = Number(txInfo.info.block_number);
     const confirmedNumber = currentHeight - blockNumber;
@@ -436,7 +440,7 @@ export class CkbHandler {
           chain,
           senderAddress,
           assetIdent: asset,
-          amount: recipientCapacity,
+          amount: `0x${amount.toString(16)}`,
           bridgeFee,
           recipientAddress,
           blockNumber,
@@ -448,7 +452,7 @@ export class CkbHandler {
       BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('ckb_lock', 'success');
       BridgeMetricSingleton.getInstance(this.role).addBridgeTokenMetrics('ckb_lock', [
         {
-          amount: Number(recipientCapacity),
+          amount: Number(amount),
           token: asset,
         },
       ]);
@@ -462,7 +466,7 @@ export class CkbHandler {
       const mintRecords = {
         ckbTxHash,
         asset,
-        amount: recipientCapacity,
+        amount: `0x${amount.toString(16)}`,
         recipientAddress: recipientAddress,
         blockNumber: blockNumber,
         blockTimestamp: Number(block.header.timestamp),
@@ -843,8 +847,8 @@ export class CkbHandler {
     }
   }
 
-  async parseLockTx(tx: Transaction): Promise<CkbLockCellData | null> {
-    if (tx.outputs.length < 1 || tx.witnesses.length <= 1) {
+  async parseLockTx(tx: Transaction): Promise<NervosLockAssetTxMetaData | null> {
+    if (tx.outputs.length < 1 || tx.witnesses.length <= 1 || tx.inputs.length < 1) {
       return null;
     }
     const recipientOutput = nonNullable(tx.outputs[0]);
@@ -852,9 +856,99 @@ export class CkbHandler {
     const recipientTypescript = recipientOutput.type;
     const recipientLockscript = nonNullable(recipientOutput.lock);
     logger.debug('recipientTypescript:', recipientTypescript);
-    const sudtArgs = recipientTypescript
-      ? recipientTypescript.args
-      : '0x0000000000000000000000000000000000000000000000000000000000000000';
+
+    const sudtTypescript = ForceBridgeCore.config.ckb.deps.sudtType.script;
+    const previousOutput = nonNullable(tx.inputs[0].previousOutput);
+    const preHash = previousOutput.txHash;
+    const txPrevious = await this.ckb.rpc.getTransaction(preHash);
+    if (txPrevious == null) {
+      return null;
+    }
+    const senderLockscript = txPrevious.transaction.outputs[Number(previousOutput.index)].lock;
+    const committeeMultisigLockscript = parseAddress(getOmniLockMultisigAddress());
+    if (
+      !senderLockscript ||
+      (senderLockscript.codeHash === committeeMultisigLockscript.code_hash &&
+        senderLockscript.hashType === committeeMultisigLockscript.hash_type &&
+        senderLockscript.args === committeeMultisigLockscript.args)
+    ) {
+      logger.error(`sender should not be committee multisig cell`);
+      return null;
+    }
+
+    if (tx.inputs.length > 1) {
+      for (let i = 1; i < tx.inputs.length; i++) {
+        const thisPreviousOutput = nonNullable(tx.inputs[i].previousOutput);
+        const thisPreHash = thisPreviousOutput.txHash;
+        const thisTxPrevious = await this.ckb.rpc.getTransaction(thisPreHash);
+        if (thisTxPrevious == null) {
+          return null;
+        }
+        const thisSenderLockscript = thisTxPrevious.transaction.outputs[Number(thisPreviousOutput.index)].lock;
+        if (
+          !thisSenderLockscript ||
+          thisSenderLockscript.codeHash !== senderLockscript.codeHash ||
+          thisSenderLockscript.hashType !== senderLockscript.hashType ||
+          thisSenderLockscript.args !== senderLockscript.args
+        ) {
+          logger.error(`inputs contain different lockscripts`);
+          return null;
+        }
+      }
+    }
+
+    if (
+      recipientLockscript.codeHash !== committeeMultisigLockscript.code_hash ||
+      recipientLockscript.hashType !== committeeMultisigLockscript.hash_type ||
+      recipientLockscript.args !== committeeMultisigLockscript.args
+    ) {
+      logger.error(`the first output must be committee multisig`);
+      return null;
+    }
+
+    if (tx.outputs.length > 1) {
+      for (let i = 1; i < tx.outputs.length; i++) {
+        const thisLockscript = nonNullable(tx.outputs[i].lock);
+        if (
+          thisLockscript.codeHash === committeeMultisigLockscript.code_hash &&
+          thisLockscript.hashType === committeeMultisigLockscript.hash_type &&
+          thisLockscript.args === committeeMultisigLockscript.args
+        ) {
+          logger.error(`the outputs except first must not be committee multisig`);
+          return null;
+        }
+      }
+    }
+
+    let amount = BigInt(0);
+    let bridgeFee = BigInt(ForceBridgeCore.config.eth.lockNervosAssetFee);
+    let assetIdent = '0x0000000000000000000000000000000000000000000000000000000000000000';
+    if (
+      recipientTypescript &&
+      recipientTypescript.codeHash === sudtTypescript.codeHash &&
+      recipientTypescript.hashType === sudtTypescript.hashType
+    ) {
+      amount = utils.readBigUInt128LE(tx.outputsData[0]);
+      assetIdent = utils.computeScriptHash({
+        code_hash: recipientTypescript.codeHash,
+        hash_type: recipientTypescript.hashType,
+        args: recipientTypescript.args,
+      });
+      const nervosAsset = ForceBridgeCore.config.eth.nervosAssetWhiteList.find(
+        (asset) => asset.typescriptHash === assetIdent,
+      );
+      if (!nervosAsset) {
+        logger.error(`nervos asset ${nervosAsset} not in nervos asset white list`);
+        return null;
+      }
+      bridgeFee = BigInt(recipientOutput.capacity);
+    } else if (!recipientTypescript) {
+      amount = BigInt(recipientOutput.capacity) - bridgeFee;
+    } else {
+      logger.error(`unsupported type script ${recipientTypescript}`);
+      return null;
+    }
+
     const lockMemoWitness = tx.witnesses[tx.witnesses.length - 1];
     const lockMemo = new LockMemo(new Reader(lockMemoWitness).toArrayBuffer());
     let chain;
@@ -866,31 +960,29 @@ export class CkbHandler {
       logger.warn(`parse recipient data error: ${e.message} ${e.stack}`);
       return null;
     }
-    const previousOutput = nonNullable(tx.inputs[0].previousOutput);
-    const preHash = previousOutput.txHash;
-    const txPrevious = await this.ckb.rpc.getTransaction(preHash);
-    if (txPrevious == null) {
-      return null;
-    }
-    const senderLockscript = txPrevious.transaction.outputs[Number(previousOutput.index)].lock;
     const senderAddress = generateAddress({
       code_hash: senderLockscript.codeHash,
       hash_type: senderLockscript.hashType,
       args: senderLockscript.args,
     });
     logger.debug('amount: ', recipientCapacity);
-    logger.debug('recipient address: ', recipientAddress);
-    logger.debug('asset: ', sudtArgs);
     logger.debug('chain: ', chain);
-    const cellData: CkbLockCellData = {
+    logger.debug('recipient address: ', recipientAddress);
+    logger.debug('recipient capacity: ', recipientCapacity);
+    logger.debug('asset: ', assetIdent);
+    logger.debug('recipient lockscript: ', recipientLockscript);
+    logger.debug('bridge fee: ', bridgeFee);
+    const nervosLockAssetTxMetaData: NervosLockAssetTxMetaData = {
+      amount,
       chain,
       recipientAddress,
       recipientCapacity,
-      asset: sudtArgs,
+      asset: assetIdent,
       senderAddress,
       recipientLockscript,
+      bridgeFee,
     };
-    return cellData;
+    return nervosLockAssetTxMetaData;
   }
 
   start(): void {

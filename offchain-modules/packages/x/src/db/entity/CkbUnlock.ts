@@ -25,7 +25,7 @@ export class CkbUnlock {
   recipientAddress: string;
 
   @Column('varchar', { length: 10240, default: '' })
-  extraData: string;
+  udtExtraData: string;
 
   @Index()
   @Column({ nullable: true })

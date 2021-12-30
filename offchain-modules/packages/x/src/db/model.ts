@@ -7,6 +7,7 @@ import { EosUnlock } from './entity/EosUnlock';
 import { EthLock, TxConfirmStatus } from './entity/EthLock';
 import { EthUnlock, EthUnlockStatus } from './entity/EthUnlock';
 import Timestamp = CKBComponents.Timestamp;
+import Script = CKBComponents.Script;
 import { CkbUnlockStatus } from './entity/CkbUnlock';
 
 export { EthUnlock } from './entity/EthUnlock';
@@ -280,6 +281,17 @@ export interface MintedRecord {
 export interface MintedRecords {
   txHash: string;
   records: MintedRecord[];
+}
+
+export interface NervosLockAssetTxMetaData {
+  amount: bigint;
+  chain: number;
+  recipientAddress: string;
+  recipientCapacity: string;
+  asset: string;
+  senderAddress: string;
+  recipientLockscript: Script;
+  bridgeFee: bigint;
 }
 
 export interface IQuery {
