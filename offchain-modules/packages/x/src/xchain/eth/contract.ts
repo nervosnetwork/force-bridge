@@ -256,6 +256,7 @@ export class EthChain {
     }
   }
 
+  // TODO: virifiers.
   async signMintTx(tx: SafeTransaction, safe: Safe): Promise<SafeSignature[]> {
     const safes: Safe[] = [];
     safes.push(
