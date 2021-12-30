@@ -1,0 +1,26 @@
+[
+  {
+    "address": "0x0000000000000000000000000000000000000000",
+    "name": "BNB",
+    "symbol": "BNB",
+    "decimal": 18,
+    "logoURI": "https://cryptologos.cc/logos/binance-coin-bnb-logo.svg?v=002",
+    "minimalBridgeAmount": "10000000000000",
+    "bridgeFee": {
+      "in": "1000000000000",
+      "out": "2000000000000"
+    }
+  },
+  {
+    "address": "0x337610d27c682E347C9cD60BD4b3b107C9d34dDd",
+    "name": "USDT",
+    "symbol": "USDT",
+    "decimal": 18,
+    "logoURI": "https://cryptologos.cc/logos/tether-usdt-logo.svg?v=002",
+    "minimalBridgeAmount": "1000",
+    "bridgeFee": {
+      "in": "10",
+      "out": "20"
+    }
+  }
+]
