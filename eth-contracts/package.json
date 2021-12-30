@@ -8,7 +8,7 @@
     "ci": "run-s compile deploy sync-eth-abi",
     "compile": "hardhat compile",
     "test": "hardhat test",
-    "sync-eth-abi": "cp artifacts/contracts/ForceBridge.sol/ForceBridge.json ../offchain-modules/packages/x/src/xchain/eth/abi",
+    "sync-eth-abi": "cp artifacts/contracts/{ForceBridge.sol/ForceBridge.json,AssetManager.sol/AssetManager.json,NervosMirrorToken.sol/NervosMirrorToken.json} ../offchain-modules/packages/x/src/xchain/eth/abi",
     "watch": "nodemon --watch contracts --watch test -x 'npx hardhat test'",
     "fix": "prettier --write ./test/*.js ./scripts/*.js",
     "lint": "solhint \"contracts/**/*.sol\" && yarn prettier ./test/*.js ./scripts/*.js --check"

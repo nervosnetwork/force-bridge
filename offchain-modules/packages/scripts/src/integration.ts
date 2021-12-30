@@ -196,6 +196,7 @@ async function startChangeVal(
   ETH_PRIVKEY: string,
   oldMultiSigner: MultisigConfig,
   extraMultiSigConfig: MultisigConfig,
+  assetManagerContractAddress: string,
 ) {
   const newThreshold = extraMultiSigConfig.threshold;
   const newMultiSigConfig: VerifierConfig[] = [oldMultiSigner.verifiers[1]].concat(extraMultiSigConfig.verifiers);
@@ -226,6 +227,7 @@ async function startChangeVal(
       contractAddr: bridgeEthAddress,
       newThreshold: newThreshold,
       oldValidators: oldMultiSigner.verifiers.map((v) => v.ethAddress),
+      assetManagerContractAddress: assetManagerContractAddress,
     },
     newValRpcURLs: sigServerHost,
   };
@@ -346,6 +348,7 @@ async function main() {
     multisigConfig,
     ckbStartHeight,
     ethStartHeight,
+    assetManagerContractAddress,
   } = await deployDev(
     ETH_RPC_URL,
     CKB_RPC_URL,
@@ -415,6 +418,7 @@ async function main() {
     ETH_TEST_PRIVKEY,
     multisigConfig,
     extraMultiSigConfig,
+    assetManagerContractAddress,
   );
   await asyncSleep(60000);
   await startCollectorService(FORCE_BRIDGE_KEYSTORE_PASSWORD, forcecli, configPath);

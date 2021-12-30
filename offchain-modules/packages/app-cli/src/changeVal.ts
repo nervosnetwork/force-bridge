@@ -422,6 +422,7 @@ export interface ValInfos {
     oldValidators: string[];
     contractAddr: string;
     newThreshold: number;
+    assetManagerContractAddress: string;
   };
   newValRpcURLs: string[];
 }

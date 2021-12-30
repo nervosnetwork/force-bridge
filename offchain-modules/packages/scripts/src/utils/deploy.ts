@@ -4,7 +4,7 @@ import { initLumosConfig } from '@force-bridge/x/dist/ckb/tx-helper/init_lumos_c
 import { CkbDeps, WhiteListEthAsset, WhiteListNervosAsset } from '@force-bridge/x/dist/config';
 import { writeJsonToFile } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
-import { deployEthContract } from '@force-bridge/x/dist/xchain/eth';
+import { deployEthContract, deployAssetManager } from '@force-bridge/x/dist/xchain/eth';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import { ethers } from 'ethers';
 import * as lodash from 'lodash';
@@ -26,6 +26,7 @@ export interface DeployDevResult {
   ethStartHeight: number;
   ckbPrivateKey: string;
   ethPrivateKey: string;
+  assetManagerContractAddress: string;
 }
 
 export async function deployDev(
@@ -55,6 +56,9 @@ export async function deployDev(
     MULTISIG_THRESHOLD,
   );
   logger.info(`bridge address: ${bridgeEthAddress}`);
+
+  const assetManagerContractAddress = await deployAssetManager(ETH_RPC_URL, ethPrivateKey, '', MULTISIG_THRESHOLD);
+
   const ckbDeployGenerator = new CkbDeployManager(CKB_RPC_URL, CKB_INDEXER_URL);
   if (!ckbDeps) {
     // deploy ckb contracts
@@ -175,6 +179,7 @@ export async function deployDev(
     ethStartHeight,
     ethPrivateKey,
     ckbPrivateKey,
+    assetManagerContractAddress,
   };
   if (cachePath) {
     writeJsonToFile(data, cachePath);
