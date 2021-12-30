@@ -11,14 +11,9 @@
     "test": "yarn run build"
   },
   "devDependencies": {
-    "@babel/plugin-proposal-decorators": "^7.16.5",
-    "@babel/preset-env": "^7.16.5",
-    "@babel/preset-typescript": "^7.16.5",
     "@nervosnetwork/ckb-types": "^0.101.0",
     "@types/jest": "^27.0.3",
-    "@types/log4js": "^2.3.5",
-    "jest": "^27.4.5",
-    "ts-jest": "^27.1.2"
+    "@types/log4js": "^2.3.5"
   },
   "dependencies": {
     "@ckb-lumos/base": "^0.18.0-rc2",

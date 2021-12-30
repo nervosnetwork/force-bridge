@@ -15,5 +15,5 @@
     "skipLibCheck": true,
     "allowJs": true
   },
-  "include": ["src", "src/**/*.json", "test"]
+  "include": ["src", "src/**/*.json"]
 }
