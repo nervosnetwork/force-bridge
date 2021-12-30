@@ -55,6 +55,32 @@ export interface ICkbMint {
   message?: string;
 }
 
+export interface ICkbUnlock {
+  id: string;
+  burnTxHash: string;
+  chain: ChainType;
+  assetKind: string;
+  assetIdent: string;
+  amount: string;
+  recipientAddress: string;
+  blockTimestamp: number,
+  blockNumber: number;
+  blockHash: string; 
+  extraData: string;
+}
+
+export interface IEthMint {
+  ckbTxHash: string;
+  asset: string;
+  amount: string;
+  recipientAddress: string;
+  blockNumber: number;
+  blockTimestamp: number;
+  ethTxHash: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface IEthLock {
   txHash: string;
   sender: string;
@@ -68,6 +94,22 @@ export interface IEthLock {
   uniqueId: string;
   confirmNumber?: number;
   confirmStatus?: TxConfirmStatus;
+}
+
+export interface IEthBurn {
+  uniqueId: string,
+  burnTxHash: string,
+  sender: string,
+  token: string,
+  amount: string,
+  bridgeFee: string,
+  recipient: string,
+  sudtExtraData?: string,
+  blockNumber: number,
+  blockTimestamp: number,
+  blockHash: string,
+  confirmNumber: number,
+  confirmStatus: TxConfirmStatus,
 }
 
 export interface ICkbBurn {

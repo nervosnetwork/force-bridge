@@ -2,6 +2,7 @@ import { BigNumber, ethers } from 'ethers';
 import { Interface } from 'ethers/lib/utils';
 import { EthConfig, forceBridgeRole } from '../../config';
 import { ForceBridgeCore } from '../../core';
+import { CollectorEthMint } from '../../db/entity/EthMint';
 import { IEthUnlock } from '../../db/model';
 import { nonNullable } from '../../errors';
 import { MultiSigMgr } from '../../multisig/multisig-mgr';
@@ -54,6 +55,10 @@ export class EthChain {
       this.bridge = new ethers.Contract(this.bridgeContractAddr, abi, this.provider).connect(this.wallet);
       this.multisigMgr = new MultiSigMgr('ETH', this.config.multiSignHosts, this.config.multiSignThreshold);
     }
+  }
+
+  async sendMintTxs(records: CollectorEthMint[]): Promise<ethers.providers.TransactionResponse | undefined | boolean> {
+    throw new Error('implement me!');
   }
 
   async getGasPrice(): Promise<BigNumber> {

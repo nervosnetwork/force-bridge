@@ -1,12 +1,14 @@
-import { generateAddress, parseAddress } from '@ckb-lumos/helpers';
+import { parseAddress } from '@ckb-lumos/helpers';
 import { BigNumber } from 'ethers';
 import { TransferOutSwitch } from '../audit/switch';
 import { ChainType, EthAsset } from '../ckb/model/asset';
 import { forceBridgeRole } from '../config';
 import { ForceBridgeCore } from '../core';
 import { EthDb, KVDb, BridgeFeeDB } from '../db';
+import { EthBurn } from '../db/entity/EthBurn';
+import { CollectorEthMint } from '../db/entity/EthMint';
 import { EthUnlockStatus } from '../db/entity/EthUnlock';
-import { EthUnlock, IEthUnlock } from '../db/model';
+import { EthUnlock, ICkbUnlock, IEthUnlock, IEthMint } from '../db/model';
 import { asserts, nonNullable } from '../errors';
 import { BridgeMetricSingleton, txTokenInfo } from '../metric/bridge-metric';
 import { asyncSleep, foreverPromise, fromHexString, retryPromise, uint8ArrayToString } from '../utils';
@@ -27,6 +29,19 @@ export interface ParsedLockLog {
   blockHash: string;
   logIndex: number;
   asset: EthAsset;
+}
+
+export interface ParsedBurnLog {
+  txHash: string;
+  sender: string;
+  token: string;
+  amount: string;
+  recipient: string;
+  sudtExtraData: string;
+  blockNumber: number;
+  blockHash: string;
+  logIndex: number;
+  assetId: string;
 }
 
 export class EthHandler {
@@ -148,12 +163,115 @@ export class EthHandler {
 
   async handleLog(log: Log, currentHeight: number): Promise<void> {
     const parsedLog = await this.ethChain.iface.parseLog(log);
-    if (parsedLog.name === 'Locked') {
-      await this.onLockLogs(log, parsedLog, currentHeight);
-    } else if (parsedLog.name === 'Unlocked') {
-      await this.onUnlockLogs(log, parsedLog);
+    switch (parsedLog.name) {
+      case 'Locked':
+        await this.onLockLogs(log, parsedLog, currentHeight);
+        break;
+      case 'Unlocked':
+        await this.onUnlockLogs(log, parsedLog);
+        break;
+      case 'Burn':
+        await this.onBurnLogs(log, parsedLog, currentHeight);
+        break;
+      case 'Mint':
+        await this.onMinted(log, parsedLog, currentHeight);
+        break;
+      default:
+        logger.info(`not handled log type ${parsedLog.name}, log: ${JSON.stringify(log)}`);
+    }
+  }
+
+  async onMinted(log: Log, parsedLog: ParsedLog, currentHeight: number): Promise<void> {
+    logger.info(`EthHandler watchMintEvents received. log:${log} parsedLog:${parsedLog}`);
+
+    let collectRecord = await this.ethDb.getCEthMintRecordByEthTx(log.transactionHash);
+    if (collectRecord == undefined) {
+      logger.error(`EthHandler watchMintEvents no ckb tx mapped. ethTxHash:${log.transactionHash}`);
+      return;
+    }
+
+    if (collectRecord.amount < parsedLog.args.amount) {
+      logger.error(`EthHandler watchMintEvents amount is bigger than record. ethTxHash:${log.transactionHash}`)
+      return;
+    } else if (collectRecord.amount > parsedLog.args.amount) {
+      logger.warn(`EthHandler watchMintEvents amount is smaller than record. ethTxHash:${log.transactionHash}`)
+    }
+
+    const block = await this.ethChain.getBlock(log.blockHash);
+
+    collectRecord.ethTxHash = log.transactionHash;
+    collectRecord.status = 'success';
+    collectRecord.blockNumber = log.blockNumber;
+    collectRecord.blockTimestamp = block.timestamp;
+
+    await this.ethDb.saveCollectorEthMints([collectRecord]);
+
+    await this.ethDb.saveEthMint(collectRecord);
+  }
+
+  async onBurnLogs(log: Log, parsedLog: ParsedLog, currentHeight: number): Promise<void> {
+    let record = await this.ethDb.getBurnRecord(log.logIndex, log.transactionHash);
+    const confirmedNumber = currentHeight - log.blockNumber;
+    const confirmStatus = confirmedNumber >= ForceBridgeCore.config.eth.confirmNumber ? 'confirmed' : 'unconfirmed';
+    const block = await this.ethChain.getBlock(log.blockHash);
+    if (record == undefined) {
+      logger.info(
+        `EthHandler watchBurnEvents receiveLog blockHeight:${log.blockNumber} blockHash:${
+          log.blockHash
+        } txHash:${log.transactionHash} amount:${parsedLog.args.amount.toString()} asset:${
+          parsedLog.args.token
+        } recipientLockscript:${parsedLog.args.recipient} sudtExtraData:${
+          parsedLog.args.extraData
+        } sender:${parsedLog.args.from}, confirmedNumber: ${confirmedNumber}, confirmStatus: ${confirmStatus}`,
+      );
+      await this.ethDb.createEthBurn({
+        burnTxHash: log.transactionHash,
+        amount: parsedLog.args.amount,
+        token: parsedLog.args.token,
+        recipient: parsedLog.args.recipient,
+        sudtExtraData: parsedLog.args.extraData,
+        blockNumber: log.blockNumber,
+        blockHash: log.blockHash,
+        sender: parsedLog.args.from,
+        uniqueId: EthBurn.primaryKey(log.logIndex, log.transactionHash),
+        bridgeFee: parsedLog.args.fee.toString(),
+        confirmNumber: confirmedNumber,
+        confirmStatus: confirmStatus,
+        blockTimestamp: block.timestamp,
+      });
+      BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_burn', 'success');
+      BridgeMetricSingleton.getInstance(this.role).addBridgeTokenMetrics('eth_burn', [
+        {
+          amount: Number(parsedLog.args.amount),
+          token: parsedLog.args.token,
+        },
+      ]);
     } else {
-      logger.info(`not handled log type ${parsedLog.name}, log: ${JSON.stringify(log)}`);
+      record.amount = parsedLog.args.amount;
+      record.token = parsedLog.args.token;
+      record.recipient = parsedLog.args.recipient;
+      record.sudtExtraData = parsedLog.args.extraData;
+      await this.ethDb.saveEthBurn(record);
+      logger.info(`update burn record ${log.transactionHash} status, confirmed number: ${confirmedNumber} status ${
+        confirmStatus
+      }`);
+    }
+
+    if (confirmStatus == 'confirmed' && this.role == 'collector') {
+      const unlock: ICkbUnlock = {
+        id: EthBurn.primaryKey(log.logIndex, log.transactionHash),
+        burnTxHash: log.transactionHash,
+        chain: ChainType.ETH,
+        assetKind: parsedLog.args.assetId,
+        assetIdent: parsedLog.args.assetId,
+        amount: parsedLog.args.amount,
+        recipientAddress: parsedLog.args.recipient,
+        blockTimestamp: block.timestamp,
+        blockNumber: log.blockNumber,
+        blockHash: log.blockHash,
+        extraData: parsedLog.args.extraData, 
+      }
+      await this.ethDb.createCollectorCkbUnlock([unlock]);
     }
   }
 
@@ -308,6 +426,103 @@ export class EthHandler {
       return toUnlockRecords.filter((r) => unlockedRecords.indexOf(r.ckbTxHash) < 0);
     } else {
       return toUnlockRecords;
+    }
+  }
+
+  handleMintRecords(): void {
+    if (this.role !== 'collector') {
+      return;
+    }
+
+    foreverPromise(
+      async () => {
+        const records = await this.ethDb.todoMintRecords();
+        if (records.length <= 0) {
+          logger.debug('wait for new mints');
+          await asyncSleep(3000);
+          return;
+        }
+
+        await this.mint(records);
+      },
+      {
+        onRejectedInterval: 15000,
+        onResolvedInterval: 15000,
+        onRejected: (e: Error) => {
+          logger.error(`ETH handleMintRecords error: ${e.stack}`);
+        },
+      },
+    );
+  }
+
+  async mint(records: CollectorEthMint[]): Promise<void> {
+    records = await this.ethDb.makeMintPending(records);
+    const mintTxHashes = records.map((r) => r.ckbTxHash);
+
+    if (records.length <= 0) {
+      return;
+    }
+
+    try {
+      const txRes = await this.ethChain.sendMintTxs(records);
+
+      if (typeof txRes == 'boolean') {
+        records.map((r) => {
+          r.status = 'success';
+        });
+
+        await this.ethDb.saveCollectorEthMint(records);
+
+        return;
+      }
+
+      if (txRes == undefined) {
+        logger.warn(`ethHandler mint sendMintTxes response is undefined ckbHashes:${mintTxHashes}`)
+        return;
+      }
+
+      await this.ethDb.saveCollectorEthMint(records);
+      logger.debug('sendMintTx res', txRes);
+      try {
+        const receipt = await txRes.wait();
+        logger.info(`EthHandler mint sendMintTxes receipt:${JSON.stringify(receipt.logs)}`);
+        records.map((r) => {
+          r.status = 'success';
+          r.ethTxHash = txRes.hash;
+        });
+
+        const mintTokens = records.map((r) => {
+          return {
+            amount: Number(r.amount),
+            token: r.asset,
+          };
+        });
+
+        BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_mint', 'success');
+        BridgeMetricSingleton.getInstance(this.role).addBridgeTokenMetrics('eth_mint', mintTokens);
+      } catch (e) {
+        records.map((r) => {
+          r.status = 'error';
+          r.message = e.message();
+        });
+        BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_mint', 'failed');
+
+        logger.error(`EthHandler mint ckbTxHashes:${mintTxHashes} mint execute failed:${e.stack}`);
+      }
+    } catch (e) {
+      records.map((r) => {
+        r.status = 'error';
+        r.message = e.message;
+      });
+      BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_mint', 'failed');
+
+      logger.error(`EthHandler mint ckbTxHashes:${mintTxHashes} mint execute failed:${e.stack}`);
+    }
+
+    try {
+      await this.ethDb.saveCollectorEthMints(records);
+    } catch (e) {
+      logger.error(`EthHandler mint db.saveEthMint ckbTxHashes:${mintTxHashes} error:${(e as Error).stack}`);
     }
   }
 
@@ -466,6 +681,7 @@ export class EthHandler {
     void this.watchNewBlock();
 
     this.handleUnlockRecords();
+    this.handleMintRecords();
     logger.info('eth handler started  🚀');
   }
 }
@@ -487,6 +703,21 @@ export function parseLockLog(log: Log, parsedLog: ParsedLog): ParsedLockLog {
     logIndex: log.logIndex,
     sender: sender,
     asset,
+  };
+}
+
+export function parseBurnLog(log: Log, parsedLog: ParsedLog): ParsedBurnLog {
+  return {
+    txHash: log.transactionHash,
+    amount: parsedLog.args.amount.toString(),
+    token: parsedLog.args.token,
+    recipient: '',
+    sudtExtraData: '',
+    blockNumber: log.blockNumber,
+    blockHash: log.blockHash,
+    logIndex: log.logIndex,
+    sender: parsedLog.args.sender,
+    assetId: parsedLog.args.assetId,
   };
 }
 

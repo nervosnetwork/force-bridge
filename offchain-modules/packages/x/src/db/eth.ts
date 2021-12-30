@@ -1,7 +1,11 @@
 // invoke in eth handler
+import { option } from 'commander';
 import { Connection, In, Repository, UpdateResult } from 'typeorm';
 import { ForceBridgeCore } from '../core';
 import { CollectorCkbMint } from './entity/CkbMint';
+import { CollectorCkbUnlock } from './entity/CkbUnlock';
+import { EthBurn } from './entity/EthBurn';
+import { CollectorEthMint, EthMint } from './entity/EthMint';
 import { CollectorEthUnlock, EthUnlockStatus } from './entity/EthUnlock';
 import {
   CkbBurn,
@@ -9,6 +13,8 @@ import {
   EthLock,
   EthUnlock,
   ICkbMint,
+  ICkbUnlock,
+  IEthBurn,
   IEthLock,
   IEthUnlock,
   IQuery,
@@ -19,17 +25,82 @@ import {
 
 export class EthDb implements IQuery {
   private ckbMintRepository: Repository<CkbMint>;
+  private ethMintRepository: Repository<EthMint>;
   private ethLockRepository: Repository<EthLock>;
   private ethUnlockRepository: Repository<EthUnlock>;
   private collectorEthUnlockRepository: Repository<CollectorEthUnlock>;
   private collectorCkbMintRepository: Repository<CollectorCkbMint>;
+  private collectorEthMintRepository: Repository<CollectorEthMint>;
 
   constructor(private connection: Connection) {
     this.ckbMintRepository = connection.getRepository(CkbMint);
+    this.ethMintRepository = connection.getRepository(EthMint);
     this.ethLockRepository = connection.getRepository(EthLock);
     this.ethUnlockRepository = connection.getRepository(EthUnlock);
     this.collectorEthUnlockRepository = connection.getRepository(CollectorEthUnlock);
     this.collectorCkbMintRepository = connection.getRepository(CollectorCkbMint);
+    this.collectorEthMintRepository = connection.getRepository(CollectorEthMint);
+  }
+
+  async getBurnRecord(logIndex: number, txHash: string): Promise<EthBurn | undefined> {
+    return this.connection.getRepository(EthBurn).findOne(EthBurn.primaryKey(logIndex, txHash));
+  }
+
+  async todoMintRecords(number = 100): Promise<CollectorEthMint[]> {
+    const records = await this.collectorEthMintRepository.find({
+      where: {
+        status: 'todo',
+      },
+      order: {
+        createdAt: 'ASC',
+      },
+      take: number,
+    });
+
+    if (records.length <= 0) {
+      return records;
+    }
+
+    const mintedRecord = await this.ethMintRepository.findByIds(records.map((r) => r.ckbTxHash));
+
+    const mintedIds = await this.succeedMint(mintedRecord);
+
+    return records.filter((r) => mintedIds.includes(r.ckbTxHash));
+  }
+
+  async succeedMint(records: EthMint[]): Promise<string[]> {
+    const ids = records.map((r) => r.ckbTxHash);
+    await this.collectorEthMintRepository.update(ids, { status: 'success' });
+
+    return ids;
+  }
+
+  /**
+   * @param records
+   * @returns Make sure that no failed record is minted on the chain.
+   */
+  async makeMintPending(records: CollectorEthMint[]): Promise<CollectorEthMint[]> {
+    const ids = records.map((r) => r.ckbTxHash);
+
+    await this.collectorEthMintRepository.update(ids, { status: 'pending' });
+
+    return await this.collectorEthMintRepository.findByIds(ids, {
+      where: {
+        status: 'pending',
+      },
+    });
+  }
+
+  async getCEthMintRecordByEthTx(tx: string): Promise<CollectorEthMint | undefined> {
+    return await this.connection.getRepository(CollectorEthMint).findOne({ ethTxHash: tx });
+  }
+
+  async getEthMint(ckbTx: string): Promise<EthMint | undefined> {
+    return await this.connection.getRepository(EthMint).findOne(ckbTx);
+  }
+
+  async saveEthMint(record: EthMint): Promise<EthMint> {
+    return await this.connection.getRepository(EthMint).save(record);
   }
 
   async getLatestHeight(): Promise<number> {
@@ -42,6 +113,12 @@ export class EthDb implements IQuery {
     await this.collectorCkbMintRepository.save(dbRecords);
   }
 
+  async createCollectorCkbUnlock(records: ICkbUnlock[]): Promise<void> {
+    await this.connection.getRepository(CollectorCkbUnlock).save(
+      records.map((r) => this.connection.getRepository(CollectorCkbUnlock).create(r)),
+    )
+  }
+
   async createEthUnlock(records: IEthUnlock[]): Promise<void> {
     const ethUnlockRepo = this.connection.getRepository(EthUnlock);
     const dbRecords = records.map((r) => ethUnlockRepo.create(r));
@@ -52,9 +129,27 @@ export class EthDb implements IQuery {
     await this.collectorEthUnlockRepository.save(records.map((r) => this.collectorEthUnlockRepository.create(r)));
   }
 
+  async saveCollectorEthMint(records: IEthUnlock[]): Promise<void> {
+    await this.connection.getRepository(CollectorEthMint).save(records);
+  }
+
+  async saveCollectorEthMints(records: IEthUnlock[]): Promise<CollectorEthMint[]> {
+    return await this.connection.getRepository(CollectorEthMint).save(records);
+  }
+
   async createEthLock(records: IEthLock[]): Promise<void> {
     const dbRecords = records.map((r) => this.ethLockRepository.create(r));
     await this.ethLockRepository.save(dbRecords);
+  }
+
+  async createEthBurn(record: IEthBurn): Promise<void> {
+    await this.connection.getRepository(EthBurn).save(
+      this.connection.getRepository(EthBurn).create(record),
+    );
+  }
+
+  async saveEthBurn(record: EthBurn): Promise<void> {
+    await this.connection.getRepository(EthBurn).save(record);
   }
 
   async updateCollectorUnlockStatus(ckbTxHash: string, blockNumber: number, status: EthUnlockStatus): Promise<void> {
