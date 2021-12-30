@@ -1,0 +1,28 @@
+[
+  {
+    "address": "0x0000000000000000000000000000000000000000",
+    "name": "BNB",
+    "symbol": "BNB",
+    "logoURI": "https://cryptologos.cc/logos/binance-coin-bnb-logo.svg?v=002",
+    "decimal": 18,
+    "minimalBridgeAmount": "213000000000000000",
+    "bridgeFee": {
+      "in": "16800000000000000",
+      "out": "16800000000000000"
+    },
+    "sudtArgs": "0x578cd6ab8c0800e6fbc17b58633857dac5626883af89f842e79cb8f7af24de75"
+  },
+  {
+    "address": "0xe9e7cea3dedca5984780bafc599bd69add087d56",
+    "name": "BUSD",
+    "symbol": "BUSD",
+    "logoURI": "https://cryptologos.cc/logos/binance-usd-busd-logo.svg?v=002",
+    "decimal": 18,
+    "minimalBridgeAmount": "111000000000000000000",
+    "bridgeFee": {
+      "in": "8780000000000000000",
+      "out": "8780000000000000000"
+    },
+    "sudtArgs": "0x38c10f8cd29f8a187de4af26f6db06486117464cf92e42854b85d3ba5c51041b"
+  }
+]

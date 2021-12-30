@@ -1,0 +1,16 @@
+[
+  {
+    "address": "0x0000000000000000000000000000000000000000",
+    "name": "BNB",
+    "symbol": "BNB",
+    "logoURI": "https://cryptologos.cc/logos/binance-coin-bnb-logo.svg?v=002",
+    "decimal": 18
+  },
+  {
+    "address": "0xe9e7cea3dedca5984780bafc599bd69add087d56",
+    "name": "BUSD",
+    "symbol": "BUSD",
+    "logoURI": "https://cryptologos.cc/logos/binance-usd-busd-logo.svg?v=002",
+    "decimal": 18
+  }
+]
