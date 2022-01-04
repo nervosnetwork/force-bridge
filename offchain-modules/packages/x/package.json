@@ -8,14 +8,11 @@
     "clean": "rimraf -rf ./dist",
     "compile": "tsc -p tsconfig.build.json",
     "prepublishOnly": "yarn run build",
-    "test": "yarn run build",
-    "hardcat-test": ""
+    "test": "yarn run build"
   },
   "devDependencies": {
     "@nervosnetwork/ckb-types": "^0.101.0",
-    "@types/jest": "^27.0.3",
-    "jest": "^27.4.5",
-    "ts-jest": "^27.1.2"
+    "@types/log4js": "^2.3.5"
   },
   "dependencies": {
     "@ckb-lumos/base": "^0.18.0-rc2",

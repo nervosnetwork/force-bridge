@@ -1,4 +1,4 @@
-import { parseAddress } from '@ckb-lumos/helpers';
+import { generateAddress, parseAddress } from '@ckb-lumos/helpers';
 import { BigNumber } from 'ethers';
 import { TransferOutSwitch } from '../audit/switch';
 import { ChainType, EthAsset } from '../ckb/model/asset';
@@ -8,7 +8,7 @@ import { EthDb, KVDb, BridgeFeeDB } from '../db';
 import { EthBurn } from '../db/entity/EthBurn';
 import { CollectorEthMint } from '../db/entity/EthMint';
 import { EthUnlockStatus } from '../db/entity/EthUnlock';
-import { EthUnlock, ICkbUnlock, IEthUnlock, IEthMint } from '../db/model';
+import { EthUnlock, ICkbUnlock, IEthUnlock } from '../db/model';
 import { asserts, nonNullable } from '../errors';
 import { BridgeMetricSingleton, txTokenInfo } from '../metric/bridge-metric';
 import { asyncSleep, foreverPromise, fromHexString, retryPromise, uint8ArrayToString } from '../utils';
@@ -174,27 +174,27 @@ export class EthHandler {
         await this.onBurnLogs(log, parsedLog, currentHeight);
         break;
       case 'Mint':
-        await this.onMinted(log, parsedLog, currentHeight);
+        await this.onMinted(log, parsedLog);
         break;
       default:
         logger.info(`not handled log type ${parsedLog.name}, log: ${JSON.stringify(log)}`);
     }
   }
 
-  async onMinted(log: Log, parsedLog: ParsedLog, currentHeight: number): Promise<void> {
+  async onMinted(log: Log, parsedLog: ParsedLog): Promise<void> {
     logger.info(`EthHandler watchMintEvents received. log:${log} parsedLog:${parsedLog}`);
 
-    let collectRecord = await this.ethDb.getCEthMintRecordByEthTx(log.transactionHash);
+    const collectRecord = await this.ethDb.getCEthMintRecordByEthTx(log.transactionHash);
     if (collectRecord == undefined) {
       logger.error(`EthHandler watchMintEvents no ckb tx mapped. ethTxHash:${log.transactionHash}`);
       return;
     }
 
     if (collectRecord.amount < parsedLog.args.amount) {
-      logger.error(`EthHandler watchMintEvents amount is bigger than record. ethTxHash:${log.transactionHash}`)
+      logger.error(`EthHandler watchMintEvents amount is bigger than record. ethTxHash:${log.transactionHash}`);
       return;
     } else if (collectRecord.amount > parsedLog.args.amount) {
-      logger.warn(`EthHandler watchMintEvents amount is smaller than record. ethTxHash:${log.transactionHash}`)
+      logger.warn(`EthHandler watchMintEvents amount is smaller than record. ethTxHash:${log.transactionHash}`);
     }
 
     const block = await this.ethChain.getBlock(log.blockHash);
@@ -210,19 +210,19 @@ export class EthHandler {
   }
 
   async onBurnLogs(log: Log, parsedLog: ParsedLog, currentHeight: number): Promise<void> {
-    let record = await this.ethDb.getBurnRecord(log.logIndex, log.transactionHash);
+    const record = await this.ethDb.getBurnRecord(log.logIndex, log.transactionHash);
     const confirmedNumber = currentHeight - log.blockNumber;
     const confirmStatus = confirmedNumber >= ForceBridgeCore.config.eth.confirmNumber ? 'confirmed' : 'unconfirmed';
     const block = await this.ethChain.getBlock(log.blockHash);
     if (record == undefined) {
       logger.info(
-        `EthHandler watchBurnEvents receiveLog blockHeight:${log.blockNumber} blockHash:${
-          log.blockHash
-        } txHash:${log.transactionHash} amount:${parsedLog.args.amount.toString()} asset:${
-          parsedLog.args.token
-        } recipientLockscript:${parsedLog.args.recipient} sudtExtraData:${
-          parsedLog.args.extraData
-        } sender:${parsedLog.args.from}, confirmedNumber: ${confirmedNumber}, confirmStatus: ${confirmStatus}`,
+        `EthHandler watchBurnEvents receiveLog blockHeight:${log.blockNumber} blockHash:${log.blockHash} txHash:${
+          log.transactionHash
+        } amount:${parsedLog.args.amount.toString()} asset:${parsedLog.args.token} recipientLockscript:${
+          parsedLog.args.recipient
+        } sudtExtraData:${parsedLog.args.extraData} sender:${
+          parsedLog.args.from
+        }, confirmedNumber: ${confirmedNumber}, confirmStatus: ${confirmStatus}`,
       );
       await this.ethDb.createEthBurn({
         burnTxHash: log.transactionHash,
@@ -252,9 +252,9 @@ export class EthHandler {
       record.recipient = parsedLog.args.recipient;
       record.sudtExtraData = parsedLog.args.extraData;
       await this.ethDb.saveEthBurn(record);
-      logger.info(`update burn record ${log.transactionHash} status, confirmed number: ${confirmedNumber} status ${
-        confirmStatus
-      }`);
+      logger.info(
+        `update burn record ${log.transactionHash} status, confirmed number: ${confirmedNumber} status ${confirmStatus}`,
+      );
     }
 
     if (confirmStatus == 'confirmed' && this.role == 'collector') {
@@ -269,8 +269,8 @@ export class EthHandler {
         blockTimestamp: block.timestamp,
         blockNumber: log.blockNumber,
         blockHash: log.blockHash,
-        extraData: parsedLog.args.extraData, 
-      }
+        extraData: parsedLog.args.extraData,
+      };
       await this.ethDb.createCollectorCkbUnlock([unlock]);
     }
   }
@@ -477,7 +477,7 @@ export class EthHandler {
       }
 
       if (txRes == undefined) {
-        logger.warn(`ethHandler mint sendMintTxes response is undefined ckbHashes:${mintTxHashes}`)
+        logger.warn(`ethHandler mint sendMintTxes response is undefined ckbHashes:${mintTxHashes}`);
         return;
       }
 
