@@ -297,7 +297,11 @@ export class CkbHandler {
     }
 
     for (const tx of committeeMultisigTxs) {
-      await this.onLockTx(tx, currentHeight);
+      if (tx.info.io_type === 'input') {
+        await this.onLockTx(tx, currentHeight);
+      } else if (tx.info.io_type === 'output') {
+        await this.onUnlockTx(tx, currentHeight);
+      }
     }
   }
 
@@ -475,6 +479,13 @@ export class CkbHandler {
       await this.db.createCollectorEthMint([mintRecords]);
       logger.info(`save CkbMint successful for eth tx ${txHash}`);
     }
+  }
+
+  async onUnlockTx(_txInfo: CkbTxInfo, _currentHeight: number): Promise<void> {
+    if (_txInfo.tx.transaction.inputs.length < 2) {
+      return;
+    }
+    throw new Error('unimplement');
   }
 
   async parseMintTx(tx: Transaction, blockNumber: number): Promise<null | MintedRecords> {
