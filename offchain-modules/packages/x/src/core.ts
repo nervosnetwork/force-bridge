@@ -52,6 +52,8 @@ export interface XChainHandler {
   getHandledBlock(): { height: number; hash: string };
 
   getTipBlock(): Promise<{ height: number; hash: string }>;
+
+  checkBlockSync?(): Promise<boolean>;
 }
 
 // make global config and var static,

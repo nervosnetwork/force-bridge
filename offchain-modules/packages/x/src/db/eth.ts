@@ -2,6 +2,8 @@
 import { Connection, In, Repository, UpdateResult } from 'typeorm';
 import { ForceBridgeCore } from '../core';
 import { CollectorCkbMint } from './entity/CkbMint';
+import { CollectorEthMint } from './entity/EthMint';
+import { EthMint } from './entity/EthMint';
 import { CollectorEthUnlock, EthUnlockStatus } from './entity/EthUnlock';
 import {
   CkbBurn,
@@ -46,6 +48,24 @@ export class EthDb implements IQuery {
     const ethUnlockRepo = this.connection.getRepository(EthUnlock);
     const dbRecords = records.map((r) => ethUnlockRepo.create(r));
     await ethUnlockRepo.save(dbRecords);
+  }
+
+  async hasOneMinted(ckbTxHashes: string[]): Promise<boolean> {
+    const minted = await this.connection.getRepository(EthMint).find({
+      ckbTxHash: In(ckbTxHashes),
+    });
+
+    if (minted.length > 0) {
+      return true;
+    }
+
+    return false;
+  }
+
+  async ethToBeMintedByCkbTx(ckbTxHash: string[]): Promise<CollectorEthMint[]> {
+    return await this.connection.getRepository(CollectorEthMint).find({
+      ckbTxHash: In(ckbTxHash),
+    });
   }
 
   async saveCollectorEthUnlock(records: IEthUnlock[]): Promise<void> {
