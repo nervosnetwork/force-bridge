@@ -1,22 +1,37 @@
 import { core, utils } from '@ckb-lumos/base';
 import { serializeMultisigScript } from '@ckb-lumos/common-scripts/lib/secp256k1_blake160_multisig';
 import { key } from '@ckb-lumos/hd';
-import { generateAddress, sealTransaction, TransactionSkeletonType } from '@ckb-lumos/helpers';
+import { generateAddress, parseAddress, sealTransaction, TransactionSkeletonType } from '@ckb-lumos/helpers';
 import { RPC } from '@ckb-lumos/rpc';
 import { Reader } from 'ckb-js-toolkit';
 import * as lodash from 'lodash';
+import { TransferOutSwitch } from '../audit/switch';
 import { BtcAsset, ChainType, EosAsset, EthAsset, getAsset, TronAsset } from '../ckb/model/asset';
 import { RecipientCellData } from '../ckb/tx-helper/generated/eth_recipient_cell';
 import { ForceBridgeLockscriptArgs } from '../ckb/tx-helper/generated/force_bridge_lockscript';
 import { MintWitness } from '../ckb/tx-helper/generated/mint_witness';
 import { CkbTxGenerator, MintAssetRecord } from '../ckb/tx-helper/generator';
 import { GetTransactionsResult, ScriptType, SearchKey } from '../ckb/tx-helper/indexer';
-import { getOwnerTypeHash } from '../ckb/tx-helper/multisig/multisig_helper';
+import { getFromAddr, getOwnerTypeHash } from '../ckb/tx-helper/multisig/multisig_helper';
+import { getOmniLockMultisigAddress } from '../ckb/tx-helper/multisig/omni-lock';
 import { forceBridgeRole } from '../config';
 import { ForceBridgeCore } from '../core';
 import { CkbDb, KVDb } from '../db';
 import { CollectorCkbMint } from '../db/entity/CkbMint';
-import { ICkbBurn, ICkbMint, MintedRecord, MintedRecords } from '../db/model';
+import {
+  EthUnlock,
+  ICkbBurn,
+  ICkbMint,
+  ICkbUnlock,
+  IEthUnlock,
+  MintedRecord,
+  MintedRecords,
+  TxConfirmStatus,
+  NervosUnlockAssetTxRecords,
+  NervosUnlockAssetTxRecord,
+  NervosUnlockAssetTxMetaData,
+} from '../db/model';
+
 import { asserts, nonNullable } from '../errors';
 import { BridgeMetricSingleton, txTokenInfo } from '../metric/bridge-metric';
 import { createAsset, MultiSigMgr } from '../multisig/multisig-mgr';
@@ -24,6 +39,7 @@ import {
   asyncSleep,
   foreverPromise,
   fromHexString,
+  retryPromise,
   toHexString,
   transactionSkeletonToJSON,
   uint8ArrayToString,
@@ -32,6 +48,11 @@ import { logger } from '../utils/logger';
 import { getAssetTypeByAsset } from '../xchain/tron/utils';
 import Transaction = CKBComponents.Transaction;
 import TransactionWithStatus = CKBComponents.TransactionWithStatus;
+import { LockMemo } from '../ckb/tx-helper/generated/lock_memo';
+import { EthUnlockStatus } from '../db/entity/EthUnlock';
+import { WithdrawBridgeFeeTopic } from '../xchain/eth';
+import { BytesVec, UnlockMemo } from '../ckb/tx-helper/generated/unlock_memo';
+import { EthereumBurn } from '../db/entity/EthereumBurn';
 
 const lastHandleCkbBlockKey = 'lastHandleCkbBlock';
 
@@ -367,6 +388,57 @@ export class CkbHandler {
       await this.onCkbBurnConfirmed([unlockRecord]);
       logger.info(`save unlock successful for burn tx ${txHash}`);
     }
+  }
+
+  async onUnlockTx(txInfo: CkbTxInfo, currentHeight: number): Promise<void> {
+    await retryPromise(
+      async () => {
+        const parsedUnlockTx = await this.parseUnlockTx(txInfo.tx.transaction);
+        if (!parsedUnlockTx) {
+          return null;
+        }
+        const ethereumBurns = parsedUnlockTx.ethereumBurns;
+        const amount = ethereumBurns.map((ethereumBurn) => BigInt(ethereumBurn.amount)).reduce((a, b) => a + b, 0n);
+        logger.info(
+          `CkbHandler watchUnlockEvents receiveLog blockHeight:${txInfo.info.block_number} blockHash:${txInfo.tx.txStatus.blockHash} txHash:${txInfo.info.tx_hash} ethereumBurns:${ethereumBurns}`,
+        );
+        logger.debug('CkbHandler watchUnlockEvents ckb unlockLog:', { txInfo, parsedUnlockTx });
+
+        const iCkbUnlocks: ICkbUnlock[] = ethereumBurns.map((ethereumBurn) => ({
+          id: ethereumBurn.uniqueId,
+          burnTxHash: ethereumBurn.burnTxHash,
+          xchain: ChainType.ETH,
+          assetIdent: ethereumBurn.nervosAssetId,
+          amount: ethereumBurn.amount,
+          recipientAddress: ethereumBurn.recipient,
+          udtExtraData: ethereumBurn.udtExtraData,
+          blockNumber: ethereumBurn.blockNumber,
+          blockTimestamp: ethereumBurn.blockTimestamp,
+          unlockTxHash: '',
+          status: 'todo',
+        }));
+        await this.db.createCkbUnlock(iCkbUnlocks);
+        if (this.role === 'collector') {
+          await Promise.all(
+            ethereumBurns.map((ethereumBurn) =>
+              this.db.updateCollectorUnlockStatus(ethereumBurn.burnTxHash, ethereumBurn.blockNumber, 'success'),
+            ),
+          );
+        }
+        BridgeMetricSingleton.getInstance(this.role).addBridgeTokenMetrics(
+          'ckb_unlock',
+          ethereumBurns.map((ethereumBurn) => ({
+            token: ethereumBurn.uniqueId,
+            amount: Number(ethereumBurn.amount),
+          })),
+        );
+      },
+      {
+        onRejected: (e: Error) => {
+          logger.error(`CkbHandler onUnlockTxs error:${e.stack}`);
+        },
+      },
+    );
   }
 
   async parseMintTx(tx: Transaction, blockNumber: number): Promise<null | MintedRecords> {
@@ -741,6 +813,75 @@ export class CkbHandler {
       }
       await asyncSleep(1000);
     }
+  }
+
+  async parseUnlockTx(tx: Transaction): Promise<NervosUnlockAssetTxMetaData | null> {
+    if (tx.inputs.length < 2) {
+      return null;
+    }
+    const sudtTypescript = ForceBridgeCore.config.ckb.deps.sudtType.script;
+    const previousOutput = nonNullable(tx.inputs[0].previousOutput);
+    const preHash = previousOutput.txHash;
+    const txPrevious = await this.ckb.rpc.getTransaction(preHash);
+    if (txPrevious == null) {
+      return null;
+    }
+    const senderLockscript = txPrevious.transaction.outputs[Number(previousOutput.index)].lock;
+    const committeeMultisigLockscript = parseAddress(getOmniLockMultisigAddress());
+    const collectorAddress = getFromAddr();
+    const collectorLockscript = parseAddress(collectorAddress);
+    if (
+      !senderLockscript ||
+      senderLockscript.codeHash !== committeeMultisigLockscript.code_hash ||
+      senderLockscript.hashType !== committeeMultisigLockscript.hash_type ||
+      senderLockscript.args !== committeeMultisigLockscript.args
+    ) {
+      logger.error(`sender must be committee multisig cell`);
+      return null;
+    }
+
+    for (let i = 1; i < tx.inputs.length; i++) {
+      const thisPreviousOutput = nonNullable(tx.inputs[i].previousOutput);
+      const thisPreHash = thisPreviousOutput.txHash;
+      const thisTxPrevious = await this.ckb.rpc.getTransaction(thisPreHash);
+      if (thisTxPrevious == null) {
+        return null;
+      }
+      const thisSenderLockscript = thisTxPrevious.transaction.outputs[Number(thisPreviousOutput.index)].lock;
+      if (
+        !thisSenderLockscript ||
+        !(
+          (thisSenderLockscript.codeHash !== committeeMultisigLockscript.code_hash &&
+            thisSenderLockscript.hashType !== committeeMultisigLockscript.hash_type &&
+            thisSenderLockscript.args !== committeeMultisigLockscript.args) ||
+          (thisSenderLockscript.codeHash !== collectorLockscript.code_hash &&
+            thisSenderLockscript.hashType !== collectorLockscript.hash_type &&
+            thisSenderLockscript.args !== collectorLockscript.args)
+        )
+      ) {
+        logger.error(`inputs contain must be committee multisig or collector cell`);
+        return null;
+      }
+    }
+    const unlockMemoWitness = tx.witnesses[tx.witnesses.length - 1];
+    const unlockMemo = new UnlockMemo(new Reader(unlockMemoWitness).toArrayBuffer());
+    let chain;
+    let burnIds;
+    try {
+      chain = unlockMemo.getXchain();
+      const burnIdBytes: BytesVec = unlockMemo.getBurnIds();
+      burnIds = lodash.range(burnIdBytes.length()).map((i) => new Reader(burnIdBytes.indexAt(i).raw()).serializeJson());
+    } catch (e) {
+      logger.warn(`parse recipient unlock memo data error: ${e.message} ${e.stack}`);
+      return null;
+    }
+
+    const ethereumBurns: EthereumBurn[] = await this.db.getEthereumBurnByUniqueIds(burnIds);
+    const nervosUnlockAssetTxMetaData: NervosUnlockAssetTxMetaData = {
+      chain,
+      ethereumBurns,
+    };
+    return nervosUnlockAssetTxMetaData;
   }
 
   start(): void {
