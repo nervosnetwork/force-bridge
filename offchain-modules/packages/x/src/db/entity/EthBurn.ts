@@ -1,6 +1,5 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryColumn, UpdateDateColumn } from 'typeorm';
 import { TxConfirmStatus } from './CkbLock';
-import { ParsedLog } from '../../xchain/eth';
 
 @Entity()
 export class EthBurn {

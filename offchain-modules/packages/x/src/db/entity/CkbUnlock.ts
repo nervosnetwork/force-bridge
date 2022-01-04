@@ -6,19 +6,19 @@ export type CkbUnlockStatus = dbTxStatus;
 @Entity()
 export class CkbUnlock {
   @PrimaryColumn()
-  id: string;   // ${burnTxHash}-${logIndex}
+  id: string; // ${burnTxHash}-${logIndex}
 
   @Column()
   burnTxHash: string;
 
   @Column()
-  chain: number;  // bridge from which chain
+  chain: number; // bridge from which chain
 
   @Column({ default: 'sudt' })
   assetKind: string; // ckb = 'ckb', xudt = 'xudt'
 
   @Column()
-  assetIdent: string;  // args of typescript(empty string if ckb asset)
+  assetIdent: string; // args of typescript(empty string if ckb asset)
 
   @Column()
   amount: string;

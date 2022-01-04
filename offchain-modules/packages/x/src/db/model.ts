@@ -63,9 +63,9 @@ export interface ICkbUnlock {
   assetIdent: string;
   amount: string;
   recipientAddress: string;
-  blockTimestamp: number,
+  blockTimestamp: number;
   blockNumber: number;
-  blockHash: string; 
+  blockHash: string;
   extraData: string;
 }
 
@@ -97,19 +97,19 @@ export interface IEthLock {
 }
 
 export interface IEthBurn {
-  uniqueId: string,
-  burnTxHash: string,
-  sender: string,
-  token: string,
-  amount: string,
-  bridgeFee: string,
-  recipient: string,
-  sudtExtraData?: string,
-  blockNumber: number,
-  blockTimestamp: number,
-  blockHash: string,
-  confirmNumber: number,
-  confirmStatus: TxConfirmStatus,
+  uniqueId: string;
+  burnTxHash: string;
+  sender: string;
+  token: string;
+  amount: string;
+  bridgeFee: string;
+  recipient: string;
+  sudtExtraData?: string;
+  blockNumber: number;
+  blockTimestamp: number;
+  blockHash: string;
+  confirmNumber: number;
+  confirmStatus: TxConfirmStatus;
 }
 
 export interface ICkbBurn {

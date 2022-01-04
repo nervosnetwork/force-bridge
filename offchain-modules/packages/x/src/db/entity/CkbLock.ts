@@ -8,7 +8,7 @@ export class CkbLock {
   ckbTxHash: string;
 
   @Column()
-  chain: number;  // bridge to which chain
+  chain: number; // bridge to which chain
 
   @Index()
   @Column('text')

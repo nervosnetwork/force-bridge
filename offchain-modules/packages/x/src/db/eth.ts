@@ -1,5 +1,4 @@
 // invoke in eth handler
-import { option } from 'commander';
 import { Connection, In, Repository, UpdateResult } from 'typeorm';
 import { ForceBridgeCore } from '../core';
 import { CollectorCkbMint } from './entity/CkbMint';
@@ -114,9 +113,9 @@ export class EthDb implements IQuery {
   }
 
   async createCollectorCkbUnlock(records: ICkbUnlock[]): Promise<void> {
-    await this.connection.getRepository(CollectorCkbUnlock).save(
-      records.map((r) => this.connection.getRepository(CollectorCkbUnlock).create(r)),
-    )
+    await this.connection
+      .getRepository(CollectorCkbUnlock)
+      .save(records.map((r) => this.connection.getRepository(CollectorCkbUnlock).create(r)));
   }
 
   async createEthUnlock(records: IEthUnlock[]): Promise<void> {
@@ -143,9 +142,7 @@ export class EthDb implements IQuery {
   }
 
   async createEthBurn(record: IEthBurn): Promise<void> {
-    await this.connection.getRepository(EthBurn).save(
-      this.connection.getRepository(EthBurn).create(record),
-    );
+    await this.connection.getRepository(EthBurn).save(this.connection.getRepository(EthBurn).create(record));
   }
 
   async saveEthBurn(record: EthBurn): Promise<void> {
