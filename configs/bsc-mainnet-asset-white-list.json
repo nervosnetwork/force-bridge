@@ -5,24 +5,128 @@
     "symbol": "BNB",
     "logoURI": "https://cryptologos.cc/logos/binance-coin-bnb-logo.svg?v=002",
     "decimal": 18,
-    "minimalBridgeAmount": "213000000000000000",
+    "minimalBridgeAmount": "35400000000000000",
     "bridgeFee": {
-      "in": "16800000000000000",
-      "out": "16800000000000000"
+      "in": "17700000000000000",
+      "out": "17700000000000000"
     },
     "sudtArgs": "0x578cd6ab8c0800e6fbc17b58633857dac5626883af89f842e79cb8f7af24de75"
   },
   {
-    "address": "0xe9e7cea3dedca5984780bafc599bd69add087d56",
+    "address": "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56",
     "name": "BUSD",
     "symbol": "BUSD",
     "logoURI": "https://cryptologos.cc/logos/binance-usd-busd-logo.svg?v=002",
     "decimal": 18,
-    "minimalBridgeAmount": "111000000000000000000",
+    "minimalBridgeAmount": "18200000000000000000",
     "bridgeFee": {
-      "in": "8780000000000000000",
-      "out": "8780000000000000000"
+      "in": "9100000000000000000",
+      "out": "9100000000000000000"
     },
-    "sudtArgs": "0x38c10f8cd29f8a187de4af26f6db06486117464cf92e42854b85d3ba5c51041b"
+    "sudtArgs": "0x69c215249102308356778d58259c91c0f1988f6f5b07aa614921ee1803ea0059"
+  },
+  {
+    "address": "0x55d398326f99059fF775485246999027B3197955",
+    "name": "USDT",
+    "symbol": "USDT",
+    "logoURI": "https://cryptologos.cc/logos/tether-usdt-logo.svg?v=002",
+    "decimal": 18,
+    "minimalBridgeAmount": "18200000000000000000",
+    "bridgeFee": {
+      "in": "9100000000000000000",
+      "out": "9100000000000000000"
+    },
+    "sudtArgs": "0xfd6f1818fe746687ef5268f82ce1835ba1a94fdccee5f098a389aeed0067eb57"
+  },
+  {
+    "address": "0x2170Ed0880ac9A755fd29B2688956BD959F933F8",
+    "name": "ETH",
+    "symbol": "ETH",
+    "logoURI": "https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=002",
+    "decimal": 18,
+    "minimalBridgeAmount": "4810000000000000",
+    "bridgeFee": {
+      "in": "2400000000000000",
+      "out": "2400000000000000"
+    },
+    "sudtArgs": "0xd61ddc3184767d677be0d741883779aa9513293c4eaa4e0687b5b1caf845edfe"
+  },
+  {
+    "address": "0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c",
+    "name": "BTCB",
+    "symbol": "BTCB",
+    "logoURI": "https://cryptologos.cc/logos/bitcoin-btc-logo.svg?v=002",
+    "decimal": 18,
+    "minimalBridgeAmount": "391000000000000",
+    "bridgeFee": {
+      "in": "195000000000000",
+      "out": "195000000000000"
+    },
+    "sudtArgs": "0x9ea7beb4a36469e00bb30dbac75e93672441b483d519556ba9d1424b9294eae5"
+  },
+  {
+    "address": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+    "name": "WBNB",
+    "symbol": "WBNB",
+    "logoURI": "https://cryptologos.cc/logos/binance-coin-bnb-logo.svg?v=002",
+    "decimal": 18,
+    "minimalBridgeAmount": "35400000000000000",
+    "bridgeFee": {
+      "in": "17700000000000000",
+      "out": "17700000000000000"
+    },
+    "sudtArgs": "0x29f425f897896c15ca11fd154d8e22ac56b5f49e683d0c88979ad44752fcd520"
+  },
+  {
+    "address": "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
+    "name": "USDC",
+    "symbol": "USDC",
+    "logoURI": "https://cryptologos.cc/logos/usd-coin-usdc-logo.svg?v=002",
+    "decimal": 18,
+    "minimalBridgeAmount": "18200000000000000000",
+    "bridgeFee": {
+      "in": "9100000000000000000",
+      "out": "9100000000000000000"
+    },
+    "sudtArgs": "0xcedd0f67f2d218ab992284ab343c2e729d2a124a1612592deaa9f8b8f8a581dd"
+  },
+  {
+    "address": "0x3EE2200Efb3400fAbB9AacF31297cBdD1d435D47",
+    "name": "ADA",
+    "symbol": "ADA",
+    "logoURI": "https://cryptologos.cc/logos/cardano-ada-logo.svg?v=002",
+    "decimal": 18,
+    "minimalBridgeAmount": "13700000000000000000",
+    "bridgeFee": {
+      "in": "6870000000000000000",
+      "out": "6870000000000000000"
+    },
+    "sudtArgs": "0x0353c4ffdcbda18f934a95341575781f3aaf7b68d35151997ff0967cfa0b9866"
+  },
+  {
+    "address": "0xbA2aE424d960c26247Dd6c32edC70B295c744C43",
+    "name": "DOGE",
+    "symbol": "DOGE",
+    "logoURI": "https://cryptologos.cc/logos/dogecoin-doge-logo.svg?v=002",
+    "decimal": 18,
+    "minimalBridgeAmount": "106000000000000000000",
+    "bridgeFee": {
+      "in": "53400000000000000000",
+      "out": "53400000000000000000"
+    },
+    "sudtArgs": "0x063b967e361b5417b131333264869ff0b64bf05e0ab7d42be231b1fb4cb3d77b"
+  },
+  {
+    "address": "0xD41FDb03Ba84762dD66a0af1a6C8540FF1ba5dfb",
+    "name": "SFP",
+    "symbol": "SFP",
+    "logoURI": "https://cryptologos.cc/logos/safepal-sfp-logo.svg?v=017",
+    "decimal": 18,
+    "minimalBridgeAmount": "12700000000000000000",
+    "bridgeFee": {
+      "in": "6350000000000000000",
+      "out": "6350000000000000000"
+    },
+    "sudtArgs": "0xc66b8a7f4869272e1fd0565535cb444c319b6baafd386c5857f08d87e396cfd5"
   }
 ]
