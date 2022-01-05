@@ -91,32 +91,6 @@
     "sudtArgs": "0xcedd0f67f2d218ab992284ab343c2e729d2a124a1612592deaa9f8b8f8a581dd"
   },
   {
-    "address": "0x3EE2200Efb3400fAbB9AacF31297cBdD1d435D47",
-    "name": "ADA",
-    "symbol": "ADA",
-    "logoURI": "https://cryptologos.cc/logos/cardano-ada-logo.svg?v=002",
-    "decimal": 18,
-    "minimalBridgeAmount": "13700000000000000000",
-    "bridgeFee": {
-      "in": "6870000000000000000",
-      "out": "6870000000000000000"
-    },
-    "sudtArgs": "0x0353c4ffdcbda18f934a95341575781f3aaf7b68d35151997ff0967cfa0b9866"
-  },
-  {
-    "address": "0xbA2aE424d960c26247Dd6c32edC70B295c744C43",
-    "name": "DOGE",
-    "symbol": "DOGE",
-    "logoURI": "https://cryptologos.cc/logos/dogecoin-doge-logo.svg?v=002",
-    "decimal": 18,
-    "minimalBridgeAmount": "106000000000000000000",
-    "bridgeFee": {
-      "in": "53400000000000000000",
-      "out": "53400000000000000000"
-    },
-    "sudtArgs": "0x063b967e361b5417b131333264869ff0b64bf05e0ab7d42be231b1fb4cb3d77b"
-  },
-  {
     "address": "0xD41FDb03Ba84762dD66a0af1a6C8540FF1ba5dfb",
     "name": "SFP",
     "symbol": "SFP",

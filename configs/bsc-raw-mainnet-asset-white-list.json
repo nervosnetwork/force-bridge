@@ -49,20 +49,6 @@
     "decimal": 18
   },
   {
-    "address": "0x3EE2200Efb3400fAbB9AacF31297cBdD1d435D47",
-    "name": "ADA",
-    "symbol": "ADA",
-    "logoURI": "https://cryptologos.cc/logos/cardano-ada-logo.svg?v=002",
-    "decimal": 18
-  },
-  {
-    "address": "0xbA2aE424d960c26247Dd6c32edC70B295c744C43",
-    "name": "DOGE",
-    "symbol": "DOGE",
-    "logoURI": "https://cryptologos.cc/logos/dogecoin-doge-logo.svg?v=002",
-    "decimal": 18
-  },
-  {
     "address": "0xD41FDb03Ba84762dD66a0af1a6C8540FF1ba5dfb",
     "name": "SFP",
     "symbol": "SFP",
