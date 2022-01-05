@@ -733,7 +733,7 @@ export class CkbTxGenerator extends CkbTxHelper {
     }
     // collect ckb
     const totalCapacityOfSudtCellsInInputs = sudtCells
-      .map((cell) => minimalCellCapacity(cell))
+      .map((cell) => BigInt(cell.cell_output.capacity))
       .reduce((a, b) => a + b, 0n);
     const outputNeedCapacity =
       bridgeFee +
