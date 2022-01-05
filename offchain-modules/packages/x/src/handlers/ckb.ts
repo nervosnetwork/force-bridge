@@ -913,7 +913,7 @@ export class CkbHandler {
       recipientLockscript.hashType !== committeeMultisigLockscript.hash_type ||
       recipientLockscript.args !== committeeMultisigLockscript.args
     ) {
-      logger.error(`the first output must be committee multisig`);
+      logger.warn(`the first output must be committee multisig`);
       return null;
     }
 
