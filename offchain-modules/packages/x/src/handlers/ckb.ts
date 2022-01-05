@@ -902,7 +902,7 @@ export class CkbHandler {
           thisSenderLockscript.hashType !== senderLockscript.hashType ||
           thisSenderLockscript.args !== senderLockscript.args
         ) {
-          logger.error(`inputs contain different lockscripts`);
+          logger.warn(`inputs contain different lockscripts`);
           return null;
         }
       }
