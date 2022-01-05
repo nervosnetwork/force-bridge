@@ -755,8 +755,12 @@ export class CkbTxGenerator extends CkbTxHelper {
         }),
       ),
     ).serializeJson();
+    const collectorWitnessGroup = lodash.range(searchedCollectorCells.length).map((index) => {
+      if (index === 0) return collectorWitness;
+      return '0x';
+    });
     txSkeleton = txSkeleton.update('witnesses', (witnesses) => {
-      return witnesses.push(collectorWitness);
+      return witnesses.push(...collectorWitnessGroup);
     });
     const unlockMemo = SerializeUnlockMemo({
       xchain: 1,
