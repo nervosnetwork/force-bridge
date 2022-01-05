@@ -477,7 +477,7 @@ export class CkbHandler {
         ethTxHash: '',
       };
       await this.db.createCollectorEthMint([mintRecords]);
-      logger.info(`save CkbMint successful for eth tx ${txHash}`);
+      logger.info(`save EthereumMint successful for eth tx ${txHash}`);
     }
   }
 
