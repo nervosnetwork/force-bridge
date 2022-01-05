@@ -780,7 +780,7 @@ export class CkbTxGenerator extends CkbTxHelper {
 
     // add witnesses
     const witnesses = lodash.range(inputCellLength).map((index) => {
-      if (index === 0 || index === sudtCells.length) {
+      if (index === 0) {
         return new Reader(
           SerializeWitnessArgs(
             normalizers.NormalizeWitnessArgs({
