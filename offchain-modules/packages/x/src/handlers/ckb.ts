@@ -925,7 +925,7 @@ export class CkbHandler {
           thisLockscript.hashType === committeeMultisigLockscript.hash_type &&
           thisLockscript.args === committeeMultisigLockscript.args
         ) {
-          logger.error(`the outputs except first must not be committee multisig`);
+          logger.warn(`the outputs except first must not be committee multisig`);
           return null;
         }
       }
