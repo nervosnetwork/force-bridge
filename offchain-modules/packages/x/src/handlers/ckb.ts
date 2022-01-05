@@ -883,7 +883,7 @@ export class CkbHandler {
         senderLockscript.hashType === committeeMultisigLockscript.hash_type &&
         senderLockscript.args === committeeMultisigLockscript.args)
     ) {
-      logger.error(`sender should not be committee multisig cell`);
+      logger.warn(`sender should not be committee multisig cell`);
       return null;
     }
 
