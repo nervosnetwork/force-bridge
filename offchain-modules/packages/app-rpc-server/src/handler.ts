@@ -12,8 +12,8 @@ import { IQuery, LockRecord, UnlockRecord } from '@force-bridge/x/dist/db/model'
 import { stringToUint8Array } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
 import { IBalance } from '@force-bridge/x/dist/xchain/btc';
+import { abi as assetManagerAbi } from '@force-bridge/x/dist/xchain/eth/abi/AssetManager.json';
 import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
-import { abi as nervosMirrorTokenAbi } from '@force-bridge/x/dist/xchain/eth/abi/NervosMirrorToken.json';
 import { checkLock } from '@force-bridge/x/dist/xchain/eth/check';
 import { Amount } from '@lay2/pw-core';
 import { BigNumber } from 'bignumber.js';
@@ -198,23 +198,24 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     };
   }
 
-  async generateBridgeInEthereumTransaction<T extends NetworkTypes>(
+  async generateBridgeOutEthereumTransaction<T extends NetworkTypes>(
     payload: API.GenerateBridgeInTransactionPayload,
   ): Promise<API.GenerateTransactionResponse<T>> {
-    logger.info(`generateBridgeInEtherumTransaction, payload: ${JSON.stringify(payload)}`);
+    logger.info(`generateBridgeOutEtherumTransaction, payload: ${JSON.stringify(payload)}`);
 
     checkCKBAddress(payload.recipient);
 
     const contract = new ethers.Contract(
-      payload.asset.ident,
-      nervosMirrorTokenAbi,
+      ForceBridgeCore.config.eth.assetManagerContractAddress,
+      assetManagerAbi,
       new ethers.providers.JsonRpcBatchProvider(ForceBridgeCore.config.eth.rpcUrl),
     );
 
     const amount = ethers.utils.parseUnits(payload.asset.amount);
     const recipient = stringToUint8Array(payload.recipient);
+    const extraData = '0x';
 
-    const tx = await contract.populateTransaction.burn(recipient, amount);
+    const tx = await contract.populateTransaction.burn(payload.asset.ident, amount, recipient, extraData);
 
     return {
       network: 'Ethereum',
