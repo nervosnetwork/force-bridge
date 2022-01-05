@@ -1,7 +1,12 @@
-import { ethers, Wallet } from 'ethers';
+import { SafeFactory, EthersAdapter } from '@gnosis.pm/safe-core-sdk';
+import { Contract, ethers, Wallet } from 'ethers';
 import { logger } from '../../utils/logger';
 import { abi as asabi, bytecode as asbytecode } from './abi/AssetManager.json';
 import { abi, bytecode } from './abi/ForceBridge.json';
+import { abi as gsabi, bytecode as gsbytecode } from './abi/GnosisSafe_SV1_3_0.json';
+import { abi as msabi, bytecode as msbytecode } from './abi/MultiSend_SV1_3_0.json';
+import { abi as mabi, bytecode as mbytecode } from './abi/NervosMirrorToken.json';
+import { abi as pfabi, bytecode as pfbytecode } from './abi/ProxyFactory_SV1_3_0.json';
 // import { abi as gsabi, bytecode as gsbytecode } from './abi/GnosisSafe_SV1_3_0.json';
 // import { abi as msabi, bytecode as msbytecode } from './abi/MultiSend_SV1_3_0.json';
 // import { abi as pfabi, bytecode as pfbytecode } from './abi/ProxyFactory_SV1_3_0.json';
@@ -31,13 +36,11 @@ export async function deployAssetManager(
   privateKey: string,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   safeAddress: string,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  threshold: number,
 ): Promise<string> {
   const contract = await new ethers.ContractFactory(
     asabi,
     asbytecode,
-    new Wallet(privateKey, new ethers.providers.JsonRpcBatchProvider(url)),
+    new Wallet(privateKey, new ethers.providers.JsonRpcProvider(url)),
   ).deploy();
   const receipt = await contract.deployTransaction.wait();
   logger.info(`deploy eth asset manager tx receipt is ${JSON.stringify(receipt)}`);
@@ -46,7 +49,52 @@ export async function deployAssetManager(
     return Promise.reject('failed to deploy asset manager contract');
   }
 
+  await contract.transferOwnership(safeAddress);
+  logger.info(`Asset Manager Contract has been transfered to safe address: ${safeAddress}`);
+
   return contract.address;
+}
+
+export async function deployEthMirror(
+  url: string,
+  privateKey: string,
+  name: string,
+  symbol: string,
+  decimals: number,
+): Promise<Contract> {
+  return await new ethers.ContractFactory(
+    mabi,
+    mbytecode,
+    new Wallet(privateKey, new ethers.providers.JsonRpcProvider(url)),
+  ).deploy(name, symbol, decimals);
+}
+
+export async function deploySafe(
+  url: string,
+  privateKey: string,
+  threshold: number,
+  owners: string[],
+): Promise<string> {
+  const provider = new ethers.providers.JsonRpcProvider(url);
+  const signer = new Wallet(privateKey, new ethers.providers.JsonRpcProvider(url));
+  const networks = {
+    [(await provider.getNetwork()).chainId]: {
+      multiSendAddress: (await new ethers.ContractFactory(msabi, msbytecode, signer).deploy()).address,
+      safeMasterCopyAddress: (await new ethers.ContractFactory(gsabi, gsbytecode, signer).deploy()).address,
+      safeProxyFactoryAddress: (await new ethers.ContractFactory(pfabi, pfbytecode, signer).deploy()).address,
+    },
+  };
+
+  logger.info(`Gnosis Safe networks deployed: ${JSON.stringify(networks)}`);
+
+  return (
+    await (
+      await SafeFactory.create({
+        ethAdapter: new EthersAdapter({ ethers, signer }),
+        contractNetworks: networks,
+      })
+    ).deploySafe({ owners, threshold })
+  ).getAddress();
 }
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types

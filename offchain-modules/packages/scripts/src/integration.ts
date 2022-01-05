@@ -65,6 +65,7 @@ async function generateConfig(
   CKB_PRIVATE_KEY: string,
   password: string,
   assetManagerContractAddress: string,
+  safeAddress: string,
   sudtSize = 200,
 ) {
   const baseConfig: Config = lodash.cloneDeep(initConfig);
@@ -76,6 +77,7 @@ async function generateConfig(
   baseConfig.ckb.omniLockAdminCellTypescript = omniLockCellConfig.adminCellTypescript;
   baseConfig.ckb.startBlockHeight = ckbStartHeight;
   baseConfig.eth.startBlockHeight = ethStartHeight;
+  baseConfig.eth.safeMultisignContractAddress = safeAddress;
   // collector
   const collectorConfig: Config = lodash.cloneDeep(baseConfig);
   collectorConfig.common.role = 'collector';
@@ -351,6 +353,7 @@ async function main() {
     ckbStartHeight,
     ethStartHeight,
     assetManagerContractAddress,
+    safeAddress,
   } = await deployDev(
     ETH_RPC_URL,
     CKB_RPC_URL,
@@ -385,6 +388,7 @@ async function main() {
     CKB_PRIVATE_KEY,
     FORCE_BRIDGE_KEYSTORE_PASSWORD,
     assetManagerContractAddress,
+    safeAddress,
   );
   await handleDb('drop', MULTISIG_NUMBER + EXTRA_MULTISIG_NUMBER);
   await handleDb('create', MULTISIG_NUMBER + EXTRA_MULTISIG_NUMBER);

@@ -4,7 +4,7 @@ import { initLumosConfig } from '@force-bridge/x/dist/ckb/tx-helper/init_lumos_c
 import { CkbDeps, WhiteListEthAsset, WhiteListNervosAsset } from '@force-bridge/x/dist/config';
 import { writeJsonToFile } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
-import { deployEthContract, deployAssetManager } from '@force-bridge/x/dist/xchain/eth';
+import { deployEthContract, deployAssetManager, deploySafe, deployEthMirror } from '@force-bridge/x/dist/xchain/eth';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import { ethers } from 'ethers';
 import * as lodash from 'lodash';
@@ -27,6 +27,7 @@ export interface DeployDevResult {
   ckbPrivateKey: string;
   ethPrivateKey: string;
   assetManagerContractAddress: string;
+  safeAddress: string;
 }
 
 export async function deployDev(
@@ -57,7 +58,16 @@ export async function deployDev(
   );
   logger.info(`bridge address: ${bridgeEthAddress}`);
 
-  const assetManagerContractAddress = await deployAssetManager(ETH_RPC_URL, ethPrivateKey, '', MULTISIG_THRESHOLD);
+  const safeAddress = await deploySafe(ETH_RPC_URL, ethPrivateKey, MULTISIG_THRESHOLD, ethMultiSignAddresses);
+  logger.info(`safe address: ${safeAddress}`);
+
+  const assetManagerContractAddress = await deployAssetManager(ETH_RPC_URL, ethPrivateKey, '');
+  logger.info(`asset manager address: ${assetManagerContractAddress}`);
+
+  const ckbEthMirror = await deployEthMirror(ETH_RPC_URL, ethPrivateKey, 'CKB', 'CKB', 18);
+  logger.info(`ckb mirror address: ${ckbEthMirror.address}`);
+
+  await ckbEthMirror.transferOwnership(assetManagerContractAddress);
 
   const ckbDeployGenerator = new CkbDeployManager(CKB_RPC_URL, CKB_INDEXER_URL);
   if (!ckbDeps) {
@@ -180,6 +190,7 @@ export async function deployDev(
     ethPrivateKey,
     ckbPrivateKey,
     assetManagerContractAddress,
+    safeAddress,
   };
   if (cachePath) {
     writeJsonToFile(data, cachePath);
