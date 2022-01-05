@@ -287,10 +287,9 @@ export interface NervosLockAssetTxMetaData {
   amount: bigint;
   chain: number;
   recipientAddress: string;
-  recipientCapacity: string;
-  asset: string;
+  committeeMultisigCellCapacity: bigint;
+  assetIdent: string;
   senderAddress: string;
-  recipientLockscript: Script;
   bridgeFee: bigint;
 }
 

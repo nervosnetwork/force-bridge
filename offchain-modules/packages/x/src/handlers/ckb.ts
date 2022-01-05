@@ -47,6 +47,7 @@ import Transaction = CKBComponents.Transaction;
 import TransactionWithStatus = CKBComponents.TransactionWithStatus;
 import { LockMemo } from '../ckb/tx-helper/generated/lock_memo';
 import { EthUnlockStatus } from '../db/entity/EthUnlock';
+import { BigNumber } from 'bignumber.js';
 
 const lastHandleCkbBlockKey = 'lastHandleCkbBlock';
 
@@ -415,7 +416,8 @@ export class CkbHandler {
     if (!cellData) {
       return;
     }
-    const { amount, chain, recipientAddress, recipientCapacity, asset, senderAddress, recipientLockscript } = cellData;
+    const { amount, chain, recipientAddress, committeeMultisigCellCapacity, assetIdent, senderAddress, bridgeFee } =
+      cellData;
     const ckbTxHash = tx.hash;
     const blockNumber = Number(txInfo.info.block_number);
     const confirmedNumber = currentHeight - blockNumber;
@@ -423,29 +425,20 @@ export class CkbHandler {
     const confirmStatus = confirmed ? 'confirmed' : 'unconfirmed';
     const block = await this.ckb.rpc.getBlock(txInfo.tx.txStatus.blockHash!);
     logger.info(`handle ckb lock tx ${txHash}, confirmed number: ${confirmedNumber}, confirmed: ${confirmed}`);
-    const committeeMultisigLockscript = parseAddress(getOmniLockMultisigAddress());
-    const findCommitteeMultisigOutput = tx.outputs.find(
-      (o) =>
-        o.lock?.codeHash === committeeMultisigLockscript.code_hash &&
-        o.lock.hashType === committeeMultisigLockscript.hash_type,
-    );
-    logger.debug('findCommitteeMultisigOutput:', findCommitteeMultisigOutput);
     // create new CkbLock record
-    if (records.length === 0 && findCommitteeMultisigOutput) {
-      const capacity = findCommitteeMultisigOutput.capacity;
+    if (records.length === 0) {
       logger.info(
-        `CkbHandler watchLockEvents receiveLog blockHeight:${blockNumber} blockHash:${txInfo.tx.txStatus.blockHash} txHash:${txHash} amount:${capacity} asset:${cellData?.asset} recipientLockscript:${cellData?.recipientLockscript} sudtExtraData:${cellData?.asset} sender:${cellData?.senderAddress}, confirmedNumber: ${confirmedNumber}, confirmed: ${confirmed}`,
+        `CkbHandler watchLockEvents receiveLog blockHeight:${blockNumber} blockHash:${txInfo.tx.txStatus.blockHash} txHash:${txHash} amount:${amount} capacity:${committeeMultisigCellCapacity} asset:${cellData?.assetIdent}  sender:${cellData?.senderAddress}, confirmedNumber: ${confirmedNumber}, confirmed: ${confirmed}`,
       );
       logger.debug('CkbHandler watchLockEvents eth lockEvtLog:', { tx, cellData });
-      const bridgeFee = BigInt(ForceBridgeCore.config.eth.lockNervosAssetFee).toString();
       await this.db.createCkbLock([
         {
           ckbTxHash,
           chain,
           senderAddress,
-          assetIdent: asset,
+          assetIdent,
           amount: `0x${amount.toString(16)}`,
-          bridgeFee,
+          bridgeFee: `0x${bridgeFee.toString(16)}`,
           recipientAddress,
           blockNumber,
           blockTimestamp: Number(block.header.timestamp),
@@ -457,7 +450,7 @@ export class CkbHandler {
       BridgeMetricSingleton.getInstance(this.role).addBridgeTokenMetrics('ckb_lock', [
         {
           amount: Number(amount),
-          token: asset,
+          token: assetIdent,
         },
       ]);
       logger.info(`CkbHandler watchLockEvents save CkbLock successful for ckb tx ${txInfo.tx.transaction.hash}.`);
@@ -467,16 +460,29 @@ export class CkbHandler {
       logger.info(`update lock record ${txHash} status, confirmed number: ${confirmedNumber}, status: ${confirmed}`);
     }
     if (confirmed && this.role === 'collector') {
-      const mintRecords = {
-        ckbTxHash,
-        asset,
-        amount: `0x${amount.toString(16)}`,
-        recipientAddress: recipientAddress,
-        blockNumber: blockNumber,
-        blockTimestamp: Number(block.header.timestamp),
-        ethTxHash: '',
-      };
-      await this.db.createCollectorEthMint([mintRecords]);
+      const filterReason = checkLock(amount, assetIdent, recipientAddress, '');
+      if (filterReason !== '') {
+        logger.warn(`skip createEthMint for record: ${JSON.stringify(cellData)}, reason: ${filterReason}`);
+        return;
+      }
+      const ckbLocksSaved = await this.db.getCkbLockByTxHashes([ckbTxHash]);
+      if (!ckbLocksSaved || ckbLocksSaved.length < 1) {
+        logger.warn(`get ckb locks saved is null or not single: ${txHash}`);
+        return;
+      }
+      const bridgeFeeSaved = BigInt(ckbLocksSaved[0].bridgeFee);
+      const mintRecords = [
+        {
+          ckbTxHash,
+          asset: assetIdent,
+          amount: `0x${(amount - bridgeFeeSaved).toString(16)}`,
+          recipientAddress: recipientAddress,
+          blockNumber: blockNumber,
+          blockTimestamp: Number(block.header.timestamp),
+          ethTxHash: '',
+        },
+      ];
+      await this.db.createCollectorEthMint(mintRecords);
       logger.info(`save EthereumMint successful for eth tx ${txHash}`);
     }
   }
@@ -863,7 +869,7 @@ export class CkbHandler {
       return null;
     }
     const recipientOutput = nonNullable(tx.outputs[0]);
-    const recipientCapacity = nonNullable(recipientOutput.capacity);
+    const committeeMultisigCellCapacity = BigInt(nonNullable(recipientOutput.capacity));
     const recipientTypescript = recipientOutput.type;
     const recipientLockscript = nonNullable(recipientOutput.lock);
     logger.debug('recipientTypescript:', recipientTypescript);
@@ -945,16 +951,9 @@ export class CkbHandler {
         hash_type: recipientTypescript.hashType,
         args: recipientTypescript.args,
       });
-      const nervosAsset = ForceBridgeCore.config.eth.nervosAssetWhiteList.find(
-        (asset) => asset.typescriptHash === assetIdent,
-      );
-      if (!nervosAsset) {
-        logger.error(`nervos asset ${nervosAsset} not in nervos asset white list`);
-        return null;
-      }
-      bridgeFee = BigInt(recipientOutput.capacity);
+      bridgeFee = committeeMultisigCellCapacity;
     } else if (!recipientTypescript) {
-      amount = BigInt(recipientOutput.capacity) - bridgeFee;
+      amount = committeeMultisigCellCapacity - bridgeFee;
     } else {
       logger.error(`unsupported type script ${recipientTypescript}`);
       return null;
@@ -976,10 +975,10 @@ export class CkbHandler {
       hash_type: senderLockscript.hashType,
       args: senderLockscript.args,
     });
-    logger.debug('amount: ', recipientCapacity);
+    logger.debug('amount: ', committeeMultisigCellCapacity);
     logger.debug('chain: ', chain);
     logger.debug('recipient address: ', recipientAddress);
-    logger.debug('recipient capacity: ', recipientCapacity);
+    logger.debug('recipient capacity: ', committeeMultisigCellCapacity);
     logger.debug('asset: ', assetIdent);
     logger.debug('recipient lockscript: ', recipientLockscript);
     logger.debug('bridge fee: ', bridgeFee);
@@ -987,10 +986,9 @@ export class CkbHandler {
       amount,
       chain,
       recipientAddress,
-      recipientCapacity,
-      asset: assetIdent,
+      committeeMultisigCellCapacity,
+      assetIdent,
       senderAddress,
-      recipientLockscript,
       bridgeFee,
     };
     return nervosLockAssetTxMetaData;
@@ -1052,6 +1050,53 @@ export async function parseBurnTx(tx: Transaction): Promise<RecipientCellData | 
     return null;
   }
   return cellData;
+}
+
+export function checkLock(amount: bigint, assetIdent: string, recipient: string, sudtExtraData: string): string {
+  const nervosAsset = ForceBridgeCore.config.eth.nervosAssetWhiteList.find(
+    (asset) => asset.typescriptHash === assetIdent,
+  );
+  if (!nervosAsset) {
+    return `nervos asset ${nervosAsset} not in nervos asset white list`;
+  }
+  const minimalAmount = nervosAsset.minimalBridgeAmount;
+  if (amount < BigInt(minimalAmount)) {
+    const humanizeMinimalAmount = new BigNumber(minimalAmount)
+      .times(new BigNumber(10).pow(-nervosAsset.decimal))
+      .toString();
+    return `minimal bridge amount is ${humanizeMinimalAmount} ${nervosAsset.symbol}`;
+  }
+  // check sudtSize
+  if (nervosAsset.typescriptHash !== '0x0000000000000000000000000000000000000000000000000000000000000000') {
+    try {
+      const recipientLockscript = parseAddress(recipient);
+      const recipientLockscriptLen = new Reader(recipientLockscript.args).length() + 33;
+      const sudtExtraDataLen = sudtExtraData.length / 2 - 1;
+      // - capacity size: 8
+      // - sudt typescript size
+      //    - code_hash: 32
+      //    - hash_type: 1
+      //    - args: 32
+      // - sude amount size: 16
+      const sudtSizeLimit = ForceBridgeCore.config.ckb.sudtSize;
+      const actualSudtSize = recipientLockscriptLen + sudtExtraDataLen + 89;
+      logger.debug(
+        `check sudtSize: ${JSON.stringify({
+          sudtSizeLimit,
+          actualSudtSize,
+          recipientLockscriptLen,
+          sudtExtraDataLen,
+        })}`,
+      );
+      if (actualSudtSize > sudtSizeLimit) {
+        return `sudt size exceeds limit: ${JSON.stringify({ sudtSizeLimit, actualSudtSize })}`;
+      }
+    } catch (e) {
+      logger.debug('check sudt size error', e);
+      return `invalid recipient address: ${recipient}`;
+    }
+  }
+  return '';
 }
 
 type BurnDbData = {
