@@ -62,11 +62,16 @@ export async function deployEthMirror(
   symbol: string,
   decimals: number,
 ): Promise<Contract> {
-  return await new ethers.ContractFactory(
+  const contract = await new ethers.ContractFactory(
     mabi,
     mbytecode,
     new Wallet(privateKey, new ethers.providers.JsonRpcProvider(url)),
   ).deploy(name, symbol, decimals);
+  const receipt = await contract.deployTransaction.wait();
+
+  logger.info(`deploy eth mirror ${name} tx receipt is ${JSON.stringify(receipt)}`);
+
+  return contract;
 }
 
 export async function deploySafe(
@@ -77,11 +82,20 @@ export async function deploySafe(
 ): Promise<string> {
   const provider = new ethers.providers.JsonRpcProvider(url);
   const signer = new Wallet(privateKey, new ethers.providers.JsonRpcProvider(url));
+  const safeProxyFactoryContract = await new ethers.ContractFactory(pfabi, pfbytecode, signer).deploy();
+  let receipt = await safeProxyFactoryContract.deployTransaction.wait();
+  logger.info(`deploy eth safe proxy factory tx receipt is ${JSON.stringify(receipt)}`);
+  const safeMasterCopyContract = await new ethers.ContractFactory(gsabi, gsbytecode, signer).deploy();
+  receipt = await safeMasterCopyContract.deployTransaction.wait();
+  logger.info(`deploy eth safe master copy tx receipt is ${JSON.stringify(receipt)}`);
+  const multiSendContract = await new ethers.ContractFactory(msabi, msbytecode, signer).deploy();
+  receipt = await multiSendContract.deployTransaction.wait();
+  logger.info(`deploy eth multi send tx receipt is ${JSON.stringify(receipt)}`);
   const networks = {
     [(await provider.getNetwork()).chainId]: {
-      multiSendAddress: (await new ethers.ContractFactory(msabi, msbytecode, signer).deploy()).address,
-      safeMasterCopyAddress: (await new ethers.ContractFactory(gsabi, gsbytecode, signer).deploy()).address,
-      safeProxyFactoryAddress: (await new ethers.ContractFactory(pfabi, pfbytecode, signer).deploy()).address,
+      multiSendAddress: multiSendContract.address,
+      safeMasterCopyAddress: safeMasterCopyContract.address,
+      safeProxyFactoryAddress: safeProxyFactoryContract.address,
     },
   };
 

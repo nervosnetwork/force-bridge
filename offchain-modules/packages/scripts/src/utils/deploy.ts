@@ -61,7 +61,7 @@ export async function deployDev(
   const safeAddress = await deploySafe(ETH_RPC_URL, ethPrivateKey, MULTISIG_THRESHOLD, ethMultiSignAddresses);
   logger.info(`safe address: ${safeAddress}`);
 
-  const assetManagerContractAddress = await deployAssetManager(ETH_RPC_URL, ethPrivateKey, '');
+  const assetManagerContractAddress = await deployAssetManager(ETH_RPC_URL, ethPrivateKey, safeAddress);
   logger.info(`asset manager address: ${assetManagerContractAddress}`);
 
   const ckbEthMirror = await deployEthMirror(ETH_RPC_URL, ethPrivateKey, 'CKB', 'CKB', 18);
