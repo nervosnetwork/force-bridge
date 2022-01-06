@@ -1,5 +1,6 @@
 import { generateAddress, parseAddress } from '@ckb-lumos/helpers';
 import { BigNumber } from 'ethers';
+import { LogDescription } from 'ethers/lib/utils';
 import { TransferOutSwitch } from '../audit/switch';
 import { ChainType, EthAsset } from '../ckb/model/asset';
 import { forceBridgeRole } from '../config';
@@ -185,12 +186,26 @@ export class EthHandler {
     }
   }
 
+  /**
+   * For watcher and verifier, just save the record to mint table.
+   * For collector, should update the record in collector mint table extra.
+   * @param log
+   * @param parsedLog
+   * @returns
+   */
   async onMinted(log: Log, parsedLog: ParsedLog): Promise<void> {
-    logger.info(`EthHandler watchMintEvents received. log:${log} parsedLog:${parsedLog}`);
+    logger.info(
+      `EthHandler watchMintEvents receiveLog blockHeight:${log.blockNumber} blockHash:${log.blockHash} txHash:${log.transactionHash} amount:${parsedLog.args.amount} asset:${parsedLog.args.assetId} recipient:${parsedLog.args.to} ckbTxHash:${parsedLog.args.lockId}`,
+    );
 
-    const collectRecord = await this.ethDb.getCEthMintRecordByEthTx(log.transactionHash);
+    logger.debug('EthHandler watchMintEvents eth unlockLog:', { log, parsedLog });
+
+    const collectRecord = await this.ethDb.getCEthMintRecordByCkbTx(parsedLog.args.lockId);
     if (collectRecord == undefined) {
-      logger.error(`EthHandler watchMintEvents no ckb tx mapped. ethTxHash:${log.transactionHash}`);
+      logger.error(
+        `EthHandler watchMintEvents no ckb tx mapped. ethTxHash:${log.transactionHash} ckbTxHash:${parsedLog.args.lockId}`,
+      );
+
       return;
     }
 
@@ -208,9 +223,27 @@ export class EthHandler {
     collectRecord.blockNumber = log.blockNumber;
     collectRecord.blockTimestamp = block.timestamp;
 
-    await this.ethDb.saveCollectorEthMints([collectRecord]);
+    if (this.role == 'collector') {
+      await this.ethDb.saveCollectorEthMints([collectRecord]);
+    }
 
-    await this.ethDb.saveEthMint(collectRecord);
+    await this.updateMint(collectRecord, parsedLog);
+
+    BridgeMetricSingleton.getInstance(this.role).addBridgeTokenMetrics('eth_mint', [
+      {
+        amount: Number(parsedLog.args.amount),
+        token: parsedLog.args.assetId,
+      },
+    ]);
+  }
+
+  async updateMint(record: CollectorEthMint, parsedLog: LogDescription): Promise<void> {
+    record.amount = parsedLog.args.amount;
+    record.asset = parsedLog.args.assetId;
+    record.recipientAddress = parsedLog.args.to;
+    record.asset = parsedLog.args.assetId;
+
+    await this.ethDb.saveEthMint(record);
   }
 
   async onBurnLogs(log: Log, parsedLog: ParsedLog, currentHeight: number): Promise<void> {

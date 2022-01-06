@@ -94,6 +94,10 @@ export class EthDb implements IQuery {
     return await this.connection.getRepository(CollectorEthMint).findOne({ ethTxHash: tx });
   }
 
+  async getCEthMintRecordByCkbTx(tx: string): Promise<CollectorEthMint | undefined> {
+    return await this.connection.getRepository(CollectorEthMint).findOne({ ckbTxHash: tx });
+  }
+
   async getEthMint(ckbTx: string): Promise<EthMint | undefined> {
     return await this.connection.getRepository(EthMint).findOne(ckbTx);
   }
