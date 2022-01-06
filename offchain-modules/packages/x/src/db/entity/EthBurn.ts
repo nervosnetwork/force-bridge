@@ -14,7 +14,10 @@ export class EthBurn {
   sender: string;
 
   @Column()
-  token: string; // erc20 address
+  xchainTokenId: string; // burned erc20 address
+
+  @Column()
+  nervosAssetId: string; // related udt typescript hash
 
   @Column()
   amount: string;
@@ -27,7 +30,7 @@ export class EthBurn {
   recipient: string;
 
   @Column('varchar', { length: 10240, default: '' })
-  sudtExtraData: string;
+  udtExtraData: string;
 
   @Index()
   @Column()

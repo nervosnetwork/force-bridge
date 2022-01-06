@@ -252,9 +252,8 @@ export class EthHandler {
       ]);
     } else {
       record.amount = parsedLog.args.amount;
-      record.token = parsedLog.args.token;
       record.recipient = parsedLog.args.recipient;
-      record.sudtExtraData = parsedLog.args.extraData;
+      record.udtExtraData = parsedLog.args.extraData;
       await this.ethDb.saveEthBurn(record);
       logger.info(
         `update burn record ${log.transactionHash} status, confirmed number: ${confirmedNumber} status ${confirmStatus}`,
