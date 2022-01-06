@@ -5,7 +5,7 @@ import { ForceBridgeCore } from '../core';
 import { CollectorCkbMint, dbTxStatus } from './entity/CkbMint';
 import { CkbUnlockStatus, CollectorCkbUnlock } from './entity/CkbUnlock';
 import { CollectorEthUnlock, EthUnlockStatus } from './entity/EthUnlock';
-import { CollectorEthereumMint, EthereumMint } from './entity/EthereumMint';
+import { CollectorEthMint, EthMint } from './entity/EthMint';
 import {
   BtcUnlock,
   CkbBurn,
@@ -26,9 +26,11 @@ import {
   TxConfirmStatus,
   IEthLock,
   ICkbLock,
-  IEthereumMint,
+  IEthMint,
   ICkbUnlock,
+  NervosUnlockAssetTxRecords,
 } from './model';
+import { EthBurn } from './entity/EthBurn';
 
 export class CkbDb {
   constructor(private connection: Connection) {}
@@ -135,6 +137,16 @@ export class CkbDb {
       .update()
       .set({ blockNumber: blockNumber, status: status })
       .where('mintHash = :mintTxHash', { mintTxHash: mintTxHash })
+      .execute();
+  }
+
+  async updateCollectorCkbUnlockStatus(blockNumber: number, unlockHash: string, status: dbTxStatus): Promise<void> {
+    await this.connection
+      .getRepository(CollectorCkbUnlock)
+      .createQueryBuilder()
+      .update()
+      .set({ blockNumber: blockNumber, status: status })
+      .where('unlockHash = :unlockHash', { unlockHash: unlockHash })
       .execute();
   }
 
@@ -261,12 +273,12 @@ export class CkbDb {
     return updataResults;
   }
 
-  async createCollectorEthMint(records: IEthereumMint[]): Promise<void> {
-    const dbRecords = records.map((r) => this.connection.getRepository(CollectorEthereumMint).create(r));
-    await this.connection.getRepository(CollectorEthereumMint).save(dbRecords);
+  async createCollectorEthMint(records: IEthMint[]): Promise<void> {
+    const dbRecords = records.map((r) => this.connection.getRepository(CollectorEthMint).create(r));
+    await this.connection.getRepository(CollectorEthMint).save(dbRecords);
   }
 
-  async getCkbUnlockRecordsToUnlock(status: CkbUnlockStatus, take = 10): Promise<CkbUnlock[]> {
+  async getCollectorCkbUnlockRecordsToUnlock(status: CkbUnlockStatus, take = 10): Promise<CollectorCkbUnlock[]> {
     return await this.connection.getRepository(CollectorCkbUnlock).find({
       where: {
         status,
@@ -293,10 +305,34 @@ export class CkbDb {
       .execute();
   }
 
-  async getEthereumMintByCkbTxHashes(ckbTxHashes: string[]): Promise<EthereumMint[]> {
-    return await this.connection.getRepository(EthereumMint).find({
+  async getEthMintByCkbTxHashes(ckbTxHashes: string[]): Promise<EthMint[]> {
+    return await this.connection.getRepository(EthMint).find({
       where: {
         ckbTxHash: In(ckbTxHashes),
+      },
+    });
+  }
+
+  async updateCollectorUnlockStatus(burnTxHash: string, blockNumber: number, status: CkbUnlockStatus): Promise<void> {
+    await this.connection
+      .getRepository(CollectorCkbUnlock)
+      .createQueryBuilder()
+      .update()
+      .set({ blockNumber: blockNumber, status: status })
+      .where({ burnTxHash })
+      .execute();
+  }
+
+  async createCkbUnlock(records: ICkbUnlock[]): Promise<void> {
+    const ckbUnlockRepo = this.connection.getRepository(CkbUnlock);
+    const dbRecords = records.map((r) => ckbUnlockRepo.create(r));
+    await ckbUnlockRepo.save(dbRecords);
+  }
+
+  async getEthBurnByUniqueIds(burnIds: string[]): Promise<EthBurn[]> {
+    return await this.connection.getRepository(EthBurn).find({
+      where: {
+        uniqueId: In(burnIds),
       },
     });
   }

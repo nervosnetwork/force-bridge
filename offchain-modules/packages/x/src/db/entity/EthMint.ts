@@ -1,10 +1,10 @@
 import { Entity, Column, CreateDateColumn, UpdateDateColumn, Index, PrimaryColumn } from 'typeorm';
 
 export type dbTxStatus = 'todo' | 'pending' | 'success' | 'error';
-export type EthereumMintStatus = dbTxStatus;
+export type EthMintStatus = dbTxStatus;
 
 @Entity()
-export class EthereumMint {
+export class EthMint {
   @PrimaryColumn()
   ckbTxHash: string; // lock tx hash
 
@@ -39,9 +39,9 @@ export class EthereumMint {
 }
 
 @Entity()
-export class CollectorEthereumMint extends EthereumMint {
+export class CollectorEthMint extends EthMint {
   @Column({ default: 'todo' })
-  status: EthereumMintStatus;
+  status: EthMintStatus;
 
   @Column({ type: 'text', nullable: true })
   message: string;

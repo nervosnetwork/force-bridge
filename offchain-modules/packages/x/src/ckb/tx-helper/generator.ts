@@ -20,6 +20,7 @@ import { ScriptType } from './indexer';
 import { getFromAddr, getMultisigLock, getOwnerTypeHash } from './multisig/multisig_helper';
 import { getOmniLockMultisigAddress, getOmniLockMultisigWitnessPlaceholder } from './multisig/omni-lock';
 import { calculateFee, getTransactionSize } from './utils';
+import { ICkbUnlock } from '../../db/model';
 
 export interface MintAssetRecord {
   id: string;
@@ -27,6 +28,11 @@ export interface MintAssetRecord {
   amount: bigint;
   recipient: string;
   sudtExtraData: string;
+}
+
+export interface TransactionSkeletonWithUnlockRecord {
+  txSkeleton: TransactionSkeletonType;
+  records: ICkbUnlock[];
 }
 
 export class CkbTxGenerator extends CkbTxHelper {
@@ -812,6 +818,45 @@ export class CkbTxGenerator extends CkbTxHelper {
     return txSkeletonToRawTransactionToSign(txSkeleton, false);
   }
 
+  async unlock(records: ICkbUnlock[]): Promise<TransactionSkeletonWithUnlockRecord[]> {
+    const ethereumRecords = records.filter((r) => r.xchain === ChainType.ETH);
+    const ckbRecords = ethereumRecords.filter(
+      (r) => !r.assetIdent || r.assetIdent === '0x0000000000000000000000000000000000000000000000000000000000000000',
+    );
+    const sudtRecords = ethereumRecords.filter(
+      (r) => r.assetIdent && r.assetIdent !== '0x0000000000000000000000000000000000000000000000000000000000000000',
+    );
+    const allTxRes: TransactionSkeletonWithUnlockRecord[] = [];
+    if (ckbRecords && ckbRecords.length > 0) {
+      const txSkeleton = await this.unlockCKB(
+        ckbRecords.map((r) => ({ burnId: r.burnTxHash, recipient: r.recipientAddress, amount: r.amount })),
+      );
+      allTxRes.push({ txSkeleton, records: ckbRecords });
+    }
+    if (sudtRecords && sudtRecords.length > 0) {
+      const sudtRecordsGroup = sudtRecords.reduce((gr, record) => {
+        if (!gr[record.assetIdent]) {
+          gr[record.assetIdent] = [];
+        }
+        gr[record.assetIdent].push(record);
+        return gr;
+      }, {});
+      for (const assetIdent in sudtRecordsGroup) {
+        const thisSudtRecords = sudtRecordsGroup[assetIdent];
+        const txSkeleton = await this.unlockSudt(
+          thisSudtRecords.map((r) => ({
+            burnId: r.burnTxHash,
+            recipient: r.recipientAddress,
+            amount: r.amount,
+            assetIdent: assetIdent,
+          })),
+        );
+        allTxRes.push({ txSkeleton, records: thisSudtRecords });
+      }
+    }
+    return allTxRes;
+  }
+
   async unlockCKB(records: { burnId: string; recipient: string; amount: string }[]): Promise<TransactionSkeletonType> {
     const collectorAddress = getFromAddr();
 
@@ -1212,6 +1257,12 @@ export class CkbTxGenerator extends CkbTxHelper {
     });
 
     return txSkeleton;
+  }
+
+  async unlockSudt(
+    _records: { burnId: string; recipient: string; amount: string; assetIdent: string }[],
+  ): Promise<TransactionSkeletonType> {
+    throw new Error('unimplement');
   }
 }
 

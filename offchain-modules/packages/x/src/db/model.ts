@@ -9,6 +9,7 @@ import { EthUnlock, EthUnlockStatus } from './entity/EthUnlock';
 import Timestamp = CKBComponents.Timestamp;
 import Script = CKBComponents.Script;
 import { CkbUnlockStatus } from './entity/CkbUnlock';
+import { EthBurn } from './entity/EthBurn';
 
 export { EthUnlock } from './entity/EthUnlock';
 export { EthLock, TxConfirmStatus } from './entity/EthLock';
@@ -67,7 +68,7 @@ export interface IEthMint {
   recipientAddress: string;
   blockNumber?: number;
   blockTimestamp?: number;
-  ethTxHash: string;
+  ethTxHash?: string;
   amount: string;
 }
 
@@ -160,15 +161,21 @@ export interface ICkbUnlock {
   message?: string;
 }
 
-export interface IEthereumMint {
-  ckbTxHash: string;
-  erc20TokenAddress: string;
-  nervosAssetId: string;
+export interface IEthBurn {
+  uniqueId: string; // ${burnTxHash}-${logIndex}
+  burnTxHash: string;
+  sender: string;
+  xchainTokenId: string; // burned erc20 address
+  nervosAssetId: string; // related udt typescript hash
   amount: string;
-  recipientAddress: string;
-  blockNumber?: number;
-  blockTimestamp?: number;
-  ethTxHash?: string;
+  bridgeFee: string;
+  recipient: string;
+  udtExtraData: string;
+  blockNumber: number;
+  blockTimestamp: number;
+  blockHash: string;
+  confirmNumber: number;
+  confirmStatus: TxConfirmStatus;
 }
 
 // export async function transformBurnEvent(burn: CkbBurn): Promise<XchainUnlock> {
@@ -303,6 +310,23 @@ export interface NervosLockAssetTxMetaData {
   assetIdent: string;
   senderAddress: string;
   bridgeFee: bigint;
+}
+
+export interface NervosUnlockAssetTxMetaData {
+  chain: number;
+  ethBurns: EthBurn[];
+}
+
+export interface NervosUnlockAssetTxRecord {
+  amount: bigint;
+  id: string;
+  burnTxHash: string;
+  burnBlockHeight: number;
+}
+
+export interface NervosUnlockAssetTxRecords {
+  txHash: string;
+  records: NervosUnlockAssetTxRecord[];
 }
 
 export interface IQuery {
