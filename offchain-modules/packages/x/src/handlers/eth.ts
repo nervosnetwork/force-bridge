@@ -162,7 +162,11 @@ export class EthHandler {
   }
 
   async handleLog(log: Log, currentHeight: number): Promise<void> {
-    const parsedLog = await this.ethChain.iface.parseLog(log);
+    const parsedLog = await this.ethChain.parseLog(log);
+    if (!parsedLog) {
+      return;
+    }
+
     switch (parsedLog.name) {
       case 'Locked':
         await this.onLockLogs(log, parsedLog, currentHeight);

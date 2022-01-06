@@ -1,5 +1,5 @@
 import { BigNumber, ethers } from 'ethers';
-import { Interface } from 'ethers/lib/utils';
+import { Interface, LogDescription } from 'ethers/lib/utils';
 import { EthConfig, forceBridgeRole } from '../../config';
 import { ForceBridgeCore } from '../../core';
 import { CollectorEthMint } from '../../db/entity/EthMint';
@@ -8,6 +8,7 @@ import { nonNullable } from '../../errors';
 import { MultiSigMgr } from '../../multisig/multisig-mgr';
 import { asyncSleep, retryPromise } from '../../utils';
 import { logger } from '../../utils/logger';
+import { abi as asAbi } from './abi/AssetManager.json';
 import { abi } from './abi/ForceBridge.json';
 import { buildSigRawData } from './utils';
 
@@ -37,9 +38,11 @@ export class EthChain {
   public readonly provider: ethers.providers.JsonRpcProvider;
   public readonly bridgeContractAddr: string;
   public readonly iface: ethers.utils.Interface;
+  public readonly asIface: ethers.utils.Interface;
   public readonly bridge: ethers.Contract;
   public readonly wallet: ethers.Wallet;
   public readonly multisigMgr: MultiSigMgr;
+  public readonly assetManagerContract: ethers.Contract;
 
   constructor(role: forceBridgeRole) {
     const config = ForceBridgeCore.config.eth;
@@ -49,6 +52,7 @@ export class EthChain {
     this.provider = new ethers.providers.JsonRpcProvider(url);
     this.bridgeContractAddr = config.contractAddress;
     this.iface = new ethers.utils.Interface(abi);
+    this.asIface = new ethers.utils.Interface(asAbi);
     if (role === 'collector') {
       this.wallet = new ethers.Wallet(config.privateKey, this.provider);
       logger.debug('address', this.wallet.address);
@@ -58,7 +62,7 @@ export class EthChain {
   }
 
   async sendMintTxs(records: CollectorEthMint[]): Promise<ethers.providers.TransactionResponse | undefined | boolean> {
-    throw new Error('implement me!');
+    throw new Error(`implement me!${records}`);
   }
 
   async getGasPrice(): Promise<BigNumber> {
@@ -67,6 +71,23 @@ export class EthChain {
 
   getMultiSigMgr(): MultiSigMgr {
     return this.multisigMgr;
+  }
+
+  async parseLog(log: Log): Promise<LogDescription | null> {
+    const tx = await this.provider.getTransaction(log.transactionHash);
+
+    if (tx == null) {
+      return null;
+    }
+
+    switch (tx.to) {
+      case this.bridgeContractAddr:
+        return this.iface.parseLog(log);
+      case this.assetManagerContract.address:
+        return this.asIface.parseLog(log);
+      default:
+        return null;
+    }
   }
 
   watchLockEvents(startHeight = 1, handleLogFunc: HandleLogFn): void {
