@@ -139,10 +139,9 @@ function checkConfigEthereumAddress(config: Config) {
     });
   };
 
-  verifyChecksumAddress([config.eth.contractAddress]);
-  verifyChecksumAddress(config.eth.multiSignAddresses);
-  verifyChecksumAddress(config.eth.multiSignHosts.map((value) => value.address));
-  verifyChecksumAddress(config.eth.assetWhiteList.map((value) => value.address));
-
-  if (config.monitor?.feeAccounts) verifyChecksumAddress([config.monitor.feeAccounts.ethAddr]);
+  if (config.eth.contractAddress) verifyChecksumAddress([config.eth.contractAddress]);
+  if (config.eth.multiSignAddresses) verifyChecksumAddress(config.eth.multiSignAddresses);
+  if (config.eth.multiSignHosts) verifyChecksumAddress(config.eth.multiSignHosts.map((value) => value.address));
+  if (config.eth.assetWhiteList) verifyChecksumAddress(config.eth.assetWhiteList.map((value) => value.address));
+  if (config.monitor?.feeAccounts?.ethAddr) verifyChecksumAddress([config.monitor.feeAccounts.ethAddr]);
 }
