@@ -1,6 +1,7 @@
 import fs from 'fs';
 import { KeyStore } from '@force-bridge/keystore';
 import CKB from '@nervosnetwork/ckb-sdk-core';
+import { ethers } from 'ethers';
 import nconf from 'nconf';
 import { CkbIndexer } from './ckb/tx-helper/indexer';
 import { initLumosConfig } from './ckb/tx-helper/init_lumos_config';
@@ -49,6 +50,7 @@ export class XChainHandlers {
 
 export interface XChainHandler {
   getHandledBlock(): { height: number; hash: string };
+
   getTipBlock(): Promise<{ height: number; hash: string }>;
 }
 
@@ -95,6 +97,8 @@ export class ForceBridgeCore {
   }
 
   async init(config: Config): Promise<ForceBridgeCore> {
+    checkConfigEthereumAddress(config);
+
     // init log
     initLog(config.common.log);
 
@@ -125,4 +129,19 @@ export class ForceBridgeCore {
     initLumosConfig(config.common.lumosConfigType);
     return this;
   }
+}
+
+function checkConfigEthereumAddress(config: Config) {
+  const verifyChecksumAddress = (addresses: string[]) => {
+    addresses.forEach((address) => {
+      if (ethers.utils.getAddress(address) !== address)
+        throw new Error(`${address} is not a ethereum checksum address`);
+    });
+  };
+
+  if (config.eth.contractAddress) verifyChecksumAddress([config.eth.contractAddress]);
+  if (config.eth.multiSignAddresses) verifyChecksumAddress(config.eth.multiSignAddresses);
+  if (config.eth.multiSignHosts) verifyChecksumAddress(config.eth.multiSignHosts.map((value) => value.address));
+  if (config.eth.assetWhiteList) verifyChecksumAddress(config.eth.assetWhiteList.map((value) => value.address));
+  if (config.monitor?.feeAccounts?.ethAddr) verifyChecksumAddress([config.monitor.feeAccounts.ethAddr]);
 }
