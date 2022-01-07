@@ -1,3 +1,10 @@
+## v0.0.18 (2022-1-7)
+
+### Features
+
+- [add bsc asset white list](https://github.com/nervosnetwork/force-bridge/pull/284)
+- [check ethereum address of config](https://github.com/nervosnetwork/force-bridge/pull/288)
+
 ## v0.0.17 (2021-12-24)
 
 ### Features
