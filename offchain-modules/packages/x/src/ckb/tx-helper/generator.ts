@@ -853,6 +853,7 @@ export class CkbTxGenerator extends CkbTxHelper {
     let totalSudtOutputCapacity = BigInt(0);
     let totalSudtOutputAmount = BigInt(0);
     // add recipient outputs
+    const sudtCapacity = BigInt(ForceBridgeCore.config.ckb.sudtSize * 10 ** 8);
     records.forEach((record) => {
       const amount = BigInt(record.amount);
       const recipientCell: Cell = {
@@ -863,10 +864,9 @@ export class CkbTxGenerator extends CkbTxHelper {
         },
         data: utils.toBigUInt128LE(amount),
       };
-      const recipientCellMinimalCapacity = minimalCellCapacity(recipientCell);
-      totalSudtOutputCapacity += recipientCellMinimalCapacity;
+      totalSudtOutputCapacity += sudtCapacity;
       totalSudtOutputAmount += amount;
-      recipientCell.cell_output.capacity = `0x${recipientCellMinimalCapacity.toString(16)}`;
+      recipientCell.cell_output.capacity = `0x${sudtCapacity.toString(16)}`;
       txSkeleton = txSkeleton.update('outputs', (outputs) => {
         return outputs.push(recipientCell);
       });
@@ -874,51 +874,59 @@ export class CkbTxGenerator extends CkbTxHelper {
 
     // collect sudt and add multisig cell inputs
     const omniLockMultisigScript = parseAddress(getOmniLockMultisigAddress());
-    const omniLockMultisigChangeCell: Cell = {
-      cell_output: {
-        capacity: `0x0`,
-        lock: omniLockMultisigScript,
-        type: sudtScript,
-      },
-      data: '0x',
-    };
     const searchKey = {
       script: omniLockMultisigScript,
       script_type: ScriptType.lock,
       filter: {
-        script: {
-          code_hash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
-          hash_type: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
-          args: sudtArgs,
-        },
+        script: sudtScript,
       },
     };
-    const searchedMultisigCells = await this.collector.collectSudtByAmount(searchKey, totalSudtOutputAmount);
+
+    const searchedMultisigCells = await this.collector.collectSudtByAmountAndCapacity(
+      searchKey,
+      totalSudtOutputAmount,
+      totalSudtOutputCapacity + sudtCapacity,
+    );
     const searchedMultisigCellsAmount = searchedMultisigCells
       .map((cell) => utils.readBigUInt128LE(cell.data))
       .reduce((a, b) => a + b, 0n);
-    if (searchedMultisigCellsAmount < totalSudtOutputAmount)
-      throw new Error(
-        `multisig cell sudt amount not enough, need ${totalSudtOutputAmount.toString()}, found ${searchedMultisigCellsAmount.toString()}`,
-      );
-    txSkeleton = txSkeleton.update('inputs', (inputs) => {
-      return inputs.push(...searchedMultisigCells);
-    });
     const searchedMultisigCellsCapacity = searchedMultisigCells
       .map((cell) => BigInt(cell.cell_output.capacity))
       .reduce((a, b) => a + b, 0n);
 
-    // add multisigChangeCell if needed
-    let omniLockMultisigChangeCellMinimalCapacity = BigInt(0);
+    // add multisigChangeCell if searchedMultisigCellsAmount === totalSudtOutputAmount then use ckb cell for change
+    let omniLockMultisigChangeCell: Cell;
     if (searchedMultisigCellsAmount > totalSudtOutputAmount) {
-      const multisigChangeCellAmount = searchedMultisigCellsAmount - totalSudtOutputAmount;
-      omniLockMultisigChangeCell.data = `0x${multisigChangeCellAmount.toString(16)}`;
-      omniLockMultisigChangeCellMinimalCapacity = minimalCellCapacity(omniLockMultisigChangeCell);
-      omniLockMultisigChangeCell.cell_output.capacity = `0x${omniLockMultisigChangeCellMinimalCapacity.toString(16)}`;
-      txSkeleton = txSkeleton.update('outputs', (outputs) => {
-        return outputs.push(omniLockMultisigChangeCell);
-      });
+      omniLockMultisigChangeCell = {
+        cell_output: {
+          capacity: `0x0`,
+          lock: omniLockMultisigScript,
+          type: sudtScript,
+        },
+        data: utils.toBigUInt128LE(searchedMultisigCellsAmount - totalSudtOutputAmount),
+      };
+    } else if (searchedMultisigCellsAmount === totalSudtOutputAmount) {
+      omniLockMultisigChangeCell = {
+        cell_output: {
+          capacity: `0x0`,
+          lock: omniLockMultisigScript,
+        },
+        data: '0x',
+      };
+    } else {
+      throw new Error(
+        `multisig cell sudt amount not enough, need ${totalSudtOutputAmount.toString()}, found ${searchedMultisigCellsAmount.toString()}`,
+      );
     }
+    omniLockMultisigChangeCell.cell_output.capacity = `0x${(
+      searchedMultisigCellsCapacity - totalSudtOutputCapacity
+    ).toString(16)}`;
+    txSkeleton = txSkeleton.update('inputs', (inputs) => {
+      return inputs.push(...searchedMultisigCells);
+    });
+    txSkeleton = txSkeleton.update('outputs', (outputs) => {
+      return outputs.push(omniLockMultisigChangeCell);
+    });
 
     // add collector cell to pay tx fee
     const collectorLockscript = parseAddress(collectorAddress);
@@ -930,7 +938,7 @@ export class CkbTxGenerator extends CkbTxHelper {
       data: '0x',
     };
     const collectorChangeCellMinimalCapacity = minimalCellCapacity(collectorChangeCell);
-    const collectorNeedCapacity = totalSudtOutputCapacity + collectorChangeCellMinimalCapacity + 1n * BigInt(100000000);
+    const collectorNeedCapacity = collectorChangeCellMinimalCapacity + 1n * BigInt(100000000);
     const searchedCollectorCells = await this.collector.getCellsByLockscriptAndCapacity(
       collectorLockscript,
       collectorNeedCapacity,
@@ -945,12 +953,7 @@ export class CkbTxGenerator extends CkbTxHelper {
     txSkeleton = txSkeleton.update('inputs', (inputs) => {
       return inputs.push(...searchedCollectorCells);
     });
-    collectorChangeCell.cell_output.capacity = `0x${(
-      searchedMultisigCellsCapacity +
-      searchedCollectorCellsCapacity -
-      totalSudtOutputCapacity -
-      omniLockMultisigChangeCellMinimalCapacity
-    ).toString(16)}`;
+    collectorChangeCell.cell_output.capacity = `0x${searchedCollectorCellsCapacity.toString(16)}`;
     txSkeleton = txSkeleton.update('outputs', (outputs) => {
       return outputs.push(collectorChangeCell);
     });
@@ -971,8 +974,12 @@ export class CkbTxGenerator extends CkbTxHelper {
         }),
       ),
     ).serializeJson();
+    const collectorWitnessGroup = lodash.range(searchedCollectorCells.length).map((index) => {
+      if (index === 0) return collectorWitness;
+      return '0x';
+    });
     txSkeleton = txSkeleton.update('witnesses', (witnesses) => {
-      return witnesses.push(collectorWitness);
+      return witnesses.push(...collectorWitnessGroup);
     });
 
     const unlockMemo = SerializeUnlockMemo({
