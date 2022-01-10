@@ -15,6 +15,7 @@ import {
   ICkbUnlock,
   IEthBurn,
   IEthLock,
+  IEthMint,
   IEthUnlock,
   IQuery,
   LockRecord,
@@ -132,11 +133,11 @@ export class EthDb implements IQuery {
     await this.collectorEthUnlockRepository.save(records.map((r) => this.collectorEthUnlockRepository.create(r)));
   }
 
-  async saveCollectorEthMint(records: IEthUnlock[]): Promise<void> {
+  async saveCollectorEthMint(records: IEthMint[]): Promise<void> {
     await this.connection.getRepository(CollectorEthMint).save(records);
   }
 
-  async saveCollectorEthMints(records: IEthUnlock[]): Promise<CollectorEthMint[]> {
+  async saveCollectorEthMints(records: IEthMint[]): Promise<CollectorEthMint[]> {
     return await this.connection.getRepository(CollectorEthMint).save(records);
   }
 

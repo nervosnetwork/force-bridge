@@ -239,9 +239,9 @@ export class EthHandler {
 
   async updateMint(record: CollectorEthMint, parsedLog: LogDescription): Promise<void> {
     record.amount = parsedLog.args.amount;
-    record.asset = parsedLog.args.assetId;
+    record.nervosAssetId = parsedLog.args.assetId;
     record.recipientAddress = parsedLog.args.to;
-    record.asset = parsedLog.args.assetId;
+    record.erc20TokenAddress = parsedLog.args.token;
 
     await this.ethDb.saveEthMint(record);
   }
@@ -532,7 +532,7 @@ export class EthHandler {
         const mintTokens = records.map((r) => {
           return {
             amount: Number(r.amount),
-            token: r.asset,
+            token: r.erc20TokenAddress,
           };
         });
 

@@ -71,7 +71,8 @@ export interface ICkbUnlock {
 
 export interface IEthMint {
   ckbTxHash: string;
-  asset: string;
+  nervosAssetId: string;
+  erc20TokenAddress: string;
   amount: string;
   recipientAddress: string;
   blockNumber: number;
