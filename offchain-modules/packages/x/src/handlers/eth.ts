@@ -251,22 +251,23 @@ export class EthHandler {
     const confirmedNumber = currentHeight - log.blockNumber;
     const confirmStatus = confirmedNumber >= ForceBridgeCore.config.eth.confirmNumber ? 'confirmed' : 'unconfirmed';
     const block = await this.ethChain.getBlock(log.blockHash);
+    logger.info(
+      `EthHandler watchBurnEvents receiveLog blockHeight:${log.blockNumber} blockHash:${log.blockHash} txHash:${
+        log.transactionHash
+      } amount:${parsedLog.args.amount.toString()} asset:${parsedLog.args.token} recipientLockscript:${
+        parsedLog.args.recipient
+      } sudtExtraData:${parsedLog.args.extraData} sender:${
+        parsedLog.args.from
+      }, confirmedNumber: ${confirmedNumber}, confirmStatus: ${confirmStatus}`,
+    );
     if (record == undefined) {
-      logger.info(
-        `EthHandler watchBurnEvents receiveLog blockHeight:${log.blockNumber} blockHash:${log.blockHash} txHash:${
-          log.transactionHash
-        } amount:${parsedLog.args.amount.toString()} asset:${parsedLog.args.token} recipientLockscript:${
-          parsedLog.args.recipient
-        } sudtExtraData:${parsedLog.args.extraData} sender:${
-          parsedLog.args.from
-        }, confirmedNumber: ${confirmedNumber}, confirmStatus: ${confirmStatus}`,
-      );
       await this.ethDb.createEthBurn({
         burnTxHash: log.transactionHash,
         amount: parsedLog.args.amount,
-        token: parsedLog.args.token,
+        xchainTokenId: parsedLog.args.token,
         recipient: parsedLog.args.recipient,
-        sudtExtraData: parsedLog.args.extraData,
+        nervosAssetId: parsedLog.args.assetId,
+        udtExtraData: parsedLog.args.extraData,
         blockNumber: log.blockNumber,
         blockHash: log.blockHash,
         sender: parsedLog.args.from,
@@ -287,6 +288,7 @@ export class EthHandler {
       record.amount = parsedLog.args.amount;
       record.recipient = parsedLog.args.recipient;
       record.udtExtraData = parsedLog.args.extraData;
+      record.confirmStatus = confirmStatus;
       await this.ethDb.saveEthBurn(record);
       logger.info(
         `update burn record ${log.transactionHash} status, confirmed number: ${confirmedNumber} status ${confirmStatus}`,
@@ -297,14 +299,14 @@ export class EthHandler {
       const unlock: ICkbUnlock = {
         id: EthBurn.primaryKey(log.logIndex, log.transactionHash),
         burnTxHash: log.transactionHash,
-        chain: ChainType.ETH,
-        assetKind: parsedLog.args.assetId,
+        xchain: ChainType.ETH,
+        udtExtraData: parsedLog.args.extraData,
         assetIdent: parsedLog.args.assetId,
         amount: parsedLog.args.amount,
         recipientAddress: parsedLog.args.recipient,
         blockTimestamp: block.timestamp,
         blockNumber: log.blockNumber,
-        blockHash: log.blockHash,
+        unlockTxHash: '',
         extraData: parsedLog.args.extraData,
       };
       await this.ethDb.createCollectorCkbUnlock([unlock]);
@@ -716,8 +718,7 @@ export class EthHandler {
   start(): void {
     void this.watchNewBlock();
 
-    this.handleUnlockRecords();
-    this.handleMintRecords();
+    Promise.all([this.handleUnlockRecords, this.handleMintRecords]).catch((e) => logger.error(e));
     logger.info('eth handler started  🚀');
   }
 }

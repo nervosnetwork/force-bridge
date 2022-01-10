@@ -58,14 +58,14 @@ export interface ICkbMint {
 export interface ICkbUnlock {
   id: string;
   burnTxHash: string;
-  chain: ChainType;
-  assetKind: string;
+  xchain: ChainType;
   assetIdent: string;
   amount: string;
   recipientAddress: string;
+  udtExtraData: string;
   blockTimestamp: number;
   blockNumber: number;
-  blockHash: string;
+  unlockTxHash: string;
   extraData: string;
 }
 
@@ -100,11 +100,12 @@ export interface IEthBurn {
   uniqueId: string;
   burnTxHash: string;
   sender: string;
-  token: string;
+  xchainTokenId: string;
+  nervosAssetId: string;
   amount: string;
   bridgeFee: string;
   recipient: string;
-  sudtExtraData?: string;
+  udtExtraData?: string;
   blockNumber: number;
   blockTimestamp: number;
   blockHash: string;
