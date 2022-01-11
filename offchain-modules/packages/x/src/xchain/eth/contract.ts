@@ -234,7 +234,7 @@ export class EthChain {
         data: this.assetManager.interface.encodeFunctionData('mint', [
           records.map((r) => {
             return {
-              assetId: r.asset,
+              assetId: r.nervosAssetId,
               amount: r.amount,
               to: r.recipientAddress,
               lockId: r.ckbTxHash,
