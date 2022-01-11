@@ -36,7 +36,7 @@ export async function deployAssetManager(
   privateKey: string,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   safeAddress: string,
-): Promise<string> {
+): Promise<Contract> {
   const contract = await new ethers.ContractFactory(
     asabi,
     asbytecode,
@@ -52,7 +52,7 @@ export async function deployAssetManager(
   await contract.transferOwnership(safeAddress);
   logger.info(`Asset Manager Contract has been transfered to safe address: ${safeAddress}`);
 
-  return contract.address;
+  return contract;
 }
 
 export async function deployEthMirror(

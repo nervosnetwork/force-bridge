@@ -61,13 +61,8 @@ export async function deployDev(
   const safeAddress = await deploySafe(ETH_RPC_URL, ethPrivateKey, MULTISIG_THRESHOLD, ethMultiSignAddresses);
   logger.info(`safe address: ${safeAddress}`);
 
-  const assetManagerContractAddress = await deployAssetManager(ETH_RPC_URL, ethPrivateKey, safeAddress);
-  logger.info(`asset manager address: ${assetManagerContractAddress}`);
-
-  const ckbEthMirror = await deployEthMirror(ETH_RPC_URL, ethPrivateKey, 'CKB', 'CKB', 18);
-  logger.info(`ckb mirror address: ${ckbEthMirror.address}`);
-
-  await ckbEthMirror.transferOwnership(assetManagerContractAddress);
+  const assetManagerContract = await deployAssetManager(ETH_RPC_URL, ethPrivateKey, safeAddress);
+  logger.info(`asset manager address: ${assetManagerContract.address}`);
 
   const ckbDeployGenerator = new CkbDeployManager(CKB_RPC_URL, CKB_INDEXER_URL);
   if (!ckbDeps) {
@@ -152,6 +147,16 @@ export async function deployDev(
   );
   logger.info('omniLockConfig', omniLockConfig);
 
+  const ckbToEthMirror = new Map<string, { name: string; symbol: string; decimals: number }>();
+
+  ckbToEthMirror.forEach(async (v, k) => {
+    const ckbEthMirror = await deployEthMirror(ETH_RPC_URL, ethPrivateKey, v.name, v.symbol, v.decimals);
+    logger.info(`ckb mirror address: ${ckbEthMirror.address} asset id:${k}`);
+
+    await ckbEthMirror.transferOwnership(assetManagerContract.address);
+    await assetManagerContract.addAsset(ckbEthMirror.address, k);
+  });
+
   // generate_configs
   let assetWhiteListPath: string;
   let nervosAssetWhiteListPath: string;
@@ -189,7 +194,7 @@ export async function deployDev(
     ethStartHeight,
     ethPrivateKey,
     ckbPrivateKey,
-    assetManagerContractAddress,
+    assetManagerContractAddress: assetManagerContract.address,
     safeAddress,
   };
   if (cachePath) {
