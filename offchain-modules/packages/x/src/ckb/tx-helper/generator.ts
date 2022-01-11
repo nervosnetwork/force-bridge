@@ -613,13 +613,203 @@ export class CkbTxGenerator extends CkbTxHelper {
   }
 
   async lockSUDT(
-    _senderLockscript: Script,
-    _recipientAddress: string,
-    _sudtArgs: string,
-    _amount: bigint,
-    _xchain: string,
+    senderLockscript: Script,
+    recipientAddress: string,
+    sudtArgs: string,
+    amount: bigint,
+    xchain: string,
   ): Promise<CKBComponents.RawTransactionToSign> {
-    throw new Error('unimplement');
+    if (xchain !== 'Ethereum') throw new Error('only support bridge to Ethereum for now');
+    if (amount <= 0n) {
+      throw new Error('amount should larger then zero!');
+    }
+
+    let txSkeleton = TransactionSkeleton({ cellProvider: this.indexer });
+    // add cellDeps
+    const secp256k1 = nonNullable(this.lumosConfig.SCRIPTS.SECP256K1_BLAKE160);
+    if (senderLockscript.code_hash === secp256k1.CODE_HASH && senderLockscript.hash_type === secp256k1.HASH_TYPE) {
+      txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
+        return cellDeps.push({
+          out_point: {
+            tx_hash: secp256k1.TX_HASH,
+            index: secp256k1.INDEX,
+          },
+          dep_type: secp256k1.DEP_TYPE,
+        });
+      });
+    } else if (
+      senderLockscript.code_hash === ForceBridgeCore.config.ckb.deps.pwLock?.script.codeHash &&
+      senderLockscript.hash_type === ForceBridgeCore.config.ckb.deps.pwLock?.script.hashType
+    ) {
+      txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
+        return cellDeps.push(
+          {
+            out_point: {
+              tx_hash: ForceBridgeCore.config.ckb.deps.pwLock!.cellDep.outPoint.txHash,
+              index: ForceBridgeCore.config.ckb.deps.pwLock!.cellDep.outPoint.index,
+            },
+            dep_type: ForceBridgeCore.config.ckb.deps.pwLock!.cellDep.depType,
+          },
+          {
+            out_point: {
+              tx_hash: secp256k1.TX_HASH,
+              index: secp256k1.INDEX,
+            },
+            dep_type: secp256k1.DEP_TYPE,
+          },
+        );
+      });
+    } else {
+      throw new Error('unsupported sender address!');
+    }
+
+    const sudtScript = {
+      code_hash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
+      hash_type: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
+      args: sudtArgs,
+    };
+    const bridgeFee = BigInt(ForceBridgeCore.config.eth.lockNervosAssetFee);
+
+    // add committee multisig output
+    const committeeMultisigLockscript = parseAddress(getOmniLockMultisigAddress());
+    const committeeMultisigCell: Cell = {
+      cell_output: {
+        capacity: `0x${bridgeFee.toString(16)}`, // bridge fee
+        lock: committeeMultisigLockscript,
+        type: sudtScript,
+      },
+      data: utils.toBigUInt128LE(amount), // locked sudt amount
+    };
+    txSkeleton = txSkeleton.update('outputs', (outputs) => {
+      return outputs.push(committeeMultisigCell);
+    });
+
+    // collect sudt
+    const searchKey = {
+      script: senderLockscript,
+      script_type: ScriptType.lock,
+      filter: {
+        script: sudtScript,
+      },
+    };
+    const sudtCells = await this.collector.collectSudtByAmount(searchKey, amount);
+    const total = sudtCells.map((cell) => utils.readBigUInt128LE(cell.data)).reduce((a, b) => a + b, 0n);
+    if (total < amount) {
+      throw new Error('sudt amount is not enough!');
+    }
+    logger.debug('lock sudtCells: ', sudtCells);
+
+    // add sudt inputs
+    txSkeleton = txSkeleton.update('inputs', (inputs) => {
+      return inputs.concat(sudtCells);
+    });
+
+    // ckb change output cell
+    const senderOutputCkbChangeCell: Cell = {
+      cell_output: {
+        capacity: '0x0',
+        lock: senderLockscript,
+      },
+      data: '0x',
+    };
+    const senderOutputCkbChangeCellMinimalCapacity = minimalCellCapacity(senderOutputCkbChangeCell);
+    let senderOutputSudtChangeCellMinimalCapacity = BigInt(0);
+    if (total > amount) {
+      // sudt change output cell
+      const senderOutputSudtChangeCell: Cell = {
+        cell_output: {
+          capacity: '0x0',
+          lock: senderLockscript,
+          type: sudtScript,
+        },
+        data: utils.toBigUInt128LE(total - amount),
+      };
+      senderOutputSudtChangeCellMinimalCapacity = minimalCellCapacity(senderOutputSudtChangeCell);
+      senderOutputSudtChangeCell.cell_output.capacity = `0x${senderOutputSudtChangeCellMinimalCapacity.toString(16)}`;
+      // add sudt change output
+      txSkeleton = txSkeleton.update('outputs', (outputs) => {
+        return outputs.push(senderOutputSudtChangeCell);
+      });
+    }
+    // collect ckb
+    const totalCapacityOfSudtCellsInInputs = sudtCells
+      .map((cell) => BigInt(cell.cell_output.capacity))
+      .reduce((a, b) => a + b, 0n);
+    const outputNeedCapacity =
+      bridgeFee +
+      senderOutputSudtChangeCellMinimalCapacity +
+      senderOutputCkbChangeCellMinimalCapacity +
+      1n * BigInt(100000000); // tx fee
+
+    let senderNeedCkbSupplyCapacity = BigInt(0);
+    let searchedSenderCkbCellsCapacity = BigInt(0);
+    let inputCellLength = sudtCells.length;
+    if (totalCapacityOfSudtCellsInInputs < outputNeedCapacity) {
+      // inputs capacity does not offset outputs capacity, collect ckb
+      senderNeedCkbSupplyCapacity = outputNeedCapacity - totalCapacityOfSudtCellsInInputs;
+      const searchedSenderCkbCells = await this.collector.getCellsByLockscriptAndCapacity(
+        senderLockscript,
+        senderNeedCkbSupplyCapacity,
+      );
+      searchedSenderCkbCellsCapacity = searchedSenderCkbCells
+        .map((cell) => BigInt(cell.cell_output.capacity))
+        .reduce((a, b) => a + b, 0n);
+      inputCellLength += searchedSenderCkbCells.length;
+      if (searchedSenderCkbCellsCapacity < senderNeedCkbSupplyCapacity)
+        throw new Error(
+          `sender ckb capacity not enough, need ${senderNeedCkbSupplyCapacity.toString()}, found ${searchedSenderCkbCellsCapacity.toString()}`,
+        );
+
+      // add ckb inputs
+      txSkeleton = txSkeleton.update('inputs', (inputs) => {
+        return inputs.concat(searchedSenderCkbCells);
+      });
+    }
+    // add ckb change output
+    senderOutputCkbChangeCell.cell_output.capacity = `0x${(
+      totalCapacityOfSudtCellsInInputs +
+      searchedSenderCkbCellsCapacity -
+      senderOutputCkbChangeCellMinimalCapacity -
+      senderOutputSudtChangeCellMinimalCapacity -
+      bridgeFee
+    ).toString(16)}`;
+
+    txSkeleton = txSkeleton.update('outputs', (outputs) => {
+      return outputs.push(senderOutputCkbChangeCell);
+    });
+
+    // add witnesses
+    const witnesses = lodash.range(inputCellLength).map((index) => {
+      if (index === 0) {
+        return new Reader(
+          SerializeWitnessArgs(
+            normalizers.NormalizeWitnessArgs({
+              lock: SECP_SIGNATURE_PLACEHOLDER,
+            }),
+          ),
+        ).serializeJson();
+      }
+      return '0x';
+    });
+    const lockMemo = SerializeLockMemo({ xchain: 1, recipient: new Reader(recipientAddress).toArrayBuffer() });
+    // put lockMemo in witnesses[inputs.len]
+    witnesses.push(new Reader(lockMemo).serializeJson());
+    txSkeleton = txSkeleton.update('witnesses', (w) => {
+      return w.push(...witnesses);
+    });
+
+    // tx fee
+    const txFee = calculateFee(getTransactionSize(txSkeleton));
+    txSkeleton = txSkeleton.update('outputs', (outputs) => {
+      return outputs.map((cell, index) => {
+        if ((total === amount && index === 1) || (total > amount && index === 2)) {
+          cell.cell_output.capacity = `0x${(BigInt(cell.cell_output.capacity) - txFee).toString(16)}`;
+        }
+        return cell;
+      });
+    });
+
+    return txSkeletonToRawTransactionToSign(txSkeleton, false);
   }
 
   async unlockCKB(records: { burnId: string; recipient: string; amount: string }[]): Promise<TransactionSkeletonType> {
