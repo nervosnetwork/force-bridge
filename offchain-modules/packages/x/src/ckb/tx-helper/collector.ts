@@ -49,24 +49,6 @@ export class IndexerCollector extends Collector {
     return cells;
   }
 
-  async collectSudtByAmountAndCapacity(searchKey: SearchKey, amount: bigint, needCapacity: bigint): Promise<Cell[]> {
-    let balance = 0n;
-    let accCapacity = 0n;
-    const terminator: Terminator = (index, c) => {
-      const cell = c;
-      if (balance >= amount && accCapacity >= needCapacity) {
-        return { stop: true, push: false };
-      } else {
-        const cellAmount = utils.readBigUInt128LE(cell.data);
-        balance += cellAmount;
-        accCapacity += BigInt(cell.cell_output.capacity);
-        return { stop: false, push: true };
-      }
-    };
-    const cells = await this.indexer.getCells(searchKey, terminator);
-    return cells;
-  }
-
   async getBalance(lock: Script): Promise<bigint> {
     const searchKey = {
       script: lock,

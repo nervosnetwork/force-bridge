@@ -852,13 +852,13 @@ export class CkbTxGenerator extends CkbTxHelper {
 
     let totalSudtOutputCapacity = BigInt(0);
     let totalSudtOutputAmount = BigInt(0);
-    // add recipient outputs
     const sudtCapacity = BigInt(ForceBridgeCore.config.ckb.sudtSize * 10 ** 8);
+    // add recipient outputs
     records.forEach((record) => {
       const amount = BigInt(record.amount);
       const recipientCell: Cell = {
         cell_output: {
-          capacity: '0x0',
+          capacity: `0x${sudtCapacity.toString(16)}`,
           lock: parseAddress(record.recipient),
           type: sudtScript,
         },
@@ -866,7 +866,6 @@ export class CkbTxGenerator extends CkbTxHelper {
       };
       totalSudtOutputCapacity += sudtCapacity;
       totalSudtOutputAmount += amount;
-      recipientCell.cell_output.capacity = `0x${sudtCapacity.toString(16)}`;
       txSkeleton = txSkeleton.update('outputs', (outputs) => {
         return outputs.push(recipientCell);
       });
@@ -882,11 +881,7 @@ export class CkbTxGenerator extends CkbTxHelper {
       },
     };
 
-    const searchedMultisigCells = await this.collector.collectSudtByAmountAndCapacity(
-      searchKey,
-      totalSudtOutputAmount,
-      totalSudtOutputCapacity + sudtCapacity,
-    );
+    const searchedMultisigCells = await this.collector.collectSudtByAmount(searchKey, totalSudtOutputAmount);
     const searchedMultisigCellsAmount = searchedMultisigCells
       .map((cell) => utils.readBigUInt128LE(cell.data))
       .reduce((a, b) => a + b, 0n);
@@ -899,7 +894,7 @@ export class CkbTxGenerator extends CkbTxHelper {
     if (searchedMultisigCellsAmount > totalSudtOutputAmount) {
       omniLockMultisigChangeCell = {
         cell_output: {
-          capacity: `0x0`,
+          capacity: `0x${searchedMultisigCellsCapacity.toString(16)}`,
           lock: omniLockMultisigScript,
           type: sudtScript,
         },
@@ -908,7 +903,7 @@ export class CkbTxGenerator extends CkbTxHelper {
     } else if (searchedMultisigCellsAmount === totalSudtOutputAmount) {
       omniLockMultisigChangeCell = {
         cell_output: {
-          capacity: `0x0`,
+          capacity: `0x${searchedMultisigCellsCapacity.toString(16)}`,
           lock: omniLockMultisigScript,
         },
         data: '0x',
@@ -918,9 +913,6 @@ export class CkbTxGenerator extends CkbTxHelper {
         `multisig cell sudt amount not enough, need ${totalSudtOutputAmount.toString()}, found ${searchedMultisigCellsAmount.toString()}`,
       );
     }
-    omniLockMultisigChangeCell.cell_output.capacity = `0x${(
-      searchedMultisigCellsCapacity - totalSudtOutputCapacity
-    ).toString(16)}`;
     txSkeleton = txSkeleton.update('inputs', (inputs) => {
       return inputs.push(...searchedMultisigCells);
     });
@@ -938,7 +930,7 @@ export class CkbTxGenerator extends CkbTxHelper {
       data: '0x',
     };
     const collectorChangeCellMinimalCapacity = minimalCellCapacity(collectorChangeCell);
-    const collectorNeedCapacity = collectorChangeCellMinimalCapacity + 1n * BigInt(100000000);
+    const collectorNeedCapacity = totalSudtOutputCapacity + collectorChangeCellMinimalCapacity + 1n * BigInt(100000000);
     const searchedCollectorCells = await this.collector.getCellsByLockscriptAndCapacity(
       collectorLockscript,
       collectorNeedCapacity,
@@ -953,7 +945,8 @@ export class CkbTxGenerator extends CkbTxHelper {
     txSkeleton = txSkeleton.update('inputs', (inputs) => {
       return inputs.push(...searchedCollectorCells);
     });
-    collectorChangeCell.cell_output.capacity = `0x${searchedCollectorCellsCapacity.toString(16)}`;
+    const collectorChangeCapacity = searchedCollectorCellsCapacity - totalSudtOutputCapacity;
+    collectorChangeCell.cell_output.capacity = `0x${collectorChangeCapacity.toString(16)}`;
     txSkeleton = txSkeleton.update('outputs', (outputs) => {
       return outputs.push(collectorChangeCell);
     });
