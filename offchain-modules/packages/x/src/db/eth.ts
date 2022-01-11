@@ -65,7 +65,7 @@ export class EthDb implements IQuery {
 
     const mintedIds = await this.succeedMint(mintedRecord);
 
-    return records.filter((r) => mintedIds.includes(r.ckbTxHash));
+    return records.filter((r) => !mintedIds.includes(r.ckbTxHash));
   }
 
   async succeedMint(records: EthMint[]): Promise<string[]> {
