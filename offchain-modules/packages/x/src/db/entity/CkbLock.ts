@@ -8,7 +8,7 @@ export class CkbLock {
   ckbTxHash: string;
 
   @Column()
-  chain: number; // bridge to which chain
+  xchain: number; // bridge to which chain, 1 = Ethereum
 
   @Index()
   @Column('varchar', { length: 1024 })
@@ -18,7 +18,7 @@ export class CkbLock {
   assetIdent: string; // sudt/xudt typescript hash
 
   @Column()
-  amount: string;
+  amount: string; // lock value
 
   @Column({ default: '0' })
   bridgeFee: string;

@@ -6,10 +6,13 @@ export type EthereumMintStatus = dbTxStatus;
 @Entity()
 export class EthereumMint {
   @PrimaryColumn()
-  ckbTxHash: string;
+  ckbTxHash: string; // lock tx hash
 
   @Column()
-  asset: string; // erc20 address
+  erc20TokenAddress: string; // erc20 address
+
+  @Column()
+  nervosAssetId: string; // sudt typescript hash
 
   @Column()
   amount: string;
@@ -20,13 +23,13 @@ export class EthereumMint {
 
   @Index()
   @Column({ nullable: true })
-  blockNumber: number;
+  blockNumber: number; // mint tx block number
 
   @Column({ type: 'bigint' })
-  blockTimestamp: number;
+  blockTimestamp: number; // mint tx block timestamp
 
   @Column({ nullable: true })
-  ethTxHash: string;
+  ethTxHash: string; // mint tx hash
 
   @CreateDateColumn()
   createdAt: string;

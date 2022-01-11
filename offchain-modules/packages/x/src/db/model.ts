@@ -122,10 +122,10 @@ export type XchainUnlock = EthUnlock | BtcUnlock | EosUnlock;
 
 export interface ICkbLock {
   ckbTxHash: string;
-  chain: number; // bridge to which chain
+  xchain: number; // bridge to which chain
   senderAddress: string;
   assetIdent: string; // sudt/xudt typescript hash
-  amount: string;
+  amount: string; // lock value
   bridgeFee: string;
   recipientAddress: string;
   blockNumber: number;
@@ -135,23 +135,24 @@ export interface ICkbLock {
 }
 
 export interface ICkbUnlock {
-  id: string;
+  id: string; // ${burnTxHash}-${logIndex}
   burnTxHash: string;
-  chain: number;
-  assetIdent: string;
+  xchain: number; // bridge from which chain, 1 = Ethereum
+  assetIdent: string; // related sudt/xudt typescript hash
   amount: string;
-  recipientAddress: string;
-  extraData: string;
+  recipientAddress: string; // ckb address
+  udtExtraData: string;
   blockNumber: number;
   blockTimestamp: number;
-  unlockHash: string;
+  unlockTxHash: string; // ckb tx hash
   status?: CkbUnlockStatus;
   message?: string;
 }
 
 export interface IEthereumMint {
   ckbTxHash: string;
-  asset: string;
+  erc20TokenAddress: string;
+  nervosAssetId: string;
   amount: string;
   recipientAddress: string;
   blockNumber: number;
@@ -285,7 +286,7 @@ export interface MintedRecords {
 
 export interface NervosLockAssetTxMetaData {
   amount: bigint;
-  chain: number;
+  xchain: number;
   recipientAddress: string;
   committeeMultisigCellCapacity: bigint;
   assetIdent: string;

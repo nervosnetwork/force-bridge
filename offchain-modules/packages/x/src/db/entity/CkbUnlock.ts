@@ -12,17 +12,17 @@ export class CkbUnlock {
   burnTxHash: string;
 
   @Column()
-  chain: number; // bridge from which chain
+  xchain: number; // bridge from which chain, 1 = Ethereum
 
   @Column()
-  assetIdent: string; // sudt/xudt typescript hash
+  assetIdent: string; // related sudt/xudt typescript hash
 
   @Column()
   amount: string;
 
   @Index()
   @Column('varchar', { length: 1024 })
-  recipientAddress: string;
+  recipientAddress: string; // ckb address
 
   @Column('varchar', { length: 10240, default: '' })
   udtExtraData: string;
@@ -36,7 +36,7 @@ export class CkbUnlock {
 
   @Index()
   @Column({ nullable: true })
-  unlockHash: string;
+  unlockTxHash: string; // ckb tx hash
 
   @CreateDateColumn()
   createdAt: string;

@@ -5,7 +5,7 @@ import { ForceBridgeCore } from '../core';
 import { CollectorCkbMint, dbTxStatus } from './entity/CkbMint';
 import { CkbUnlockStatus, CollectorCkbUnlock } from './entity/CkbUnlock';
 import { CollectorEthUnlock, EthUnlockStatus } from './entity/EthUnlock';
-import { CollectorEthereumMint } from './entity/EthereumMint';
+import { CollectorEthereumMint, EthereumMint } from './entity/EthereumMint';
 import {
   BtcUnlock,
   CkbBurn,
@@ -202,7 +202,7 @@ export class CkbDb {
     });
   }
 
-  async getCkbLockByTxHashes(ckbTxHashes: string[]): Promise<ICkbLock[]> {
+  async getCkbLockByTxHashes(ckbTxHashes: string[]): Promise<CkbLock[]> {
     return await this.connection.getRepository(CkbLock).find({
       where: {
         ckbTxHash: In(ckbTxHashes),
@@ -222,7 +222,7 @@ export class CkbDb {
   }
 
   async updateLockConfirmNumber(
-    records: { ckbTxHash: string; confirmedNumber: number; confirmStatus: TxConfirmStatus }[],
+    records: { ckbTxHash: string; confirmedNumber: number; confirmStatus: TxConfirmStatus; bridgeFee: string }[],
   ): Promise<UpdateResult[]> {
     const updataResults = new Array(0);
     for (const record of records) {
@@ -230,7 +230,11 @@ export class CkbDb {
         .getRepository(CkbLock)
         .createQueryBuilder()
         .update()
-        .set({ confirmNumber: record.confirmedNumber, confirmStatus: record.confirmStatus })
+        .set({
+          confirmNumber: record.confirmedNumber,
+          confirmStatus: record.confirmStatus,
+          bridgeFee: record.bridgeFee,
+        })
         .where('ckb_tx_hash = :ckbTxHash', { ckbTxHash: record.ckbTxHash })
         .execute();
       updataResults.push(result);
@@ -252,10 +256,10 @@ export class CkbDb {
     });
   }
 
-  async getCkbUnlockByEthTxHashes(ethTxHashes: string[]): Promise<CkbUnlock[]> {
+  async getCkbUnlockByBurnTxHashes(burnTxHashes: string[]): Promise<CkbUnlock[]> {
     return await this.connection.getRepository(CkbUnlock).find({
       where: {
-        burnTxHash: In(ethTxHashes),
+        burnTxHash: In(burnTxHashes),
       },
     });
   }
@@ -268,5 +272,13 @@ export class CkbDb {
       .set({ status: 'success' })
       .where({ burnTxHash: In(ethTxHashes) })
       .execute();
+  }
+
+  async getEthereumMintByCkbTxHashes(ckbTxHashes: string[]): Promise<EthereumMint[]> {
+    return await this.connection.getRepository(EthereumMint).find({
+      where: {
+        ckbTxHash: In(ckbTxHashes),
+      },
+    });
   }
 }
