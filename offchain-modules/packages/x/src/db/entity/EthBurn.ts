@@ -26,7 +26,7 @@ export class EthBurn {
   bridgeFee: string;
 
   @Index()
-  @Column('varchar', { length: 10240 })
+  @Column('varchar', { length: 1024 })
   recipient: string;
 
   @Column('varchar', { length: 10240, default: '' })

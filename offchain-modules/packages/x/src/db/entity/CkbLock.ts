@@ -11,7 +11,7 @@ export class CkbLock {
   xchain: number; // bridge to which chain, 1 = Ethereum
 
   @Index()
-  @Column('varchar', { length: 10240 })
+  @Column('varchar', { length: 1024 })
   senderAddress: string; // ckb address
 
   @Column()
@@ -24,7 +24,7 @@ export class CkbLock {
   bridgeFee: string;
 
   @Index()
-  @Column('varchar', { length: 10240 })
+  @Column()
   recipientAddress: string;
 
   @Index()
