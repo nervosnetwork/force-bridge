@@ -21,7 +21,7 @@ export class CkbUnlock {
   amount: string;
 
   @Index()
-  @Column('varchar', { length: 10240 })
+  @Column('varchar', { length: 1024 })
   recipientAddress: string; // ckb address
 
   @Column('varchar', { length: 10240, default: '' })
