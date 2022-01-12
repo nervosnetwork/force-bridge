@@ -65,6 +65,7 @@ async function generateConfig(
     gasLimit: 250000,
     batchGasLimit: 100000,
     gasPriceGweiLimit: 100,
+    multiCellXchainType: '0x01',
   };
   collectorConfig.eth.multiSignHosts = multisigConfig.verifiers.map((v, i) => {
     return {
@@ -317,6 +318,7 @@ async function main() {
       ETH_PRIVATE_KEY,
       CKB_PRIVATE_KEY,
       'DEV',
+      '0x01',
       path.join(configPath, 'deployConfig.json'),
     );
   await generateConfig(
