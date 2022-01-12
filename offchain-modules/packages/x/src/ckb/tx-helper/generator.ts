@@ -66,8 +66,9 @@ export class CkbTxGenerator extends CkbTxHelper {
     const cellCollector = this.indexer.collector({
       lock: multisigLockscript,
     });
+    if (!ForceBridgeCore.config.collector) throw new Error('Collector config not set');
     for await (const cell of cellCollector.collect()) {
-      if (cell.cell_output.type === null) {
+      if (cell.cell_output.type === null && cell.data === ForceBridgeCore.config.collector.multiCellXchainType) {
         return cell;
       }
     }

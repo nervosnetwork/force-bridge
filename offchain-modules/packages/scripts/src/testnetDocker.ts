@@ -67,6 +67,7 @@ async function generateConfig(
     gasLimit: 250000,
     batchGasLimit: 120000,
     gasPriceGweiLimit: 100,
+    multiCellXchainType: '0x01',
   };
   collectorConfig.common.collectorPubKeyHash.push(privateKeyToCkbPubkeyHash(CKB_PRIVATE_KEY));
   collectorConfig.eth.multiSignHosts = multisigConfig.verifiers.map((v, i) => {
