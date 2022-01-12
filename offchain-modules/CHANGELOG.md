@@ -1,3 +1,9 @@
+## v0.0.19 (2022-1-12)
+
+### Bug fixes
+
+- [fix multisig cell conflict](https://github.com/nervosnetwork/force-bridge/pull/290)
+
 ## v0.0.18 (2022-1-7)
 
 ### Features
