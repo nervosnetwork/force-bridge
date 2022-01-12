@@ -35,7 +35,7 @@ export async function deployDev(
   ethPrivateKey: string,
   ckbPrivateKey: string,
   env: 'LINA' | 'AGGRON4' | 'DEV' = 'DEV',
-  multiCellXchainType = '0x01',
+  multiCellXchainType: string,
   cachePath?: string,
   ckbDeps?: CkbDeps,
 ): Promise<DeployDevResult> {

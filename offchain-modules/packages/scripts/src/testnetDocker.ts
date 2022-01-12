@@ -330,6 +330,7 @@ async function main() {
       ETH_PRIVATE_KEY,
       CKB_PRIVATE_KEY,
       'AGGRON4',
+      '0x01',
       path.join(configPath, 'deployConfig.json'),
       ckbDepsFromFile,
     );

@@ -318,6 +318,7 @@ async function main() {
       ETH_PRIVATE_KEY,
       CKB_PRIVATE_KEY,
       'DEV',
+      '0x01',
       path.join(configPath, 'deployConfig.json'),
     );
   await generateConfig(
