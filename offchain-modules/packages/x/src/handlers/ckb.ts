@@ -836,7 +836,7 @@ export class CkbHandler {
       senderLockscript.hashType !== committeeMultisigLockscript.hash_type ||
       senderLockscript.args !== committeeMultisigLockscript.args
     ) {
-      logger.error(`sender must be committee multisig cell`);
+      logger.warn(`invalid unlock tx: first input is not committee multisig cell`);
       return null;
     }
 
