@@ -743,21 +743,6 @@ export function parseLockLog(log: Log, parsedLog: ParsedLog): ParsedLockLog {
   };
 }
 
-export function parseBurnLog(log: Log, parsedLog: ParsedLog): ParsedBurnLog {
-  return {
-    txHash: log.transactionHash,
-    amount: parsedLog.args.amount.toString(),
-    token: parsedLog.args.token,
-    recipient: '',
-    sudtExtraData: '',
-    blockNumber: log.blockNumber,
-    blockHash: log.blockHash,
-    logIndex: log.logIndex,
-    sender: parsedLog.args.sender,
-    assetId: parsedLog.args.assetId,
-  };
-}
-
 function toCKBAddress2021(address: string): string {
   try {
     const newAddress = generateAddress(parseAddress(address));
