@@ -996,6 +996,223 @@ export class CkbTxGenerator extends CkbTxHelper {
 
     return txSkeleton;
   }
+
+  async unlockSUDT(
+    sudtArgs: string,
+    records: { burnId: string; recipient: string; amount: string }[],
+  ): Promise<TransactionSkeletonType> {
+    const collectorAddress = getFromAddr();
+
+    let txSkeleton = TransactionSkeleton({
+      cellProvider: this.indexer,
+    });
+
+    // search admin cell
+    const adminCell = await this.fetchOmniLockAdminCell();
+    const adminCellOutpoint = adminCell?.out_point;
+    if (!adminCellOutpoint) throw new Error('omni lock admin cell outpoint could not be null');
+    const adminCellCellDep: CellDep = {
+      out_point: adminCellOutpoint,
+      dep_type: 'code',
+    };
+
+    // add cellDeps
+    txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
+      const found = nonNullable(this.lumosConfig.SCRIPTS.SECP256K1_BLAKE160);
+      return cellDeps.push({
+        dep_type: found.DEP_TYPE,
+        out_point: { tx_hash: found.TX_HASH, index: found.INDEX },
+      });
+    });
+    txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
+      return cellDeps.push(adminCellCellDep);
+    });
+    txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
+      const omniLockCellDep = nonNullable(ForceBridgeCore.config.ckb.deps.omniLock?.cellDep);
+      return cellDeps.push({
+        out_point: {
+          tx_hash: omniLockCellDep.outPoint.txHash,
+          index: omniLockCellDep.outPoint.index,
+        },
+        dep_type: omniLockCellDep.depType,
+      });
+    });
+
+    const sudtScript = {
+      code_hash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
+      hash_type: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
+      args: sudtArgs,
+    };
+
+    let totalSudtOutputCapacity = BigInt(0);
+    let totalSudtOutputAmount = BigInt(0);
+    const sudtCapacity = BigInt(ForceBridgeCore.config.ckb.sudtSize * 10 ** 8);
+    // add recipient outputs
+    records.forEach((record) => {
+      const amount = BigInt(record.amount);
+      const recipientCell: Cell = {
+        cell_output: {
+          capacity: `0x${sudtCapacity.toString(16)}`,
+          lock: parseAddress(record.recipient),
+          type: sudtScript,
+        },
+        data: utils.toBigUInt128LE(amount),
+      };
+      totalSudtOutputCapacity += sudtCapacity;
+      totalSudtOutputAmount += amount;
+      txSkeleton = txSkeleton.update('outputs', (outputs) => {
+        return outputs.push(recipientCell);
+      });
+    });
+
+    // collect sudt and add multisig cell inputs
+    const omniLockMultisigScript = parseAddress(getOmniLockMultisigAddress());
+    const searchKey = {
+      script: omniLockMultisigScript,
+      script_type: ScriptType.lock,
+      filter: {
+        script: sudtScript,
+      },
+    };
+
+    const searchedMultisigCells = await this.collector.collectSudtByAmount(searchKey, totalSudtOutputAmount);
+    const searchedMultisigCellsAmount = searchedMultisigCells
+      .map((cell) => utils.readBigUInt128LE(cell.data))
+      .reduce((a, b) => a + b, 0n);
+    const searchedMultisigCellsCapacity = searchedMultisigCells
+      .map((cell) => BigInt(cell.cell_output.capacity))
+      .reduce((a, b) => a + b, 0n);
+
+    // add multisigChangeCell if searchedMultisigCellsAmount === totalSudtOutputAmount then use ckb cell for change
+    let omniLockMultisigChangeCell: Cell;
+    if (searchedMultisigCellsAmount > totalSudtOutputAmount) {
+      omniLockMultisigChangeCell = {
+        cell_output: {
+          capacity: `0x${searchedMultisigCellsCapacity.toString(16)}`,
+          lock: omniLockMultisigScript,
+          type: sudtScript,
+        },
+        data: utils.toBigUInt128LE(searchedMultisigCellsAmount - totalSudtOutputAmount),
+      };
+    } else if (searchedMultisigCellsAmount === totalSudtOutputAmount) {
+      omniLockMultisigChangeCell = {
+        cell_output: {
+          capacity: `0x${searchedMultisigCellsCapacity.toString(16)}`,
+          lock: omniLockMultisigScript,
+        },
+        data: '0x',
+      };
+    } else {
+      throw new Error(
+        `multisig cell sudt amount not enough, need ${totalSudtOutputAmount.toString()}, found ${searchedMultisigCellsAmount.toString()}`,
+      );
+    }
+    txSkeleton = txSkeleton.update('inputs', (inputs) => {
+      return inputs.push(...searchedMultisigCells);
+    });
+    txSkeleton = txSkeleton.update('outputs', (outputs) => {
+      return outputs.push(omniLockMultisigChangeCell);
+    });
+
+    // add collector cell to pay tx fee
+    const collectorLockscript = parseAddress(collectorAddress);
+    const collectorChangeCell: Cell = {
+      cell_output: {
+        capacity: `0x0`,
+        lock: collectorLockscript,
+      },
+      data: '0x',
+    };
+    const collectorChangeCellMinimalCapacity = minimalCellCapacity(collectorChangeCell);
+    const collectorNeedCapacity = totalSudtOutputCapacity + collectorChangeCellMinimalCapacity + 1n * BigInt(100000000);
+    const searchedCollectorCells = await this.collector.getCellsByLockscriptAndCapacity(
+      collectorLockscript,
+      collectorNeedCapacity,
+    );
+    const searchedCollectorCellsCapacity = searchedCollectorCells
+      .map((cell) => BigInt(cell.cell_output.capacity))
+      .reduce((a, b) => a + b, 0n);
+    if (searchedCollectorCellsCapacity < collectorNeedCapacity)
+      throw new Error(
+        `collector cell ckb capacity not enough, need ${collectorNeedCapacity.toString()}, found ${searchedCollectorCellsCapacity.toString()}`,
+      );
+    txSkeleton = txSkeleton.update('inputs', (inputs) => {
+      return inputs.push(...searchedCollectorCells);
+    });
+    const collectorChangeCapacity = searchedCollectorCellsCapacity - totalSudtOutputCapacity;
+    collectorChangeCell.cell_output.capacity = `0x${collectorChangeCapacity.toString(16)}`;
+    txSkeleton = txSkeleton.update('outputs', (outputs) => {
+      return outputs.push(collectorChangeCell);
+    });
+
+    // add witness
+    const omniLockWitnessPlaceholder = getOmniLockMultisigWitnessPlaceholder();
+    const omniLockWitnessGroup = lodash.range(searchedMultisigCells.length).map((index) => {
+      if (index === 0) return omniLockWitnessPlaceholder;
+      return '0x';
+    });
+    txSkeleton = txSkeleton.update('witnesses', (witnesses) => {
+      return witnesses.push(...omniLockWitnessGroup);
+    });
+    const collectorWitness = new Reader(
+      SerializeWitnessArgs(
+        normalizers.NormalizeWitnessArgs({
+          lock: SECP_SIGNATURE_PLACEHOLDER,
+        }),
+      ),
+    ).serializeJson();
+    const collectorWitnessGroup = lodash.range(searchedCollectorCells.length).map((index) => {
+      if (index === 0) return collectorWitness;
+      return '0x';
+    });
+    txSkeleton = txSkeleton.update('witnesses', (witnesses) => {
+      return witnesses.push(...collectorWitnessGroup);
+    });
+
+    const unlockMemo = SerializeUnlockMemo({
+      xchain: 1,
+      burnIds: records.map((record) => new Reader(record.burnId)),
+    });
+    // put unlockMemo in witnesses[inputs.len]
+    txSkeleton = txSkeleton.update('witnesses', (witnesses) => {
+      return witnesses.push(new Reader(unlockMemo).serializeJson());
+    });
+
+    // pay tx fee
+    const txFee = calculateFee(getTransactionSize(txSkeleton));
+    txSkeleton = txSkeleton.update('outputs', (outputs) => {
+      return outputs.map((cell) => {
+        if (
+          cell.cell_output.lock.args === collectorLockscript.args &&
+          cell.cell_output.lock.hash_type === collectorLockscript.hash_type &&
+          cell.cell_output.lock.code_hash === collectorLockscript.code_hash
+        ) {
+          cell.cell_output.capacity = `0x${(BigInt(cell.cell_output.capacity) - txFee).toString(16)}`;
+        }
+        return cell;
+      });
+    });
+
+    // Lumos not support omni-lock, so we use a tricky way to workaround
+    const trickyLumosConfig = {
+      PREFIX: this.lumosConfig.PREFIX,
+      SCRIPTS: {
+        SECP256K1_BLAKE160_MULTISIG: {
+          CODE_HASH: nonNullable(ForceBridgeCore.config.ckb.deps.omniLock?.script.codeHash),
+          HASH_TYPE: nonNullable(ForceBridgeCore.config.ckb.deps.omniLock?.script.hashType) as 'type' | 'data',
+          TX_HASH: nonNullable(ForceBridgeCore.config.ckb.deps.omniLock?.cellDep.outPoint.txHash),
+          INDEX: nonNullable(ForceBridgeCore.config.ckb.deps.omniLock?.cellDep.outPoint.index),
+          DEP_TYPE: nonNullable(ForceBridgeCore.config.ckb.deps.omniLock?.cellDep.depType),
+        },
+        SECP256K1_BLAKE160: this.lumosConfig.SCRIPTS.SECP256K1_BLAKE160,
+      },
+    };
+    txSkeleton = common.prepareSigningEntries(txSkeleton, {
+      config: trickyLumosConfig,
+    });
+
+    return txSkeleton;
+  }
 }
 
 function transformScript(script: Script | undefined | null): CKBComponents.Script | null {
