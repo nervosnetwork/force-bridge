@@ -16,6 +16,7 @@ import { asyncSleep, foreverPromise, fromHexString, retryPromise, uint8ArrayToSt
 import { logger } from '../utils/logger';
 import { EthChain, WithdrawBridgeFeeTopic, Log, ParsedLog } from '../xchain/eth';
 import { checkLock } from '../xchain/eth/check';
+import Mint from './eth/mint/mint';
 
 const lastHandleEthBlockKey = 'lastHandleEthBlock';
 
@@ -179,6 +180,10 @@ export class EthHandler {
         await this.onBurnLogs(log, parsedLog, currentHeight);
         break;
       case 'Mint':
+        logger.info(
+          `EthHandler watchMintEvents receiveLog blockHeight:${log.blockNumber} blockHash:${log.blockHash} txHash:${log.transactionHash} amount:${parsedLog.args.amount} asset:${parsedLog.args.assetId} recipient:${parsedLog.args.to} ckbTxHash:${parsedLog.args.lockId}`,
+        );
+        await Mint.fromRole(this.role, this.ethDb, this.ethChain)?.handle(log, parsedLog);
         await this.onMinted(log, parsedLog);
         break;
       default:
@@ -194,10 +199,6 @@ export class EthHandler {
    * @returns
    */
   async onMinted(log: Log, parsedLog: ParsedLog): Promise<void> {
-    logger.info(
-      `EthHandler watchMintEvents receiveLog blockHeight:${log.blockNumber} blockHash:${log.blockHash} txHash:${log.transactionHash} amount:${parsedLog.args.amount} asset:${parsedLog.args.assetId} recipient:${parsedLog.args.to} ckbTxHash:${parsedLog.args.lockId}`,
-    );
-
     logger.debug('EthHandler watchMintEvents eth unlockLog:', { log, parsedLog });
 
     const collectRecord = await this.ethDb.getCEthMintRecordByCkbTx(parsedLog.args.lockId);

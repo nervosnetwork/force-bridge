@@ -1,6 +1,7 @@
 // invoke in eth handler
 import { Connection, In, Repository, UpdateResult } from 'typeorm';
 import { ForceBridgeCore } from '../core';
+import { CkbLock } from './entity/CkbLock';
 import { CollectorCkbMint } from './entity/CkbMint';
 import { CollectorCkbUnlock } from './entity/CkbUnlock';
 import { EthBurn } from './entity/EthBurn';
@@ -99,12 +100,20 @@ export class EthDb implements IQuery {
     return await this.connection.getRepository(CollectorEthMint).findOne({ ckbTxHash: tx });
   }
 
+  async getCkbLock(ckbTx: string): Promise<CkbLock | undefined> {
+    return await this.connection.getRepository(CkbLock).findOne(ckbTx);
+  }
+
   async getEthMint(ckbTx: string): Promise<EthMint | undefined> {
     return await this.connection.getRepository(EthMint).findOne(ckbTx);
   }
 
   async saveEthMint(record: EthMint): Promise<EthMint> {
     return await this.connection.getRepository(EthMint).save(record);
+  }
+
+  async saveCkbLock(record: CkbLock): Promise<CkbLock> {
+    return await this.connection.getRepository(CkbLock).save(record);
   }
 
   async getLatestHeight(): Promise<number> {
