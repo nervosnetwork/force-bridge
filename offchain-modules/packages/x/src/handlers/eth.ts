@@ -1,6 +1,5 @@
 import { generateAddress, parseAddress } from '@ckb-lumos/helpers';
 import { BigNumber } from 'ethers';
-import { LogDescription } from 'ethers/lib/utils';
 import { TransferOutSwitch } from '../audit/switch';
 import { ChainType, EthAsset } from '../ckb/model/asset';
 import { forceBridgeRole } from '../config';
@@ -16,7 +15,7 @@ import { asyncSleep, foreverPromise, fromHexString, retryPromise, uint8ArrayToSt
 import { logger } from '../utils/logger';
 import { EthChain, WithdrawBridgeFeeTopic, Log, ParsedLog } from '../xchain/eth';
 import { checkLock } from '../xchain/eth/check';
-import Mint from './eth/mint/mint';
+import { Factory as MintHandlerFactory } from './eth/mint/factory';
 
 const lastHandleEthBlockKey = 'lastHandleEthBlock';
 
@@ -183,68 +182,11 @@ export class EthHandler {
         logger.info(
           `EthHandler watchMintEvents receiveLog blockHeight:${log.blockNumber} blockHash:${log.blockHash} txHash:${log.transactionHash} amount:${parsedLog.args.amount} asset:${parsedLog.args.assetId} recipient:${parsedLog.args.to} ckbTxHash:${parsedLog.args.lockId}`,
         );
-        await Mint.fromRole(this.role, this.ethDb, this.ethChain)?.handle(log, parsedLog);
-        await this.onMinted(log, parsedLog);
+        await MintHandlerFactory.fromRole(this.role, this.ethDb, this.ethChain)?.handle(log, parsedLog);
         break;
       default:
         logger.info(`not handled log type ${parsedLog.name}, log: ${JSON.stringify(log)}`);
     }
-  }
-
-  /**
-   * For watcher and verifier, just save the record to mint table.
-   * For collector, should update the record in collector mint table extra.
-   * @param log
-   * @param parsedLog
-   * @returns
-   */
-  async onMinted(log: Log, parsedLog: ParsedLog): Promise<void> {
-    logger.debug('EthHandler watchMintEvents eth unlockLog:', { log, parsedLog });
-
-    const collectRecord = await this.ethDb.getCEthMintRecordByCkbTx(parsedLog.args.lockId);
-    if (collectRecord == undefined) {
-      logger.error(
-        `EthHandler watchMintEvents no ckb tx mapped. ethTxHash:${log.transactionHash} ckbTxHash:${parsedLog.args.lockId}`,
-      );
-
-      return;
-    }
-
-    if (collectRecord.amount < parsedLog.args.amount) {
-      logger.error(`EthHandler watchMintEvents amount is bigger than record. ethTxHash:${log.transactionHash}`);
-      return;
-    } else if (collectRecord.amount > parsedLog.args.amount) {
-      logger.warn(`EthHandler watchMintEvents amount is smaller than record. ethTxHash:${log.transactionHash}`);
-    }
-
-    const block = await this.ethChain.getBlock(log.blockHash);
-
-    collectRecord.ethTxHash = log.transactionHash;
-    collectRecord.status = 'success';
-    collectRecord.blockNumber = log.blockNumber;
-    collectRecord.blockTimestamp = block.timestamp;
-
-    if (this.role == 'collector') {
-      await this.ethDb.saveCollectorEthMints([collectRecord]);
-    }
-
-    await this.updateMint(collectRecord, parsedLog);
-
-    BridgeMetricSingleton.getInstance(this.role).addBridgeTokenMetrics('eth_mint', [
-      {
-        amount: Number(parsedLog.args.amount),
-        token: parsedLog.args.assetId,
-      },
-    ]);
-  }
-
-  async updateMint(record: CollectorEthMint, parsedLog: LogDescription): Promise<void> {
-    record.amount = parsedLog.args.amount;
-    record.nervosAssetId = parsedLog.args.assetId;
-    record.recipientAddress = parsedLog.args.to;
-    record.erc20TokenAddress = parsedLog.args.token;
-
-    await this.ethDb.saveEthMint(record);
   }
 
   async onBurnLogs(log: Log, parsedLog: ParsedLog, currentHeight: number): Promise<void> {

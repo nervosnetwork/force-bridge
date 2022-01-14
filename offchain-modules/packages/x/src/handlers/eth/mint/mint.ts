@@ -4,28 +4,12 @@ import { EthDb } from '../../../db';
 import { EthMint } from '../../../db/entity/EthMint';
 import { BridgeMetricSingleton } from '../../../metric/bridge-metric';
 import { ParsedLog, Log, EthChain } from '../../../xchain/eth';
-import Collector from './collector';
-import Verifier from './verifier';
-import Watcher from './watcher';
 
 abstract class Mint {
   protected ethDb: EthDb;
   protected ethChain: EthChain;
   protected block: ethers.providers.Block | undefined = undefined;
   protected abstract role: ForceBridgeRole;
-
-  static fromRole(role: ForceBridgeRole, ethDb: EthDb, ethChain: EthChain): Mint | undefined {
-    switch (role) {
-      case 'collector':
-        return new Collector(ethDb, ethChain);
-      case 'verifier':
-        return new Verifier(ethDb, ethChain);
-      case 'watcher':
-        return new Watcher(ethDb, ethChain);
-      default:
-        return undefined;
-    }
-  }
 
   constructor(ethDb: EthDb, ethChain: EthChain) {
     this.ethDb = ethDb;
