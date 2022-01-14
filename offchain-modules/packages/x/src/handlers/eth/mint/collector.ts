@@ -15,6 +15,8 @@ class Collector extends Mint {
     }
 
     await this.saveCollectorMint(record, log);
+
+    this.reportMetrics(parsedLog);
   }
 
   protected async saveCollectorMint(record: CollectorEthMint, log: Log): Promise<void> {

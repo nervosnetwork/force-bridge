@@ -17,15 +17,18 @@ abstract class Mint {
   }
 
   async handle(log: Log, parsedLog: ParsedLog): Promise<void> {
+    const record = await this.getMintRecord(parsedLog);
+    await this.updateMintRecord(log, record);
+    await this.saveBridgeFee(parsedLog, record);
+  }
+
+  protected reportMetrics(parsedLog: ParsedLog): void {
     BridgeMetricSingleton.getInstance(this.role).addBridgeTokenMetrics('eth_mint', [
       {
         amount: parsedLog.args.amount.toNumber(),
         token: parsedLog.args.token,
       },
     ]);
-    const record = await this.getMintRecord(parsedLog);
-    await this.updateMintRecord(log, record);
-    await this.saveBridgeFee(parsedLog, record);
   }
 
   protected async getMintRecord(parsedLog: ParsedLog): Promise<EthMint> {
