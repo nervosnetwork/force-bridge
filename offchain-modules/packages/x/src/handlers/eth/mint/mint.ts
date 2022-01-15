@@ -17,9 +17,14 @@ abstract class Mint {
   }
 
   async handle(log: Log, parsedLog: ParsedLog): Promise<void> {
-    const record = await this.getMintRecord(parsedLog);
-    await this.updateMintRecord(log, record);
+    const record = await this.getMintRecord(parsedLog, log);
     await this.saveBridgeFee(parsedLog, record);
+  }
+
+  protected async initBlock(hash: string): Promise<void> {
+    if (!this.block) {
+      this.block = await this.ethChain.getBlock(hash);
+    }
   }
 
   protected reportMetrics(parsedLog: ParsedLog): void {
@@ -31,16 +36,22 @@ abstract class Mint {
     ]);
   }
 
-  protected async getMintRecord(parsedLog: ParsedLog): Promise<EthMint> {
+  protected async getMintRecord(parsedLog: ParsedLog, log: Log): Promise<EthMint> {
     let record = await this.ethDb.getEthMint(parsedLog.args.lockId);
 
     if (record == undefined) {
+      await this.initBlock(log.blockHash);
+
       record = new EthMint();
       record.ckbTxHash = parsedLog.args.lockId;
       record.nervosAssetId = parsedLog.args.assetId;
       record.erc20TokenAddress = parsedLog.args.token;
       record.amount = parsedLog.args.amount;
       record.recipientAddress = parsedLog.args.to;
+      record.blockTimestamp = (this.block as ethers.providers.Block).timestamp;
+      record.blockNumber = log.blockNumber;
+
+      await this.ethDb.saveEthMint(record);
     }
 
     return record;
@@ -48,17 +59,6 @@ abstract class Mint {
 
   protected isCkb(assetId: string): boolean {
     return assetId == '0x0000000000000000000000000000000000000000000000000000000000000000';
-  }
-
-  async updateMintRecord(log: Log, record: EthMint): Promise<void> {
-    if (!this.block) {
-      this.block = await this.ethChain.getBlock(log.blockHash);
-    }
-
-    record.blockTimestamp = this.block.timestamp;
-    record.blockNumber = this.block.number;
-
-    await this.ethDb.saveEthMint(record);
   }
 
   async saveBridgeFee(parsedLog: ParsedLog, record: EthMint): Promise<void> {
