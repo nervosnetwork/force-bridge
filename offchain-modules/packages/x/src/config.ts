@@ -63,6 +63,8 @@ export interface EthConfig {
   nervosAssetWhiteList: WhiteListNervosAsset[];
   lockNervosAssetFee: string; // bridge fee paid by CKB, unit: shannon
   burnNervosAssetFee: string; // bridge fee paid by ETH, unit: wei
+  bridgeFee: number;
+  minBurnAmount: number;
 }
 
 export interface EosConfig {

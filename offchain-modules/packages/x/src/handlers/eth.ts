@@ -5,16 +5,16 @@ import { ChainType, EthAsset } from '../ckb/model/asset';
 import { forceBridgeRole } from '../config';
 import { ForceBridgeCore } from '../core';
 import { EthDb, KVDb, BridgeFeeDB } from '../db';
-import { EthBurn } from '../db/entity/EthBurn';
 import { CollectorEthMint } from '../db/entity/EthMint';
 import { EthUnlockStatus } from '../db/entity/EthUnlock';
-import { EthUnlock, ICkbUnlock, IEthUnlock } from '../db/model';
+import { EthUnlock, IEthUnlock } from '../db/model';
 import { asserts, nonNullable } from '../errors';
 import { BridgeMetricSingleton, txTokenInfo } from '../metric/bridge-metric';
 import { asyncSleep, foreverPromise, fromHexString, retryPromise, uint8ArrayToString } from '../utils';
 import { logger } from '../utils/logger';
 import { EthChain, WithdrawBridgeFeeTopic, Log, ParsedLog } from '../xchain/eth';
 import { checkLock } from '../xchain/eth/check';
+import { Factory as BurnHandlerFactory } from './eth/burn/factory';
 import { Factory as MintHandlerFactory } from './eth/mint/factory';
 
 const lastHandleEthBlockKey = 'lastHandleEthBlock';
@@ -30,19 +30,6 @@ export interface ParsedLockLog {
   blockHash: string;
   logIndex: number;
   asset: EthAsset;
-}
-
-export interface ParsedBurnLog {
-  txHash: string;
-  sender: string;
-  token: string;
-  amount: string;
-  recipient: string;
-  sudtExtraData: string;
-  blockNumber: number;
-  blockHash: string;
-  logIndex: number;
-  assetId: string;
 }
 
 export class EthHandler {
@@ -176,7 +163,7 @@ export class EthHandler {
         await this.onUnlockLogs(log, parsedLog);
         break;
       case 'Burn':
-        await this.onBurnLogs(log, parsedLog, currentHeight);
+        await BurnHandlerFactory.fromRole(this.role, this.ethDb, this.ethChain)?.handle(parsedLog, log, currentHeight);
         break;
       case 'Mint':
         logger.info(
@@ -186,73 +173,6 @@ export class EthHandler {
         break;
       default:
         logger.info(`not handled log type ${parsedLog.name}, log: ${JSON.stringify(log)}`);
-    }
-  }
-
-  async onBurnLogs(log: Log, parsedLog: ParsedLog, currentHeight: number): Promise<void> {
-    const record = await this.ethDb.getBurnRecord(log.logIndex, log.transactionHash);
-    const confirmedNumber = currentHeight - log.blockNumber;
-    const confirmStatus = confirmedNumber >= ForceBridgeCore.config.eth.confirmNumber ? 'confirmed' : 'unconfirmed';
-    const block = await this.ethChain.getBlock(log.blockHash);
-    logger.info(
-      `EthHandler watchBurnEvents receiveLog blockHeight:${log.blockNumber} blockHash:${log.blockHash} txHash:${
-        log.transactionHash
-      } amount:${parsedLog.args.amount.toString()} asset:${parsedLog.args.token} recipientLockscript:${
-        parsedLog.args.recipient
-      } sudtExtraData:${parsedLog.args.extraData} sender:${
-        parsedLog.args.from
-      }, confirmedNumber: ${confirmedNumber}, confirmStatus: ${confirmStatus}`,
-    );
-    if (record == undefined) {
-      await this.ethDb.createEthBurn({
-        burnTxHash: log.transactionHash,
-        amount: parsedLog.args.amount,
-        xchainTokenId: parsedLog.args.token,
-        recipient: parsedLog.args.recipient,
-        nervosAssetId: parsedLog.args.assetId,
-        udtExtraData: parsedLog.args.extraData,
-        blockNumber: log.blockNumber,
-        blockHash: log.blockHash,
-        sender: parsedLog.args.from,
-        uniqueId: EthBurn.primaryKey(log.logIndex, log.transactionHash),
-        bridgeFee: parsedLog.args.fee.toString(),
-        confirmNumber: confirmedNumber,
-        confirmStatus: confirmStatus,
-        blockTimestamp: block.timestamp,
-      });
-      BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_burn', 'success');
-      BridgeMetricSingleton.getInstance(this.role).addBridgeTokenMetrics('eth_burn', [
-        {
-          amount: Number(parsedLog.args.amount),
-          token: parsedLog.args.token,
-        },
-      ]);
-    } else {
-      record.amount = parsedLog.args.amount;
-      record.recipient = parsedLog.args.recipient;
-      record.udtExtraData = parsedLog.args.extraData;
-      record.confirmStatus = confirmStatus;
-      await this.ethDb.saveEthBurn(record);
-      logger.info(
-        `update burn record ${log.transactionHash} status, confirmed number: ${confirmedNumber} status ${confirmStatus}`,
-      );
-    }
-
-    if (confirmStatus == 'confirmed' && this.role == 'collector') {
-      const unlock: ICkbUnlock = {
-        id: EthBurn.primaryKey(log.logIndex, log.transactionHash),
-        burnTxHash: log.transactionHash,
-        xchain: ChainType.ETH,
-        udtExtraData: parsedLog.args.extraData,
-        assetIdent: parsedLog.args.assetId,
-        amount: parsedLog.args.amount,
-        recipientAddress: parsedLog.args.recipient,
-        blockTimestamp: block.timestamp,
-        blockNumber: log.blockNumber,
-        unlockTxHash: '',
-        extraData: parsedLog.args.extraData,
-      };
-      await this.ethDb.createCollectorCkbUnlock([unlock]);
     }
   }
 
