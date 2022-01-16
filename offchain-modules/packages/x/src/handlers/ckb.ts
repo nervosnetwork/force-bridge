@@ -393,43 +393,35 @@ export class CkbHandler {
   async onUnlockTx(txInfo: CkbTxInfo, currentHeight: number): Promise<void> {
     await retryPromise(
       async () => {
-        const parsedUnlockTx = await this.parseUnlockTx(txInfo.tx.transaction);
+        const block = await this.ckb.rpc.getBlock(txInfo.tx.txStatus.blockHash!);
+        const parsedUnlockTx = await this.parseUnlockTx(
+          txInfo.tx.transaction,
+          Number(txInfo.info.block_number),
+          Number(block.header.timestamp),
+        );
         if (!parsedUnlockTx) {
           return null;
         }
-        const ethereumBurns = parsedUnlockTx.ethereumBurns;
-        const amount = ethereumBurns.map((ethereumBurn) => BigInt(ethereumBurn.amount)).reduce((a, b) => a + b, 0n);
+        const iCkbUnlocks = parsedUnlockTx.iCkbUnlocks;
+        const amount = iCkbUnlocks.map((iCkbUnlock) => BigInt(iCkbUnlock.amount)).reduce((a, b) => a + b, 0n);
         logger.info(
-          `CkbHandler watchUnlockEvents receiveLog blockHeight:${txInfo.info.block_number} blockHash:${txInfo.tx.txStatus.blockHash} txHash:${txInfo.info.tx_hash} ethereumBurns:${ethereumBurns}`,
+          `CkbHandler watchUnlockEvents receiveLog blockHeight:${txInfo.info.block_number} blockHash:${txInfo.tx.txStatus.blockHash} txHash:${txInfo.info.tx_hash} amount: ${amount} iCkbLocks: ${iCkbUnlocks}`,
         );
         logger.debug('CkbHandler watchUnlockEvents ckb unlockLog:', { txInfo, parsedUnlockTx });
 
-        const iCkbUnlocks: ICkbUnlock[] = ethereumBurns.map((ethereumBurn) => ({
-          id: ethereumBurn.uniqueId,
-          burnTxHash: ethereumBurn.burnTxHash,
-          xchain: ChainType.ETH,
-          assetIdent: ethereumBurn.nervosAssetId,
-          amount: ethereumBurn.amount,
-          recipientAddress: ethereumBurn.recipient,
-          udtExtraData: ethereumBurn.udtExtraData,
-          blockNumber: ethereumBurn.blockNumber,
-          blockTimestamp: ethereumBurn.blockTimestamp,
-          unlockTxHash: '',
-          status: 'todo',
-        }));
         await this.db.createCkbUnlock(iCkbUnlocks);
         if (this.role === 'collector') {
           await Promise.all(
-            ethereumBurns.map((ethereumBurn) =>
-              this.db.updateCollectorUnlockStatus(ethereumBurn.burnTxHash, ethereumBurn.blockNumber, 'success'),
+            iCkbUnlocks.map((iCkbUnlock) =>
+              this.db.updateCollectorUnlockStatus(iCkbUnlock.burnTxHash, iCkbUnlock.blockNumber, 'success'),
             ),
           );
         }
         BridgeMetricSingleton.getInstance(this.role).addBridgeTokenMetrics(
           'ckb_unlock',
-          ethereumBurns.map((ethereumBurn) => ({
-            token: ethereumBurn.uniqueId,
-            amount: Number(ethereumBurn.amount),
+          iCkbUnlocks.map((iCkbUnlock) => ({
+            token: iCkbUnlock.id,
+            amount: Number(iCkbUnlock.amount),
           })),
         );
       },
@@ -815,7 +807,11 @@ export class CkbHandler {
     }
   }
 
-  async parseUnlockTx(tx: Transaction): Promise<NervosUnlockAssetTxMetaData | null> {
+  async parseUnlockTx(
+    tx: Transaction,
+    blockNumber: number,
+    blockTimestamp: number,
+  ): Promise<NervosUnlockAssetTxMetaData | null> {
     if (tx.inputs.length < 2) {
       return null;
     }
@@ -826,7 +822,8 @@ export class CkbHandler {
     if (txPrevious == null) {
       return null;
     }
-    const senderLockscript = txPrevious.transaction.outputs[Number(previousOutput.index)].lock;
+    const senderOutput = txPrevious.transaction.outputs[Number(previousOutput.index)];
+    const senderLockscript = senderOutput.lock;
     const committeeMultisigLockscript = parseAddress(getOmniLockMultisigAddress());
     const collectorAddress = getFromAddr();
     const collectorLockscript = parseAddress(collectorAddress);
@@ -837,6 +834,15 @@ export class CkbHandler {
       senderLockscript.args !== committeeMultisigLockscript.args
     ) {
       logger.warn(`invalid unlock tx: first input is not committee multisig cell`);
+      return null;
+    }
+
+    const senderTypescript = senderOutput.type;
+    if (
+      senderTypescript &&
+      (senderTypescript.codeHash !== sudtTypescript.codeHash || senderTypescript.hashType !== sudtTypescript.hashType)
+    ) {
+      logger.warn(`invalid unlock tx: the typescript of first input is not null or sudt typescript`);
       return null;
     }
 
@@ -859,27 +865,104 @@ export class CkbHandler {
             thisSenderLockscript.args !== collectorLockscript.args)
         )
       ) {
-        logger.error(`inputs contain must be committee multisig or collector cell`);
+        logger.warn(`invalid unlock tx: the lockscript of inputs must be committee multisig or collector cell`);
         return null;
       }
     }
-    const unlockMemoWitness = tx.witnesses[tx.witnesses.length - 1];
-    const unlockMemo = new UnlockMemo(new Reader(unlockMemoWitness).toArrayBuffer());
-    let chain;
-    let burnIds;
-    try {
-      chain = unlockMemo.getXchain();
-      const burnIdBytes: BytesVec = unlockMemo.getBurnIds();
-      burnIds = lodash.range(burnIdBytes.length()).map((i) => new Reader(burnIdBytes.indexAt(i).raw()).serializeJson());
-    } catch (e) {
-      logger.warn(`parse recipient unlock memo data error: ${e.message} ${e.stack}`);
+
+    if (tx.inputs.length + 1 !== tx.witnesses.length) {
+      logger.warn(`invalid unlock tx: the length of witness should be inputs.length + 1`);
       return null;
     }
+    const unlockMemoWitness = tx.witnesses[tx.witnesses.length - 1];
+    let unlockMemo: UnlockMemo;
+    try {
+      unlockMemo = new UnlockMemo(new Reader(unlockMemoWitness).toArrayBuffer());
+    } catch (e) {
+      logger.error(
+        `invalid unlock tx: parse recipient unlock memo in witness error: ${e.message} ${e.stack}, tx: ${tx}`,
+      );
+      return null;
+    }
+    const xchain = unlockMemo.getXchain();
+    const burnIdBytes: BytesVec = unlockMemo.getBurnIds();
+    const burnIds = lodash
+      .range(burnIdBytes.length())
+      .map((i) => new Reader(burnIdBytes.indexAt(i).raw()).serializeJson());
 
+    if (burnIds.length > tx.outputs.length - 2) {
+      logger.warn(
+        `invalid unlock tx: burnIds in unlock memo are more than outputs: burnIds: ${burnIds}, outputs: ${tx.outputs}`,
+      );
+      return null;
+    }
+    const isCkb = !senderTypescript;
+    const assetIdent = isCkb
+      ? '0x0000000000000000000000000000000000000000000000000000000000000000'
+      : utils.computeScriptHash({
+          code_hash: senderTypescript!.codeHash,
+          hash_type: senderTypescript!.hashType,
+          args: senderTypescript!.args,
+        });
+
+    const iCkbUnlocks: ICkbUnlock[] = [];
     const ethereumBurns: EthereumBurn[] = await this.db.getEthereumBurnByUniqueIds(burnIds);
+    const ethereumBurnMap: { [k: string]: EthereumBurn } = Object.fromEntries(
+      ethereumBurns.map((ethereumBurn) => [ethereumBurn.uniqueId, ethereumBurn]),
+    );
+    for (let i = 0; i < burnIds.length; i++) {
+      const burnId = burnIds[i];
+      const output = tx.outputs[i];
+      const ethereumBurn = ethereumBurnMap[burnId];
+      if (!ethereumBurn) {
+        logger.warn(`ethereum brun record not found burnId: ${burnId}, outputs[${i}]: ${output}, tx: ${tx}`);
+        return null;
+      }
+      let amount: string;
+      if (isCkb) {
+        if (output.type) {
+          logger.warn(`invalid unlock tx: typescript of output should be null when is ckb: ${output}`);
+          return null;
+        }
+        amount = output.capacity;
+      } else {
+        if (
+          !output.type ||
+          output.type.codeHash !== senderTypescript?.codeHash ||
+          output.type.hashType !== senderTypescript?.hashType ||
+          output.type.args !== senderTypescript?.args
+        ) {
+          logger.warn(
+            `invalid unlock tx: at output[${i}] typescript is unequal to committee multisig input, output: ${output}`,
+          );
+          return null;
+        }
+        amount = `0x${utils.readBigUInt128LE(tx.outputsData[i]).toString(16)}`;
+      }
+      const recipientAddress = generateAddress({
+        code_hash: output.lock.codeHash,
+        hash_type: output.lock.hashType,
+        args: output.lock.args,
+      });
+      const udtExtraData = tx.outputsData[i];
+      const iCkbUnlock: ICkbUnlock = {
+        id: burnId,
+        burnTxHash: ethereumBurn.burnTxHash,
+        xchain,
+        assetIdent,
+        amount,
+        recipientAddress,
+        udtExtraData,
+        blockNumber,
+        blockTimestamp,
+        unlockTxHash: tx.hash,
+      };
+      iCkbUnlocks.push(iCkbUnlock);
+    }
+
     const nervosUnlockAssetTxMetaData: NervosUnlockAssetTxMetaData = {
-      chain,
-      ethereumBurns,
+      xchain,
+      iCkbUnlocks,
     };
     return nervosUnlockAssetTxMetaData;
   }

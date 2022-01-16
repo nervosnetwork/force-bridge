@@ -303,8 +303,8 @@ export interface MintedRecords {
 }
 
 export interface NervosUnlockAssetTxMetaData {
-  chain: number;
-  ethereumBurns: EthereumBurn[];
+  xchain: number;
+  iCkbUnlocks: ICkbUnlock[];
 }
 
 export interface NervosUnlockAssetTxRecord {
