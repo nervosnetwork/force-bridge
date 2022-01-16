@@ -20,7 +20,7 @@ class Collector extends Burn {
   }
 
   protected checkFeeEnough(fee: number): boolean {
-    return fee >= ForceBridgeCore.config.eth.bridgeFee;
+    return fee >= Number(ForceBridgeCore.config.eth.burnNervosAssetFee);
   }
 
   protected checkMinBurnAmount(amount: number): boolean {
@@ -32,7 +32,7 @@ class Collector extends Burn {
       logger.warn(
         `bridge fee use paid in burn tx is too low. tx:${
           log.transactionHash
-        } fee:${parsedLog.args.fee.toString()} config:${ForceBridgeCore.config.eth.bridgeFee}`,
+        } fee:${parsedLog.args.fee.toString()} config:${ForceBridgeCore.config.eth.burnNervosAssetFee}`,
       );
       return;
     }
