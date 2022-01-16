@@ -149,6 +149,12 @@ export async function deployDev(
 
   const ckbToEthMirror = new Map<string, { name: string; symbol: string; decimals: number }>();
 
+  ckbToEthMirror.set('0x0000000000000000000000000000000000000000000000000000000000000000', {
+    name: 'CKB',
+    symbol: 'CKB',
+    decimals: 8,
+  });
+
   ckbToEthMirror.forEach(async (v, k) => {
     const ckbEthMirror = await deployEthMirror(ETH_RPC_URL, ethPrivateKey, v.name, v.symbol, v.decimals);
     logger.info(`ckb mirror address: ${ckbEthMirror.address} asset id:${k}`);

@@ -7,9 +7,6 @@ import { abi as gsabi, bytecode as gsbytecode } from './abi/GnosisSafe_SV1_3_0.j
 import { abi as msabi, bytecode as msbytecode } from './abi/MultiSend_SV1_3_0.json';
 import { abi as mabi, bytecode as mbytecode } from './abi/NervosMirrorToken.json';
 import { abi as pfabi, bytecode as pfbytecode } from './abi/ProxyFactory_SV1_3_0.json';
-// import { abi as gsabi, bytecode as gsbytecode } from './abi/GnosisSafe_SV1_3_0.json';
-// import { abi as msabi, bytecode as msbytecode } from './abi/MultiSend_SV1_3_0.json';
-// import { abi as pfabi, bytecode as pfbytecode } from './abi/ProxyFactory_SV1_3_0.json';
 
 export async function deployEthContract(
   rpcUrl: string,
