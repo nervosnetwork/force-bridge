@@ -199,7 +199,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
   }
 
   async generateBridgeOutEthereumTransaction<T extends NetworkTypes>(
-    payload: API.GenerateBridgeInTransactionPayload,
+    payload: API.GenerateBridgeNervosToXchainBurnTxPayload,
   ): Promise<API.GenerateTransactionResponse<T>> {
     logger.info(`generateBridgeOutEtherumTransaction, payload: ${JSON.stringify(payload)}`);
 
@@ -211,11 +211,11 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
       new ethers.providers.JsonRpcBatchProvider(ForceBridgeCore.config.eth.rpcUrl),
     );
 
-    const amount = ethers.utils.parseUnits(payload.asset.amount);
+    const amount = ethers.utils.parseUnits(payload.amount);
     const recipient = stringToUint8Array(payload.recipient);
     const extraData = '0x';
 
-    const tx = await contract.populateTransaction.burn(payload.asset.ident, amount, recipient, extraData);
+    const tx = await contract.populateTransaction.burn(payload.asset, amount, recipient, extraData);
 
     return {
       network: 'Ethereum',
@@ -529,10 +529,14 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
   }
 
   async generateBridgeNervosToXchainBurnTx<T extends NetworkTypes>(
-    _payload: GenerateBridgeNervosToXchainBurnTxPayload,
+    payload: GenerateBridgeNervosToXchainBurnTxPayload,
   ): Promise<GenerateTransactionResponse<T>> {
-    // TODO
-    throw new Error('unimplement');
+    switch (payload.xchain) {
+      case 'Ethereum':
+        return await this.generateBridgeOutEthereumTransaction(payload);
+      default:
+        throw new Error('invalid chain type');
+    }
   }
 
   async getBridgeNervosToXchainTxSummaries(
