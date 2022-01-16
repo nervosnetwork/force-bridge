@@ -222,7 +222,7 @@ export class CkbDb {
   }
 
   async updateLockConfirmNumber(
-    records: { ckbTxHash: string; confirmedNumber: number; confirmStatus: TxConfirmStatus; bridgeFee: string }[],
+    records: { ckbTxHash: string; confirmedNumber: number; confirmStatus: TxConfirmStatus }[],
   ): Promise<UpdateResult[]> {
     const updataResults = new Array(0);
     for (const record of records) {
@@ -233,6 +233,25 @@ export class CkbDb {
         .set({
           confirmNumber: record.confirmedNumber,
           confirmStatus: record.confirmStatus,
+        })
+        .where('ckb_tx_hash = :ckbTxHash', { ckbTxHash: record.ckbTxHash })
+        .execute();
+      updataResults.push(result);
+    }
+    return updataResults;
+  }
+
+  async updateLockAmountAndBridgeFee(
+    records: { ckbTxHash: string; amount: string; bridgeFee: string }[],
+  ): Promise<UpdateResult[]> {
+    const updataResults = new Array(0);
+    for (const record of records) {
+      const result = await this.connection
+        .getRepository(CkbLock)
+        .createQueryBuilder()
+        .update()
+        .set({
+          amount: record.amount,
           bridgeFee: record.bridgeFee,
         })
         .where('ckb_tx_hash = :ckbTxHash', { ckbTxHash: record.ckbTxHash })

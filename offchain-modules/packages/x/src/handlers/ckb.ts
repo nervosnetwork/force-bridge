@@ -29,6 +29,7 @@ import {
   MintedRecord,
   MintedRecords,
   TxConfirmStatus,
+  CkbLock,
 } from '../db/model';
 
 import { asserts, nonNullable } from '../errors';
@@ -461,17 +462,27 @@ export class CkbHandler {
       logger.info(`CkbHandler watchLockEvents save CkbLock successful for ckb tx ${txInfo.tx.transaction.hash}.`);
     }
     if (records.length === 1) {
-      await this.db.updateLockConfirmNumber([
-        { ckbTxHash, confirmedNumber, confirmStatus, bridgeFee: `0x${bridgeFee.toString(16)}` },
-      ]);
+      await this.db.updateLockConfirmNumber([{ ckbTxHash, confirmedNumber, confirmStatus }]);
       logger.info(`update lock record ${txHash} status, confirmed number: ${confirmedNumber}, status: ${confirmed}`);
     }
-    if (confirmed && this.role === 'collector') {
-      const filterReason = checkLock(amount, assetIdent, recipientAddress, '');
-      if (filterReason !== '') {
-        logger.warn(`skip createEthMint for record: ${JSON.stringify(cellData)}, reason: ${filterReason}`);
-        return;
+    if (assetIdent == '0x0000000000000000000000000000000000000000000000000000000000000000') {
+      const ethereumMints = await this.db.getEthereumMintByCkbTxHashes([tx.hash]);
+      if (ethereumMints && ethereumMints.length === 1) {
+        const amountFromEthereumMint = BigInt(ethereumMints[0].amount);
+        await this.db.updateLockAmountAndBridgeFee([
+          {
+            ckbTxHash,
+            amount: `0x${amountFromEthereumMint.toString(16)}`,
+            bridgeFee: `0x${(amount - amountFromEthereumMint).toString(16)}`,
+          },
+        ]);
+        logger.info(
+          `get EthereumMint when check ckb lock ethereumMints for update ckb lock, records: ${records}, tx: ${tx}, bridgeFee: ${ethereumMints}`,
+        );
       }
+    }
+
+    if (confirmed && this.role === 'collector') {
       const ckbLocksSaved = await this.db.getCkbLockByTxHashes([ckbTxHash]);
       if (ckbLocksSaved.length !== 1) {
         logger.error(
@@ -479,34 +490,20 @@ export class CkbHandler {
         );
         return;
       }
+      const ckbLock = ckbLocksSaved[0];
+      const filterReason = checkLock(amount, assetIdent, txHash, ckbLock);
+      if (filterReason !== '') {
+        logger.warn(`skip createEthereumMint for record: ${JSON.stringify(cellData)}, reason: ${filterReason}`);
+        return;
+      }
       const nervosAsset = ForceBridgeCore.config.eth.nervosAssetWhiteList.find(
         (asset) => asset.typescriptHash === assetIdent,
       );
-      const minimalAmount = nervosAsset!.minimalBridgeAmount;
-      const ckbLock = ckbLocksSaved[0];
-      const bridgeFeeFromConfig = BigInt(ForceBridgeCore.config.eth.lockNervosAssetFee);
-      const bridgeFeeSaved = BigInt(ckbLock.bridgeFee);
       let mintAmount: bigint;
       if (assetIdent == '0x0000000000000000000000000000000000000000000000000000000000000000') {
-        // lock ckb
-        if (
-          BigInt(ckbLock.amount) <= bridgeFeeFromConfig ||
-          BigInt(ckbLock.amount) - bridgeFeeFromConfig < BigInt(minimalAmount)
-        ) {
-          logger.warn(
-            `on lock ckb, amount - bridgeFee should be greater than or equals minimalAmount, amount: ${ckbLock.amount}, bridgeFee: ${bridgeFeeFromConfig}, minimalAmount: ${minimalAmount}`,
-          );
-          return;
-        }
+        const bridgeFeeFromConfig = BigInt(ForceBridgeCore.config.eth.lockNervosAssetFee);
         mintAmount = BigInt(ckbLock.amount) - bridgeFeeFromConfig;
       } else {
-        //lock sudt
-        if (bridgeFeeSaved <= bridgeFeeFromConfig || BigInt(ckbLock.amount) < BigInt(minimalAmount)) {
-          logger.warn(
-            `on lock sudt, bridgeFeeSaved should be greater than bridgeFeeFromConfig and amount should be greater than or equals minimalAmount, amount: ${ckbLock.amount}, bridgeFeeSaved: ${bridgeFeeSaved}, bridgeFeeFromConfig: ${bridgeFeeFromConfig}, minimalAmount: ${minimalAmount}`,
-          );
-          return;
-        }
         mintAmount = BigInt(ckbLock.amount);
       }
 
@@ -999,13 +996,6 @@ export class CkbHandler {
       amount = committeeMultisigCellCapacity;
       assetIdent = '0x0000000000000000000000000000000000000000000000000000000000000000';
       bridgeFee = BigInt(0);
-      const ethereumMints = await this.db.getEthereumMintByCkbTxHashes([tx.hash]);
-      if (ethereumMints && ethereumMints.length === 1) {
-        bridgeFee = amount - BigInt(ethereumMints[0].amount);
-        logger.info(
-          `get EthereumMint when check ckb lock ethereumMints: ${ethereumMints}, bridgeFee: ${ethereumMints}`,
-        );
-      }
     } else {
       logger.error(`unsupported type script ${recipientTypescript}`);
       return null;
@@ -1027,11 +1017,11 @@ export class CkbHandler {
       hash_type: senderLockscript.hashType,
       args: senderLockscript.args,
     });
-    logger.debug('amount: ', committeeMultisigCellCapacity);
+    logger.debug('amount: ', amount);
     logger.debug('xchain: ', xchain);
     logger.debug('recipient address: ', recipientAddress);
     logger.debug('recipient capacity: ', committeeMultisigCellCapacity);
-    logger.debug('asset: ', assetIdent);
+    logger.debug('assetIdent: ', assetIdent);
     logger.debug('recipient lockscript: ', recipientLockscript);
     logger.debug('bridge fee: ', bridgeFee);
     const nervosLockAssetTxMetaData: NervosLockAssetTxMetaData = {
@@ -1104,7 +1094,7 @@ export async function parseBurnTx(tx: Transaction): Promise<RecipientCellData | 
   return cellData;
 }
 
-export function checkLock(amount: bigint, assetIdent: string, recipient: string, sudtExtraData: string): string {
+export function checkLock(amount: bigint, assetIdent: string, txHash: string, ckbLock: CkbLock): string {
   const nervosAsset = ForceBridgeCore.config.eth.nervosAssetWhiteList.find(
     (asset) => asset.typescriptHash === assetIdent,
   );
@@ -1112,11 +1102,27 @@ export function checkLock(amount: bigint, assetIdent: string, recipient: string,
     return `nervos asset ${nervosAsset} not in nervos asset white list`;
   }
   const minimalAmount = nervosAsset.minimalBridgeAmount;
-  if (amount < BigInt(minimalAmount)) {
-    const humanizeMinimalAmount = new BigNumber(minimalAmount)
-      .times(new BigNumber(10).pow(-nervosAsset.decimal))
-      .toString();
-    return `minimal bridge amount is ${humanizeMinimalAmount} ${nervosAsset.symbol}`;
+  const bridgeFeeFromConfig = BigInt(ForceBridgeCore.config.eth.lockNervosAssetFee);
+  const bridgeFeeSaved = BigInt(ckbLock.bridgeFee);
+  if (assetIdent == '0x0000000000000000000000000000000000000000000000000000000000000000') {
+    // lock ckb
+    if (
+      BigInt(ckbLock.amount) <= bridgeFeeFromConfig ||
+      BigInt(ckbLock.amount) - bridgeFeeFromConfig < BigInt(minimalAmount)
+    ) {
+      const humanizeMinimalAmount = new BigNumber(minimalAmount)
+        .times(new BigNumber(10).pow(-nervosAsset.decimal))
+        .toString();
+      return `on lock ckb, amount - bridgeFee should be greater than or equals minimalAmount, amount: ${ckbLock.amount}, bridgeFee: ${bridgeFeeFromConfig}, minimalAmount: ${minimalAmount}, minimal bridge amount is ${humanizeMinimalAmount} ${nervosAsset.symbol}`;
+    }
+  } else {
+    //lock sudt
+    if (bridgeFeeSaved <= bridgeFeeFromConfig || BigInt(ckbLock.amount) < BigInt(minimalAmount)) {
+      const humanizeMinimalAmount = new BigNumber(minimalAmount)
+        .times(new BigNumber(10).pow(-nervosAsset.decimal))
+        .toString();
+      return `on lock sudt, bridgeFeeSaved should be greater than bridgeFeeFromConfig and amount should be greater than or equals minimalAmount, amount: ${ckbLock.amount}, bridgeFeeSaved: ${bridgeFeeSaved}, bridgeFeeFromConfig: ${bridgeFeeFromConfig}, minimalAmount: ${minimalAmount}, minimal bridge amount is ${humanizeMinimalAmount} ${nervosAsset.symbol}`;
+    }
   }
   return '';
 }
