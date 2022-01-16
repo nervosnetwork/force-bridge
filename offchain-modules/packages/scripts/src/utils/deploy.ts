@@ -4,7 +4,7 @@ import { initLumosConfig } from '@force-bridge/x/dist/ckb/tx-helper/init_lumos_c
 import { CkbDeps, WhiteListEthAsset, WhiteListNervosAsset } from '@force-bridge/x/dist/config';
 import { writeJsonToFile } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
-import { deployEthContract, deployAssetManager, deploySafe, deployEthMirror } from '@force-bridge/x/dist/xchain/eth';
+import { deployEthContract, deployAssetManager, deploySafe } from '@force-bridge/x/dist/xchain/eth';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import { ethers } from 'ethers';
 import * as lodash from 'lodash';
@@ -60,9 +60,6 @@ export async function deployDev(
 
   const safeAddress = await deploySafe(ETH_RPC_URL, ethPrivateKey, MULTISIG_THRESHOLD, ethMultiSignAddresses);
   logger.info(`safe address: ${safeAddress}`);
-
-  const assetManagerContract = await deployAssetManager(ETH_RPC_URL, ethPrivateKey, safeAddress);
-  logger.info(`asset manager address: ${assetManagerContract.address}`);
 
   const ckbDeployGenerator = new CkbDeployManager(CKB_RPC_URL, CKB_INDEXER_URL);
   if (!ckbDeps) {
@@ -147,21 +144,17 @@ export async function deployDev(
   );
   logger.info('omniLockConfig', omniLockConfig);
 
-  const ckbToEthMirror = new Map<string, { name: string; symbol: string; decimals: number }>();
+  const ckbToEthMirror = new Array<{ assetId: string; name: string; symbol: string; decimals: number }>();
 
-  ckbToEthMirror.set('0x0000000000000000000000000000000000000000000000000000000000000000', {
+  ckbToEthMirror.push({
+    assetId: '0x0000000000000000000000000000000000000000000000000000000000000000',
     name: 'CKB',
     symbol: 'CKB',
     decimals: 8,
   });
 
-  ckbToEthMirror.forEach(async (v, k) => {
-    const ckbEthMirror = await deployEthMirror(ETH_RPC_URL, ethPrivateKey, v.name, v.symbol, v.decimals);
-    logger.info(`ckb mirror address: ${ckbEthMirror.address} asset id:${k}`);
-
-    await ckbEthMirror.transferOwnership(assetManagerContract.address);
-    await assetManagerContract.addAsset(ckbEthMirror.address, k);
-  });
+  const assetManagerContract = await deployAssetManager(ETH_RPC_URL, ethPrivateKey, safeAddress, ckbToEthMirror);
+  logger.info(`asset manager address: ${assetManagerContract.address}`);
 
   // generate_configs
   let assetWhiteListPath: string;

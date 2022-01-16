@@ -31,8 +31,8 @@ export async function deployEthContract(
 export async function deployAssetManager(
   url: string,
   privateKey: string,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   safeAddress: string,
+  ckbToEthMirror: Array<{ assetId: string; name: string; symbol: string; decimals: number }>,
 ): Promise<Contract> {
   const contract = await new ethers.ContractFactory(
     asabi,
@@ -44,6 +44,15 @@ export async function deployAssetManager(
   if (receipt.status !== 1) {
     logger.info(`failed to deploy asset manager contract.`);
     return Promise.reject('failed to deploy asset manager contract');
+  }
+
+  for (const v of ckbToEthMirror) {
+    const ckbEthMirror = await deployEthMirror(url, privateKey, v.name, v.symbol, v.decimals);
+    logger.info(`ckb mirror address: ${ckbEthMirror.address} asset id:${v.assetId}`);
+
+    await (await ckbEthMirror.transferOwnership(contract.address)).wait();
+    await (await contract.addAsset(ckbEthMirror.address, v.assetId)).wait();
+    logger.info(`ckb mirror added to asset manager. address: ${ckbEthMirror.address} asset id:${v.assetId}`);
   }
 
   await contract.transferOwnership(safeAddress);
