@@ -133,32 +133,32 @@ async function stressBurn(
   recipient: string,
   intervalMs = 0,
 ) {
-  // for (let i = 0; i < roundNumber; i++) {
-  //   logger.info(`start ${i + 1} round stress burn test`);
-  //   const burnEthSudtTxs = await burn(
-  //     ckb,
-  //     client,
-  //     ckbPrivs,
-  //     senders,
-  //     recipient,
-  //     ethTokenAddress,
-  //     burnEthSudtAmount,
-  //     intervalMs,
-  //   );
-  //   await check(client, burnEthSudtTxs, senders, batchNumber, ethTokenAddress);
-  //   const burnErc20SudtTxs = await burn(
-  //     ckb,
-  //     client,
-  //     ckbPrivs,
-  //     senders,
-  //     recipient,
-  //     erc20TokenAddress,
-  //     burnErc20SudtAmount,
-  //     intervalMs,
-  //   );
-  //   await check(client, burnErc20SudtTxs, senders, batchNumber, erc20TokenAddress);
-  //   logger.info(`${i + 1} round stress burn test succeed`);
-  // }
+  for (let i = 0; i < roundNumber; i++) {
+    logger.info(`start ${i + 1} round stress burn test`);
+    const burnEthSudtTxs = await burn(
+      ckb,
+      client,
+      ckbPrivs,
+      senders,
+      recipient,
+      ethTokenAddress,
+      burnEthSudtAmount,
+      intervalMs,
+    );
+    await check(client, burnEthSudtTxs, senders, batchNumber, ethTokenAddress);
+    const burnErc20SudtTxs = await burn(
+      ckb,
+      client,
+      ckbPrivs,
+      senders,
+      recipient,
+      erc20TokenAddress,
+      burnErc20SudtAmount,
+      intervalMs,
+    );
+    await check(client, burnErc20SudtTxs, senders, batchNumber, erc20TokenAddress);
+    logger.info(`${i + 1} round stress burn test succeed`);
+  }
   logger.info('stress burn test succeed!');
 }
 

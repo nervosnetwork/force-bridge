@@ -293,10 +293,12 @@ export class Monitor {
       let hook = new WebHook(this.webHookErrorUrl).setTitle(`Fee Alarm - ${ForceBridgeCore.config.monitor!.env}`);
       if (accountsFee.ckb < accountsFee.ckbThreshold) {
         hook = hook.addField('ckb fee account', `addr: ${accounts.ckbAddr}, balance: ${accountsFee.ckb}`);
+        logger.error(`${ForceBridgeCore.config.monitor!.env} ckb fee account balance is low: ${accountsFee.ckb}`);
         send = true;
       }
       if (accountsFee.eth < accountsFee.ethThreshold) {
         hook = hook.addField('eth fee account', `addr: ${accounts.ethAddr}, balance: ${accountsFee.eth}`);
+        logger.error(`${ForceBridgeCore.config.monitor!.env} eth fee account balance is low: ${accountsFee.eth}`);
         send = true;
       }
       if (send) {

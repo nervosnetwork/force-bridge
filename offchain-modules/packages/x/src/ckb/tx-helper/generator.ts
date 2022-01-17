@@ -63,11 +63,13 @@ export class CkbTxGenerator extends CkbTxHelper {
   // fixme: if not find multisig cell, create it
   async fetchMultisigCell(): Promise<Cell | undefined> {
     const multisigLockscript = getMultisigLock(ForceBridgeCore.config.ckb.multisigScript);
+    if (!ForceBridgeCore.config.collector) throw new Error('Collector config not set');
     const cellCollector = this.indexer.collector({
       lock: multisigLockscript,
+      data: ForceBridgeCore.config.collector.multiCellXchainType,
     });
     for await (const cell of cellCollector.collect()) {
-      if (cell.cell_output.type === null) {
+      if (cell.cell_output.type === null && cell.data === ForceBridgeCore.config.collector.multiCellXchainType) {
         return cell;
       }
     }
