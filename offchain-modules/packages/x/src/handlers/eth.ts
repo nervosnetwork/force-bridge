@@ -330,30 +330,17 @@ export class EthHandler {
     }
   }
 
-  handleMintRecords(): void {
-    if (this.role !== 'collector') {
+  // watch the eth_mint table and handle the new mint events
+  // send tx according to the data
+  async handleMintRecords(): Promise<void> {
+    const records = await this.ethDb.todoMintRecords();
+    if (records.length == 0) {
+      logger.info('wait for todo mint records.');
       return;
     }
 
-    foreverPromise(
-      async () => {
-        const records = await this.ethDb.todoMintRecords();
-        if (records.length <= 0) {
-          logger.debug('wait for new mints');
-          await asyncSleep(3000);
-          return;
-        }
-
-        await this.mint(records);
-      },
-      {
-        onRejectedInterval: 15000,
-        onResolvedInterval: 15000,
-        onRejected: (e: Error) => {
-          logger.error(`ETH handleMintRecords error: ${e.stack}`);
-        },
-      },
-    );
+    logger.info(`EthHandler watchUnlockEvents mint records: ${JSON.stringify(records)}`);
+    await this.mint(records);
   }
 
   async mint(records: CollectorEthMint[]): Promise<void> {
@@ -429,43 +416,15 @@ export class EthHandler {
 
   // watch the eth_unlock table and handle the new unlock events
   // send tx according to the data
-  handleUnlockRecords(): void {
-    if (this.role !== 'collector') {
+  async handleTodoUnlockRecords(): Promise<void> {
+    logger.debug('EthHandler watchUnlockEvents get new unlock events and send tx');
+    const records = await this.getUnlockRecords('todo');
+    if (records.length === 0) {
+      logger.info('wait for todo unlock records');
       return;
     }
-    this.handleTodoUnlockRecords();
-  }
-
-  handleTodoUnlockRecords(): void {
-    foreverPromise(
-      async () => {
-        if (!TransferOutSwitch.getInstance().getStatus()) {
-          logger.info('TransferOutSwitch is off, skip handleTodoUnlockRecords');
-          return;
-        }
-        if (!this.syncedToStartTipBlockHeight()) {
-          logger.info(
-            `wait until syncing to startBlockHeight, lastHandledBlockHeight: ${this.lastHandledBlockHeight}, startTipBlockHeight: ${this.startTipBlockHeight}`,
-          );
-          return;
-        }
-        logger.debug('EthHandler watchUnlockEvents get new unlock events and send tx');
-        const records = await this.getUnlockRecords('todo');
-        if (records.length === 0) {
-          logger.info('wait for todo unlock records');
-          return;
-        }
-        logger.info(`EthHandler watchUnlockEvents unlock records: ${JSON.stringify(records)}`);
-        await this.doHandleUnlockRecords(records);
-      },
-      {
-        onRejectedInterval: 15000,
-        onResolvedInterval: 15000,
-        onRejected: (e: Error) => {
-          logger.error(`ETH handleTodoUnlockRecords error:${e.stack}`);
-        },
-      },
-    );
+    logger.info(`EthHandler watchUnlockEvents unlock records: ${JSON.stringify(records)}`);
+    await this.doHandleUnlockRecords(records);
   }
 
   async doHandleUnlockRecords(records: IEthUnlock[]): Promise<void> {
@@ -581,7 +540,34 @@ export class EthHandler {
   start(): void {
     void this.watchNewBlock();
 
-    Promise.all([this.handleUnlockRecords, this.handleMintRecords]).catch((e) => logger.error(e));
+    if (this.role == 'collector') {
+      foreverPromise(
+        async () => {
+          if (!TransferOutSwitch.getInstance().getStatus()) {
+            logger.info('TransferOutSwitch is off, skip handleTodoUnlockRecords');
+            return;
+          }
+
+          if (!this.syncedToStartTipBlockHeight()) {
+            logger.info(
+              `wait until syncing to startBlockHeight, lastHandledBlockHeight: ${this.lastHandledBlockHeight}, startTipBlockHeight: ${this.startTipBlockHeight}`,
+            );
+            return;
+          }
+
+          await this.handleMintRecords();
+          await this.handleTodoUnlockRecords();
+        },
+        {
+          onRejectedInterval: 15000,
+          onResolvedInterval: 15000,
+          onRejected: (e: Error) => {
+            logger.error(`handle todo error. error:${e.stack}`);
+          },
+        },
+      );
+    }
+
     logger.info('eth handler started  🚀');
   }
 }
