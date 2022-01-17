@@ -72,7 +72,7 @@ export type GetBridgeTransactionStatusPayload = {
   txId: string;
 };
 
-export type XChainNetWork = 'Bitcoin' | 'Ethereum' | 'EOS' | 'Tron';
+export type XChainNetWork = 'Bitcoin' | 'Ethereum' | 'EOS' | 'Tron' | 'Cardano';
 
 export interface GetBridgeTransactionSummariesPayload<N extends XChainNetWork> {
   network: N;
@@ -136,7 +136,6 @@ export interface GetBridgeConfigResponse {
 // TODO: change to the higher order generic when it impl
 // https://github.com/microsoft/TypeScript/issues/1213
 export interface ForceBridgeAPIV1 {
-  /*
   // prettier-ignore
   generateBridgeInNervosTransaction: <T extends NetworkTypes>(payload: GenerateBridgeInTransactionPayload) => Promise<GenerateTransactionResponse<T>>
   // prettier-ignore

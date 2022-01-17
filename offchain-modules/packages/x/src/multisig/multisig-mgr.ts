@@ -4,6 +4,7 @@ import * as utils from '@nervosnetwork/ckb-sdk-utils';
 import { JSONRPCResponse } from 'json-rpc-2.0';
 import { MultiSignHost } from '../config';
 import { ForceBridgeCore } from '../core';
+import { IAdaUnlock } from '../db/model';
 import { asyncSleep } from '../utils';
 import { logger } from '../utils/logger';
 import { EthUnlockRecord } from '../xchain/eth';
@@ -52,7 +53,14 @@ export interface ckbCollectSignaturesPayload {
   txSkeleton: TransactionSkeletonObject;
 }
 
-export type collectSignaturesParamsPayload = ethCollectSignaturesPayload | ckbCollectSignaturesPayload;
+export interface adaCollectSignaturesPayload {
+  unlockRecords: IAdaUnlock[];
+}
+
+export type collectSignaturesParamsPayload =
+  | ethCollectSignaturesPayload
+  | ckbCollectSignaturesPayload
+  | adaCollectSignaturesPayload;
 
 export interface collectSignaturesParams {
   rawData: string;
@@ -191,6 +199,9 @@ export class MultiSigMgr {
         break;
       case 'ETH':
         method = 'signEthTx';
+        break;
+      case 'CARDANO':
+        method = 'signAdaTx';
         break;
       default:
         return Promise.reject(new Error(`chain type:${this.chainType} doesn't support`));

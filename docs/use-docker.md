@@ -5,14 +5,24 @@
 Use docker to run the whole bridge, including CKB and Ethereum dev chain.
 
 ```bash
+make build-ckb-contracts
+
 cd offchain-modules
 # start CKB dev chain and Ethereum dev chain
 yarn startDevDockerDeps
-# deploy the contracts and generate all configs for you
+# install dependencies and build via docker
+yarn dev-docker:install
+# deploy the contracts and generate all configs for you via docker
 yarn dev-docker:generate
-
-cd ../workdir/dev-docker
-docker-compose up -d
+# generate the ui configs and build via docker
+# if you don't need ui or start it yourself, skip it 
+yarn dev-docker:generate-ui
+# start off chain modules
+yarn startDevDockers
+# you can use 'yarn startDevDockersWithUi' instead of 'yarn startDevDockers' to run the whole bridge with ui
+# open 'http://localhost:3003' in browser
+# add a network named 'local' with rpc 'http://localhost:3000' and chainId '1234' to MetaMask
+# import account with private key '0x6e51216cbb2fe170368da49e82b22f02b999204730c858482d0e84a9083005ac' to MetaMask for test
 ```
 
 You can check the `devDocker.ts` file for more details.
@@ -48,10 +58,11 @@ Check <https://hub.docker.com/r/nervos/perkins-tent>.
 
 ```bash
 cd offchain-modules
+# install node modules
+yarn testnet-docker:install
 # generate all configs
 yarn testnet-docker:generate
-# install and build force bridge inside docker
-docker run --rm -v ${offchainModulePath}:/app -v force-bridge-node-modules:/app/node_modules node:14 bash -c 'cd /app && yarn build'
+
 cd workdir/testnet-docker
 docker-compose up -d
 ```

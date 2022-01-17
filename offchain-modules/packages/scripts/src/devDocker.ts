@@ -1,13 +1,14 @@
 import fs from 'fs';
 import path from 'path';
 import { KeyStore } from '@force-bridge/keystore/dist';
+import { nonNullable } from '@force-bridge/x';
 import { OwnerCellConfig } from '@force-bridge/x/dist/ckb/tx-helper/deploy';
 import { Config, WhiteListEthAsset, CkbDeps } from '@force-bridge/x/dist/config';
 import { privateKeyToCkbPubkeyHash, writeJsonToFile } from '@force-bridge/x/dist/utils';
 import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
 import * as lodash from 'lodash';
 import * as Mustache from 'mustache';
-import { execShellCmd, PATH_PROJECT_ROOT, pathFromProjectRoot } from './utils';
+import { pathFromProjectRoot } from './utils';
 import { deployDev } from './utils/deploy';
 
 export interface VerifierConfig {
@@ -122,7 +123,7 @@ const dockerComposeTemplate = `
 version: "3.3"
 services:
   script:
-    image: node:14
+    image: node:14.18.1-bullseye
     restart: on-failure
     volumes:
       - ./script:/data
@@ -149,7 +150,7 @@ services:
     networks:
       - {{network}}
   watcher:
-    image: node:14
+    image: node:14.18.1-bullseye
     restart: on-failure
     environment:
       FORCE_BRIDGE_KEYSTORE_PASSWORD: {{FORCE_BRIDGE_KEYSTORE_PASSWORD}}
@@ -178,7 +179,7 @@ services:
     networks:
       - {{network}}
   collector:
-    image: node:14
+    image: node:14.18.1-bullseye
     restart: on-failure
     environment:
       FORCE_BRIDGE_KEYSTORE_PASSWORD: {{FORCE_BRIDGE_KEYSTORE_PASSWORD}}
@@ -208,7 +209,7 @@ services:
     networks:
       - {{network}}
   {{name}}:
-    image: node:14
+    image: node:14.18.1-bullseye
     restart: on-failure
     environment:
       FORCE_BRIDGE_KEYSTORE_PASSWORD: {{FORCE_BRIDGE_KEYSTORE_PASSWORD}}
@@ -228,6 +229,20 @@ services:
     networks:
       - {{network}}
 {{/verifiers}}      
+  ui:
+    image: node:12
+    restart: on-failure
+    volumes:
+      - {{&projectDir}}/workdir/dev-docker/ui:/app
+    ports:
+      - "3003:3003"
+    command: |
+      sh -c '
+      cd /
+      npx serve -s app -l 3003
+      '
+    networks:
+      - docker_force-dev-net
 volumes:
   force-bridge-node-modules:
     external: true
@@ -236,7 +251,10 @@ networks:
     external: true
 `;
 
+// run via docker
 async function main() {
+  // passed through: docker run -e FORCE_BRIDGE_PROJECT_DIR=$(dirname "$(pwd)")
+  nonNullable(process.env.FORCE_BRIDGE_PROJECT_DIR);
   initLog({ level: 'debug', identity: 'dev-docker' });
   // used for deploy and run service
   const ETH_PRIVATE_KEY = '0xc4ad657963930fbff2e9de3404b30a4e21432c89952ed430b56bf802945ed37a';
@@ -245,12 +263,12 @@ async function main() {
   const MULTISIG_NUMBER = 3;
   const MULTISIG_THRESHOLD = 3;
   const FORCE_BRIDGE_KEYSTORE_PASSWORD = '123456';
-  const ETH_RPC_URL = 'http://127.0.0.1:3000';
-  const CKB_RPC_URL = 'http://127.0.0.1:3001';
-  const CKB_INDEXER_URL = 'http://127.0.0.1:3002';
+  // connect to docker network: docker_force-dev-net
+  const ETH_RPC_URL = 'http://10.4.0.10:8545';
+  const CKB_RPC_URL = 'http://10.4.0.11:8114';
+  const CKB_INDEXER_URL = 'http://10.4.0.12:8116';
 
   const configPath = pathFromProjectRoot('workdir/dev-docker');
-  const offchainModulePath = pathFromProjectRoot('offchain-modules');
 
   const initConfig = {
     common: {
@@ -280,10 +298,6 @@ async function main() {
       rpcUrl: 'http://10.4.0.10:8545',
       confirmNumber: 12,
       startBlockHeight: 1,
-      batchUnlock: {
-        batchNumber: 100,
-        maxWaitTime: 86400000,
-      },
     },
     ckb: {
       ckbRpcUrl: 'http://ckb-dev:8114',
@@ -330,18 +344,15 @@ async function main() {
   const dockerComposeFile = Mustache.render(dockerComposeTemplate, {
     FORCE_BRIDGE_KEYSTORE_PASSWORD,
     network: 'docker_force-dev-net',
-    projectDir: PATH_PROJECT_ROOT,
+    projectDir: process.env.FORCE_BRIDGE_PROJECT_DIR,
     verifiers,
   });
   fs.writeFileSync(path.join(configPath, 'docker-compose.yml'), dockerComposeFile);
-  await execShellCmd(
-    `docker run --rm -v ${offchainModulePath}:/app -v force-bridge-node-modules:/app/node_modules node:14 bash -c 'cd /app && yarn build'`,
-  );
 }
 
 main()
   .then(() => process.exit(0))
   .catch((error) => {
-    logger.error(`integration test failed, error: ${error.stack}`);
+    logger.error(`dev docker generate failed, error: ${error.stack}`);
     process.exit(1);
   });

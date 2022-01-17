@@ -99,6 +99,7 @@ class TxSender {
       ckbAddress,
       recipient,
       burnAmount,
+      'Ethereum', // TODO: allow other networks
     );
     const burnTxHash = await this.ckb.rpc.sendTransaction(burnTx, 'passthrough');
     if (wait) {

@@ -1,7 +1,7 @@
 version: "3.3"
 services:
   geth-dev:
-    image: tockb/geth-priv:v1.9.23
+    image: tockb/geth-priv:v1.10.10
     volumes:
       - type: volume
         source: geth-dag
@@ -17,7 +17,7 @@ services:
         aliases:
           - geth-dev
   ckb-dev:
-    image: tockb/ckb-dev:v0.39.2
+    image: tockb/ckb-dev:v0.100.0
     ports:
       - "3001:8114"
     networks:
@@ -26,7 +26,7 @@ services:
         aliases:
           - ckb-dev
   ckb-indexer-dev:
-    image: tockb/ckb-indexer:ab57116
+    image: tockb/ckb-indexer:v0.3.0
     ports:
       - "3002:8116"
     environment:

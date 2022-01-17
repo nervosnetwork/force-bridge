@@ -1,4 +1,6 @@
+import { generateAddress, parseAddress } from '@ckb-lumos/helpers';
 import { BigNumber } from 'ethers';
+import { TransferOutSwitch } from '../audit/switch';
 import { ChainType, EthAsset } from '../ckb/model/asset';
 import { forceBridgeRole } from '../config';
 import { ForceBridgeCore } from '../core';
@@ -321,6 +323,10 @@ export class EthHandler {
   handleTodoUnlockRecords(): void {
     foreverPromise(
       async () => {
+        if (!TransferOutSwitch.getInstance().getStatus()) {
+          logger.info('TransferOutSwitch is off, skip handleTodoUnlockRecords');
+          return;
+        }
         if (!this.syncedToStartTipBlockHeight()) {
           logger.info(
             `wait until syncing to startBlockHeight, lastHandledBlockHeight: ${this.lastHandledBlockHeight}, startTipBlockHeight: ${this.startTipBlockHeight}`,
@@ -377,7 +383,7 @@ export class EthHandler {
           r.status = 'pending';
         });
         await this.ethDb.saveCollectorEthUnlock(records);
-        const txRes = await this.ethChain.sendUnlockTxs(records);
+        const txRes = await this.ethChain.sendUnlockTxs(records, gasPrice);
         if (typeof txRes === 'boolean') {
           records.map((r) => {
             r.status = 'success';
@@ -474,7 +480,7 @@ export function parseLockLog(log: Log, parsedLog: ParsedLog): ParsedLockLog {
     txHash: txHash,
     amount: amount,
     token: token,
-    recipient: recipient,
+    recipient: toCKBAddress2021(recipient),
     sudtExtraData: sudtExtraData,
     blockNumber: log.blockNumber,
     blockHash: log.blockHash,
@@ -482,4 +488,14 @@ export function parseLockLog(log: Log, parsedLog: ParsedLog): ParsedLockLog {
     sender: sender,
     asset,
   };
+}
+
+function toCKBAddress2021(address: string): string {
+  try {
+    const newAddress = generateAddress(parseAddress(address));
+    return newAddress;
+  } catch (e) {
+    logger.warn(`parse recipient address from ethereum log failed, recipient address ${address}, error ${e}`);
+    return address;
+  }
 }

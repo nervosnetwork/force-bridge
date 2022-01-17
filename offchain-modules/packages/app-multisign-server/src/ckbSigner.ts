@@ -8,7 +8,7 @@ import {
   TransactionSkeletonType,
   TransactionSkeletonObject,
 } from '@ckb-lumos/helpers';
-import { BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
+import { AdaAsset, BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { EthLock } from '@force-bridge/x/dist/db/entity/EthLock';
@@ -19,6 +19,7 @@ import {
   mintRecord,
 } from '@force-bridge/x/dist/multisig/multisig-mgr';
 import { verifyCollector } from '@force-bridge/x/dist/multisig/utils';
+import { compareCkbAddress } from '@force-bridge/x/dist/utils';
 import { Amount } from '@lay2/pw-core';
 import { SigError, SigErrorCode, SigErrorOk } from './error';
 import { SigResponse, SigServer } from './sigServer';
@@ -62,6 +63,9 @@ async function verifyCreateCellTx(rawData: string, payload: ckbCollectSignatures
         break;
       case ChainType.EOS:
         asset = new EosAsset(createAsset.asset, ownerTypeHash);
+        break;
+      case ChainType.CARDANO:
+        asset = new AdaAsset(createAsset.asset, ownerTypeHash);
         break;
       default:
         return new SigError(SigErrorCode.InvalidParams, `chain type:${createAsset.chain} doesn't support`);
@@ -148,6 +152,7 @@ async function verifyMintTx(pubKey: string, rawData: string, payload: ckbCollect
     const mintRecord = mintRecords[i];
     if (
       mintRecord.chain === ChainType.BTC ||
+      mintRecord.chain === ChainType.CARDANO ||
       mintRecord.chain === ChainType.EOS ||
       mintRecord.chain === ChainType.TRON
     ) {
@@ -169,7 +174,9 @@ async function verifyMintTx(pubKey: string, rawData: string, payload: ckbCollect
   }
 
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  err = await verifyEthMintRecords(mintRecordsMap.get(ChainType.ETH)!);
+  if (mintRecordsMap.size != 0) {
+    err = await verifyEthMintRecords(mintRecordsMap.get(ChainType.ETH)!);
+  }
   if (err.Code !== SigErrorCode.Ok) {
     return err;
   }
@@ -194,7 +201,7 @@ async function verifyEthMintRecords(records: mintRecord[]): Promise<SigError> {
     if (ethLock.confirmStatus !== 'confirmed') {
       return new SigError(SigErrorCode.TxUnconfirmed, `ethLockTx:${ethLock.txHash} doesn't confirmed`);
     }
-    if (record.recipientLockscript != ethLock.recipient) {
+    if (!compareCkbAddress(record.recipientLockscript, ethLock.recipient)) {
       return new SigError(
         SigErrorCode.InvalidRecord,
         `ethLockTxHash:${record.id} recipientLockscript:${record.recipientLockscript} != ${ethLock.recipient}`,

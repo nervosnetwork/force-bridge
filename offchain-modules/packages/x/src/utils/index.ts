@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
-import { TransactionSkeletonType } from '@ckb-lumos/helpers';
+import { parseAddress, TransactionSkeletonType } from '@ckb-lumos/helpers';
+
 import * as utils from '@nervosnetwork/ckb-sdk-utils';
 import { AddressPrefix } from '@nervosnetwork/ckb-sdk-utils';
 import { ethers } from 'ethers';
@@ -8,6 +9,8 @@ import * as lodash from 'lodash';
 import { Connection, createConnection } from 'typeorm';
 import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
 import { ForceBridgeCore } from '../core';
+import { AdaLock } from '../db/entity/AdaLock';
+import { AdaUnlock, CollectorAdaUnlock } from '../db/entity/AdaUnlock';
 import { BtcLock } from '../db/entity/BtcLock';
 import { BtcUnlock } from '../db/entity/BtcUnlock';
 import { CkbBurn } from '../db/entity/CkbBurn';
@@ -118,6 +121,19 @@ export function privateKeyToCkbAddress(privkey: string, prefix: ckbAddressPrefix
   return utils.privateKeyToAddress(privkey, { prefix: prefix as AddressPrefix });
 }
 
+// since there may be many different formats of ckb address for the same lockscript,
+// we have to compare them after parsing to lockscript
+// return true if they are the same lockscript
+export function compareCkbAddress(address1: string, address2: string): boolean {
+  const lockscript1 = parseAddress(address1);
+  const lockscript2 = parseAddress(address2);
+  return (
+    lockscript1.code_hash === lockscript2.code_hash &&
+    lockscript1.args === lockscript2.args &&
+    lockscript1.hash_type === lockscript2.hash_type
+  );
+}
+
 export async function getDBConnection(): Promise<Connection> {
   const ormCfg = ForceBridgeCore.config.common.orm;
   return createConnection({
@@ -131,6 +147,9 @@ export async function getDBConnection(): Promise<Connection> {
     synchronize: ormCfg!.synchronize,
     logging: ormCfg!.logging,
     entities: [
+      AdaLock,
+      AdaUnlock,
+      CollectorAdaUnlock,
       BtcLock,
       BtcUnlock,
       CkbBurn,

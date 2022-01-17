@@ -1,18 +1,19 @@
 #!/usr/bin/env node
 import commander from 'commander';
 import { feeCmd } from './bridgeFee';
+import { cardanoCmd } from './cardanoCmd';
 import { changeValCmd } from './changeVal';
+import { relayerCmd } from './collector';
 import { configCmd } from './config';
 import { ethCmd } from './eth';
 import { keystoreCmd } from './keystore';
 import { monitorCmd } from './monitor';
-import { relayerCmd } from './relayer';
 import { rpcCmd } from './rpc';
 import { sigCmd } from './sigServer';
 
 export const program = commander.program;
 
-const version = '0.0.12';
+const version = '0.0.17';
 
 async function main() {
   program
@@ -26,6 +27,7 @@ async function main() {
     .addCommand(monitorCmd)
     .addCommand(configCmd)
     .addCommand(changeValCmd)
+    .addCommand(cardanoCmd)
     .addCommand(keystoreCmd);
 
   await program.parseAsync(process.argv);

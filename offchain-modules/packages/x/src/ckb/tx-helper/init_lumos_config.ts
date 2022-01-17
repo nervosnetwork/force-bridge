@@ -3,7 +3,7 @@ import { initializeConfig } from '@ckb-lumos/config-manager';
 
 export type LumosConfigType = 'LINA' | 'AGGRON4' | 'DEV';
 
-export function initLumosConfig(env: LumosConfigType = 'DEV') {
+export function initLumosConfig(env: LumosConfigType = 'DEV'): void {
   if (env === 'DEV') {
     const configFilePath = path.join(__dirname, 'generated/devnet-lumos-config.json');
     process.env.LUMOS_CONFIG_FILE = configFilePath;

@@ -3,13 +3,13 @@ import { Script as PWScript, HashType } from '@lay2/pw-core';
 type IndexerScript = {
   code_hash: string;
   args: string;
-  hash_type: 'data' | 'type';
+  hash_type: 'data' | 'type' | 'data1';
 };
 
 type ScriptLikeTypes = ScriptLike | CKBComponents.Script | PWScript | IndexerScript;
 
 export class ScriptLike {
-  constructor(public codeHash: string, public args: string, public hashType: 'data' | 'type') {}
+  constructor(public codeHash: string, public args: string, public hashType: 'data' | 'type' | 'data1') {}
 
   static isCKBComponentScript(script: ScriptLikeTypes): script is CKBComponents.Script {
     return 'codeHash' in script && 'args' in script && 'hashType' in script;

@@ -29,7 +29,7 @@ export async function generateLockTx(
     },
   };
   const unsignedLockTx = await client.request('generateBridgeInNervosTransaction', lockPayload);
-  logger.info('unsignedMintTx', unsignedLockTx);
+  logger.info('unsignedLockTx', unsignedLockTx);
 
   const provider = new ethers.providers.JsonRpcProvider(ethNodeURL);
 
@@ -56,10 +56,11 @@ export async function generateBurnTx(
   sender: string,
   recipient: string,
   amount: string,
+  network: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
   const burnPayload = {
-    network: 'Ethereum',
+    network: network,
     sender: sender,
     recipient: recipient,
     asset: asset,
@@ -84,9 +85,14 @@ export async function generateBurnTx(
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getTransaction(client: JSONRPCClient, assetIdent: string, userIdent: string): Promise<any> {
+async function getTransaction(
+  client: JSONRPCClient,
+  assetIdent: string,
+  userIdent: string,
+  network: string,
+): Promise<any> {
   const getTxPayload = {
-    network: 'Ethereum',
+    network: network,
     xchainAssetIdent: assetIdent,
     user: {
       network: 'Nervos',
@@ -99,11 +105,17 @@ async function getTransaction(client: JSONRPCClient, assetIdent: string, userIde
   return txs;
 }
 
-async function checkTx(client: JSONRPCClient, assetIdent: string, txId: string, userIdent: string) {
+export async function checkTx(
+  client: JSONRPCClient,
+  assetIdent: string,
+  txId: string,
+  userIdent: string,
+  network: string,
+) {
   let find = false;
   let pending = false;
   for (let i = 0; i < 600; i++) {
-    const txs = await getTransaction(client, assetIdent, userIdent);
+    const txs = await getTransaction(client, assetIdent, userIdent, network);
     for (const tx of txs) {
       if (tx.txSummary.fromTransaction.txId == txId) {
         logger.info('tx', tx);
@@ -178,6 +190,7 @@ export async function burn(
   recipient: string,
   ethTokenAddress: string,
   burnAmount: string,
+  network: string,
   intervalMs = 0,
 ): Promise<Array<string>> {
   const batchNum = ckbPrivs.length;
@@ -185,7 +198,16 @@ export async function burn(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const signedBurnTxs = new Array<any>();
   for (let i = 0; i < batchNum; i++) {
-    const burnTx = await generateBurnTx(ckb, client, ethTokenAddress, ckbPrivs[i], senders[i], recipient, burnAmount);
+    const burnTx = await generateBurnTx(
+      ckb,
+      client,
+      ethTokenAddress,
+      ckbPrivs[i],
+      senders[i],
+      recipient,
+      burnAmount,
+      network,
+    );
     signedBurnTxs.push(burnTx);
   }
 
@@ -198,19 +220,19 @@ export async function burn(
   return burnTxHashes;
 }
 
-async function check(
+export async function check(
   client: JSONRPCClient,
   txHashes: Array<string>,
   addresses: Array<string>,
-  batchNum,
-  ethTokenAddress,
-) {
+  batchNum: number,
+  ethTokenAddress: string,
+): Promise<void> {
   for (let i = 0; i < batchNum; i++) {
-    await checkTx(client, ethTokenAddress, txHashes[i], addresses[i]);
+    await checkTx(client, ethTokenAddress, txHashes[i], addresses[i], 'Ethereum');
   }
 }
 
-function prepareCkbPrivateKeys(batchNum: number): Array<string> {
+export function prepareCkbPrivateKeys(batchNum: number): Array<string> {
   const privateKeys = new Array<string>();
   for (let i = 0; i < batchNum; i++) {
     privateKeys.push(ethers.Wallet.createRandom().privateKey);
@@ -368,7 +390,7 @@ export async function ethBatchTest(
   const lockTxs = await lock(client, provider, ethWallet, ckbAddresses, ethTokenAddress, lockAmount, ethNodeUrl);
   await check(client, lockTxs, ckbAddresses, batchNum, ethTokenAddress);
 
-  const burnTxs = await burn(ckb, client, ckbPrivs, ckbAddresses, ethAddress, ethTokenAddress, burnAmount);
+  const burnTxs = await burn(ckb, client, ckbPrivs, ckbAddresses, ethAddress, ethTokenAddress, burnAmount, 'Ethereum');
   await check(client, burnTxs, ckbAddresses, batchNum, ethTokenAddress);
   logger.info('ethBatchTest pass!');
 }

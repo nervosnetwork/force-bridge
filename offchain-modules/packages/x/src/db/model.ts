@@ -1,6 +1,7 @@
 import { getRepository } from 'typeorm';
 import { ChainType } from '../ckb/model/asset';
 import { SigType } from '../multisig/multisig-mgr';
+import { AdaUnlockStatus } from './entity/AdaUnlock';
 import { BtcUnlock } from './entity/BtcUnlock';
 import { CkbMint, CkbMintStatus, dbTxStatus } from './entity/CkbMint';
 import { EosUnlock } from './entity/EosUnlock';
@@ -17,6 +18,8 @@ export { CkbMint } from './entity/CkbMint';
 export { CkbBurn } from './entity/CkbBurn';
 export { TronLock } from './entity/TronLock';
 export { TronUnlock } from './entity/TronUnlock';
+export { AdaUnlock, AdaUnlockStatus } from './entity/AdaUnlock';
+export { AdaLock } from './entity/AdaLock';
 
 export interface ISigned {
   sigType: SigType;
@@ -191,6 +194,32 @@ export interface IBtcUnLock {
   asset: string;
   amount: string;
   recipientAddress: string;
+}
+
+export interface IAdaLock {
+  txHash: string;
+  sender: string;
+  token: string;
+  amount: string;
+  bridgeFee: string;
+  recipient: string;
+  sudtExtraData?: string;
+  blockNumber: number;
+  txTime: string;
+  uniqueId: string;
+  confirmNumber?: number;
+  confirmStatus?: TxConfirmStatus;
+}
+
+export interface IAdaUnlock {
+  ckbTxHash: string;
+  asset: string;
+  amount: string;
+  recipientAddress: string;
+  blockNumber?: number;
+  adaTxHash?: string;
+  status?: AdaUnlockStatus;
+  message?: string;
 }
 
 export interface LockRecord {

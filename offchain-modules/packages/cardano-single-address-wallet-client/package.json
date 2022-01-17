@@ -1,0 +1,27 @@
+{
+    "name": "cardano-single-address-wallet-client",
+    "version": "0.0.1",
+    "description": "Typescript client for the cardano-wallet single-address wallet APIs",
+    "author": "Obsidian Systems <maintainer@obsidian.systems>",
+    "license": "BSD3",
+    "keywords": [
+        "cardano",
+        "wallet",
+        "api",
+        "javascript",
+        "typescript"
+    ],
+    "main": "./dist/index.js",
+    "typings": "./dist/index.d.ts",
+    "scripts": {
+      "build": "yarn run clean && yarn run compile",
+      "clean": "rimraf -rf ./dist",
+      "compile": "tsc -p tsconfig.build.json",
+      "prepublishOnly": "yarn run build",
+      "test": "yarn run build"
+    },
+    "dependencies": {
+      "axios": "^0.21.1",
+      "cardano-wallet-js": "^1.2.3"
+    }
+}

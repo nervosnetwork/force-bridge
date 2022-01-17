@@ -1,10 +1,10 @@
 import { parseAddress } from '@ckb-lumos/helpers';
-import { Asset, BtcAsset, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
+import { Asset, AdaAsset, BtcAsset, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
 import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
-import { EthDb, TronDb } from '@force-bridge/x/dist/db';
+import { EthDb, TronDb, AdaDb } from '@force-bridge/x/dist/db';
 import { BtcDb } from '@force-bridge/x/dist/db/btc';
 import { EosDb } from '@force-bridge/x/dist/db/eos';
 import { IQuery, LockRecord, UnlockRecord } from '@force-bridge/x/dist/db/model';
@@ -65,7 +65,9 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
 
   constructor(conn: Connection) {
     this.connection = conn;
-    this.web3 = new Web3(ForceBridgeCore.config.eth.rpcUrl);
+    if (ForceBridgeCore.config.eth !== undefined) {
+      this.web3 = new Web3(ForceBridgeCore.config.eth.rpcUrl);
+    }
   }
 
   async generateBridgeInNervosTransaction<T extends NetworkTypes>(
@@ -175,6 +177,9 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         break;
       case 'Tron':
         asset = new TronAsset(assetName, ownerTypeHash);
+        break;
+      case 'Cardano':
+        asset = new AdaAsset(assetName, ownerTypeHash);
         break;
       default:
         //TODO: add other chains
@@ -300,6 +305,9 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
       case 'Tron':
         dbHandler = new TronDb(this.connection);
         break;
+      case 'Cardano':
+        dbHandler = new AdaDb(this.connection);
+        break;
       default:
         throw new Error('invalid bridge chain type');
     }
@@ -313,6 +321,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
       case 'EOS':
       case 'Ethereum':
       case 'Tron':
+      case 'Cardano':
         lockRecords = await dbHandler.getLockRecordsByXChainAddress(userAddress, assetName);
         unlockRecords = await dbHandler.getUnlockRecordsByXChainAddress(userAddress, assetName);
         break;
@@ -468,11 +477,11 @@ function transferDbRecordToResponse(
   let bridgeTxRecord: TransactionSummary;
   if ('lock_hash' in record) {
     const confirmStatus = record.lock_confirm_status === 'confirmed' ? 'confirmed' : record.lock_confirm_number;
-    const bridgeFee = new EthAsset(record.asset).getBridgeFee('in');
-    const mintAmount =
-      record.mint_amount === null
-        ? new Amount(record.lock_amount, 0).sub(new Amount(bridgeFee, 0)).toString(0)
-        : record.mint_amount;
+    // const bridgeFee = new EthAsset(record.asset).getBridgeFee('in');
+    const mintAmount = record.mint_amount;
+    // record.mint_amount === null
+    //   ? new Amount(record.lock_amount, 0).sub(new Amount(bridgeFee, 0)).toString(0)
+    //   : record.mint_amount;
     bridgeTxRecord = {
       txSummary: {
         fromAsset: {
@@ -500,11 +509,11 @@ function transferDbRecordToResponse(
     }
   } else if ('burn_hash' in record) {
     const confirmStatus = record.burn_confirm_status === 'confirmed' ? 'confirmed' : record.burn_confirm_number;
-    const bridgeFee = new EthAsset(record.asset).getBridgeFee('out');
-    const unlockAmount =
-      record.unlock_amount === null
-        ? new Amount(record.burn_amount, 0).sub(new Amount(bridgeFee, 0)).toString(0)
-        : record.unlock_amount;
+    // const bridgeFee = new EthAsset(record.asset).getBridgeFee('out');
+    const unlockAmount = record.unlock_amount;
+    // record.unlock_amount === null
+    //   ? new Amount(record.burn_amount, 0).sub(new Amount(bridgeFee, 0)).toString(0)
+    //   : record.unlock_amount;
     bridgeTxRecord = {
       txSummary: {
         fromAsset: {
@@ -571,6 +580,9 @@ function getTokenShadowIdent(XChainNetwork: XChainNetWork, XChainToken: string):
       break;
     case 'Tron':
       asset = new TronAsset(XChainToken, ownerTypeHash);
+      break;
+    case 'Cardano':
+      asset = new AdaAsset(XChainToken, ownerTypeHash);
       break;
     default:
       logger.warn(`chain type is ${XChainNetwork} which not support yet.`);

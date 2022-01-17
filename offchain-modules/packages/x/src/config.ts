@@ -32,6 +32,7 @@ export interface CkbDeps {
   bridgeLock: ConfigItem;
   recipientType: ConfigItem;
   sudtType: ConfigItem;
+  pwLock?: ConfigItem;
 }
 
 export interface CkbConfig {
@@ -100,6 +101,18 @@ export interface BtcConfig {
   confirmNumber: number;
 }
 
+export interface AdaConfig {
+  walletRpcUrl: string;
+  walletName: string;
+  multiSignKeyHashes: string[];
+  multiSignHosts: MultiSignHost[];
+  multiSignThreshold: number;
+  confirmNumber: number;
+  startBlockHeight: number;
+  networkId: number;
+  privateKey?: string;
+}
+
 export interface logConfig {
   level: string;
   logFile?: string;
@@ -127,6 +140,9 @@ export interface commonConfig {
   lumosConfigType: 'LINA' | 'AGGRON4' | 'DEV';
   port?: number;
   orm?: ormConfig;
+  // if readonly is true, the server will not listen to chain events and update the database.
+  // used for readonly watcher mode.
+  readonly?: boolean;
   openMetric: boolean;
   keystorePath?: string;
   collectorPubKeyHash: string[];
@@ -149,6 +165,7 @@ export interface WhiteListEthAsset {
 export interface collectorConfig {
   gasLimit: number;
   batchGasLimit: number;
+  disableEIP1559Style?: boolean; // disable EIP1559 gas price style, default to be false
   gasPriceGweiLimit: number;
   maxPriorityFeePerGasGwei?: string;
 }
@@ -176,6 +193,14 @@ export interface monitorConfig {
   verifierEndpoints?: verifierEndpoint[];
 }
 
+export interface AuditConfig {
+  discordToken: string;
+  channelId: string;
+  auditThreshold: string;
+  sendStatusInterval: number;
+  valueAccumulateInterval: number;
+}
+
 export interface Config {
   common: commonConfig;
   ckb: CkbConfig;
@@ -183,6 +208,8 @@ export interface Config {
   eos: EosConfig;
   tron: TronConfig;
   btc: BtcConfig;
+  ada: AdaConfig;
   collector?: collectorConfig;
   monitor?: monitorConfig;
+  audit?: AuditConfig;
 }
