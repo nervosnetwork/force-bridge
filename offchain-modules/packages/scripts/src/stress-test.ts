@@ -143,6 +143,7 @@ async function stressBurn(
       recipient,
       ethTokenAddress,
       burnEthSudtAmount,
+      'Ethereum',
       intervalMs,
     );
     await check(client, burnEthSudtTxs, senders, batchNumber, ethTokenAddress);
@@ -154,6 +155,7 @@ async function stressBurn(
       recipient,
       erc20TokenAddress,
       burnErc20SudtAmount,
+      'Ethereum',
       intervalMs,
     );
     await check(client, burnErc20SudtTxs, senders, batchNumber, erc20TokenAddress);

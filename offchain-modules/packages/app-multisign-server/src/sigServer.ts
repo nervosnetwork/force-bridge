@@ -1,5 +1,5 @@
 import { bootstrap, ForceBridgeCore } from '@force-bridge/x/dist/core';
-import { CkbDb, EthDb, KVDb } from '@force-bridge/x/dist/db';
+import { AdaDb, CkbDb, EthDb, KVDb } from '@force-bridge/x/dist/db';
 import { SignedDb } from '@force-bridge/x/dist/db/signed';
 import { startHandlers } from '@force-bridge/x/dist/handlers';
 import { responseStatus } from '@force-bridge/x/dist/metric/rpc-metric';
@@ -14,6 +14,7 @@ import { ethers } from 'ethers';
 import { JSONRPCServer } from 'json-rpc-2.0';
 import * as snappy from 'snappy';
 import { Connection } from 'typeorm';
+import { signAdaTx } from './adaSigner';
 import { signCkbTx } from './ckbSigner';
 import { SigError, SigErrorCode } from './error';
 import { signEthTx } from './ethSigner';
@@ -25,6 +26,7 @@ const apiPath = '/force-bridge/sign-server/api/v1';
 
 const ethPendingTxKey = 'ethPendingTx';
 const ckbPendingTxKey = 'ckbPendingTx';
+const adaPendingTxKey = 'adaPendingTx';
 
 export type SigResponseData = string | serverStatusResult | getPendingTxResult;
 
@@ -55,23 +57,27 @@ export class SigServer {
   static signedDb: SignedDb;
   static ckbDb: CkbDb;
   static ethDb: EthDb;
+  static adaDb: AdaDb;
   static kvDb: KVDb;
   static keys: Map<string, Map<string, string>>;
   static pendingTxs: Map<string, getPendingTxResult>;
   static metrics: SigserverMetric;
 
   constructor(conn: Connection) {
-    SigServer.ethProvider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
-    SigServer.ethInterface = new ethers.utils.Interface(abi);
-    SigServer.ethBridgeContract = new ethers.Contract(
-      ForceBridgeCore.config.eth.contractAddress,
-      abi,
-      SigServer.ethProvider,
-    );
+    if (ForceBridgeCore.config.eth !== undefined) {
+      SigServer.ethProvider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
+      SigServer.ethInterface = new ethers.utils.Interface(abi);
+      SigServer.ethBridgeContract = new ethers.Contract(
+        ForceBridgeCore.config.eth.contractAddress,
+        abi,
+        SigServer.ethProvider,
+      );
+    }
     SigServer.conn = conn;
     SigServer.signedDb = new SignedDb(conn);
     SigServer.ckbDb = new CkbDb(conn);
     SigServer.ethDb = new EthDb(conn);
+    SigServer.adaDb = new AdaDb(conn);
     SigServer.kvDb = new KVDb(conn);
     SigServer.keys = new Map<string, Map<string, string>>();
     SigServer.pendingTxs = new Map<string, getPendingTxResult>();
@@ -91,6 +97,11 @@ export class SigServer {
       ethKeys[ethAddress] = ethPrivateKey;
       SigServer.keys['eth'] = ethKeys;
     }
+    if (ForceBridgeCore.config.ada !== undefined) {
+      const adaKeys = new Map<string, string>();
+      adaKeys[''] = ForceBridgeCore.config.ada.privateKey!;
+      SigServer.keys['ada'] = adaKeys;
+    }
   }
 
   static getKey(chain: string, address: string): string | undefined {
@@ -109,6 +120,9 @@ export class SigServer {
         break;
       case 'eth':
         pendingTxKey = ethPendingTxKey;
+        break;
+      case 'cardano':
+        pendingTxKey = adaPendingTxKey;
         break;
       default:
         throw new Error(`invalid chain type:${chain}`);
@@ -136,6 +150,9 @@ export class SigServer {
         break;
       case 'eth':
         pendingTxKey = ethPendingTxKey;
+        break;
+      case 'cardano':
+        pendingTxKey = adaPendingTxKey;
         break;
       default:
         throw new Error(`invalid chain type:${chain}`);
@@ -171,6 +188,14 @@ export async function startSigServer(configPath: string): Promise<void> {
       return await signEthTx(params);
     } catch (e) {
       logger.error(`signEthTx params:${JSON.stringify(params)} error:${e.stack}`);
+      return SigResponse.fromSigError(SigErrorCode.UnknownError, e.message);
+    }
+  });
+  server.addMethod('signAdaTx', async (params: collectSignaturesParams) => {
+    try {
+      return await signAdaTx(params);
+    } catch (e) {
+      logger.error(`signAdaTx params:${JSON.stringify(params)} error:${e.stack}`);
       return SigResponse.fromSigError(SigErrorCode.UnknownError, e.message);
     }
   });

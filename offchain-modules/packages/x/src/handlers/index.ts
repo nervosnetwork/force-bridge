@@ -2,9 +2,11 @@ import { Connection } from 'typeorm';
 import { Audit } from '../audit';
 import { ForceBridgeCore } from '../core';
 import { BridgeFeeDB, CkbDb, EthDb, KVDb, TronDb } from '../db';
+import { AdaDb } from '../db/ada';
 import { BtcDb } from '../db/btc';
 import { EosDb } from '../db/eos';
 import { StatDb } from '../db/stat';
+import { AdaHandler } from '../handlers/ada';
 import { BtcHandler } from '../handlers/btc';
 import { CkbHandler } from '../handlers/ckb';
 import { EosHandler } from '../handlers/eos';
@@ -12,6 +14,7 @@ import { EthHandler } from '../handlers/eth';
 import { TronHandler } from '../handlers/tron';
 import { BridgeMetricSingleton } from '../metric/bridge-metric';
 import { logger } from '../utils/logger';
+import { AdaChain } from '../xchain/ada';
 import { BTCChain } from '../xchain/btc';
 import { EthChain } from '../xchain/eth';
 
@@ -60,6 +63,15 @@ export function startHandlers(conn: Connection): void {
     const btcChain = new BTCChain();
     const btcHandler = new BtcHandler(btcDb, btcChain, role);
     btcHandler.start();
+  }
+
+  if (ForceBridgeCore.config.ada !== undefined) {
+    const adaDb = new AdaDb(conn);
+    const feeDb = new BridgeFeeDB(conn);
+    const adaChain = new AdaChain(role, ForceBridgeCore.config.ada);
+    const adaHandler = new AdaHandler(adaDb, feeDb, kvDb, adaChain, role);
+    ForceBridgeCore.getXChainHandler().ada = adaHandler;
+    adaHandler.start();
   }
 
   // start audit bot

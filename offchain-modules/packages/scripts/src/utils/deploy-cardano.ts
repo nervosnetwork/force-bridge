@@ -1,5 +1,4 @@
 import fs from 'fs';
-import * as CardanoWasm from '@emurgo/cardano-serialization-lib-nodejs';
 import { CkbDeployManager, OwnerCellConfig } from '@force-bridge/x/dist/ckb/tx-helper/deploy';
 import { initLumosConfig } from '@force-bridge/x/dist/ckb/tx-helper/init_lumos_config';
 import { CkbDeps } from '@force-bridge/x/dist/config';
@@ -15,6 +14,7 @@ import CKB from '@nervosnetwork/ckb-sdk-core';
 import { Seed } from 'cardano-wallet-js';
 import * as lodash from 'lodash';
 import { pathFromProjectRoot } from './index';
+// import * as CardanoWasm from '@emurgo/cardano-serialization-lib-nodejs';
 
 export interface AdaVerifierConfig {
   privkey: string;
@@ -114,7 +114,7 @@ export async function deployDev(
     M: MULTISIG_THRESHOLD,
     publicKeyHashes: verifierConfigs.map((vc) => vc.ckbPubkeyHash),
   };
-  const ownerConfig: OwnerCellConfig = await ckbDeployGenerator.createOwnerCell(multisigItem, ckbPrivateKey);
+  const ownerConfig: OwnerCellConfig = await ckbDeployGenerator.createOwnerCell(multisigItem, ckbPrivateKey, '0x01');
   logger.info('ownerConfig', ownerConfig);
   // generate_configs
   const multisigConfig = {
