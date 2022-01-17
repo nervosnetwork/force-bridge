@@ -12,7 +12,6 @@ import { IQuery, LockRecord, UnlockRecord } from '@force-bridge/x/dist/db/model'
 import { stringToUint8Array } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
 import { IBalance } from '@force-bridge/x/dist/xchain/btc';
-import { abi as assetManagerAbi } from '@force-bridge/x/dist/xchain/eth/abi/AssetManager.json';
 import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
 import { checkLock } from '@force-bridge/x/dist/xchain/eth/check';
 import { Amount } from '@lay2/pw-core';
@@ -23,6 +22,7 @@ import { RPCClient } from 'rpc-bitcoin';
 import { Connection } from 'typeorm';
 import Web3 from 'web3';
 import { AbiItem } from 'web3-utils';
+import { Factory as BurnHandlerFactory } from './handler/burn/factory';
 import { API, AssetType, NetworkTypes, RequiredAsset } from './types';
 import {
   BalancePayload,
@@ -195,31 +195,6 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     return {
       network: 'Nervos',
       rawTransaction: burnTx,
-    };
-  }
-
-  async generateBridgeOutEthereumTransaction<T extends NetworkTypes>(
-    payload: API.GenerateBridgeNervosToXchainBurnTxPayload,
-  ): Promise<API.GenerateTransactionResponse<T>> {
-    logger.info(`generateBridgeOutEtherumTransaction, payload: ${JSON.stringify(payload)}`);
-
-    checkCKBAddress(payload.recipient);
-
-    const contract = new ethers.Contract(
-      ForceBridgeCore.config.eth.assetManagerContractAddress,
-      assetManagerAbi,
-      new ethers.providers.JsonRpcBatchProvider(ForceBridgeCore.config.eth.rpcUrl),
-    );
-
-    const amount = ethers.utils.parseUnits(payload.amount);
-    const recipient = stringToUint8Array(payload.recipient);
-    const extraData = '0x';
-
-    const tx = await contract.populateTransaction.burn(payload.asset, amount, recipient, extraData);
-
-    return {
-      network: 'Ethereum',
-      rawTransaction: tx,
     };
   }
 
@@ -531,12 +506,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
   async generateBridgeNervosToXchainBurnTx<T extends NetworkTypes>(
     payload: GenerateBridgeNervosToXchainBurnTxPayload,
   ): Promise<GenerateTransactionResponse<T>> {
-    switch (payload.xchain) {
-      case 'Ethereum':
-        return await this.generateBridgeOutEthereumTransaction(payload);
-      default:
-        throw new Error('invalid chain type');
-    }
+    return await BurnHandlerFactory.fromChainName(payload.xchain).handle(payload);
   }
 
   async getBridgeNervosToXchainTxSummaries(
