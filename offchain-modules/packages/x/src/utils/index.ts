@@ -20,7 +20,6 @@ import { EosUnlock } from '../db/entity/EosUnlock';
 import { EthLock } from '../db/entity/EthLock';
 import { CollectorEthMint, EthMint } from '../db/entity/EthMint';
 import { CollectorEthUnlock, EthUnlock } from '../db/entity/EthUnlock';
-import { CollectorEthereumMint, EthereumMint } from '../db/entity/EthereumMint';
 import { SignedTx } from '../db/entity/SignedTx';
 import { TronLock } from '../db/entity/TronLock';
 import { TronUnlock } from '../db/entity/TronUnlock';
@@ -164,8 +163,6 @@ export async function getDBConnection(): Promise<Connection> {
       EthMint,
       CollectorEthMint,
       CollectorEthUnlock,
-      EthereumMint,
-      CollectorEthereumMint,
       KV,
       SignedTx,
       TronLock,

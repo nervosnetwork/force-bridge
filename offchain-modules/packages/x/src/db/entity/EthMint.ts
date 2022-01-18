@@ -18,7 +18,7 @@ export class EthMint {
   amount: string;
 
   @Index()
-  @Column('varchar', { length: 10240 })
+  @Column('varchar', { length: 1024 })
   recipientAddress: string;
 
   @Index()

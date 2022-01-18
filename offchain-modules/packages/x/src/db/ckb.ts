@@ -4,8 +4,8 @@ import { ChainType } from '../ckb/model/asset';
 import { ForceBridgeCore } from '../core';
 import { CollectorCkbMint, dbTxStatus } from './entity/CkbMint';
 import { CkbUnlockStatus, CollectorCkbUnlock } from './entity/CkbUnlock';
+import { CollectorEthMint, EthMint } from './entity/EthMint';
 import { CollectorEthUnlock } from './entity/EthUnlock';
-import { CollectorEthereumMint, EthereumMint } from './entity/EthereumMint';
 import {
   BtcUnlock,
   CkbBurn,
@@ -261,8 +261,8 @@ export class CkbDb {
   }
 
   async createCollectorEthMint(records: IEthereumMint[]): Promise<void> {
-    const dbRecords = records.map((r) => this.connection.getRepository(CollectorEthereumMint).create(r));
-    await this.connection.getRepository(CollectorEthereumMint).save(dbRecords);
+    const dbRecords = records.map((r) => this.connection.getRepository(CollectorEthMint).create(r));
+    await this.connection.getRepository(CollectorEthMint).save(dbRecords);
   }
 
   async getCkbUnlockRecordsToUnlock(status: CkbUnlockStatus, take = 10): Promise<CkbUnlock[]> {
@@ -292,8 +292,8 @@ export class CkbDb {
       .execute();
   }
 
-  async getEthereumMintByCkbTxHashes(ckbTxHashes: string[]): Promise<EthereumMint[]> {
-    return await this.connection.getRepository(EthereumMint).find({
+  async getEthereumMintByCkbTxHashes(ckbTxHashes: string[]): Promise<EthMint[]> {
+    return await this.connection.getRepository(EthMint).find({
       where: {
         ckbTxHash: In(ckbTxHashes),
       },
