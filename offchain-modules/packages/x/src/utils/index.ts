@@ -12,11 +12,14 @@ import { ForceBridgeCore } from '../core';
 import { BtcLock } from '../db/entity/BtcLock';
 import { BtcUnlock } from '../db/entity/BtcUnlock';
 import { CkbBurn } from '../db/entity/CkbBurn';
+import { CkbLock } from '../db/entity/CkbLock';
 import { CkbMint, CollectorCkbMint } from '../db/entity/CkbMint';
+import { CkbUnlock, CollectorCkbUnlock } from '../db/entity/CkbUnlock';
 import { EosLock } from '../db/entity/EosLock';
 import { EosUnlock } from '../db/entity/EosUnlock';
 import { EthLock } from '../db/entity/EthLock';
 import { CollectorEthUnlock, EthUnlock } from '../db/entity/EthUnlock';
+import { CollectorEthereumMint, EthereumMint } from '../db/entity/EthereumMint';
 import { SignedTx } from '../db/entity/SignedTx';
 import { TronLock } from '../db/entity/TronLock';
 import { TronUnlock } from '../db/entity/TronUnlock';
@@ -150,11 +153,16 @@ export async function getDBConnection(): Promise<Connection> {
       CkbBurn,
       CkbMint,
       CollectorCkbMint,
+      CkbLock,
+      CkbUnlock,
+      CollectorCkbUnlock,
       EosLock,
       EosUnlock,
       EthLock,
       EthUnlock,
       CollectorEthUnlock,
+      EthereumMint,
+      CollectorEthereumMint,
       KV,
       SignedTx,
       TronLock,
