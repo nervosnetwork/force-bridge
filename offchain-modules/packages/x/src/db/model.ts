@@ -155,9 +155,9 @@ export interface IEthereumMint {
   nervosAssetId: string;
   amount: string;
   recipientAddress: string;
-  blockNumber: number;
-  blockTimestamp: number;
-  ethTxHash: string;
+  blockNumber?: number;
+  blockTimestamp?: number;
+  ethTxHash?: string;
 }
 
 // export async function transformBurnEvent(burn: CkbBurn): Promise<XchainUnlock> {

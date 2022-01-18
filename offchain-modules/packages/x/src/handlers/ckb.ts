@@ -49,6 +49,7 @@ import Transaction = CKBComponents.Transaction;
 import TransactionWithStatus = CKBComponents.TransactionWithStatus;
 import { LockMemo } from '../ckb/tx-helper/generated/lock_memo';
 import { EthUnlockStatus } from '../db/entity/EthUnlock';
+import { NervosAsset } from '../ckb/model/nervos-asset';
 
 const lastHandleCkbBlockKey = 'lastHandleCkbBlock';
 
@@ -491,14 +492,12 @@ export class CkbHandler {
         return;
       }
       const ckbLock = ckbLocksSaved[0];
-      const filterReason = checkLock(amount, assetIdent, txHash, ckbLock);
+      const filterReason = checkLock(amount, assetIdent, xchain, txHash, ckbLock);
       if (filterReason !== '') {
         logger.warn(`skip createEthereumMint for record: ${JSON.stringify(cellData)}, reason: ${filterReason}`);
         return;
       }
-      const nervosAsset = ForceBridgeCore.config.eth.nervosAssetWhiteList.find(
-        (asset) => asset.typescriptHash === assetIdent,
-      );
+      const nervosAsset = new NervosAsset(assetIdent).getAssetInfo(xchain);
       let mintAmount: bigint;
       if (assetIdent == '0x0000000000000000000000000000000000000000000000000000000000000000') {
         const bridgeFeeFromConfig = BigInt(ForceBridgeCore.config.eth.lockNervosAssetFee);
@@ -515,9 +514,6 @@ export class CkbHandler {
           nervosAssetId: assetIdent,
           amount: `0x${mintAmount.toString(16)}`,
           recipientAddress: recipientAddress,
-          blockNumber: blockNumber,
-          blockTimestamp: Number(block.header.timestamp),
-          ethTxHash: '',
         },
       ];
       await this.db.createCollectorEthMint(mintRecords);
@@ -1094,34 +1090,44 @@ export async function parseBurnTx(tx: Transaction): Promise<RecipientCellData | 
   return cellData;
 }
 
-export function checkLock(amount: bigint, assetIdent: string, txHash: string, ckbLock: CkbLock): string {
-  const nervosAsset = ForceBridgeCore.config.eth.nervosAssetWhiteList.find(
-    (asset) => asset.typescriptHash === assetIdent,
-  );
-  if (!nervosAsset) {
-    return `nervos asset ${nervosAsset} not in nervos asset white list`;
+export function checkLock(
+  amount: bigint,
+  assetIdent: string,
+  xchain: number,
+  txHash: string,
+  ckbLock: CkbLock,
+): string {
+  const nervosAsset = new NervosAsset(assetIdent);
+  const nervosAssetInfo = nervosAsset.getAssetInfo(xchain);
+  if (!nervosAsset.inWhiteList(xchain)) {
+    return `nervos assetIdent: ${assetIdent}, xchain: ${xchain} not in nervos asset white list`;
   }
-  const minimalAmount = nervosAsset.minimalBridgeAmount;
+  const minimalAmount = nervosAssetInfo!.minimalBridgeAmount;
   const bridgeFeeFromConfig = BigInt(ForceBridgeCore.config.eth.lockNervosAssetFee);
   const bridgeFeeSaved = BigInt(ckbLock.bridgeFee);
   if (assetIdent == '0x0000000000000000000000000000000000000000000000000000000000000000') {
     // lock ckb
-    if (
-      BigInt(ckbLock.amount) <= bridgeFeeFromConfig ||
-      BigInt(ckbLock.amount) - bridgeFeeFromConfig < BigInt(minimalAmount)
-    ) {
+    if (BigInt(ckbLock.amount) < BigInt(minimalAmount)) {
       const humanizeMinimalAmount = new BigNumber(minimalAmount)
-        .times(new BigNumber(10).pow(-nervosAsset.decimal))
+        .times(new BigNumber(10).pow(-nervosAssetInfo!.decimal))
         .toString();
-      return `on lock ckb, amount should be greater than or equals minimalAmount, amount: ${ckbLock.amount}, bridgeFee: ${bridgeFeeFromConfig}, minimalAmount: ${minimalAmount}, minimal bridge amount is ${humanizeMinimalAmount} ${nervosAsset.symbol}`;
+      return `on lock ckb, amount should be greater than or equals minimalAmount, amount: ${
+        ckbLock.amount
+      }, bridgeFee: ${bridgeFeeFromConfig}, minimalAmount: ${minimalAmount}, minimal bridge amount is ${humanizeMinimalAmount} ${
+        nervosAssetInfo!.symbol
+      }`;
     }
   } else {
     //lock sudt
     if (bridgeFeeSaved <= bridgeFeeFromConfig || BigInt(ckbLock.amount) < BigInt(minimalAmount)) {
       const humanizeMinimalAmount = new BigNumber(minimalAmount)
-        .times(new BigNumber(10).pow(-nervosAsset.decimal))
+        .times(new BigNumber(10).pow(-nervosAssetInfo!.decimal))
         .toString();
-      return `on lock sudt, bridgeFeeSaved should be greater than bridgeFeeFromConfig and amount should be greater than or equals minimalAmount, amount: ${ckbLock.amount}, bridgeFeeSaved: ${bridgeFeeSaved}, bridgeFeeFromConfig: ${bridgeFeeFromConfig}, minimalAmount: ${minimalAmount}, minimal bridge amount is ${humanizeMinimalAmount} ${nervosAsset.symbol}`;
+      return `on lock sudt, bridgeFeeSaved should be greater than bridgeFeeFromConfig and amount should be greater than or equals minimalAmount, amount: ${
+        ckbLock.amount
+      }, bridgeFeeSaved: ${bridgeFeeSaved}, bridgeFeeFromConfig: ${bridgeFeeFromConfig}, minimalAmount: ${minimalAmount}, minimal bridge amount is ${humanizeMinimalAmount} ${
+        nervosAssetInfo!.symbol
+      }`;
     }
   }
   return '';
