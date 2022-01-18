@@ -25,7 +25,7 @@ export class EthereumMint {
   @Column({ nullable: true })
   blockNumber: number; // mint tx block number
 
-  @Column({ type: 'bigint' })
+  @Column({ nullable: true, type: 'bigint' })
   blockTimestamp: number; // mint tx block timestamp
 
   @Column({ nullable: true })

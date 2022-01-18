@@ -61,6 +61,17 @@ export interface ICkbMint {
   message?: string;
 }
 
+export interface IEthMint {
+  ckbTxHash: string;
+  nervosAssetId: string;
+  erc20TokenAddress: string;
+  recipientAddress: string;
+  blockNumber?: number;
+  blockTimestamp?: number;
+  ethTxHash: string;
+  amount: string;
+}
+
 export interface IEthLock {
   txHash: string;
   sender: string;
@@ -156,9 +167,9 @@ export interface IEthereumMint {
   nervosAssetId: string;
   amount: string;
   recipientAddress: string;
-  blockNumber: number;
-  blockTimestamp: number;
-  ethTxHash: string;
+  blockNumber?: number;
+  blockTimestamp?: number;
+  ethTxHash?: string;
 }
 
 export interface IEthereumBurn {
@@ -300,6 +311,16 @@ export interface MintedRecord {
 export interface MintedRecords {
   txHash: string;
   records: MintedRecord[];
+}
+
+export interface NervosLockAssetTxMetaData {
+  amount: bigint;
+  xchain: number;
+  recipientAddress: string;
+  committeeMultisigCellCapacity: bigint;
+  assetIdent: string;
+  senderAddress: string;
+  bridgeFee: bigint;
 }
 
 export interface NervosUnlockAssetTxMetaData {
