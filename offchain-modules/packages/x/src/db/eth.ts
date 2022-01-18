@@ -142,8 +142,8 @@ export class EthDb implements IQuery {
     await this.collectorEthUnlockRepository.save(records.map((r) => this.collectorEthUnlockRepository.create(r)));
   }
 
-  async saveCollectorEthMint(records: IEthMint[]): Promise<void> {
-    await this.connection.getRepository(CollectorEthMint).save(records);
+  async saveCollectorEthMint(record: IEthMint): Promise<CollectorEthMint> {
+    return await this.connection.getRepository(CollectorEthMint).save(record);
   }
 
   async saveCollectorEthMints(records: IEthMint[]): Promise<CollectorEthMint[]> {

@@ -33,7 +33,7 @@ class Collector extends Mint {
     record.blockTimestamp = (this.block as ethers.providers.Block).timestamp;
     record.status = 'success';
 
-    await this.ethDb.saveCollectorEthMint([record]);
+    await this.ethDb.saveCollectorEthMints([record]);
   }
 }
 

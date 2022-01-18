@@ -364,7 +364,7 @@ export class EthHandler {
           r.status = 'success';
         });
 
-        await this.ethDb.saveCollectorEthMint(records);
+        await this.ethDb.saveCollectorEthMints(records);
 
         return;
       }
@@ -374,7 +374,7 @@ export class EthHandler {
         return;
       }
 
-      await this.ethDb.saveCollectorEthMint(records);
+      await this.ethDb.saveCollectorEthMints(records);
       logger.debug('sendMintTx res', txRes);
       try {
         const receipt = await txRes.wait();
