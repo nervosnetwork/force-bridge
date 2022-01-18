@@ -14,12 +14,15 @@ const forceBridgePath = '/force-bridge/api/v1';
 
 export async function startRpcServer(configPath: string): Promise<void> {
   await bootstrap(configPath);
+  logger.debug('rpc bootstrap done.');
   ForceBridgeCore.config.common.role = 'watcher';
   const metrics = new RpcMetric(ForceBridgeCore.config.common.role);
+  logger.debug('rpc metrics done.');
   const conn = await getDBConnection();
   // start chain handlers
   if (!ForceBridgeCore.config.common.readonly) {
     void startHandlers(conn);
+    logger.debug('rpc start handler done.');
   }
   const forceBridgeRpc = new ForceBridgeAPIV1Handler(conn);
 
