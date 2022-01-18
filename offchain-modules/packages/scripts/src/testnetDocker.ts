@@ -38,11 +38,15 @@ async function generateConfig(
   CKB_PRIVATE_KEY: string,
   password,
   monitorDiscordWebHook: string,
+  assetManagerContractAddress: string,
+  safeAddress: string,
 ) {
   const baseConfig: Config = lodash.cloneDeep(initConfig);
   logger.debug(`baseConfig: ${JSON.stringify(baseConfig, null, 2)}`);
   baseConfig.eth.assetWhiteList = assetWhiteList;
   baseConfig.eth.contractAddress = ethContractAddress;
+  baseConfig.eth.assetManagerContractAddress = assetManagerContractAddress;
+  baseConfig.eth.safeMultisignContractAddress = safeAddress;
   baseConfig.ckb.deps = ckbDeps;
   baseConfig.ckb.ownerCellTypescript = ownerCellConfig.ownerCellTypescript;
   baseConfig.ckb.startBlockHeight = ckbStartHeight;
@@ -315,19 +319,28 @@ async function main() {
     ckbDepsFromFile = JSON.parse(fs.readFileSync(ckbDepsPath, 'utf8'));
   }
 
-  const { assetWhiteList, ckbDeps, ownerConfig, bridgeEthAddress, multisigConfig, ckbStartHeight, ethStartHeight } =
-    await deployDev(
-      ETH_RPC_URL,
-      CKB_RPC_URL,
-      CKB_INDEXER_URL,
-      MULTISIG_NUMBER,
-      MULTISIG_THRESHOLD,
-      ETH_PRIVATE_KEY,
-      CKB_PRIVATE_KEY,
-      'AGGRON4',
-      path.join(configPath, 'deployConfig.json'),
-      ckbDepsFromFile,
-    );
+  const {
+    assetWhiteList,
+    ckbDeps,
+    ownerConfig,
+    bridgeEthAddress,
+    multisigConfig,
+    ckbStartHeight,
+    ethStartHeight,
+    assetManagerContractAddress,
+    safeAddress,
+  } = await deployDev(
+    ETH_RPC_URL,
+    CKB_RPC_URL,
+    CKB_INDEXER_URL,
+    MULTISIG_NUMBER,
+    MULTISIG_THRESHOLD,
+    ETH_PRIVATE_KEY,
+    CKB_PRIVATE_KEY,
+    'AGGRON4',
+    path.join(configPath, 'deployConfig.json'),
+    ckbDepsFromFile,
+  );
   await generateConfig(
     initConfig as unknown as Config,
     assetWhiteList,
@@ -342,6 +355,8 @@ async function main() {
     CKB_PRIVATE_KEY,
     FORCE_BRIDGE_KEYSTORE_PASSWORD,
     MONITOR_DISCORD_WEBHOOK,
+    assetManagerContractAddress,
+    safeAddress,
   );
 
   const verifiers = lodash.range(MULTISIG_NUMBER).map((i) => {

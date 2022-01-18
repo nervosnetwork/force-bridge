@@ -55,6 +55,17 @@ export interface ICkbMint {
   message?: string;
 }
 
+export interface IEthMint {
+  ckbTxHash: string;
+  nervosAssetId: string;
+  erc20TokenAddress: string;
+  recipientAddress: string;
+  blockNumber?: number;
+  blockTimestamp?: number;
+  ethTxHash: string;
+  amount: string;
+}
+
 export interface IEthLock {
   txHash: string;
   sender: string;
