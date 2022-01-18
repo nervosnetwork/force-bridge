@@ -1113,7 +1113,7 @@ export function checkLock(amount: bigint, assetIdent: string, txHash: string, ck
       const humanizeMinimalAmount = new BigNumber(minimalAmount)
         .times(new BigNumber(10).pow(-nervosAsset.decimal))
         .toString();
-      return `on lock ckb, amount - bridgeFee should be greater than or equals minimalAmount, amount: ${ckbLock.amount}, bridgeFee: ${bridgeFeeFromConfig}, minimalAmount: ${minimalAmount}, minimal bridge amount is ${humanizeMinimalAmount} ${nervosAsset.symbol}`;
+      return `on lock ckb, amount should be greater than or equals minimalAmount, amount: ${ckbLock.amount}, bridgeFee: ${bridgeFeeFromConfig}, minimalAmount: ${minimalAmount}, minimal bridge amount is ${humanizeMinimalAmount} ${nervosAsset.symbol}`;
     }
   } else {
     //lock sudt
