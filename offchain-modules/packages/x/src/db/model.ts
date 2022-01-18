@@ -78,8 +78,6 @@ export interface IEthMint {
   blockNumber: number;
   blockTimestamp: number;
   ethTxHash: string;
-  createdAt: string;
-  updatedAt: string;
 }
 
 export interface IEthLock {

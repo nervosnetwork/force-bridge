@@ -1,9 +1,10 @@
+import Safe, { EthersAdapter } from '@gnosis.pm/safe-core-sdk';
+import { SafeSignature, SafeTransaction } from '@gnosis.pm/safe-core-sdk-types';
 import { BigNumber, ethers } from 'ethers';
 import { Interface, LogDescription } from 'ethers/lib/utils';
 import { EthConfig, forceBridgeRole } from '../../config';
 import { ForceBridgeCore } from '../../core';
-import { CollectorEthMint } from '../../db/entity/EthMint';
-import { IEthUnlock } from '../../db/model';
+import { IEthMint, IEthUnlock } from '../../db/model';
 import { nonNullable } from '../../errors';
 import { MultiSigMgr } from '../../multisig/multisig-mgr';
 import { asyncSleep, retryPromise } from '../../utils';
@@ -32,6 +33,13 @@ export interface EthUnlockRecord {
   ckbTxHash: string;
 }
 
+export interface EthMintRecord {
+  assetId: string;
+  to: string;
+  amount: string;
+  lockId: string;
+}
+
 export class EthChain {
   public readonly role: forceBridgeRole;
   public readonly config: EthConfig;
@@ -40,6 +48,7 @@ export class EthChain {
   public readonly iface: ethers.utils.Interface;
   public readonly asIface: ethers.utils.Interface;
   public readonly bridge: ethers.Contract;
+  public readonly assetManager: ethers.Contract;
   public readonly wallet: ethers.Wallet;
   public readonly multisigMgr: MultiSigMgr;
   public readonly assetManagerContract: ethers.Contract;
@@ -57,6 +66,7 @@ export class EthChain {
       this.wallet = new ethers.Wallet(config.privateKey, this.provider);
       logger.debug('address', this.wallet.address);
       this.bridge = new ethers.Contract(this.bridgeContractAddr, abi, this.provider).connect(this.wallet);
+      this.assetManager = new ethers.Contract(config.assetManagerContractAddress, asAbi, this.provider);
       this.multisigMgr = new MultiSigMgr('ETH', this.config.multiSignHosts, this.config.multiSignThreshold);
 
       // TODO: this line will be removed when publishing.
@@ -65,10 +75,6 @@ export class EthChain {
         asAbi,
       );
     }
-  }
-
-  async sendMintTxs(records: CollectorEthMint[]): Promise<ethers.providers.TransactionResponse | undefined | boolean> {
-    throw new Error(`implement me!${records}`);
   }
 
   async getGasPrice(): Promise<BigNumber> {
@@ -240,6 +246,76 @@ export class EthChain {
       }
     }
     return false;
+  }
+
+  async sendMintTxs(records: IEthMint[]): Promise<ethers.providers.TransactionResponse | undefined> {
+    try {
+      const safe = await Safe.create({
+        ethAdapter: new EthersAdapter({ ethers, signer: this.wallet }),
+        safeAddress: this.config.safeMultisignContractAddress,
+      });
+      const partialTx = {
+        to: this.assetManager.address,
+        value: '0',
+        data: this.assetManager.interface.encodeFunctionData('mint', [
+          records.map((r) => {
+            return {
+              assetId: r.nervosAssetId,
+              amount: r.amount,
+              to: r.recipientAddress,
+              lockId: r.ckbTxHash,
+            };
+          }),
+        ]),
+      };
+      const tx = await safe.createTransaction(partialTx);
+      const signatures = await this.signMintTx(tx, safe);
+      for (const signature of signatures) {
+        tx.addSignature(signature);
+      }
+      const response = await safe.executeTransaction(tx);
+      logger.info(`eth sendMintTxs finish. hash:${response.hash}`);
+      return response.transactionResponse;
+    } catch (e) {
+      logger.error(`eth sendMintTxs fail. err:${(e as Error).message}`);
+      return undefined;
+    }
+  }
+
+  // TODO: virifiers.
+  async signMintTx(tx: SafeTransaction, safe: Safe): Promise<SafeSignature[]> {
+    const safes: Safe[] = [];
+    safes.push(
+      await safe.connect({
+        ethAdapter: new EthersAdapter({
+          ethers,
+          signer: new ethers.Wallet(ForceBridgeCore.keystore.getDecryptedByKeyID('signer1'), this.provider),
+        }),
+      }),
+    );
+    safes.push(
+      await safe.connect({
+        ethAdapter: new EthersAdapter({
+          ethers,
+          signer: new ethers.Wallet(ForceBridgeCore.keystore.getDecryptedByKeyID('signer3'), this.provider),
+        }),
+      }),
+    );
+    safes.push(
+      await safe.connect({
+        ethAdapter: new EthersAdapter({
+          ethers,
+          signer: new ethers.Wallet(ForceBridgeCore.keystore.getDecryptedByKeyID('signer2'), this.provider),
+        }),
+      }),
+    );
+
+    const signatures: SafeSignature[] = [];
+    for (const s of safes) {
+      signatures.push(await s.signTransactionHash(await s.getTransactionHash(tx)));
+    }
+
+    return signatures;
   }
 
   async sendUnlockTxs(records: IEthUnlock[]): Promise<ethers.providers.TransactionResponse | boolean | Error> {

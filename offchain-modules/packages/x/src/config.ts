@@ -60,6 +60,8 @@ export interface EthConfig {
   confirmNumber: number;
   startBlockHeight: number;
   assetWhiteList: WhiteListEthAsset[];
+  assetManagerContractAddress: string;
+  safeMultisignContractAddress: string;
   nervosAssetWhiteList: WhiteListNervosAsset[];
   lockNervosAssetFee: string; // bridge fee paid by CKB, unit: shannon
   burnNervosAssetFee: string; // bridge fee paid by ETH, unit: wei

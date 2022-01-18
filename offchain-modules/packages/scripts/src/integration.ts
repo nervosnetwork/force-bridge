@@ -64,16 +64,20 @@ async function generateConfig(
   ETH_PRIVATE_KEY: string,
   CKB_PRIVATE_KEY: string,
   password: string,
+  assetManagerContractAddress: string,
+  safeAddress: string,
   sudtSize = 200,
 ) {
   const baseConfig: Config = lodash.cloneDeep(initConfig);
   logger.debug(`baseConfig: ${JSON.stringify(baseConfig, null, 2)}`);
   baseConfig.eth.contractAddress = ethContractAddress;
+  baseConfig.eth.assetManagerContractAddress = assetManagerContractAddress;
   baseConfig.ckb.deps = ckbDeps;
   baseConfig.ckb.ownerCellTypescript = ownerCellConfig.ownerCellTypescript;
   baseConfig.ckb.omniLockAdminCellTypescript = omniLockCellConfig.adminCellTypescript;
   baseConfig.ckb.startBlockHeight = ckbStartHeight;
   baseConfig.eth.startBlockHeight = ethStartHeight;
+  baseConfig.eth.safeMultisignContractAddress = safeAddress;
   // collector
   const collectorConfig: Config = lodash.cloneDeep(baseConfig);
   collectorConfig.common.role = 'collector';
@@ -346,6 +350,8 @@ async function main() {
     multisigConfig,
     ckbStartHeight,
     ethStartHeight,
+    assetManagerContractAddress,
+    safeAddress,
   } = await deployDev(
     ETH_RPC_URL,
     CKB_RPC_URL,
@@ -379,6 +385,8 @@ async function main() {
     ETH_PRIVATE_KEY,
     CKB_PRIVATE_KEY,
     FORCE_BRIDGE_KEYSTORE_PASSWORD,
+    assetManagerContractAddress,
+    safeAddress,
   );
   await handleDb('drop', MULTISIG_NUMBER + EXTRA_MULTISIG_NUMBER);
   await handleDb('create', MULTISIG_NUMBER + EXTRA_MULTISIG_NUMBER);
