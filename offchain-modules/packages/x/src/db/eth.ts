@@ -2,8 +2,8 @@
 import { Connection, In, Repository, UpdateResult } from 'typeorm';
 import { ForceBridgeCore } from '../core';
 import { CollectorCkbMint } from './entity/CkbMint';
-import { CollectorEthMint } from './entity/EthMint';
-import { EthMint } from './entity/EthMint';
+import { CollectorEthMint, EthMint } from './entity/EthMint';
+
 import { CollectorEthUnlock, EthUnlockStatus } from './entity/EthUnlock';
 import {
   CkbBurn,
