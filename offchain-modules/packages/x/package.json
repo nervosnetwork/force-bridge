@@ -25,6 +25,7 @@
     "@force-bridge/internal": "^0.0.15",
     "@force-bridge/keystore": "^0.0.15",
     "@force-bridge/reconc": "^0.0.15",
+    "@gnosis.pm/safe-core-sdk": "^1.2.0",
     "@lay2/pw-core": "^0.3.22",
     "@nervosnetwork/ckb-sdk-core": "^0.101.0",
     "@nervosnetwork/ckb-sdk-utils": "^0.101.0",
