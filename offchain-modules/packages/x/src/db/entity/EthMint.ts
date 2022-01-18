@@ -9,7 +9,10 @@ export class EthMint {
   ckbTxHash: string;
 
   @Column()
-  asset: string; // erc20 address
+  nervosAssetId: string; // sudt typescript hash
+
+  @Column()
+  erc20TokenAddress: string; // erc20 address
 
   @Column()
   amount: string;

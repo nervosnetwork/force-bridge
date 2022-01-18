@@ -39,12 +39,14 @@ async function generateConfig(
   password,
   monitorDiscordWebHook: string,
   assetManagerContractAddress: string,
+  safeAddress: string,
 ) {
   const baseConfig: Config = lodash.cloneDeep(initConfig);
   logger.debug(`baseConfig: ${JSON.stringify(baseConfig, null, 2)}`);
   baseConfig.eth.assetWhiteList = assetWhiteList;
   baseConfig.eth.contractAddress = ethContractAddress;
   baseConfig.eth.assetManagerContractAddress = assetManagerContractAddress;
+  baseConfig.eth.safeMultisignContractAddress = safeAddress;
   baseConfig.ckb.deps = ckbDeps;
   baseConfig.ckb.ownerCellTypescript = ownerCellConfig.ownerCellTypescript;
   baseConfig.ckb.startBlockHeight = ckbStartHeight;
@@ -326,6 +328,7 @@ async function main() {
     ckbStartHeight,
     ethStartHeight,
     assetManagerContractAddress,
+    safeAddress,
   } = await deployDev(
     ETH_RPC_URL,
     CKB_RPC_URL,
@@ -353,6 +356,7 @@ async function main() {
     FORCE_BRIDGE_KEYSTORE_PASSWORD,
     MONITOR_DISCORD_WEBHOOK,
     assetManagerContractAddress,
+    safeAddress,
   );
 
   const verifiers = lodash.range(MULTISIG_NUMBER).map((i) => {

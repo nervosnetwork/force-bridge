@@ -4,7 +4,7 @@ import { initLumosConfig } from '@force-bridge/x/dist/ckb/tx-helper/init_lumos_c
 import { CkbDeps, WhiteListEthAsset, WhiteListNervosAsset } from '@force-bridge/x/dist/config';
 import { writeJsonToFile } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
-import { deployEthContract, deployAssetManager } from '@force-bridge/x/dist/xchain/eth';
+import { deployEthContract, deployAssetManager, deploySafe } from '@force-bridge/x/dist/xchain/eth';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import { ethers } from 'ethers';
 import * as lodash from 'lodash';
@@ -27,6 +27,7 @@ export interface DeployDevResult {
   ckbPrivateKey: string;
   ethPrivateKey: string;
   assetManagerContractAddress: string;
+  safeAddress: string;
 }
 
 export async function deployDev(
@@ -57,7 +58,8 @@ export async function deployDev(
   );
   logger.info(`bridge address: ${bridgeEthAddress}`);
 
-  const assetManagerContractAddress = await deployAssetManager(ETH_RPC_URL, ethPrivateKey, '', MULTISIG_THRESHOLD);
+  const safeAddress = await deploySafe(ETH_RPC_URL, ethPrivateKey, MULTISIG_THRESHOLD, ethMultiSignAddresses);
+  logger.info(`safe address: ${safeAddress}`);
 
   const ckbDeployGenerator = new CkbDeployManager(CKB_RPC_URL, CKB_INDEXER_URL);
   if (!ckbDeps) {
@@ -142,6 +144,18 @@ export async function deployDev(
   );
   logger.info('omniLockConfig', omniLockConfig);
 
+  const ckbToEthMirror = new Array<{ assetId: string; name: string; symbol: string; decimals: number }>();
+
+  ckbToEthMirror.push({
+    assetId: '0x0000000000000000000000000000000000000000000000000000000000000000',
+    name: 'CKB',
+    symbol: 'CKB',
+    decimals: 8,
+  });
+
+  const assetManagerContract = await deployAssetManager(ETH_RPC_URL, ethPrivateKey, safeAddress, ckbToEthMirror);
+  logger.info(`asset manager address: ${assetManagerContract.address}`);
+
   // generate_configs
   let assetWhiteListPath: string;
   let nervosAssetWhiteListPath: string;
@@ -179,7 +193,8 @@ export async function deployDev(
     ethStartHeight,
     ethPrivateKey,
     ckbPrivateKey,
-    assetManagerContractAddress,
+    assetManagerContractAddress: assetManagerContract.address,
+    safeAddress,
   };
   if (cachePath) {
     writeJsonToFile(data, cachePath);

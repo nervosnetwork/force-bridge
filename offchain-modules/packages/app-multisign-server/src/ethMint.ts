@@ -73,10 +73,10 @@ class EthMint {
         return new SigError(SigErrorCode.TxNotFound, `cannot found ckbLock record by ckbTxHash:${record.lockId}`);
       }
 
-      if (mint.asset != record.assetId) {
+      if (mint.nervosAssetId != record.assetId) {
         return new SigError(
           SigErrorCode.InvalidRecord,
-          `lockTx:${record.lockId} asset:${record.assetId} != ${mint.asset}`,
+          `lockTx:${record.lockId} asset:${record.assetId} != ${mint.nervosAssetId}`,
         );
       }
 

@@ -57,7 +57,8 @@ export interface ICkbMint {
 
 export interface IEthMint {
   ckbTxHash: string;
-  asset: string;
+  nervosAssetId: string;
+  erc20TokenAddress: string;
   recipientAddress: string;
   blockNumber?: number;
   blockTimestamp?: number;
