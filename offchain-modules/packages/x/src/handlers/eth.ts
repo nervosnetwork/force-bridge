@@ -12,6 +12,7 @@ import { asserts, nonNullable } from '../errors';
 import { BridgeMetricSingleton, txTokenInfo } from '../metric/bridge-metric';
 import { asyncSleep, foreverPromise, fromHexString, retryPromise, uint8ArrayToString } from '../utils';
 import { logger } from '../utils/logger';
+import { Schedule, Task } from '../utils/promise';
 import { EthChain, WithdrawBridgeFeeTopic, Log, ParsedLog } from '../xchain/eth';
 import { checkLock } from '../xchain/eth/check';
 import { Factory as BurnHandlerFactory } from './eth/burn/factory';
@@ -333,6 +334,10 @@ export class EthHandler {
   // watch the eth_mint table and handle the new mint events
   // send tx according to the data
   async handleMintRecords(): Promise<void> {
+    if (!this.checkBeforeHandleTodoRecords('handleMintRecords')) {
+      return;
+    }
+
     const records = await this.ethDb.todoMintRecords();
     if (records.length == 0) {
       logger.info('wait for todo mint records.');
@@ -414,9 +419,29 @@ export class EthHandler {
     }
   }
 
+  checkBeforeHandleTodoRecords(name: string): boolean {
+    if (!TransferOutSwitch.getInstance().getStatus()) {
+      logger.info(`TransferOutSwitch is off, skip ${name}`);
+      return false;
+    }
+
+    if (!this.syncedToStartTipBlockHeight()) {
+      logger.info(
+        `wait until syncing to startBlockHeight, lastHandledBlockHeight: ${this.lastHandledBlockHeight}, startTipBlockHeight: ${this.startTipBlockHeight}`,
+      );
+      return false;
+    }
+
+    return true;
+  }
+
   // watch the eth_unlock table and handle the new unlock events
   // send tx according to the data
   async handleTodoUnlockRecords(): Promise<void> {
+    if (!this.checkBeforeHandleTodoRecords('handleTodoUnlockRecords')) {
+      return;
+    }
+
     logger.debug('EthHandler watchUnlockEvents get new unlock events and send tx');
     const records = await this.getUnlockRecords('todo');
     if (records.length === 0) {
@@ -537,35 +562,45 @@ export class EthHandler {
     }
   }
 
+  initCollectorHandleSchedule(): Schedule {
+    const scheduler = new Schedule(15000);
+
+    scheduler.addTask(
+      new Task(
+        async () => {
+          await this.handleMintRecords();
+        },
+        {
+          onRejected: (e: Error) => {
+            logger.error(`handle todo error. error:${e.stack}`);
+          },
+          maxRetryTimes: Infinity,
+        },
+      ),
+    );
+
+    scheduler.addTask(
+      new Task(
+        async () => {
+          await this.handleTodoUnlockRecords();
+        },
+        {
+          onRejected: (e: Error) => {
+            logger.error(`handle todo error. error:${e.stack}`);
+          },
+          maxRetryTimes: Infinity,
+        },
+      ),
+    );
+
+    return scheduler;
+  }
+
   start(): void {
     void this.watchNewBlock();
 
     if (this.role == 'collector') {
-      foreverPromise(
-        async () => {
-          if (!TransferOutSwitch.getInstance().getStatus()) {
-            logger.info('TransferOutSwitch is off, skip handleTodoUnlockRecords');
-            return;
-          }
-
-          if (!this.syncedToStartTipBlockHeight()) {
-            logger.info(
-              `wait until syncing to startBlockHeight, lastHandledBlockHeight: ${this.lastHandledBlockHeight}, startTipBlockHeight: ${this.startTipBlockHeight}`,
-            );
-            return;
-          }
-
-          await this.handleMintRecords();
-          await this.handleTodoUnlockRecords();
-        },
-        {
-          onRejectedInterval: 15000,
-          onResolvedInterval: 15000,
-          onRejected: (e: Error) => {
-            logger.error(`handle todo error. error:${e.stack}`);
-          },
-        },
-      );
+      void this.initCollectorHandleSchedule().run();
     }
 
     logger.info('eth handler started  🚀');
