@@ -5,7 +5,7 @@ import { ForceBridgeCore } from '../core';
 import { CollectorCkbMint, dbTxStatus } from './entity/CkbMint';
 import { CkbUnlockStatus, CollectorCkbUnlock } from './entity/CkbUnlock';
 import { CollectorEthUnlock, EthUnlockStatus } from './entity/EthUnlock';
-import { CollectorEthereumMint, EthereumMint } from './entity/EthereumMint';
+import { CollectorEthMint, EthMint } from './entity/EthMint';
 import {
   BtcUnlock,
   CkbBurn,
@@ -26,11 +26,11 @@ import {
   TxConfirmStatus,
   IEthLock,
   ICkbLock,
-  IEthereumMint,
+  IEthMint,
   ICkbUnlock,
   NervosUnlockAssetTxRecords,
 } from './model';
-import { EthereumBurn } from './entity/EthereumBurn';
+import { EthBurn } from './entity/EthBurn';
 
 export class CkbDb {
   constructor(private connection: Connection) {}
@@ -273,9 +273,9 @@ export class CkbDb {
     return updataResults;
   }
 
-  async createCollectorEthMint(records: IEthereumMint[]): Promise<void> {
-    const dbRecords = records.map((r) => this.connection.getRepository(CollectorEthereumMint).create(r));
-    await this.connection.getRepository(CollectorEthereumMint).save(dbRecords);
+  async createCollectorEthMint(records: IEthMint[]): Promise<void> {
+    const dbRecords = records.map((r) => this.connection.getRepository(CollectorEthMint).create(r));
+    await this.connection.getRepository(CollectorEthMint).save(dbRecords);
   }
 
   async getCkbUnlockRecordsToUnlock(status: CkbUnlockStatus, take = 10): Promise<CkbUnlock[]> {
@@ -321,16 +321,16 @@ export class CkbDb {
     await ckbUnlockRepo.save(dbRecords);
   }
 
-  async getEthereumBurnByUniqueIds(burnIds: string[]): Promise<EthereumBurn[]> {
-    return await this.connection.getRepository(EthereumBurn).find({
+  async getEthBurnByUniqueIds(burnIds: string[]): Promise<EthBurn[]> {
+    return await this.connection.getRepository(EthBurn).find({
       where: {
         uniqueId: In(burnIds),
       },
     });
   }
 
-  async getEthereumMintByCkbTxHashes(ckbTxHashes: string[]): Promise<EthereumMint[]> {
-    return await this.connection.getRepository(EthereumMint).find({
+  async getEthMintByCkbTxHashes(ckbTxHashes: string[]): Promise<EthMint[]> {
+    return await this.connection.getRepository(EthMint).find({
       where: {
         ckbTxHash: In(ckbTxHashes),
       },

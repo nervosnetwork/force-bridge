@@ -9,7 +9,7 @@ import { EthUnlock, EthUnlockStatus } from './entity/EthUnlock';
 import Timestamp = CKBComponents.Timestamp;
 import Script = CKBComponents.Script;
 import { CkbUnlockStatus } from './entity/CkbUnlock';
-import { EthereumBurn } from './entity/EthereumBurn';
+import { EthBurn } from './entity/EthBurn';
 
 export { EthUnlock } from './entity/EthUnlock';
 export { EthLock, TxConfirmStatus } from './entity/EthLock';
@@ -68,7 +68,7 @@ export interface IEthMint {
   recipientAddress: string;
   blockNumber?: number;
   blockTimestamp?: number;
-  ethTxHash: string;
+  ethTxHash?: string;
   amount: string;
 }
 
@@ -161,18 +161,7 @@ export interface ICkbUnlock {
   message?: string;
 }
 
-export interface IEthereumMint {
-  ckbTxHash: string;
-  erc20TokenAddress: string;
-  nervosAssetId: string;
-  amount: string;
-  recipientAddress: string;
-  blockNumber?: number;
-  blockTimestamp?: number;
-  ethTxHash?: string;
-}
-
-export interface IEthereumBurn {
+export interface IEthBurn {
   uniqueId: string; // ${burnTxHash}-${logIndex}
   burnTxHash: string;
   sender: string;

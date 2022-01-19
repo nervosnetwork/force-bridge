@@ -3,7 +3,7 @@ import { Entity, Column, CreateDateColumn, UpdateDateColumn, Index, PrimaryColum
 export type TxConfirmStatus = 'unconfirmed' | 'confirmed';
 
 @Entity()
-export class EthereumBurn {
+export class EthBurn {
   @PrimaryColumn()
   uniqueId: string; // ${burnTxHash}-${logIndex}
 

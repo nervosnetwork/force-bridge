@@ -56,7 +56,7 @@ import { LockMemo } from '../ckb/tx-helper/generated/lock_memo';
 import { EthUnlockStatus } from '../db/entity/EthUnlock';
 import { WithdrawBridgeFeeTopic } from '../xchain/eth';
 import { BytesVec, UnlockMemo } from '../ckb/tx-helper/generated/unlock_memo';
-import { EthereumBurn } from '../db/entity/EthereumBurn';
+import { EthBurn } from '../db/entity/EthBurn';
 import { NervosAsset } from '../ckb/model/nervos-asset';
 
 const lastHandleCkbBlockKey = 'lastHandleCkbBlock';
@@ -475,18 +475,18 @@ export class CkbHandler {
       logger.info(`update lock record ${txHash} status, confirmed number: ${confirmedNumber}, status: ${confirmed}`);
     }
     if (assetIdent == '0x0000000000000000000000000000000000000000000000000000000000000000') {
-      const ethereumMints = await this.db.getEthereumMintByCkbTxHashes([tx.hash]);
-      if (ethereumMints && ethereumMints.length === 1) {
-        const amountFromEthereumMint = BigInt(ethereumMints[0].amount);
+      const ethMints = await this.db.getEthMintByCkbTxHashes([tx.hash]);
+      if (ethMints && ethMints.length === 1) {
+        const amountFromEthMint = BigInt(ethMints[0].amount);
         await this.db.updateLockAmountAndBridgeFee([
           {
             ckbTxHash,
-            amount: `0x${amountFromEthereumMint.toString(16)}`,
-            bridgeFee: `0x${(amount - amountFromEthereumMint).toString(16)}`,
+            amount: `0x${amountFromEthMint.toString(16)}`,
+            bridgeFee: `0x${(amount - amountFromEthMint).toString(16)}`,
           },
         ]);
         logger.info(
-          `get EthereumMint when check ckb lock ethereumMints for update ckb lock, records: ${records}, tx: ${tx}, bridgeFee: ${ethereumMints}`,
+          `get EthMint when check ckb lock ethMints for update ckb lock, records: ${records}, tx: ${tx}, bridgeFee: ${ethMints}`,
         );
       }
     }
@@ -502,7 +502,7 @@ export class CkbHandler {
       const ckbLock = ckbLocksSaved[0];
       const filterReason = checkLock(amount, assetIdent, xchain, txHash, ckbLock);
       if (filterReason !== '') {
-        logger.warn(`skip createEthereumMint for record: ${JSON.stringify(cellData)}, reason: ${filterReason}`);
+        logger.warn(`skip createEthMint for record: ${JSON.stringify(cellData)}, reason: ${filterReason}`);
         return;
       }
       const nervosAsset = new NervosAsset(assetIdent).getAssetInfo(xchain);
@@ -525,7 +525,7 @@ export class CkbHandler {
         },
       ];
       await this.db.createCollectorEthMint(mintRecords);
-      logger.info(`save EthereumMint successful for ckb tx ${txHash}`);
+      logger.info(`save EthMint successful for ckb tx ${txHash}`);
     }
   }
 
@@ -1175,15 +1175,15 @@ export class CkbHandler {
         });
 
     const iCkbUnlocks: ICkbUnlock[] = [];
-    const ethereumBurns: EthereumBurn[] = await this.db.getEthereumBurnByUniqueIds(burnIds);
-    const ethereumBurnMap: { [k: string]: EthereumBurn } = Object.fromEntries(
-      ethereumBurns.map((ethereumBurn) => [ethereumBurn.uniqueId, ethereumBurn]),
+    const ethBurns: EthBurn[] = await this.db.getEthBurnByUniqueIds(burnIds);
+    const ethBurnMap: { [k: string]: EthBurn } = Object.fromEntries(
+      ethBurns.map((ethBurn) => [ethBurn.uniqueId, ethBurn]),
     );
     for (let i = 0; i < burnIds.length; i++) {
       const burnId = burnIds[i];
       const output = tx.outputs[i];
-      const ethereumBurn = ethereumBurnMap[burnId];
-      if (!ethereumBurn) {
+      const ethBurn = ethBurnMap[burnId];
+      if (!ethBurn) {
         logger.warn(`ethereum brun record not found burnId: ${burnId}, outputs[${i}]: ${output}, tx: ${tx}`);
         return null;
       }
@@ -1216,7 +1216,7 @@ export class CkbHandler {
       const udtExtraData = tx.outputsData[i];
       const iCkbUnlock: ICkbUnlock = {
         id: burnId,
-        burnTxHash: ethereumBurn.burnTxHash,
+        burnTxHash: ethBurn.burnTxHash,
         xchain,
         assetIdent,
         amount,
