@@ -6,7 +6,6 @@ import { RPC } from '@ckb-lumos/rpc';
 import { BigNumber } from 'bignumber.js';
 import { Reader } from 'ckb-js-toolkit';
 import * as lodash from 'lodash';
-import { TransferOutSwitch } from '../audit/switch';
 import { BtcAsset, ChainType, EosAsset, EthAsset, getAsset, TronAsset } from '../ckb/model/asset';
 import { RecipientCellData } from '../ckb/tx-helper/generated/eth_recipient_cell';
 import { ForceBridgeLockscriptArgs } from '../ckb/tx-helper/generated/force_bridge_lockscript';
@@ -1115,30 +1114,6 @@ export class CkbHandler {
       return null;
     }
 
-    for (let i = 1; i < tx.inputs.length; i++) {
-      const thisPreviousOutput = nonNullable(tx.inputs[i].previousOutput);
-      const thisPreHash = thisPreviousOutput.txHash;
-      const thisTxPrevious = await this.ckb.rpc.getTransaction(thisPreHash);
-      if (thisTxPrevious == null) {
-        return null;
-      }
-      const thisSenderLockscript = thisTxPrevious.transaction.outputs[Number(thisPreviousOutput.index)].lock;
-      if (
-        !thisSenderLockscript ||
-        !(
-          (thisSenderLockscript.codeHash !== committeeMultisigLockscript.code_hash &&
-            thisSenderLockscript.hashType !== committeeMultisigLockscript.hash_type &&
-            thisSenderLockscript.args !== committeeMultisigLockscript.args) ||
-          (thisSenderLockscript.codeHash !== collectorLockscript.code_hash &&
-            thisSenderLockscript.hashType !== collectorLockscript.hash_type &&
-            thisSenderLockscript.args !== collectorLockscript.args)
-        )
-      ) {
-        logger.warn(`invalid unlock tx: the lockscript of inputs must be committee multisig or collector cell`);
-        return null;
-      }
-    }
-
     if (tx.inputs.length + 1 !== tx.witnesses.length) {
       logger.warn(`invalid unlock tx: the length of witness should be inputs.length + 1`);
       return null;
@@ -1159,12 +1134,6 @@ export class CkbHandler {
       .range(burnIdBytes.length())
       .map((i) => new Reader(burnIdBytes.indexAt(i).raw()).serializeJson());
 
-    if (burnIds.length > tx.outputs.length - 2) {
-      logger.warn(
-        `invalid unlock tx: burnIds in unlock memo are more than outputs: burnIds: ${burnIds}, outputs: ${tx.outputs}`,
-      );
-      return null;
-    }
     const isCkb = !senderTypescript;
     const assetIdent = isCkb
       ? '0x0000000000000000000000000000000000000000000000000000000000000000'
@@ -1175,16 +1144,19 @@ export class CkbHandler {
         });
 
     const iCkbUnlocks: ICkbUnlock[] = [];
-    const ethBurns: EthBurn[] = await this.db.getEthBurnByUniqueIds(burnIds);
-    const ethBurnMap: { [k: string]: EthBurn } = Object.fromEntries(
-      ethBurns.map((ethBurn) => [ethBurn.uniqueId, ethBurn]),
-    );
     for (let i = 0; i < burnIds.length; i++) {
       const burnId = burnIds[i];
+      const burnHashSeparatorIndex = burnId.indexOf('-');
+      if (burnHashSeparatorIndex < 0) {
+        logger.warn(`invalid unlock tx: invalid burnId in unlockMemoWitness, tx: ${tx}, burnId: ${burnId}`);
+        return null;
+      }
+      const burnTxHash = burnId.substring(0, burnHashSeparatorIndex);
       const output = tx.outputs[i];
-      const ethBurn = ethBurnMap[burnId];
-      if (!ethBurn) {
-        logger.warn(`ethereum brun record not found burnId: ${burnId}, outputs[${i}]: ${output}, tx: ${tx}`);
+      if (!output) {
+        logger.error(
+          `invalid unlock tx: burnIds in unlock memo are more than outputs: burnIds: ${burnIds}, outputs: ${tx.outputs}, i: ${i}, output: ${output}`,
+        );
         return null;
       }
       let amount: string;
@@ -1216,7 +1188,7 @@ export class CkbHandler {
       const udtExtraData = tx.outputsData[i];
       const iCkbUnlock: ICkbUnlock = {
         id: burnId,
-        burnTxHash: ethBurn.burnTxHash,
+        burnTxHash,
         xchain,
         assetIdent,
         amount,
