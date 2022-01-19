@@ -6,30 +6,29 @@ export type EthMintStatus = dbTxStatus;
 @Entity()
 export class EthMint {
   @PrimaryColumn()
-  ckbTxHash: string;
-
-  @Column()
-  nervosAssetId: string; // sudt typescript hash
+  ckbTxHash: string; // lock tx hash
 
   @Column()
   erc20TokenAddress: string; // erc20 address
 
   @Column()
+  nervosAssetId: string; // sudt typescript hash
+
+  @Column()
   amount: string;
 
-  @Index()
-  @Column('varchar', { length: 1024 })
+  @Column('varchar', { length: 10240 })
   recipientAddress: string;
 
   @Index()
   @Column({ nullable: true })
-  blockNumber: number;
+  blockNumber: number; // mint tx block number
 
   @Column()
-  blockTimestamp: number;
+  blockTimestamp: number; // mint tx block timestamp
 
   @Column({ nullable: true })
-  ethTxHash: string;
+  ethTxHash: string; // mint tx hash
 
   @CreateDateColumn()
   createdAt: string;

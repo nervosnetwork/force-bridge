@@ -20,8 +20,7 @@ export class CkbUnlock {
   @Column()
   amount: string;
 
-  @Index()
-  @Column('varchar', { length: 1024 })
+  @Column('text')
   recipientAddress: string; // ckb address
 
   @Column('varchar', { length: 10240, default: '' })
@@ -31,7 +30,7 @@ export class CkbUnlock {
   @Column({ nullable: true })
   blockNumber: number;
 
-  @Column({ type: 'bigint' })
+  @Column()
   blockTimestamp: number;
 
   @Index()
