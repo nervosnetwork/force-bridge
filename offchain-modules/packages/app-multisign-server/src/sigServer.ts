@@ -177,7 +177,7 @@ export async function startSigServer(configPath: string): Promise<void> {
     }
   });
 
-  server.addMethod('signSafeTx', new EthMint().request);
+  // server.addMethod('signSafeTx', new EthMint().request);
 
   server.addMethod('status', async () => {
     try {
