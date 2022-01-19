@@ -331,6 +331,18 @@ export class EthHandler {
     }
   }
 
+  async checkGas(): Promise<boolean> {
+    const gasPrice = await this.ethChain.getGasPrice();
+    const gasPriceLimit = BigNumber.from(nonNullable(ForceBridgeCore.config.collector).gasPriceGweiLimit * 10 ** 9);
+    logger.debug(`gasPrice ${gasPrice}, gasPriceLimit ${gasPriceLimit}`);
+    if (gasPrice.gt(gasPriceLimit)) {
+      logger.warn(`gasPrice ${gasPrice} exceeds limit ${gasPriceLimit} wait for next round.`);
+      return false;
+    }
+
+    return true;
+  }
+
   // watch the eth_mint table and handle the new mint events
   // send tx according to the data
   async handleMintRecords(): Promise<void> {
@@ -349,6 +361,10 @@ export class EthHandler {
   }
 
   async mint(records: CollectorEthMint[]): Promise<void> {
+    if (!(await this.checkGas())) {
+      return;
+    }
+
     records = await this.ethDb.makeMintPending(records);
     const mintTxHashes = records.map((r) => r.ckbTxHash);
 
