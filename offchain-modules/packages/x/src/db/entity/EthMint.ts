@@ -9,16 +9,15 @@ export class EthMint {
   ckbTxHash: string; // lock tx hash
 
   @Column()
-  nervosAssetId: string; // sudt typescript hash
+  erc20TokenAddress: string; // erc20 address
 
   @Column()
-  erc20TokenAddress: string; // erc20 address
+  nervosAssetId: string; // sudt typescript hash
 
   @Column()
   amount: string;
 
-  @Index()
-  @Column({ type: 'varchar', length: 3072 })
+  @Column('varchar', { length: 10240 })
   recipientAddress: string;
 
   @Index()
