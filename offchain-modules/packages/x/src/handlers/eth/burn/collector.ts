@@ -69,7 +69,6 @@ class Collector extends Burn {
         blockTimestamp: 0,
         blockNumber: 0,
         unlockTxHash: '',
-        extraData: parsedLog.args.extraData,
       };
 
       await this.ethDb.createCollectorCkbUnlock([unlock]);

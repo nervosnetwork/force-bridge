@@ -24,14 +24,14 @@ export class CkbLock {
   bridgeFee: string;
 
   @Index()
-  @Column()
+  @Column('varchar', { length: 2048 })
   recipientAddress: string;
 
   @Index()
   @Column()
   blockNumber: number;
 
-  @Column()
+  @Column({ type: 'bigint' })
   blockTimestamp: number;
 
   @Column({ default: 0 })
