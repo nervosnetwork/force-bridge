@@ -1173,7 +1173,7 @@ export class CkbHandler {
           output.type.hashType !== senderTypescript?.hashType ||
           output.type.args !== senderTypescript?.args
         ) {
-          logger.warn(
+          logger.error(
             `invalid unlock tx: at output[${i}] typescript is unequal to committee multisig input, output: ${output}`,
           );
           return null;
