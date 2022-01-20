@@ -312,23 +312,6 @@ export interface NervosLockAssetTxMetaData {
   bridgeFee: bigint;
 }
 
-export interface NervosUnlockAssetTxMetaData {
-  chain: number;
-  ethBurns: EthBurn[];
-}
-
-export interface NervosUnlockAssetTxRecord {
-  amount: bigint;
-  id: string;
-  burnTxHash: string;
-  burnBlockHeight: number;
-}
-
-export interface NervosUnlockAssetTxRecords {
-  txHash: string;
-  records: NervosUnlockAssetTxRecord[];
-}
-
 export interface IQuery {
   getLockRecordsByCkbAddress(ckbRecipientAddr: string, XChainAsset: string): Promise<LockRecord[]>;
   getUnlockRecordsByCkbAddress(ckbAddress: string, XChainAsset: string): Promise<UnlockRecord[]>;

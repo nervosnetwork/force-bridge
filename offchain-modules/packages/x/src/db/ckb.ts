@@ -28,9 +28,7 @@ import {
   ICkbLock,
   IEthMint,
   ICkbUnlock,
-  NervosUnlockAssetTxRecords,
 } from './model';
-import { EthBurn } from './entity/EthBurn';
 
 export class CkbDb {
   constructor(private connection: Connection) {}
@@ -137,16 +135,6 @@ export class CkbDb {
       .update()
       .set({ blockNumber: blockNumber, status: status })
       .where('mintHash = :mintTxHash', { mintTxHash: mintTxHash })
-      .execute();
-  }
-
-  async updateCollectorCkbUnlockStatus(blockNumber: number, unlockHash: string, status: dbTxStatus): Promise<void> {
-    await this.connection
-      .getRepository(CollectorCkbUnlock)
-      .createQueryBuilder()
-      .update()
-      .set({ blockNumber: blockNumber, status: status })
-      .where('unlockHash = :unlockHash', { unlockHash: unlockHash })
       .execute();
   }
 
@@ -313,27 +301,23 @@ export class CkbDb {
     });
   }
 
-  async updateCollectorUnlockStatus(burnTxHash: string, blockNumber: number, status: CkbUnlockStatus): Promise<void> {
-    await this.connection
-      .getRepository(CollectorCkbUnlock)
-      .createQueryBuilder()
-      .update()
-      .set({ blockNumber: blockNumber, status: status })
-      .where({ burnTxHash })
-      .execute();
-  }
-
-  async createCkbUnlock(records: ICkbUnlock[]): Promise<void> {
-    const ckbUnlockRepo = this.connection.getRepository(CkbUnlock);
-    const dbRecords = records.map((r) => ckbUnlockRepo.create(r));
-    await ckbUnlockRepo.save(dbRecords);
-  }
-
-  async getEthBurnByUniqueIds(burnIds: string[]): Promise<EthBurn[]> {
-    return await this.connection.getRepository(EthBurn).find({
+  async getLatestCollectorCkbToUnlockRecord(): Promise<CollectorCkbUnlock | undefined> {
+    return await this.connection.getRepository(CollectorCkbUnlock).findOne({
       where: {
-        uniqueId: In(burnIds),
+        status: 'todo',
       },
+      order: {
+        createdAt: 'DESC',
+      },
+    });
+  }
+
+  async getCollectorCkbUnlockRecordsToUnlockByAssetIdent(assetIdent: string, take = 50): Promise<CollectorCkbUnlock[]> {
+    return await this.connection.getRepository(CollectorCkbUnlock).find({
+      where: {
+        status: 'todo',
+      },
+      take,
     });
   }
 }
