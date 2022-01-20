@@ -94,14 +94,14 @@ export class Task {
   }
 
   async run(): Promise<void> {
-    if (this.retry.flag) this.times++;
+    if (this.retry.flag) this.retry.times++;
 
     await this.process(this.times)
       .catch(async (e: unknown) => {
         const { onRejected, maxRetryTimes = 5 } = this.option;
 
         if (onRejected) await onRejected(e, this.times);
-        if (this.times > maxRetryTimes) throw new TooManyRetriesError(this.times, e);
+        if (this.retry.times > maxRetryTimes) throw new TooManyRetriesError(this.retry.times, e);
 
         this.retry.flag = true;
       })

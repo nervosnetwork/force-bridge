@@ -69,7 +69,6 @@ abstract class Burn {
       record.bridgeFee = parsedLog.args.fee.toString();
       record.blockNumber = log.blockNumber;
       record.blockTimestamp = (this.block as ethers.providers.Block).timestamp;
-      record.bridgeFee = parsedLog.args.fee.toString();
     }
 
     return record;

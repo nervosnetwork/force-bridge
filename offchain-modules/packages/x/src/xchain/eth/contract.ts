@@ -68,12 +68,6 @@ export class EthChain {
       this.bridge = new ethers.Contract(this.bridgeContractAddr, abi, this.provider).connect(this.wallet);
       this.assetManager = new ethers.Contract(config.assetManagerContractAddress, asAbi, this.provider);
       this.multisigMgr = new MultiSigMgr('ETH', this.config.multiSignHosts, this.config.multiSignThreshold);
-
-      // TODO: this line will be removed when publishing.
-      this.assetManagerContract = new ethers.Contract(
-        ethers.utils.computeAddress(ForceBridgeCore.config.eth.privateKey),
-        asAbi,
-      );
     }
   }
 

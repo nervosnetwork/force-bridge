@@ -68,9 +68,11 @@ abstract class Mint {
 
     const ckbRecord = await this.ethDb.getCkbLock(parsedLog.args.lockId);
     if (ckbRecord != undefined) {
-      ckbRecord.bridgeFee = ethers.BigNumber.from(record.amount)
-        .sub(ethers.BigNumber.from(ckbRecord.amount))
+      ckbRecord.bridgeFee = ethers.BigNumber.from(ckbRecord.amount)
+        .sub(ethers.BigNumber.from(record.amount))
         .toString();
+
+      ckbRecord.amount = record.amount;
       await this.ethDb.saveCkbLock(ckbRecord);
     }
   }

@@ -1,6 +1,7 @@
 import { parseAddress } from '@ckb-lumos/helpers';
 import { BigNumber } from 'bignumber.js';
 import { Reader } from 'ckb-js-toolkit';
+import { ethers } from 'ethers';
 import { EthAsset } from '../../ckb/model/asset';
 import { ForceBridgeCore } from '../../core';
 import { logger } from '../../utils/logger';
@@ -48,4 +49,46 @@ export function checkLock(amount: string, token: string, recipient: string, sudt
     return `invalid ckb recipient address: ${recipient}`;
   }
   return '';
+}
+
+function checkUdt(recipient: string, sudtExtraData: string) {
+  let lockscriptLength: number;
+  try {
+    lockscriptLength = new Reader(parseAddress(recipient).args).length() + 33;
+  } catch (e) {
+    logger.debug('check sudt size error', e);
+    throw new Error(`invalid ckb recipient address: ${recipient}`);
+  }
+
+  const sudtExtraDataLength = sudtExtraData.length / 2 - 1;
+  const sudtSize = lockscriptLength + sudtExtraDataLength + 89;
+  logger.debug(
+    `check sudtSize: ${JSON.stringify({
+      sudtSizeLimit: ForceBridgeCore.config.ckb.sudtSize,
+      sudtSize,
+      lockscriptLength,
+      sudtExtraDataLength,
+    })}`,
+  );
+
+  if (sudtSize > ForceBridgeCore.config.ckb.sudtSize) {
+    throw new Error(`sudt size exceeds limit. limit: ${ForceBridgeCore.config.ckb.sudtSize} actual: ${sudtSize}`);
+  }
+}
+
+export function checkBurn(token: string, amount: string, recipient: string, sudtExtraData: string): void {
+  const assetInfo = ForceBridgeCore.config.eth.nervosAssetWhiteList?.find((w) => w.xchainTokenAddress == token);
+  if (!assetInfo) {
+    throw new Error(`eth mirror asset is not in whitelist. ${token}`);
+  }
+
+  if (ethers.BigNumber.from(amount).lt(assetInfo.minimalBridgeAmount)) {
+    throw new Error(`minimal bridge amount is ${assetInfo.minimalBridgeAmount} ${assetInfo.symbol}`);
+  }
+
+  checkUdt(recipient, sudtExtraData);
+
+  if (recipient.length > 10240) {
+    throw Error(`recipient address is too long for db to store. length: ${recipient.length} ${recipient}`);
+  }
 }

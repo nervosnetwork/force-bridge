@@ -1,11 +1,12 @@
 import { generateAddress, parseAddress } from '@ckb-lumos/helpers';
+import { ethers } from 'ethers';
 import { ChainType } from '../../../ckb/model/asset';
 import { forceBridgeRole as ForceBridgeRole } from '../../../config';
 import { ForceBridgeCore } from '../../../core';
 import { EthBurn } from '../../../db/entity/EthBurn';
-import { ICkbUnlock } from '../../../db/model';
 import { logger } from '../../../utils/logger';
 import { ParsedLog, Log } from '../../../xchain/eth';
+import { checkBurn } from '../../../xchain/eth/check';
 import Burn from './burn';
 
 class Collector extends Burn {
@@ -14,26 +15,42 @@ class Collector extends Burn {
   async handle(parsedLog: ParsedLog, log: Log, currentHeight: number): Promise<void> {
     await super.handle(parsedLog, log, currentHeight);
 
-    await this.notifyCkbUnlock(log, parsedLog, currentHeight);
+    if (!this.confirmStatus(log, currentHeight)) {
+      return;
+    }
+
+    await this.notifyCkbUnlock(log, parsedLog);
 
     this.reportMetrics(parsedLog);
   }
 
-  protected checkFeeEnough(fee: number): boolean {
-    return fee >= Number(ForceBridgeCore.config.eth.burnNervosAssetFee);
+  protected checkFeeEnough(fee: ethers.BigNumber): boolean {
+    return fee.gt(ForceBridgeCore.config.eth.burnNervosAssetFee);
   }
 
   protected checkMinBurnAmount(amount: number): boolean {
     return amount >= ForceBridgeCore.config.eth.minBurnAmount;
   }
 
-  protected async notifyCkbUnlock(log: Log, parsedLog: ParsedLog, currentHeight: number): Promise<void> {
+  protected async notifyCkbUnlock(log: Log, parsedLog: ParsedLog): Promise<void> {
     if (!this.checkFeeEnough(parsedLog.args.fee.toNumber())) {
       logger.warn(
         `bridge fee use paid in burn tx is too low. tx:${
           log.transactionHash
         } fee:${parsedLog.args.fee.toString()} config:${ForceBridgeCore.config.eth.burnNervosAssetFee}`,
       );
+      return;
+    }
+
+    try {
+      checkBurn(
+        parsedLog.args.token,
+        parsedLog.args.amount.toString(),
+        parsedLog.args.recipient,
+        parsedLog.args.extraData,
+      );
+    } catch (e) {
+      logger.warn(e.message);
       return;
     }
 
@@ -47,18 +64,8 @@ class Collector extends Burn {
       return;
     }
 
-    if (!this.checkMinBurnAmount(parsedLog.args.amount.toNumber())) {
-      logger.warn(
-        `token amount to burn is too low. tx:${log.transactionHash} amount:${parsedLog.args.amount.toString()} config:${
-          ForceBridgeCore.config.eth.minBurnAmount
-        }`,
-      );
-      return;
-    }
-
-    if (this.confirmStatus(log, currentHeight) == 'confirmed') {
-      await this.initBolck(log.blockHash);
-      const unlock: ICkbUnlock = {
+    await this.ethDb.createCollectorCkbUnlock([
+      {
         id: EthBurn.primaryKey(log.logIndex, log.transactionHash),
         burnTxHash: log.transactionHash,
         xchain: ChainType.ETH,
@@ -69,10 +76,8 @@ class Collector extends Burn {
         blockTimestamp: 0,
         blockNumber: 0,
         unlockTxHash: '',
-      };
-
-      await this.ethDb.createCollectorCkbUnlock([unlock]);
-    }
+      },
+    ]);
   }
 }
 

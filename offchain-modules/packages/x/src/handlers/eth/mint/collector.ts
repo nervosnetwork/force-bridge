@@ -23,10 +23,6 @@ class Collector extends Mint {
   }
 
   protected async updateCollectorMint(record: CollectorEthMint, log: Log): Promise<void> {
-    if (log.blockNumber <= record.blockNumber) {
-      return;
-    }
-
     await this.initBlock(log.blockHash);
 
     record.blockNumber = log.blockNumber;
