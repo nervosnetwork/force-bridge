@@ -28,10 +28,7 @@ import {
   IEthUnlock,
   MintedRecord,
   MintedRecords,
-  TxConfirmStatus,
   NervosLockAssetTxMetaData,
-  NervosUnlockAssetTxRecords,
-  NervosUnlockAssetTxRecord,
   NervosUnlockAssetTxMetaData,
 } from '../db/model';
 

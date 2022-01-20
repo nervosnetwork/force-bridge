@@ -28,7 +28,6 @@ import {
   ICkbLock,
   IEthMint,
   ICkbUnlock,
-  NervosUnlockAssetTxRecords,
 } from './model';
 import { EthBurn } from './entity/EthBurn';
 
