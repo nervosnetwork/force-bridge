@@ -12,7 +12,6 @@ import { asserts, nonNullable } from '../errors';
 import { BridgeMetricSingleton, txTokenInfo } from '../metric/bridge-metric';
 import { asyncSleep, foreverPromise, fromHexString, retryPromise, uint8ArrayToString } from '../utils';
 import { logger } from '../utils/logger';
-import { Schedule, Task } from '../utils/promise';
 import { EthChain, WithdrawBridgeFeeTopic, Log, ParsedLog } from '../xchain/eth';
 import { checkLock } from '../xchain/eth/check';
 import { Factory as BurnHandlerFactory } from './eth/burn/factory';
@@ -37,6 +36,7 @@ export class EthHandler {
   private lastHandledBlockHeight: number;
   private lastHandledBlockHash: string;
   private startTipBlockHeight: number;
+  private;
 
   constructor(
     private ethDb: EthDb,
@@ -578,45 +578,28 @@ export class EthHandler {
     }
   }
 
-  initCollectorHandleSchedule(): Schedule {
-    const scheduler = new Schedule(15000);
+  async handleTodoRecords(): Promise<void> {
+    let round = 0;
 
-    scheduler.addTask(
-      new Task(
-        async () => {
-          await this.handleMintRecords();
+    foreverPromise(
+      async () => {
+        (round ^= 1) == 1 ? await this.handleTodoUnlockRecords() : await this.handleMintRecords();
+      },
+      {
+        onRejectedInterval: 15000,
+        onResolvedInterval: 15000,
+        onRejected: (e: Error) => {
+          logger.error(`handle todo error. error:${e.stack}`);
         },
-        {
-          onRejected: (e: Error) => {
-            logger.error(`handle todo error. error:${e.stack}`);
-          },
-          maxRetryTimes: Infinity,
-        },
-      ),
+      },
     );
-
-    scheduler.addTask(
-      new Task(
-        async () => {
-          await this.handleTodoUnlockRecords();
-        },
-        {
-          onRejected: (e: Error) => {
-            logger.error(`handle todo error. error:${e.stack}`);
-          },
-          maxRetryTimes: Infinity,
-        },
-      ),
-    );
-
-    return scheduler;
   }
 
   start(): void {
     void this.watchNewBlock();
 
     if (this.role == 'collector') {
-      void this.initCollectorHandleSchedule().run();
+      void this.handleTodoRecords();
     }
 
     logger.info('eth handler started  🚀');
