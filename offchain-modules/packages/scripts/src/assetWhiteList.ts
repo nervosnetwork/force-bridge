@@ -38,6 +38,10 @@ const TOKEN_PRICE_MAPPING = {
   BTCB: 'BTC',
   WBNB: 'BNB',
 };
+// used for tokens can not find price in binance API
+const TOKEN_PRICE_CONFIG = {
+  iBFR: 0.2366,
+};
 const CachedCkbL2ContractAddressMap: Map<string, string> = new Map();
 
 async function getBridgeInFeeInUSDT(): Promise<BigNumber> {
@@ -71,6 +75,8 @@ async function generateWhiteList(inPath: string, outPath: string, network: Netwo
   for (const token of tokens) {
     if (['USDT', 'DAI'].includes(token.symbol)) {
       price = new BigNumber(1);
+    } else if (TOKEN_PRICE_CONFIG[token.symbol] !== undefined) {
+      price = new BigNumber(TOKEN_PRICE_CONFIG[token.symbol]);
     } else if (TOKEN_PRICE_MAPPING[token.symbol] !== undefined) {
       price = new BigNumber(await getAssetAVGPrice(TOKEN_PRICE_MAPPING[token.symbol]));
     } else {

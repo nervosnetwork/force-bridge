@@ -468,6 +468,18 @@
     "ckbL2ContractAddress": ""
   },
   {
+    "address": "0xa296aD1C47FE6bDC133f39555C1D1177BD51fBc5",
+    "symbol": "iBFR|bsc",
+    "name": "Wrapped iBFR (ForceBridge from BSC)",
+    "decimal": 18,
+    "logoURI": "https://assets.coingecko.com/coins/images/18540/large/buffer.png",
+    "sudtArgs": "0x5e945aa680b40d9388d4988aee0aebdd2ad9185b6c0ebfd408fa974818de8b6a",
+    "source": "BSC",
+    "bridge": "ForceBridge",
+    "ckbExplorerUrl": "https://explorer.nervos.org/sudt/0x022156d65c2d9b2f358dadbe845b178c2d753c40e61a4fd01e750e7f0f70fcee",
+    "ckbL2ContractAddress": ""
+  },
+  {
     "address": "0xD41FDb03Ba84762dD66a0af1a6C8540FF1ba5dfb",
     "symbol": "SFP|bsc",
     "name": "Wrapped SFP (ForceBridge from BSC)",

@@ -89,6 +89,17 @@
       "out": "9100000000000000000"
     },
     "sudtArgs": "0xcedd0f67f2d218ab992284ab343c2e729d2a124a1612592deaa9f8b8f8a581dd"
+  {
+    "address": "0xa296aD1C47FE6bDC133f39555C1D1177BD51fBc5",
+    "name": "iBuffer Token",
+    "symbol": "iBFR",
+    "logoURI": "https://assets.coingecko.com/coins/images/18540/large/buffer.png",
+    "decimal": 18,
+    "minimalBridgeAmount": "66800000000000000000",
+    "bridgeFee": {
+      "in": "33400000000000000000",
+      "out": "33400000000000000000"
+    }
   },
   {
     "address": "0xD41FDb03Ba84762dD66a0af1a6C8540FF1ba5dfb",
