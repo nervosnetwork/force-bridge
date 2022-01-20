@@ -1148,7 +1148,7 @@ export class CkbHandler {
       const burnId = burnIds[i];
       const burnHashSeparatorIndex = burnId.indexOf('-');
       if (burnHashSeparatorIndex < 0) {
-        logger.warn(`invalid unlock tx: invalid burnId in unlockMemoWitness, tx: ${tx}, burnId: ${burnId}`);
+        logger.error(`invalid unlock tx: invalid burnId in unlockMemoWitness, tx: ${tx}, burnId: ${burnId}`);
         return null;
       }
       const burnTxHash = burnId.substring(0, burnHashSeparatorIndex);
