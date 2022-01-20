@@ -1162,7 +1162,7 @@ export class CkbHandler {
       let amount: string;
       if (isCkb) {
         if (output.type) {
-          logger.warn(`invalid unlock tx: typescript of output should be null when is ckb: ${output}`);
+          logger.error(`invalid unlock tx: typescript of output should be null when is ckb: ${output}`);
           return null;
         }
         amount = output.capacity;
