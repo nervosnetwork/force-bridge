@@ -28,10 +28,6 @@ class Collector extends Burn {
     return fee.gt(ForceBridgeCore.config.eth.burnNervosAssetFee);
   }
 
-  protected checkMinBurnAmount(amount: number): boolean {
-    return amount >= ForceBridgeCore.config.eth.minBurnAmount;
-  }
-
   protected async notifyCkbUnlock(log: Log, parsedLog: ParsedLog): Promise<void> {
     if (!this.checkFeeEnough(parsedLog.args.fee.toNumber())) {
       logger.warn(
