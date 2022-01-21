@@ -1,4 +1,4 @@
-import { getRepository } from 'typeorm';
+import { Column, CreateDateColumn, getRepository, Index, PrimaryColumn, UpdateDateColumn } from 'typeorm';
 import { ChainType } from '../ckb/model/asset';
 import { SigType } from '../multisig/multisig-mgr';
 import { BtcUnlock } from './entity/BtcUnlock';
@@ -6,6 +6,10 @@ import { CkbMint, CkbMintStatus, dbTxStatus } from './entity/CkbMint';
 import { EosUnlock } from './entity/EosUnlock';
 import { EthLock, TxConfirmStatus } from './entity/EthLock';
 import { EthUnlock, EthUnlockStatus } from './entity/EthUnlock';
+import Timestamp = CKBComponents.Timestamp;
+import Script = CKBComponents.Script;
+import { CkbUnlockStatus } from './entity/CkbUnlock';
+import { EthBurn } from './entity/EthBurn';
 
 export { EthUnlock } from './entity/EthUnlock';
 export { EthLock, TxConfirmStatus } from './entity/EthLock';
@@ -17,6 +21,8 @@ export { CkbMint } from './entity/CkbMint';
 export { CkbBurn } from './entity/CkbBurn';
 export { TronLock } from './entity/TronLock';
 export { TronUnlock } from './entity/TronUnlock';
+export { CkbLock } from './entity/CkbLock';
+export { CkbUnlock } from './entity/CkbUnlock';
 
 export interface ISigned {
   sigType: SigType;
@@ -62,7 +68,7 @@ export interface IEthMint {
   recipientAddress: string;
   blockNumber?: number;
   blockTimestamp?: number;
-  ethTxHash: string;
+  ethTxHash?: string;
   amount: string;
 }
 
@@ -125,6 +131,52 @@ export interface ITronUnlock {
 }
 
 export type XchainUnlock = EthUnlock | BtcUnlock | EosUnlock;
+
+export interface ICkbLock {
+  ckbTxHash: string;
+  xchain: number; // bridge to which chain, 1 = Ethereum
+  senderAddress: string;
+  assetIdent: string; // sudt/xudt typescript hash
+  amount: string; // lock value
+  bridgeFee: string;
+  recipientAddress: string;
+  blockNumber: number;
+  blockTimestamp: number;
+  confirmNumber: number;
+  confirmStatus: TxConfirmStatus;
+}
+
+export interface ICkbUnlock {
+  id: string; // ${burnTxHash}-${logIndex}
+  burnTxHash: string;
+  xchain: number; // bridge from which chain, 1 = Ethereum
+  assetIdent: string; // related sudt/xudt typescript hash
+  amount: string;
+  recipientAddress: string; // ckb address
+  udtExtraData: string;
+  blockNumber: number;
+  blockTimestamp: number;
+  unlockTxHash: string; // ckb tx hash
+  status?: CkbUnlockStatus;
+  message?: string;
+}
+
+export interface IEthBurn {
+  uniqueId: string; // ${burnTxHash}-${logIndex}
+  burnTxHash: string;
+  sender: string;
+  xchainTokenId: string; // burned erc20 address
+  nervosAssetId: string; // related udt typescript hash
+  amount: string;
+  bridgeFee: string;
+  recipient: string;
+  udtExtraData: string;
+  blockNumber: number;
+  blockTimestamp: number;
+  blockHash: string;
+  confirmNumber: number;
+  confirmStatus: TxConfirmStatus;
+}
 
 // export async function transformBurnEvent(burn: CkbBurn): Promise<XchainUnlock> {
 //   throw new Error('Method not implemented.');
@@ -248,6 +300,21 @@ export interface MintedRecord {
 export interface MintedRecords {
   txHash: string;
   records: MintedRecord[];
+}
+
+export interface NervosLockAssetTxMetaData {
+  amount: bigint;
+  xchain: number;
+  recipientAddress: string;
+  committeeMultisigCellCapacity: bigint;
+  assetIdent: string;
+  senderAddress: string;
+  bridgeFee: bigint;
+}
+
+export interface NervosUnlockAssetTxMetaData {
+  xchain: number;
+  iCkbUnlocks: ICkbUnlock[];
 }
 
 export interface IQuery {

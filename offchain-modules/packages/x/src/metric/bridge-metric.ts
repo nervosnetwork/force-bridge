@@ -3,7 +3,7 @@ import { forceBridgeRole } from '../config';
 import { ServerSingleton } from '../server/serverSingleton';
 
 export type chainType = 'ckb' | 'eth';
-export type txType = 'ckb_mint' | 'ckb_burn' | 'eth_lock' | 'eth_unlock';
+export type txType = 'ckb_mint' | 'ckb_burn' | 'eth_lock' | 'eth_unlock' | 'ckb_lock' | 'ckb_unlock';
 export type txStatus = 'success' | 'failed';
 export type txTokenInfo = {
   token: string;
