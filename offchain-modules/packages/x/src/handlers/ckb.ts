@@ -19,7 +19,7 @@ import { ForceBridgeLockscriptArgs } from '../ckb/tx-helper/generated/force_brid
 import { MintWitness } from '../ckb/tx-helper/generated/mint_witness';
 import { CkbTxGenerator, MintAssetRecord } from '../ckb/tx-helper/generator';
 import { GetTransactionsResult, ScriptType, SearchKey } from '../ckb/tx-helper/indexer';
-import { getOwnerTypeHash } from '../ckb/tx-helper/multisig/multisig_helper';
+import { getFromAddr, getOwnerTypeHash } from '../ckb/tx-helper/multisig/multisig_helper';
 import { getOmniLockMultisigAddress } from '../ckb/tx-helper/multisig/omni-lock';
 import { forceBridgeRole } from '../config';
 import { ForceBridgeCore } from '../core';
@@ -35,8 +35,8 @@ import {
   IEthUnlock,
   MintedRecord,
   MintedRecords,
-  TxConfirmStatus,
   NervosLockAssetTxMetaData,
+  NervosUnlockAssetTxMetaData,
 } from '../db/model';
 
 import { asserts, nonNullable } from '../errors';
@@ -46,6 +46,7 @@ import {
   asyncSleep,
   foreverPromise,
   fromHexString,
+  retryPromise,
   toHexString,
   transactionSkeletonToJSON,
   uint8ArrayToString,
@@ -59,6 +60,9 @@ import { EthUnlockStatus } from '../db/entity/EthUnlock';
 import { secp256k1Blake160Multisig } from '@ckb-lumos/common-scripts';
 import { SerializeRcLockWitnessLock } from '../ckb/tx-helper/generated/omni_lock';
 import { SerializeWitnessArgs } from '@ckb-lumos/base/lib/core';
+import { WithdrawBridgeFeeTopic } from '../xchain/eth';
+import { BytesVec, UnlockMemo } from '../ckb/tx-helper/generated/unlock_memo';
+import { EthBurn } from '../db/entity/EthBurn';
 
 const lastHandleCkbBlockKey = 'lastHandleCkbBlock';
 
@@ -534,11 +538,47 @@ export class CkbHandler {
     }
   }
 
-  async onUnlockTx(_txInfo: CkbTxInfo, _currentHeight: number): Promise<void> {
-    if (_txInfo.tx.transaction.inputs.length < 2) {
-      return;
-    }
-    throw new Error('unimplement');
+  async onUnlockTx(txInfo: CkbTxInfo, currentHeight: number): Promise<void> {
+    await retryPromise(
+      async () => {
+        const block = await this.ckb.rpc.getBlock(txInfo.tx.txStatus.blockHash!);
+        const parsedUnlockTx = await this.parseUnlockTx(
+          txInfo.tx.transaction,
+          Number(txInfo.info.block_number),
+          Number(block.header.timestamp),
+        );
+        if (!parsedUnlockTx) {
+          return null;
+        }
+        const iCkbUnlocks = parsedUnlockTx.iCkbUnlocks;
+        const amount = iCkbUnlocks.map((iCkbUnlock) => BigInt(iCkbUnlock.amount)).reduce((a, b) => a + b, 0n);
+        logger.info(
+          `CkbHandler watchUnlockEvents receiveLog blockHeight:${txInfo.info.block_number} blockHash:${txInfo.tx.txStatus.blockHash} txHash:${txInfo.info.tx_hash} amount: ${amount} iCkbLocks: ${iCkbUnlocks}`,
+        );
+        logger.debug('CkbHandler watchUnlockEvents ckb unlockLog:', { txInfo, parsedUnlockTx });
+
+        await this.db.createCkbUnlock(iCkbUnlocks);
+        if (this.role === 'collector') {
+          await Promise.all(
+            iCkbUnlocks.map((iCkbUnlock) =>
+              this.db.updateCollectorUnlockStatus(iCkbUnlock.burnTxHash, iCkbUnlock.blockNumber, 'success'),
+            ),
+          );
+        }
+        BridgeMetricSingleton.getInstance(this.role).addBridgeTokenMetrics(
+          'ckb_unlock',
+          iCkbUnlocks.map((iCkbUnlock) => ({
+            token: iCkbUnlock.id,
+            amount: Number(iCkbUnlock.amount),
+          })),
+        );
+      },
+      {
+        onRejected: (e: Error) => {
+          logger.error(`CkbHandler onUnlockTxs error:${e.stack}`);
+        },
+      },
+    );
   }
 
   async parseMintTx(tx: Transaction, blockNumber: number): Promise<null | MintedRecords> {
@@ -1255,6 +1295,139 @@ export class CkbHandler {
       bridgeFee,
     };
     return nervosLockAssetTxMetaData;
+  }
+
+  async parseUnlockTx(
+    tx: Transaction,
+    blockNumber: number,
+    blockTimestamp: number,
+  ): Promise<NervosUnlockAssetTxMetaData | null> {
+    if (tx.inputs.length < 2) {
+      return null;
+    }
+    const sudtTypescript = ForceBridgeCore.config.ckb.deps.sudtType.script;
+    const previousOutput = nonNullable(tx.inputs[0].previousOutput);
+    const preHash = previousOutput.txHash;
+    const txPrevious = await this.ckb.rpc.getTransaction(preHash);
+    if (txPrevious == null) {
+      return null;
+    }
+    const senderOutput = txPrevious.transaction.outputs[Number(previousOutput.index)];
+    const senderLockscript = senderOutput.lock;
+    const committeeMultisigLockscript = parseAddress(getOmniLockMultisigAddress());
+    const collectorAddress = getFromAddr();
+    const collectorLockscript = parseAddress(collectorAddress);
+    if (
+      !senderLockscript ||
+      senderLockscript.codeHash !== committeeMultisigLockscript.code_hash ||
+      senderLockscript.hashType !== committeeMultisigLockscript.hash_type ||
+      senderLockscript.args !== committeeMultisigLockscript.args
+    ) {
+      logger.warn(`invalid unlock tx: first input is not committee multisig cell`);
+      return null;
+    }
+
+    const senderTypescript = senderOutput.type;
+    if (
+      senderTypescript &&
+      (senderTypescript.codeHash !== sudtTypescript.codeHash || senderTypescript.hashType !== sudtTypescript.hashType)
+    ) {
+      logger.warn(`invalid unlock tx: the typescript of first input is not null or sudt typescript`);
+      return null;
+    }
+
+    if (tx.inputs.length + 1 !== tx.witnesses.length) {
+      logger.warn(`invalid unlock tx: the length of witness should be inputs.length + 1`);
+      return null;
+    }
+    const unlockMemoWitness = tx.witnesses[tx.witnesses.length - 1];
+    let unlockMemo: UnlockMemo;
+    try {
+      unlockMemo = new UnlockMemo(new Reader(unlockMemoWitness).toArrayBuffer());
+    } catch (e) {
+      logger.error(
+        `invalid unlock tx: parse recipient unlock memo in witness error: ${e.message} ${e.stack}, tx: ${tx}`,
+      );
+      return null;
+    }
+    const xchain = unlockMemo.getXchain();
+    const burnIdBytes: BytesVec = unlockMemo.getBurnIds();
+    const burnIds = lodash
+      .range(burnIdBytes.length())
+      .map((i) => new Reader(burnIdBytes.indexAt(i).raw()).serializeJson());
+
+    const isCkb = !senderTypescript;
+    const assetIdent = isCkb
+      ? '0x0000000000000000000000000000000000000000000000000000000000000000'
+      : utils.computeScriptHash({
+          code_hash: senderTypescript!.codeHash,
+          hash_type: senderTypescript!.hashType,
+          args: senderTypescript!.args,
+        });
+
+    const iCkbUnlocks: ICkbUnlock[] = [];
+    for (let i = 0; i < burnIds.length; i++) {
+      const burnId = burnIds[i];
+      const burnHashSeparatorIndex = burnId.indexOf('-');
+      if (burnHashSeparatorIndex < 0) {
+        logger.error(`invalid unlock tx: invalid burnId in unlockMemoWitness, tx: ${tx}, burnId: ${burnId}`);
+        return null;
+      }
+      const burnTxHash = burnId.substring(0, burnHashSeparatorIndex);
+      const output = tx.outputs[i];
+      if (!output) {
+        logger.error(
+          `invalid unlock tx: burnIds in unlock memo are more than outputs: burnIds: ${burnIds}, outputs: ${tx.outputs}, i: ${i}, output: ${output}`,
+        );
+        return null;
+      }
+      let amount: string;
+      if (isCkb) {
+        if (output.type) {
+          logger.error(`invalid unlock tx: typescript of output should be null when is ckb: ${output}`);
+          return null;
+        }
+        amount = output.capacity;
+      } else {
+        if (
+          !output.type ||
+          output.type.codeHash !== senderTypescript?.codeHash ||
+          output.type.hashType !== senderTypescript?.hashType ||
+          output.type.args !== senderTypescript?.args
+        ) {
+          logger.error(
+            `invalid unlock tx: at output[${i}] typescript is unequal to committee multisig input, output: ${output}`,
+          );
+          return null;
+        }
+        amount = `0x${utils.readBigUInt128LE(tx.outputsData[i]).toString(16)}`;
+      }
+      const recipientAddress = generateAddress({
+        code_hash: output.lock.codeHash,
+        hash_type: output.lock.hashType,
+        args: output.lock.args,
+      });
+      const udtExtraData = tx.outputsData[i];
+      const iCkbUnlock: ICkbUnlock = {
+        id: burnId,
+        burnTxHash,
+        xchain,
+        assetIdent,
+        amount,
+        recipientAddress,
+        udtExtraData,
+        blockNumber,
+        blockTimestamp,
+        unlockTxHash: tx.hash,
+      };
+      iCkbUnlocks.push(iCkbUnlock);
+    }
+
+    const nervosUnlockAssetTxMetaData: NervosUnlockAssetTxMetaData = {
+      xchain,
+      iCkbUnlocks,
+    };
+    return nervosUnlockAssetTxMetaData;
   }
 
   start(): void {

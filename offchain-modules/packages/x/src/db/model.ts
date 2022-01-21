@@ -134,7 +134,7 @@ export type XchainUnlock = EthUnlock | BtcUnlock | EosUnlock;
 
 export interface ICkbLock {
   ckbTxHash: string;
-  xchain: number; // bridge to which chain
+  xchain: number; // bridge to which chain, 1 = Ethereum
   senderAddress: string;
   assetIdent: string; // sudt/xudt typescript hash
   amount: string; // lock value
@@ -310,6 +310,11 @@ export interface NervosLockAssetTxMetaData {
   assetIdent: string;
   senderAddress: string;
   bridgeFee: bigint;
+}
+
+export interface NervosUnlockAssetTxMetaData {
+  xchain: number;
+  iCkbUnlocks: ICkbUnlock[];
 }
 
 export interface IQuery {
