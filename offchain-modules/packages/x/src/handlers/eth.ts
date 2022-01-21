@@ -428,10 +428,15 @@ export class EthHandler {
       logger.error(`EthHandler mint ckbTxHashes:${mintTxHashes} mint execute failed:${e.stack}`);
     }
 
-    try {
-      await this.ethDb.saveCollectorEthMints(records);
-    } catch (e) {
-      logger.error(`EthHandler mint db.saveEthMint ckbTxHashes:${mintTxHashes} error:${(e as Error).stack}`);
+    while (true) {
+      try {
+        await this.ethDb.saveCollectorEthMints(records);
+        logger.info(`EthHandler mint process unlock Record completed ckbTxHashes:${mintTxHashes}`);
+        break;
+      } catch (e) {
+        logger.error(`EthHandler mint db.saveEthMint ckbTxHashes:${mintTxHashes} error:${(e as Error).stack}`);
+      }
+      await asyncSleep(3000);
     }
   }
 
