@@ -281,10 +281,10 @@
     "symbol": "BZRX",
     "logoURI": "https://cryptologos.cc/logos/bzx-protocol-bzrx-logo.svg?v=013",
     "decimal": 18,
-    "minimalBridgeAmount": "Inf00000",
+    "minimalBridgeAmount": "584000000000000000000",
     "bridgeFee": {
-      "in": "Inf00000",
-      "out": "Inf00000"
+      "in": "33300000000000000000",
+      "out": "292000000000000000000"
     }
   },
   {

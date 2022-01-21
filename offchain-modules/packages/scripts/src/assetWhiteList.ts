@@ -41,6 +41,7 @@ const TOKEN_PRICE_MAPPING = {
 // used for tokens can not find price in binance API
 const TOKEN_PRICE_CONFIG = {
   iBFR: 0.2366,
+  BZRX: 0.2334,
 };
 const CachedCkbL2ContractAddressMap: Map<string, string> = new Map();
 
@@ -81,6 +82,9 @@ async function generateWhiteList(inPath: string, outPath: string, network: Netwo
       price = new BigNumber(await getAssetAVGPrice(TOKEN_PRICE_MAPPING[token.symbol]));
     } else {
       price = new BigNumber(await getAssetAVGPrice(token.symbol));
+    }
+    if (price.eq(new BigNumber(0))) {
+      throw new Error(`invalid price: ${price.toString()}`);
     }
     const baseAmount = new BigNumber(Math.pow(10, token.decimal)).div(new BigNumber(price));
     const minimalBridgeAmount = baseAmount.times(2).multipliedBy(bridgeOutFee).toFixed(0);
