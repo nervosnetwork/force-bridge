@@ -49,6 +49,13 @@
     "decimal": 18
   },
   {
+    "address": "0xa296ad1c47fe6bdc133f39555c1d1177bd51fbc5",
+    "name": "iBuffer Token",
+    "symbol": "iBFR",
+    "logoURI": "https://assets.coingecko.com/coins/images/18540/large/buffer.png",
+    "decimal": 18
+  },
+  {
     "address": "0xD41FDb03Ba84762dD66a0af1a6C8540FF1ba5dfb",
     "name": "SFP",
     "symbol": "SFP",
