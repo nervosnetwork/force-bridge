@@ -1,3 +1,14 @@
+## v0.0.20 (2022-1-21)
+
+### Bug fixes
+
+- [fix capacity insuffient error msg](https://github.com/nervosnetwork/force-bridge/pull/298)
+
+### Features
+
+- [adjust asset white list](https://github.com/nervosnetwork/force-bridge/pull/299)
+- [adjust bridge fee](https://github.com/nervosnetwork/force-bridge/pull/300)
+
 ## v0.0.19 (2022-1-12)
 
 ### Bug fixes
