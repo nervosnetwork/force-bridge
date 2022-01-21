@@ -1,5 +1,6 @@
-import { Column, CreateDateColumn, Entity, Index, PrimaryColumn, UpdateDateColumn } from 'typeorm';
-import { TxConfirmStatus } from './CkbLock';
+import { Entity, Column, CreateDateColumn, UpdateDateColumn, Index, PrimaryColumn } from 'typeorm';
+
+export type TxConfirmStatus = 'unconfirmed' | 'confirmed';
 
 @Entity()
 export class EthBurn {
@@ -25,7 +26,7 @@ export class EthBurn {
   @Column({ default: '0' })
   bridgeFee: string;
 
-  @Column({ type: 'varchar' })
+  @Column('varchar', { length: 10240 })
   recipient: string;
 
   @Column('varchar', { length: 10240, default: '' })

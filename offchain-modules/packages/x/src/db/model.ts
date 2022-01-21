@@ -64,9 +64,9 @@ export interface IEthMint {
   erc20TokenAddress: string;
   amount: string;
   recipientAddress: string;
-  blockNumber: number;
-  blockTimestamp: number;
-  ethTxHash: string;
+  blockNumber?: number;
+  blockTimestamp?: number;
+  ethTxHash?: string;
 }
 
 export interface IEthLock {
@@ -148,7 +148,7 @@ export type XchainUnlock = EthUnlock | BtcUnlock | EosUnlock;
 
 export interface ICkbLock {
   ckbTxHash: string;
-  xchain: number; // bridge to which chain
+  xchain: number; // bridge to which chain, 1 = Ethereum
   senderAddress: string;
   assetIdent: string; // sudt/xudt typescript hash
   amount: string; // lock value
@@ -173,17 +173,6 @@ export interface ICkbUnlock {
   unlockTxHash: string; // ckb tx hash
   status?: CkbUnlockStatus;
   message?: string;
-}
-
-export interface IEthereumMint {
-  ckbTxHash: string;
-  erc20TokenAddress: string;
-  nervosAssetId: string;
-  amount: string;
-  recipientAddress: string;
-  blockNumber?: number;
-  blockTimestamp?: number;
-  ethTxHash?: string;
 }
 
 // export async function transformBurnEvent(burn: CkbBurn): Promise<XchainUnlock> {
@@ -318,6 +307,11 @@ export interface NervosLockAssetTxMetaData {
   assetIdent: string;
   senderAddress: string;
   bridgeFee: bigint;
+}
+
+export interface NervosUnlockAssetTxMetaData {
+  xchain: number;
+  iCkbUnlocks: ICkbUnlock[];
 }
 
 export interface IQuery {

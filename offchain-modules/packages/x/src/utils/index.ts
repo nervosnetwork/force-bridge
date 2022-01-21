@@ -1,7 +1,6 @@
 import fs from 'fs';
 import path from 'path';
 import { parseAddress, TransactionSkeletonType } from '@ckb-lumos/helpers';
-
 import * as utils from '@nervosnetwork/ckb-sdk-utils';
 import { AddressPrefix } from '@nervosnetwork/ckb-sdk-utils';
 import { ethers } from 'ethers';
