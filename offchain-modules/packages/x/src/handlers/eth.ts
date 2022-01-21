@@ -346,7 +346,10 @@ export class EthHandler {
   // watch the eth_mint table and handle the new mint events
   // send tx according to the data
   async handleMintRecords(): Promise<void> {
-    if (!this.checkBeforeHandleTodoRecords('handleMintRecords')) {
+    if (!this.syncedToStartTipBlockHeight()) {
+      logger.info(
+        `wait until syncing to startBlockHeight, lastHandledBlockHeight: ${this.lastHandledBlockHeight}, startTipBlockHeight: ${this.startTipBlockHeight}`,
+      );
       return;
     }
 
@@ -440,26 +443,18 @@ export class EthHandler {
     }
   }
 
-  checkBeforeHandleTodoRecords(name: string): boolean {
+  // watch the eth_unlock table and handle the new unlock events
+  // send tx according to the data
+  async handleTodoUnlockRecords(): Promise<void> {
     if (!TransferOutSwitch.getInstance().getStatus()) {
-      logger.info(`TransferOutSwitch is off, skip ${name}`);
-      return false;
+      logger.info(`TransferOutSwitch is off, skip handleTodoUnlockRecords`);
+      return;
     }
 
     if (!this.syncedToStartTipBlockHeight()) {
       logger.info(
         `wait until syncing to startBlockHeight, lastHandledBlockHeight: ${this.lastHandledBlockHeight}, startTipBlockHeight: ${this.startTipBlockHeight}`,
       );
-      return false;
-    }
-
-    return true;
-  }
-
-  // watch the eth_unlock table and handle the new unlock events
-  // send tx according to the data
-  async handleTodoUnlockRecords(): Promise<void> {
-    if (!this.checkBeforeHandleTodoRecords('handleTodoUnlockRecords')) {
       return;
     }
 
