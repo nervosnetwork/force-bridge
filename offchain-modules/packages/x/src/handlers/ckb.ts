@@ -1012,7 +1012,7 @@ export class CkbHandler {
           const { message: unlockTxHash } = nonNullable(
             txSkeleton
               .get('signingEntries')
-              .filter((value) => value.index === 1)
+              .filter((value) => value.index === 0)
               .get(0),
           );
           records.map((r) => {
@@ -1040,7 +1040,7 @@ export class CkbHandler {
           },
         };
         const omniLockWitnessHexString = new Reader(SerializeRcLockWitnessLock(omniLockWitness)).serializeJson();
-        const witness = new Reader(
+        const multisigWitness = new Reader(
           SerializeWitnessArgs(
             normalizers.NormalizeWitnessArgs({
               lock: omniLockWitnessHexString,
@@ -1051,7 +1051,7 @@ export class CkbHandler {
         const { message: collectorMessageToSign } = nonNullable(
           txSkeleton
             .get('signingEntries')
-            .filter((value) => value.index === 0)
+            .filter((value) => value.index === 1)
             .get(0),
         );
         logger.info(`collectorMessageToSign: ${collectorMessageToSign}`);
@@ -1068,9 +1068,9 @@ export class CkbHandler {
         const signedTxSkeleton = txSkeleton.update('witnesses', (witnesses) => {
           return witnesses.map((value, index) => {
             if (index === 0) {
-              return collectorWitness;
+              return multisigWitness;
             } else if (index !== txSkeleton.witnesses.size - 1 && value !== '0x') {
-              return witness;
+              return collectorWitness;
             }
             return value;
           });
