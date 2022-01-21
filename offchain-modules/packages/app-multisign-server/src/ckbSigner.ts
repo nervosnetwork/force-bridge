@@ -1,4 +1,4 @@
-import { Cell } from '@ckb-lumos/base';
+import { Cell, utils } from '@ckb-lumos/base';
 import { common } from '@ckb-lumos/common-scripts';
 import { key } from '@ckb-lumos/hd';
 import {
@@ -9,20 +9,25 @@ import {
   TransactionSkeletonObject,
 } from '@ckb-lumos/helpers';
 import { BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
-import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
+import { getFromAddr, getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { EthLock } from '@force-bridge/x/dist/db/entity/EthLock';
 import { asserts, nonNullable } from '@force-bridge/x/dist/errors';
 import {
   ckbCollectSignaturesPayload,
+  ckbUnlockCollectSignaturesPayload,
   collectSignaturesParams,
   mintRecord,
+  unlockRecord,
 } from '@force-bridge/x/dist/multisig/multisig-mgr';
 import { verifyCollector } from '@force-bridge/x/dist/multisig/utils';
 import { compareCkbAddress } from '@force-bridge/x/dist/utils';
 import { Amount } from '@lay2/pw-core';
 import { SigError, SigErrorCode, SigErrorOk } from './error';
 import { SigResponse, SigServer } from './sigServer';
+import { getOmniLockMultisigAddress } from '@force-bridge/x/dist/ckb/tx-helper/multisig/omni-lock';
+import { EthBurn } from '@force-bridge/x/dist/db/entity/EthBurn';
+import { CkbUnlock } from '@force-bridge/x/dist/db/entity/CkbUnlock';
 
 async function verifyCreateCellTx(rawData: string, payload: ckbCollectSignaturesPayload): Promise<SigError> {
   const txSkeleton = payload.txSkeleton;
@@ -174,6 +179,14 @@ async function verifyMintTx(pubKey: string, rawData: string, payload: ckbCollect
   if (err.Code !== SigErrorCode.Ok) {
     return err;
   }
+  return SigErrorOk;
+}
+
+async function verifyUnlockTx(
+  pubKey: string,
+  rawData: string,
+  payload: ckbUnlockCollectSignaturesPayload,
+): Promise<SigError> {
   return SigErrorOk;
 }
 
@@ -354,6 +367,12 @@ export async function signCkbTx(params: collectSignaturesParams): Promise<SigRes
         return new SigResponse(err);
       }
       break;
+    case 'unlock':
+      err = await verifyUnlockTx(pubKey, params.rawData, payload);
+      if (err.Code !== SigErrorCode.Ok) {
+        return new SigResponse(err);
+      }
+      break;
     default:
       return SigResponse.fromSigError(SigErrorCode.InvalidParams, `invalid sigType:${payload.sigType}`);
   }
@@ -373,6 +392,31 @@ export async function signCkbTx(params: collectSignaturesParams): Promise<SigRes
           receiver: mintRecord.recipientLockscript,
           asset: mintRecord.asset,
           refTxHash: mintRecord.id,
+          pubKey: pubKey,
+          rawData: params.rawData,
+          inputOutPoints: txSkeleton.inputs
+            .map((cell) => {
+              return cell.out_point!.tx_hash + ':' + cell.out_point!.index;
+            })
+            .join(';'),
+          signature: sig,
+        };
+      }),
+    );
+    await SigServer.setPendingTx('ckb', params);
+  } else if (payload.sigType === 'unlock') {
+    const payload = params.payload as ckbUnlockCollectSignaturesPayload;
+    asserts(payload.unlockRecords);
+
+    await SigServer.signedDb.createSigned(
+      payload.unlockRecords.map((unlockRecord) => {
+        return {
+          sigType: 'unlock',
+          chain: unlockRecord.xchain,
+          amount: unlockRecord.amount,
+          receiver: unlockRecord.recipientAddress,
+          asset: unlockRecord.assetIdent,
+          refTxHash: unlockRecord.burnTxHash,
           pubKey: pubKey,
           rawData: params.rawData,
           inputOutPoints: txSkeleton.inputs

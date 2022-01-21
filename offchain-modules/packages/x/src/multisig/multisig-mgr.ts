@@ -40,6 +40,16 @@ export interface mintRecord {
   sudtExtraData: string;
 }
 
+export interface unlockRecord {
+  id: string;
+  burnTxHash: string;
+  xchain: number;
+  assetIdent: string;
+  amount: string;
+  recipientAddress: string;
+  udtExtraData: string;
+}
+
 export interface createAsset {
   chain: number;
   asset: string;
@@ -52,7 +62,17 @@ export interface ckbCollectSignaturesPayload {
   txSkeleton: TransactionSkeletonObject;
 }
 
-export type collectSignaturesParamsPayload = ethCollectSignaturesPayload | ckbCollectSignaturesPayload;
+export interface ckbUnlockCollectSignaturesPayload {
+  sigType: SigType;
+  unlockRecords?: unlockRecord[];
+  createAssets?: createAsset[];
+  txSkeleton: TransactionSkeletonObject;
+}
+
+export type collectSignaturesParamsPayload =
+  | ethCollectSignaturesPayload
+  | ckbCollectSignaturesPayload
+  | ckbUnlockCollectSignaturesPayload;
 
 export interface collectSignaturesParams {
   rawData: string;

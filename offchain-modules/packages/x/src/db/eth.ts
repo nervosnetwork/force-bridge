@@ -7,6 +7,7 @@ import { CollectorCkbUnlock } from './entity/CkbUnlock';
 import { EthBurn } from './entity/EthBurn';
 import { CollectorEthMint, EthMint } from './entity/EthMint';
 import { CollectorEthUnlock, EthUnlockStatus } from './entity/EthUnlock';
+import { EthBurn } from './entity/EthBurn';
 import {
   CkbBurn,
   CkbMint,
@@ -369,6 +370,14 @@ export class EthDb implements IQuery {
     return await this.connection.getRepository(EthLock).find({
       where: {
         uniqueId: In(uniqueIds),
+      },
+    });
+  }
+
+  async getEthBurnsByBurnTxHashes(burnTxHashes: string[]): Promise<EthBurn[]> {
+    return await this.connection.getRepository(EthBurn).find({
+      where: {
+        burnTxHash: In(burnTxHashes),
       },
     });
   }
