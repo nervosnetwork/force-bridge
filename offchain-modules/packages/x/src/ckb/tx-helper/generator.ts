@@ -1,11 +1,12 @@
-import { Cell, Script, Indexer, WitnessArgs, core, utils, CellDep } from '@ckb-lumos/base';
+import { Cell, CellDep, core, Indexer, Script, utils, WitnessArgs } from '@ckb-lumos/base';
 import { SerializeWitnessArgs } from '@ckb-lumos/base/lib/core';
 import { common } from '@ckb-lumos/common-scripts';
 import { SECP_SIGNATURE_PLACEHOLDER } from '@ckb-lumos/common-scripts/lib/helper';
 import { minimalCellCapacity, parseAddress, TransactionSkeleton, TransactionSkeletonType } from '@ckb-lumos/helpers';
-import { Reader, normalizers } from 'ckb-js-toolkit';
+import { normalizers, Reader } from 'ckb-js-toolkit';
 import * as lodash from 'lodash';
 import { ForceBridgeCore } from '../../core';
+import { ICkbUnlock } from '../../db/model';
 import { asserts, nonNullable } from '../../errors';
 import { asyncSleep, fromHexString, stringToUint8Array, toHexString, transactionSkeletonToJSON } from '../../utils';
 import { logger } from '../../utils/logger';
@@ -810,6 +811,30 @@ export class CkbTxGenerator extends CkbTxHelper {
     });
 
     return txSkeletonToRawTransactionToSign(txSkeleton, false);
+  }
+
+  async unlock(records: ICkbUnlock[]): Promise<TransactionSkeletonType | undefined> {
+    records = records.filter((r) => r.xchain === ChainType.ETH);
+    const assetIdent = records[0].assetIdent;
+    if (!assetIdent || assetIdent === '0x0000000000000000000000000000000000000000000000000000000000000000') {
+      return await this.unlockCKB(
+        records.map((r) => ({ burnId: r.burnTxHash, recipient: r.recipientAddress, amount: r.amount })),
+      );
+    } else {
+      const assetInfo = new NervosAsset(assetIdent).getAssetInfo(ChainType.ETH);
+      if (!assetInfo) {
+        return;
+      }
+      const sudtArgs = assetInfo.typescript!.args;
+      return await this.unlockSUDT(
+        sudtArgs,
+        records.map((r) => ({
+          burnId: r.burnTxHash,
+          recipient: r.recipientAddress,
+          amount: r.amount,
+        })),
+      );
+    }
   }
 
   async unlockCKB(records: { burnId: string; recipient: string; amount: string }[]): Promise<TransactionSkeletonType> {

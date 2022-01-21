@@ -277,7 +277,7 @@ export class CkbDb {
     await this.connection.getRepository(CollectorEthMint).save(dbRecords);
   }
 
-  async getCkbUnlockRecordsToUnlock(status: CkbUnlockStatus, take = 10): Promise<CkbUnlock[]> {
+  async getCollectorCkbUnlockRecordsToUnlock(status: CkbUnlockStatus, take = 10): Promise<CollectorCkbUnlock[]> {
     return await this.connection.getRepository(CollectorCkbUnlock).find({
       where: {
         status,
@@ -333,6 +333,26 @@ export class CkbDb {
       where: {
         ckbTxHash: In(ckbTxHashes),
       },
+    });
+  }
+
+  async getLatestCollectorCkbToUnlockRecord(): Promise<CollectorCkbUnlock | undefined> {
+    return await this.connection.getRepository(CollectorCkbUnlock).findOne({
+      where: {
+        status: 'todo',
+      },
+      order: {
+        createdAt: 'DESC',
+      },
+    });
+  }
+
+  async getCollectorCkbUnlockRecordsToUnlockByAssetIdent(assetIdent: string, take = 50): Promise<CollectorCkbUnlock[]> {
+    return await this.connection.getRepository(CollectorCkbUnlock).find({
+      where: {
+        status: 'todo',
+      },
+      take,
     });
   }
 }
