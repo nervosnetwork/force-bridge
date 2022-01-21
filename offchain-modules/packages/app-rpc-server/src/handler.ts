@@ -22,6 +22,7 @@ import { RPCClient } from 'rpc-bitcoin';
 import { Connection } from 'typeorm';
 import Web3 from 'web3';
 import { AbiItem } from 'web3-utils';
+import { Factory as BurnHandlerFactory } from './handler/burn/factory';
 import { API, AssetType, NetworkTypes, RequiredAsset } from './types';
 import {
   BalancePayload,
@@ -503,10 +504,9 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
   }
 
   async generateBridgeNervosToXchainBurnTx<T extends NetworkTypes>(
-    _payload: GenerateBridgeNervosToXchainBurnTxPayload,
+    payload: GenerateBridgeNervosToXchainBurnTxPayload,
   ): Promise<GenerateTransactionResponse<T>> {
-    // TODO
-    throw new Error('unimplement');
+    return await BurnHandlerFactory.fromChainName(payload.xchain).handle(payload);
   }
 
   async getBridgeNervosToXchainTxSummaries(
