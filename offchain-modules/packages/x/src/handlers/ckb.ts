@@ -789,20 +789,37 @@ export class CkbHandler {
     });
   }
 
-  async collectUnlockSignatures(txSkeleton: TransactionSkeletonType): Promise<string[] | boolean> {
-    const privateKeys = [
-      'vxokyS9hU63bBLDvb1tquJI6Cbo4J0z4+LJ9V54Rqd0GAgyV/9bzmnEXsSwLqhvvlo5w1jNK3R/d/jojH21OkZIP6wRu/xDUn8y85EyySduvSDqJ',
-      'Tglw0nMGPPFNSQrvGX2IjpTeoCnpi2PgNSv1+w8ALtRTTcBQ9Ff/knMYADtu2I2KJwy0V60HWSJPJUWaflTb25TbNM0bgH/vMgM2XJJK7DKzHbHM',
-      'yVKmcQTAss9uST1l5yvAPSnr2nlPgyCRwoA1fA0Z64AoY/QziCyWH1oy4q8oVZ68qxLxsojYYZYPygCvsrwcGQeawiotIfhzFVv07w6nKqQP22Xh',
-      'opVPjBuBZyCZNWoY7WPt3B6t/ZbJdtC3Rxy+Kp0rXDA8Imwoy0VJaL3hvazbMb0mlSjiUS7IJCGlxt586+Wshhcke+bpcL4edWzObTsAwaX+YNPU',
-      '8X0mlNlA5NOPXOkBOwIfTfH/pfzLR0aurnW6d0Rz7wgFZrajAQYvh8gG0e8TDvtBA3unTzwVjBm3BRGK3pea/NSZFjgtv6otiuax3NPDTQBpBQNC',
-    ];
-    const { message } = nonNullable(txSkeleton.get('signingEntries').get(0));
-    logger.info(`unlock omnilock msg: ${message}`);
-    const sigs = privateKeys.map((privKey) => {
-      return key.signRecoverable(message, privKey).slice(2);
+  async collectUnlockSignatures(
+    txSkeleton: TransactionSkeletonType,
+    records: ICkbUnlock[],
+  ): Promise<string[] | boolean> {
+    const { message: rawData } = nonNullable(
+      txSkeleton
+        .get('signingEntries')
+        .filter((value) => value.index === 0)
+        .get(0),
+    );
+    return await this.multisigMgr.collectSignatures({
+      rawData,
+      payload: {
+        sigType: 'unlock',
+        unlockRecords: records
+          .filter((r) => r.id.includes('-'))
+          .map((r) => {
+            const burnTxHash = r.id.substring(0, r.id.indexOf('-'));
+            return {
+              id: r.id,
+              burnTxHash,
+              xchain: r.xchain,
+              assetIdent: r.assetIdent,
+              amount: r.amount,
+              recipientAddress: r.recipientAddress,
+              udtExtraData: r.udtExtraData,
+            };
+          }),
+        txSkeleton: txSkeleton.toJS(),
+      },
     });
-    return sigs;
   }
 
   filterMintRecords(r: ICkbMint, ownerTypeHash: string): MintAssetRecord {
@@ -988,7 +1005,7 @@ export class CkbHandler {
       return;
     }
     logger.debug(`unlock for records, txSkeleton`, records, transactionSkeletonToJSON(txSkeleton));
-    const sigs = await this.collectUnlockSignatures(txSkeleton);
+    const sigs = await this.collectUnlockSignatures(txSkeleton, records);
     for (;;) {
       try {
         if (typeof sigs === 'boolean' && (sigs as boolean)) {

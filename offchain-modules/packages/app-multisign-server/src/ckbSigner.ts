@@ -15,6 +15,9 @@ import { EthLock } from '@force-bridge/x/dist/db/entity/EthLock';
 import { asserts, nonNullable } from '@force-bridge/x/dist/errors';
 import {
   ckbCollectSignaturesPayload,
+  ckbMintCollectSignaturesPayload,
+  ckbCreateCellCollectSignaturesPayload,
+  ckbUnlockCollectSignaturesPayload,
   collectSignaturesParams,
   mintRecord,
 } from '@force-bridge/x/dist/multisig/multisig-mgr';
@@ -24,7 +27,7 @@ import { Amount } from '@lay2/pw-core';
 import { SigError, SigErrorCode, SigErrorOk } from './error';
 import { SigResponse, SigServer } from './sigServer';
 
-async function verifyCreateCellTx(rawData: string, payload: ckbCollectSignaturesPayload): Promise<SigError> {
+async function verifyCreateCellTx(rawData: string, payload: ckbCreateCellCollectSignaturesPayload): Promise<SigError> {
   const txSkeleton = payload.txSkeleton;
   const sigData = txSkeleton.signingEntries[1].message;
   if (rawData !== sigData) {
@@ -113,7 +116,11 @@ async function verifyDuplicateMintTx(
   return SigErrorOk;
 }
 
-async function verifyMintTx(pubKey: string, rawData: string, payload: ckbCollectSignaturesPayload): Promise<SigError> {
+async function verifyMintTx(
+  pubKey: string,
+  rawData: string,
+  payload: ckbMintCollectSignaturesPayload,
+): Promise<SigError> {
   const txSkeleton = payload.txSkeleton;
   const sigData = txSkeleton.signingEntries[1].message;
   if (rawData !== sigData) {
@@ -174,6 +181,17 @@ async function verifyMintTx(pubKey: string, rawData: string, payload: ckbCollect
   if (err.Code !== SigErrorCode.Ok) {
     return err;
   }
+  return SigErrorOk;
+}
+
+async function verifyUnlockTx(
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  pubKey: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  rawData: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  payload: ckbUnlockCollectSignaturesPayload,
+): Promise<SigError> {
   return SigErrorOk;
 }
 
@@ -341,27 +359,37 @@ export async function signCkbTx(params: collectSignaturesParams): Promise<SigRes
     return new SigResponse(err);
   }
 
+  let message: string;
   switch (payload.sigType) {
     case 'mint':
-      err = await verifyMintTx(pubKey, params.rawData, payload);
+      err = await verifyMintTx(pubKey, params.rawData, payload as ckbMintCollectSignaturesPayload);
       if (err.Code !== SigErrorCode.Ok) {
         return new SigResponse(err);
       }
+      message = txSkeleton.signingEntries.get(1)!.message;
       break;
     case 'create_cell':
-      err = await verifyCreateCellTx(params.rawData, payload);
+      err = await verifyCreateCellTx(params.rawData, payload as ckbCreateCellCollectSignaturesPayload);
       if (err.Code !== SigErrorCode.Ok) {
         return new SigResponse(err);
       }
+      message = txSkeleton.signingEntries.get(1)!.message;
+      break;
+    case 'unlock':
+      err = await verifyUnlockTx(pubKey, params.rawData, payload as ckbUnlockCollectSignaturesPayload);
+      if (err.Code !== SigErrorCode.Ok) {
+        return new SigResponse(err);
+      }
+      message = txSkeleton.signingEntries.get(0)!.message;
       break;
     default:
       return SigResponse.fromSigError(SigErrorCode.InvalidParams, `invalid sigType:${payload.sigType}`);
   }
 
-  const message = txSkeleton.signingEntries.get(1)!.message;
   const sig = key.signRecoverable(message, privKey).slice(2);
 
   if (payload.sigType === 'mint') {
+    const payload = params.payload as ckbMintCollectSignaturesPayload;
     asserts(payload.mintRecords);
 
     await SigServer.signedDb.createSigned(
@@ -373,6 +401,31 @@ export async function signCkbTx(params: collectSignaturesParams): Promise<SigRes
           receiver: mintRecord.recipientLockscript,
           asset: mintRecord.asset,
           refTxHash: mintRecord.id,
+          pubKey: pubKey,
+          rawData: params.rawData,
+          inputOutPoints: txSkeleton.inputs
+            .map((cell) => {
+              return cell.out_point!.tx_hash + ':' + cell.out_point!.index;
+            })
+            .join(';'),
+          signature: sig,
+        };
+      }),
+    );
+    await SigServer.setPendingTx('ckb', params);
+  } else if (payload.sigType === 'unlock') {
+    const payload = params.payload as ckbUnlockCollectSignaturesPayload;
+    asserts(payload.unlockRecords);
+
+    await SigServer.signedDb.createSigned(
+      payload.unlockRecords.map((unlockRecord) => {
+        return {
+          sigType: 'unlock',
+          chain: unlockRecord.xchain,
+          amount: unlockRecord.amount,
+          receiver: unlockRecord.recipientAddress,
+          asset: unlockRecord.assetIdent,
+          refTxHash: unlockRecord.burnTxHash,
           pubKey: pubKey,
           rawData: params.rawData,
           inputOutPoints: txSkeleton.inputs
