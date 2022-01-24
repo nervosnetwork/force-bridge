@@ -41,10 +41,6 @@ class EthMint {
 
     const payload = params.payload as ethMintCollectSignaturesPayload;
 
-    if (!(await this.verifyDuplicated(payload.mintRecords))) {
-      return SigResponse.fromSigError(SigErrorCode.TxCompleted);
-    }
-
     const signature = await this.sign(payload.tx, privateKey);
 
     return SigResponse.fromData(signature);
