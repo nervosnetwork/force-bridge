@@ -1,7 +1,6 @@
 import fs from 'fs';
 import path from 'path';
 import { parseAddress, TransactionSkeletonType } from '@ckb-lumos/helpers';
-
 import * as utils from '@nervosnetwork/ckb-sdk-utils';
 import { AddressPrefix } from '@nervosnetwork/ckb-sdk-utils';
 import { ethers } from 'ethers';
@@ -17,9 +16,10 @@ import { CkbMint, CollectorCkbMint } from '../db/entity/CkbMint';
 import { CkbUnlock, CollectorCkbUnlock } from '../db/entity/CkbUnlock';
 import { EosLock } from '../db/entity/EosLock';
 import { EosUnlock } from '../db/entity/EosUnlock';
+import { EthBurn } from '../db/entity/EthBurn';
 import { EthLock } from '../db/entity/EthLock';
+import { EthMint, CollectorEthMint } from '../db/entity/EthMint';
 import { CollectorEthUnlock, EthUnlock } from '../db/entity/EthUnlock';
-import { CollectorEthMint, EthMint } from '../db/entity/EthMint';
 import { SignedTx } from '../db/entity/SignedTx';
 import { TronLock } from '../db/entity/TronLock';
 import { TronUnlock } from '../db/entity/TronUnlock';
@@ -152,6 +152,8 @@ export async function getDBConnection(): Promise<Connection> {
       BtcUnlock,
       CkbBurn,
       CkbMint,
+      CkbLock,
+      CkbUnlock,
       CollectorCkbMint,
       CkbLock,
       CkbUnlock,
@@ -160,8 +162,9 @@ export async function getDBConnection(): Promise<Connection> {
       EosUnlock,
       EthLock,
       EthUnlock,
-      CollectorEthUnlock,
       EthMint,
+      EthBurn,
+      CollectorEthUnlock,
       CollectorEthMint,
       KV,
       SignedTx,

@@ -79,3 +79,66 @@ export function foreverPromise(promiseThunk: (times: number) => Promise<void>, o
     }
   })();
 }
+
+export class Task {
+  process: (times: number) => Promise<void>;
+  times: number;
+  option: RetryPromiseOptions;
+  retry: { times: number; flag: boolean };
+
+  constructor(process: (times: number) => Promise<void>, option: RetryPromiseOptions) {
+    this.process = process;
+    this.option = option;
+    this.times = 0;
+    this.retry = { times: 0, flag: false };
+  }
+
+  async run(): Promise<void> {
+    if (this.retry.flag) this.retry.times++;
+
+    await this.process(this.times)
+      .catch(async (e: unknown) => {
+        const { onRejected, maxRetryTimes = 5 } = this.option;
+
+        if (onRejected) await onRejected(e, this.times);
+        if (this.retry.times > maxRetryTimes) throw new TooManyRetriesError(this.retry.times, e);
+
+        this.retry.flag = true;
+      })
+      .then(() => {
+        this.retry.times = 0;
+        this.retry.flag = false;
+      });
+
+    this.times++;
+  }
+}
+
+export class Schedule {
+  queue: Array<Task>;
+  interval: number;
+
+  constructor(interval: number) {
+    this.queue = new Array<Task>();
+    this.interval = interval;
+  }
+
+  addTask(task: Task): void {
+    this.queue.push(task);
+  }
+
+  async run(): Promise<void> {
+    while (this.queue.length != 0) {
+      const task = this.queue.shift();
+      if (!task) {
+        throw new Error(`invalid task got.`);
+      }
+
+      await task.run();
+
+      this.queue.push(task);
+
+      await asyncSleep(this.interval);
+    }
+  }
+}

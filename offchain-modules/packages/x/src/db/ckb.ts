@@ -4,8 +4,9 @@ import { ChainType } from '../ckb/model/asset';
 import { ForceBridgeCore } from '../core';
 import { CollectorCkbMint, dbTxStatus } from './entity/CkbMint';
 import { CkbUnlockStatus, CollectorCkbUnlock } from './entity/CkbUnlock';
-import { CollectorEthUnlock, EthUnlockStatus } from './entity/EthUnlock';
+import { EthBurn } from './entity/EthBurn';
 import { CollectorEthMint, EthMint } from './entity/EthMint';
+import { CollectorEthUnlock } from './entity/EthUnlock';
 import {
   BtcUnlock,
   CkbBurn,
@@ -24,12 +25,10 @@ import {
   MintedRecords,
   TronUnlock,
   TxConfirmStatus,
-  IEthLock,
   ICkbLock,
   IEthMint,
   ICkbUnlock,
 } from './model';
-import { EthBurn } from './entity/EthBurn';
 
 export class CkbDb {
   constructor(private connection: Connection) {}

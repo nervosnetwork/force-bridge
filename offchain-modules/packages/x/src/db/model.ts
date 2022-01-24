@@ -1,15 +1,12 @@
-import { Column, CreateDateColumn, getRepository, Index, PrimaryColumn, UpdateDateColumn } from 'typeorm';
+import { getRepository } from 'typeorm';
 import { ChainType } from '../ckb/model/asset';
 import { SigType } from '../multisig/multisig-mgr';
 import { BtcUnlock } from './entity/BtcUnlock';
 import { CkbMint, CkbMintStatus, dbTxStatus } from './entity/CkbMint';
+import { CkbUnlockStatus } from './entity/CkbUnlock';
 import { EosUnlock } from './entity/EosUnlock';
 import { EthLock, TxConfirmStatus } from './entity/EthLock';
 import { EthUnlock, EthUnlockStatus } from './entity/EthUnlock';
-import Timestamp = CKBComponents.Timestamp;
-import Script = CKBComponents.Script;
-import { CkbUnlockStatus } from './entity/CkbUnlock';
-import { EthBurn } from './entity/EthBurn';
 
 export { EthUnlock } from './entity/EthUnlock';
 export { EthLock, TxConfirmStatus } from './entity/EthLock';
@@ -65,11 +62,11 @@ export interface IEthMint {
   ckbTxHash: string;
   nervosAssetId: string;
   erc20TokenAddress: string;
+  amount: string;
   recipientAddress: string;
   blockNumber?: number;
   blockTimestamp?: number;
   ethTxHash?: string;
-  amount: string;
 }
 
 export interface IEthLock {
@@ -85,6 +82,23 @@ export interface IEthLock {
   uniqueId: string;
   confirmNumber?: number;
   confirmStatus?: TxConfirmStatus;
+}
+
+export interface IEthBurn {
+  uniqueId: string;
+  burnTxHash: string;
+  sender: string;
+  xchainTokenId: string;
+  nervosAssetId: string;
+  amount: string;
+  bridgeFee: string;
+  recipient: string;
+  udtExtraData?: string;
+  blockNumber: number;
+  blockTimestamp: number;
+  blockHash: string;
+  confirmNumber: number;
+  confirmStatus: TxConfirmStatus;
 }
 
 export interface ICkbBurn {
@@ -159,23 +173,6 @@ export interface ICkbUnlock {
   unlockTxHash: string; // ckb tx hash
   status?: CkbUnlockStatus;
   message?: string;
-}
-
-export interface IEthBurn {
-  uniqueId: string; // ${burnTxHash}-${logIndex}
-  burnTxHash: string;
-  sender: string;
-  xchainTokenId: string; // burned erc20 address
-  nervosAssetId: string; // related udt typescript hash
-  amount: string;
-  bridgeFee: string;
-  recipient: string;
-  udtExtraData: string;
-  blockNumber: number;
-  blockTimestamp: number;
-  blockHash: string;
-  confirmNumber: number;
-  confirmStatus: TxConfirmStatus;
 }
 
 // export async function transformBurnEvent(burn: CkbBurn): Promise<XchainUnlock> {

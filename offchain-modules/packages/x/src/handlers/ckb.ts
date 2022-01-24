@@ -1,4 +1,5 @@
 import { core, utils } from '@ckb-lumos/base';
+import { SerializeWitnessArgs } from '@ckb-lumos/base/lib/core';
 import { serializeMultisigScript } from '@ckb-lumos/common-scripts/lib/secp256k1_blake160_multisig';
 import { key } from '@ckb-lumos/hd';
 import {
@@ -16,10 +17,13 @@ import { BtcAsset, ChainType, EosAsset, EthAsset, getAsset, TronAsset } from '..
 import { NervosAsset } from '../ckb/model/nervos-asset';
 import { RecipientCellData } from '../ckb/tx-helper/generated/eth_recipient_cell';
 import { ForceBridgeLockscriptArgs } from '../ckb/tx-helper/generated/force_bridge_lockscript';
+import { LockMemo } from '../ckb/tx-helper/generated/lock_memo';
 import { MintWitness } from '../ckb/tx-helper/generated/mint_witness';
+import { SerializeRcLockWitnessLock } from '../ckb/tx-helper/generated/omni_lock';
+import { BytesVec, UnlockMemo } from '../ckb/tx-helper/generated/unlock_memo';
 import { CkbTxGenerator, MintAssetRecord } from '../ckb/tx-helper/generator';
 import { GetTransactionsResult, ScriptType, SearchKey } from '../ckb/tx-helper/indexer';
-import { getFromAddr, getOwnerTypeHash } from '../ckb/tx-helper/multisig/multisig_helper';
+import { getOwnerTypeHash } from '../ckb/tx-helper/multisig/multisig_helper';
 import { getOmniLockMultisigAddress } from '../ckb/tx-helper/multisig/omni-lock';
 import { forceBridgeRole } from '../config';
 import { ForceBridgeCore } from '../core';
@@ -28,11 +32,9 @@ import { CollectorCkbMint } from '../db/entity/CkbMint';
 import {
   CkbLock,
   CkbUnlock,
-  EthUnlock,
   ICkbBurn,
   ICkbMint,
   ICkbUnlock,
-  IEthUnlock,
   MintedRecord,
   MintedRecords,
   NervosLockAssetTxMetaData,
@@ -55,14 +57,6 @@ import { logger } from '../utils/logger';
 import { getAssetTypeByAsset } from '../xchain/tron/utils';
 import Transaction = CKBComponents.Transaction;
 import TransactionWithStatus = CKBComponents.TransactionWithStatus;
-import { LockMemo } from '../ckb/tx-helper/generated/lock_memo';
-import { EthUnlockStatus } from '../db/entity/EthUnlock';
-import { secp256k1Blake160Multisig } from '@ckb-lumos/common-scripts';
-import { SerializeRcLockWitnessLock } from '../ckb/tx-helper/generated/omni_lock';
-import { SerializeWitnessArgs } from '@ckb-lumos/base/lib/core';
-import { WithdrawBridgeFeeTopic } from '../xchain/eth';
-import { BytesVec, UnlockMemo } from '../ckb/tx-helper/generated/unlock_memo';
-import { EthBurn } from '../db/entity/EthBurn';
 
 const lastHandleCkbBlockKey = 'lastHandleCkbBlock';
 
@@ -325,7 +319,7 @@ export class CkbHandler {
       ) {
         await this.onLockTx(tx, currentHeight);
       } else {
-        await this.onUnlockTx(tx, currentHeight);
+        await this.onUnlockTx(tx);
       }
     }
   }
@@ -538,7 +532,7 @@ export class CkbHandler {
     }
   }
 
-  async onUnlockTx(txInfo: CkbTxInfo, currentHeight: number): Promise<void> {
+  async onUnlockTx(txInfo: CkbTxInfo): Promise<void> {
     await retryPromise(
       async () => {
         const block = await this.ckb.rpc.getBlock(txInfo.tx.txStatus.blockHash!);
@@ -795,11 +789,7 @@ export class CkbHandler {
     });
   }
 
-  async collectUnlockSignatures(
-    txSkeleton: TransactionSkeletonType,
-    records: ICkbUnlock[],
-    generator: CkbTxGenerator,
-  ): Promise<string[] | boolean> {
+  async collectUnlockSignatures(txSkeleton: TransactionSkeletonType): Promise<string[] | boolean> {
     const privateKeys = [
       'vxokyS9hU63bBLDvb1tquJI6Cbo4J0z4+LJ9V54Rqd0GAgyV/9bzmnEXsSwLqhvvlo5w1jNK3R/d/jojH21OkZIP6wRu/xDUn8y85EyySduvSDqJ',
       'Tglw0nMGPPFNSQrvGX2IjpTeoCnpi2PgNSv1+w8ALtRTTcBQ9Ff/knMYADtu2I2KJwy0V60HWSJPJUWaflTb25TbNM0bgH/vMgM2XJJK7DKzHbHM',
@@ -998,7 +988,7 @@ export class CkbHandler {
       return;
     }
     logger.debug(`unlock for records, txSkeleton`, records, transactionSkeletonToJSON(txSkeleton));
-    const sigs = await this.collectUnlockSignatures(txSkeleton, records, generator);
+    const sigs = await this.collectUnlockSignatures(txSkeleton);
     for (;;) {
       try {
         if (typeof sigs === 'boolean' && (sigs as boolean)) {
@@ -1315,8 +1305,6 @@ export class CkbHandler {
     const senderOutput = txPrevious.transaction.outputs[Number(previousOutput.index)];
     const senderLockscript = senderOutput.lock;
     const committeeMultisigLockscript = parseAddress(getOmniLockMultisigAddress());
-    const collectorAddress = getFromAddr();
-    const collectorLockscript = parseAddress(collectorAddress);
     if (
       !senderLockscript ||
       senderLockscript.codeHash !== committeeMultisigLockscript.code_hash ||

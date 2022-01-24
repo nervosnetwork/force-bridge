@@ -17,15 +17,14 @@ export class EthMint {
   @Column()
   amount: string;
 
-  @Index()
-  @Column('varchar', { length: 2048 })
+  @Column('varchar', { length: 10240 })
   recipientAddress: string;
 
   @Index()
   @Column({ nullable: true })
   blockNumber: number; // mint tx block number
 
-  @Column({ nullable: true, type: 'bigint' })
+  @Column()
   blockTimestamp: number; // mint tx block timestamp
 
   @Column({ nullable: true })
