@@ -62,11 +62,11 @@ export interface IEthMint {
   ckbTxHash: string;
   nervosAssetId: string;
   erc20TokenAddress: string;
+  amount: string;
   recipientAddress: string;
   blockNumber?: number;
   blockTimestamp?: number;
   ethTxHash?: string;
-  amount: string;
 }
 
 export interface IEthLock {
@@ -82,6 +82,23 @@ export interface IEthLock {
   uniqueId: string;
   confirmNumber?: number;
   confirmStatus?: TxConfirmStatus;
+}
+
+export interface IEthBurn {
+  uniqueId: string;
+  burnTxHash: string;
+  sender: string;
+  xchainTokenId: string;
+  nervosAssetId: string;
+  amount: string;
+  bridgeFee: string;
+  recipient: string;
+  udtExtraData?: string;
+  blockNumber: number;
+  blockTimestamp: number;
+  blockHash: string;
+  confirmNumber: number;
+  confirmStatus: TxConfirmStatus;
 }
 
 export interface ICkbBurn {
@@ -156,23 +173,6 @@ export interface ICkbUnlock {
   unlockTxHash: string; // ckb tx hash
   status?: CkbUnlockStatus;
   message?: string;
-}
-
-export interface IEthBurn {
-  uniqueId: string; // ${burnTxHash}-${logIndex}
-  burnTxHash: string;
-  sender: string;
-  xchainTokenId: string; // burned erc20 address
-  nervosAssetId: string; // related udt typescript hash
-  amount: string;
-  bridgeFee: string;
-  recipient: string;
-  udtExtraData: string;
-  blockNumber: number;
-  blockTimestamp: number;
-  blockHash: string;
-  confirmNumber: number;
-  confirmStatus: TxConfirmStatus;
 }
 
 // export async function transformBurnEvent(burn: CkbBurn): Promise<XchainUnlock> {

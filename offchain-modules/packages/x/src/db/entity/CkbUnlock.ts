@@ -20,7 +20,7 @@ export class CkbUnlock {
   @Column()
   amount: string;
 
-  @Column('text')
+  @Column('varchar', { length: 10240 })
   recipientAddress: string; // ckb address
 
   @Column('varchar', { length: 10240, default: '' })
