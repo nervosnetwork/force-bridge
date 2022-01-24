@@ -40,17 +40,43 @@ export interface mintRecord {
   sudtExtraData: string;
 }
 
+export interface unlockRecord {
+  id: string;
+  burnTxHash: string;
+  xchain: number;
+  assetIdent: string;
+  amount: string;
+  recipientAddress: string;
+  udtExtraData: string;
+}
+
 export interface createAsset {
   chain: number;
   asset: string;
 }
 
-export interface ckbCollectSignaturesPayload {
+export interface ckbMintCollectSignaturesPayload {
   sigType: SigType;
-  mintRecords?: mintRecord[];
-  createAssets?: createAsset[];
+  mintRecords: mintRecord[];
   txSkeleton: TransactionSkeletonObject;
 }
+
+export interface ckbCreateCellCollectSignaturesPayload {
+  sigType: SigType;
+  createAssets: createAsset[];
+  txSkeleton: TransactionSkeletonObject;
+}
+
+export interface ckbUnlockCollectSignaturesPayload {
+  sigType: SigType;
+  unlockRecords: unlockRecord[];
+  txSkeleton: TransactionSkeletonObject;
+}
+
+export type ckbCollectSignaturesPayload =
+  | ckbMintCollectSignaturesPayload
+  | ckbCreateCellCollectSignaturesPayload
+  | ckbUnlockCollectSignaturesPayload;
 
 export type collectSignaturesParamsPayload = ethCollectSignaturesPayload | ckbCollectSignaturesPayload;
 
