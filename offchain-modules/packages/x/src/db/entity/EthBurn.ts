@@ -26,7 +26,6 @@ export class EthBurn {
   @Column({ default: '0' })
   bridgeFee: string;
 
-  @Index()
   @Column('varchar', { length: 10240 })
   recipient: string;
 
@@ -54,4 +53,8 @@ export class EthBurn {
 
   @UpdateDateColumn()
   updatedAt: string;
+
+  static primaryKey(logIndex: number, txHash: string): string {
+    return `${txHash}-${logIndex}`;
+  }
 }

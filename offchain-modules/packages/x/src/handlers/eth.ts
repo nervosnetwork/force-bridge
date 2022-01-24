@@ -5,6 +5,7 @@ import { ChainType, EthAsset } from '../ckb/model/asset';
 import { forceBridgeRole } from '../config';
 import { ForceBridgeCore } from '../core';
 import { EthDb, KVDb, BridgeFeeDB } from '../db';
+import { CollectorEthMint } from '../db/entity/EthMint';
 import { EthUnlockStatus } from '../db/entity/EthUnlock';
 import { EthUnlock, IEthUnlock } from '../db/model';
 import { asserts, nonNullable } from '../errors';
@@ -13,6 +14,8 @@ import { asyncSleep, foreverPromise, fromHexString, retryPromise, uint8ArrayToSt
 import { logger } from '../utils/logger';
 import { EthChain, WithdrawBridgeFeeTopic, Log, ParsedLog } from '../xchain/eth';
 import { checkLock } from '../xchain/eth/check';
+import { Factory as BurnHandlerFactory } from './eth/burn/factory';
+import { Factory as MintHandlerFactory } from './eth/mint/factory';
 
 const lastHandleEthBlockKey = 'lastHandleEthBlock';
 
@@ -33,6 +36,7 @@ export class EthHandler {
   private lastHandledBlockHeight: number;
   private lastHandledBlockHash: string;
   private startTipBlockHeight: number;
+  private;
 
   constructor(
     private ethDb: EthDb,
@@ -151,13 +155,29 @@ export class EthHandler {
   }
 
   async handleLog(log: Log, currentHeight: number): Promise<void> {
-    const parsedLog = await this.ethChain.iface.parseLog(log);
-    if (parsedLog.name === 'Locked') {
-      await this.onLockLogs(log, parsedLog, currentHeight);
-    } else if (parsedLog.name === 'Unlocked') {
-      await this.onUnlockLogs(log, parsedLog);
-    } else {
-      logger.info(`not handled log type ${parsedLog.name}, log: ${JSON.stringify(log)}`);
+    const parsedLog = await this.ethChain.parseLog(log);
+    if (!parsedLog) {
+      return;
+    }
+
+    switch (parsedLog.name) {
+      case 'Locked':
+        await this.onLockLogs(log, parsedLog, currentHeight);
+        break;
+      case 'Unlocked':
+        await this.onUnlockLogs(log, parsedLog);
+        break;
+      case 'Burn':
+        await BurnHandlerFactory.fromRole(this.role, this.ethDb, this.ethChain)?.handle(parsedLog, log, currentHeight);
+        break;
+      case 'Mint':
+        logger.info(
+          `EthHandler watchMintEvents receiveLog blockHeight:${log.blockNumber} blockHash:${log.blockHash} txHash:${log.transactionHash} amount:${parsedLog.args.amount} asset:${parsedLog.args.assetId} recipient:${parsedLog.args.to} ckbTxHash:${parsedLog.args.lockId}`,
+        );
+        await MintHandlerFactory.fromRole(this.role, this.ethDb, this.ethChain)?.handle(log, parsedLog);
+        break;
+      default:
+        logger.info(`not handled log type ${parsedLog.name}, log: ${JSON.stringify(log)}`);
     }
   }
 
@@ -315,45 +335,141 @@ export class EthHandler {
     }
   }
 
-  // watch the eth_unlock table and handle the new unlock events
-  // send tx according to the data
-  handleUnlockRecords(): void {
-    if (this.role !== 'collector') {
-      return;
+  async checkGas(): Promise<boolean> {
+    const gasPrice = await this.ethChain.getGasPrice();
+    const gasPriceLimit = BigNumber.from(nonNullable(ForceBridgeCore.config.collector).gasPriceGweiLimit * 10 ** 9);
+    logger.debug(`gasPrice ${gasPrice}, gasPriceLimit ${gasPriceLimit}`);
+    if (gasPrice.gt(gasPriceLimit)) {
+      logger.warn(`gasPrice ${gasPrice} exceeds limit ${gasPriceLimit} wait for next round.`);
+      return false;
     }
-    this.handleTodoUnlockRecords();
+
+    return true;
   }
 
-  handleTodoUnlockRecords(): void {
-    foreverPromise(
-      async () => {
-        if (!TransferOutSwitch.getInstance().getStatus()) {
-          logger.info('TransferOutSwitch is off, skip handleTodoUnlockRecords');
-          return;
-        }
-        if (!this.syncedToStartTipBlockHeight()) {
-          logger.info(
-            `wait until syncing to startBlockHeight, lastHandledBlockHeight: ${this.lastHandledBlockHeight}, startTipBlockHeight: ${this.startTipBlockHeight}`,
-          );
-          return;
-        }
-        logger.debug('EthHandler watchUnlockEvents get new unlock events and send tx');
-        const records = await this.getUnlockRecords('todo');
-        if (records.length === 0) {
-          logger.info('wait for todo unlock records');
-          return;
-        }
-        logger.info(`EthHandler watchUnlockEvents unlock records: ${JSON.stringify(records)}`);
-        await this.doHandleUnlockRecords(records);
-      },
-      {
-        onRejectedInterval: 15000,
-        onResolvedInterval: 15000,
-        onRejected: (e: Error) => {
-          logger.error(`ETH handleTodoUnlockRecords error:${e.stack}`);
-        },
-      },
-    );
+  // watch the eth_mint table and handle the new mint events
+  // send tx according to the data
+  async handleMintRecords(): Promise<void> {
+    if (!this.syncedToStartTipBlockHeight()) {
+      logger.info(
+        `wait until syncing to startBlockHeight, lastHandledBlockHeight: ${this.lastHandledBlockHeight}, startTipBlockHeight: ${this.startTipBlockHeight}`,
+      );
+      return;
+    }
+
+    const records = await this.ethDb.todoMintRecords();
+    if (records.length == 0) {
+      logger.info('wait for todo mint records.');
+      return;
+    }
+
+    logger.info(`EthHandler watchUnlockEvents mint records: ${JSON.stringify(records)}`);
+    await this.mint(records);
+  }
+
+  async mint(records: CollectorEthMint[]): Promise<void> {
+    if (!(await this.checkGas())) {
+      return;
+    }
+
+    records = await this.ethDb.makeMintPending(records);
+    const mintTxHashes = records.map((r) => r.ckbTxHash);
+
+    if (records.length <= 0) {
+      return;
+    }
+
+    try {
+      const txRes = await this.ethChain.sendMintTxs(records);
+
+      if (typeof txRes == 'boolean') {
+        records.map((r) => {
+          r.status = 'success';
+        });
+
+        await this.ethDb.saveCollectorEthMints(records);
+
+        return;
+      }
+
+      if (txRes == undefined) {
+        logger.warn(`ethHandler mint sendMintTxes response is undefined ckbHashes:${mintTxHashes}`);
+        return;
+      }
+
+      await this.ethDb.saveCollectorEthMints(records);
+      logger.debug('sendMintTx res', txRes);
+      try {
+        const receipt = await txRes.wait();
+        logger.info(`EthHandler mint sendMintTxes receipt:${JSON.stringify(receipt.logs)}`);
+        records.map((r) => {
+          r.status = 'success';
+          r.ethTxHash = txRes.hash;
+        });
+
+        const mintTokens = records.map((r) => {
+          return {
+            amount: Number(r.amount),
+            token: r.erc20TokenAddress,
+          };
+        });
+
+        BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_mint', 'success');
+        BridgeMetricSingleton.getInstance(this.role).addBridgeTokenMetrics('eth_mint', mintTokens);
+      } catch (e) {
+        records.map((r) => {
+          r.status = 'error';
+          r.message = e.message();
+        });
+        BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_mint', 'failed');
+
+        logger.error(`EthHandler mint ckbTxHashes:${mintTxHashes} mint execute failed:${e.stack}`);
+      }
+    } catch (e) {
+      records.map((r) => {
+        r.status = 'error';
+        r.message = e.message;
+      });
+      BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_mint', 'failed');
+
+      logger.error(`EthHandler mint ckbTxHashes:${mintTxHashes} mint execute failed:${e.stack}`);
+    }
+
+    while (true) {
+      try {
+        await this.ethDb.saveCollectorEthMints(records);
+        logger.info(`EthHandler mint process unlock Record completed ckbTxHashes:${mintTxHashes}`);
+        break;
+      } catch (e) {
+        logger.error(`EthHandler mint db.saveEthMint ckbTxHashes:${mintTxHashes} error:${(e as Error).stack}`);
+      }
+      await asyncSleep(3000);
+    }
+  }
+
+  // watch the eth_unlock table and handle the new unlock events
+  // send tx according to the data
+  async handleTodoUnlockRecords(): Promise<void> {
+    if (!TransferOutSwitch.getInstance().getStatus()) {
+      logger.info(`TransferOutSwitch is off, skip handleTodoUnlockRecords`);
+      return;
+    }
+
+    if (!this.syncedToStartTipBlockHeight()) {
+      logger.info(
+        `wait until syncing to startBlockHeight, lastHandledBlockHeight: ${this.lastHandledBlockHeight}, startTipBlockHeight: ${this.startTipBlockHeight}`,
+      );
+      return;
+    }
+
+    logger.debug('EthHandler watchUnlockEvents get new unlock events and send tx');
+    const records = await this.getUnlockRecords('todo');
+    if (records.length === 0) {
+      logger.info('wait for todo unlock records');
+      return;
+    }
+    logger.info(`EthHandler watchUnlockEvents unlock records: ${JSON.stringify(records)}`);
+    await this.doHandleUnlockRecords(records);
   }
 
   async doHandleUnlockRecords(records: IEthUnlock[]): Promise<void> {
@@ -466,10 +582,30 @@ export class EthHandler {
     }
   }
 
+  async handleTodoRecords(): Promise<void> {
+    let round = 0;
+
+    foreverPromise(
+      async () => {
+        (round ^= 1) == 1 ? await this.handleTodoUnlockRecords() : await this.handleMintRecords();
+      },
+      {
+        onRejectedInterval: 15000,
+        onResolvedInterval: 15000,
+        onRejected: (e: Error) => {
+          logger.error(`handle todo error. error:${e.stack}`);
+        },
+      },
+    );
+  }
+
   start(): void {
     void this.watchNewBlock();
 
-    this.handleUnlockRecords();
+    if (this.role == 'collector') {
+      void this.handleTodoRecords();
+    }
+
     logger.info('eth handler started  🚀');
   }
 }
