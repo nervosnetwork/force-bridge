@@ -1,14 +1,12 @@
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { EthDb } from '@force-bridge/x/dist/db';
-import { IEthMint } from '@force-bridge/x/dist/db/model';
 import { SignedDb } from '@force-bridge/x/dist/db/signed';
 import { collectSignaturesParams } from '@force-bridge/x/dist/multisig/multisig-mgr';
-import { EthMintRecord } from '@force-bridge/x/dist/xchain/eth';
 import Safe, { EthersAdapter } from '@gnosis.pm/safe-core-sdk';
 import { SafeSignature, SafeTransaction } from '@gnosis.pm/safe-core-sdk-types';
 import ethers from 'ethers';
 import { ethMintCollectSignaturesPayload } from '../../x/dist/multisig/multisig-mgr';
-import { SigError, SigErrorCode, SigErrorOk } from '../src/error';
+import { SigErrorCode } from '../src/error';
 import { SigResponse } from './response';
 
 class EthMint {
@@ -56,52 +54,6 @@ class EthMint {
     });
 
     return await safe.signTransactionHash(await safe.getTransactionHash(tx));
-  }
-
-  async verifyDuplicated(records: EthMintRecord[]): Promise<boolean> {
-    const hashes = records.map((r) => r.lockId);
-
-    return !(await this.ethDb.hasOneMinted(hashes));
-  }
-
-  async verifyRecord(records: EthMintRecord[]): Promise<SigError> {
-    const hashes = records.map((r) => r.lockId);
-
-    const needToMinted = await this.ethDb.ethToBeMintedByCkbTx(hashes);
-
-    const mapped = new Map<string, IEthMint>();
-    needToMinted.forEach((r) => {
-      mapped.set(r.ckbTxHash, r);
-    });
-
-    for (const record of records) {
-      const mint = mapped.get(record.lockId);
-      if (!mint) {
-        return new SigError(SigErrorCode.TxNotFound, `cannot found ckbLock record by ckbTxHash:${record.lockId}`);
-      }
-
-      if (mint.nervosAssetId != record.assetId) {
-        return new SigError(
-          SigErrorCode.InvalidRecord,
-          `lockTx:${record.lockId} asset:${record.assetId} != ${mint.nervosAssetId}`,
-        );
-      }
-
-      if (BigInt(record.amount) > BigInt(mint.amount)) {
-        return new SigError(
-          SigErrorCode.InvalidRecord,
-          `invalid lock amount: ${record.amount}, greater than mint amount: ${mint.amount}`,
-        );
-      }
-
-      if (mint.recipientAddress !== record.to) {
-        return new SigError(
-          SigErrorCode.InvalidRecord,
-          `burnTx:${record.lockId} recipientAddress:${record.to} != ${mint.recipientAddress}`,
-        );
-      }
-    }
-    return SigErrorOk;
   }
 }
 
