@@ -8,7 +8,7 @@ import Safe, { EthersAdapter } from '@gnosis.pm/safe-core-sdk';
 import { SafeSignature, SafeTransaction } from '@gnosis.pm/safe-core-sdk-types';
 import ethers from 'ethers';
 import { ethMintCollectSignaturesPayload } from '../../x/dist/multisig/multisig-mgr';
-import { SigError, SigErrorCode, SigErrorOk } from '../src/error';
+import { SigError, SigErrorCode } from '../src/error';
 import { SigResponse } from './response';
 
 class EthMint {
@@ -41,6 +41,12 @@ class EthMint {
 
     const payload = params.payload as ethMintCollectSignaturesPayload;
 
+    try {
+      await this.verifyRecord(payload.mintRecords);
+    } catch (e) {
+      return new SigResponse(e as SigError);
+    }
+
     if (!(await this.verifyDuplicated(payload.mintRecords))) {
       return SigResponse.fromSigError(SigErrorCode.TxCompleted);
     }
@@ -68,7 +74,7 @@ class EthMint {
     return !(await this.ethDb.hasOneMinted(hashes));
   }
 
-  async verifyRecord(records: EthMintRecord[]): Promise<SigError> {
+  async verifyRecord(records: EthMintRecord[]): Promise<void> {
     const hashes = records.map((r) => r.lockId);
 
     const needToMinted = await this.ethDb.ethToBeMintedByCkbTx(hashes);
@@ -81,31 +87,30 @@ class EthMint {
     for (const record of records) {
       const mint = mapped.get(record.lockId);
       if (!mint) {
-        return new SigError(SigErrorCode.TxNotFound, `cannot found ckbLock record by ckbTxHash:${record.lockId}`);
+        throw new SigError(SigErrorCode.TxNotFound, `cannot found ckbLock record by ckbTxHash:${record.lockId}`);
       }
 
       if (mint.nervosAssetId != record.assetId) {
-        return new SigError(
+        throw new SigError(
           SigErrorCode.InvalidRecord,
           `lockTx:${record.lockId} asset:${record.assetId} != ${mint.nervosAssetId}`,
         );
       }
 
       if (BigInt(record.amount) > BigInt(mint.amount)) {
-        return new SigError(
+        throw new SigError(
           SigErrorCode.InvalidRecord,
           `invalid lock amount: ${record.amount}, greater than mint amount: ${mint.amount}`,
         );
       }
 
       if (mint.recipientAddress !== record.to) {
-        return new SigError(
+        throw new SigError(
           SigErrorCode.InvalidRecord,
           `burnTx:${record.lockId} recipientAddress:${record.to} != ${mint.recipientAddress}`,
         );
       }
     }
-    return SigErrorOk;
   }
 }
 
