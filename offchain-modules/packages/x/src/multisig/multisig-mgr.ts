@@ -55,24 +55,30 @@ export interface createAsset {
   asset: string;
 }
 
-export interface ckbCollectSignaturesPayload {
+export interface ckbMintCollectSignaturesPayload {
   sigType: SigType;
-  mintRecords?: mintRecord[];
-  createAssets?: createAsset[];
+  mintRecords: mintRecord[];
+  txSkeleton: TransactionSkeletonObject;
+}
+
+export interface ckbCreateCellCollectSignaturesPayload {
+  sigType: SigType;
+  createAssets: createAsset[];
   txSkeleton: TransactionSkeletonObject;
 }
 
 export interface ckbUnlockCollectSignaturesPayload {
   sigType: SigType;
-  unlockRecords?: unlockRecord[];
-  createAssets?: createAsset[];
+  unlockRecords: unlockRecord[];
   txSkeleton: TransactionSkeletonObject;
 }
 
-export type collectSignaturesParamsPayload =
-  | ethCollectSignaturesPayload
-  | ckbCollectSignaturesPayload
+export type ckbCollectSignaturesPayload =
+  | ckbMintCollectSignaturesPayload
+  | ckbCreateCellCollectSignaturesPayload
   | ckbUnlockCollectSignaturesPayload;
+
+export type collectSignaturesParamsPayload = ethCollectSignaturesPayload | ckbCollectSignaturesPayload;
 
 export interface collectSignaturesParams {
   rawData: string;

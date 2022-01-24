@@ -7,7 +7,6 @@ import { CollectorCkbUnlock } from './entity/CkbUnlock';
 import { EthBurn } from './entity/EthBurn';
 import { CollectorEthMint, EthMint } from './entity/EthMint';
 import { CollectorEthUnlock, EthUnlockStatus } from './entity/EthUnlock';
-import { EthBurn } from './entity/EthBurn';
 import {
   CkbBurn,
   CkbMint,

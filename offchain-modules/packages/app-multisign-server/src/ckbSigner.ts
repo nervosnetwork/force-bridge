@@ -15,6 +15,8 @@ import { EthLock } from '@force-bridge/x/dist/db/entity/EthLock';
 import { asserts, nonNullable } from '@force-bridge/x/dist/errors';
 import {
   ckbCollectSignaturesPayload,
+  ckbMintCollectSignaturesPayload,
+  ckbCreateCellCollectSignaturesPayload,
   ckbUnlockCollectSignaturesPayload,
   collectSignaturesParams,
   mintRecord,
@@ -25,11 +27,8 @@ import { compareCkbAddress } from '@force-bridge/x/dist/utils';
 import { Amount } from '@lay2/pw-core';
 import { SigError, SigErrorCode, SigErrorOk } from './error';
 import { SigResponse, SigServer } from './sigServer';
-import { getOmniLockMultisigAddress } from '@force-bridge/x/dist/ckb/tx-helper/multisig/omni-lock';
-import { EthBurn } from '@force-bridge/x/dist/db/entity/EthBurn';
-import { CkbUnlock } from '@force-bridge/x/dist/db/entity/CkbUnlock';
 
-async function verifyCreateCellTx(rawData: string, payload: ckbCollectSignaturesPayload): Promise<SigError> {
+async function verifyCreateCellTx(rawData: string, payload: ckbCreateCellCollectSignaturesPayload): Promise<SigError> {
   const txSkeleton = payload.txSkeleton;
   const sigData = txSkeleton.signingEntries[1].message;
   if (rawData !== sigData) {
@@ -118,7 +117,11 @@ async function verifyDuplicateMintTx(
   return SigErrorOk;
 }
 
-async function verifyMintTx(pubKey: string, rawData: string, payload: ckbCollectSignaturesPayload): Promise<SigError> {
+async function verifyMintTx(
+  pubKey: string,
+  rawData: string,
+  payload: ckbMintCollectSignaturesPayload,
+): Promise<SigError> {
   const txSkeleton = payload.txSkeleton;
   const sigData = txSkeleton.signingEntries[1].message;
   if (rawData !== sigData) {
@@ -354,33 +357,37 @@ export async function signCkbTx(params: collectSignaturesParams): Promise<SigRes
     return new SigResponse(err);
   }
 
+  let message: string;
   switch (payload.sigType) {
     case 'mint':
-      err = await verifyMintTx(pubKey, params.rawData, payload);
+      err = await verifyMintTx(pubKey, params.rawData, payload as ckbMintCollectSignaturesPayload);
       if (err.Code !== SigErrorCode.Ok) {
         return new SigResponse(err);
       }
+      message = txSkeleton.signingEntries.get(1)!.message;
       break;
     case 'create_cell':
-      err = await verifyCreateCellTx(params.rawData, payload);
+      err = await verifyCreateCellTx(params.rawData, payload as ckbCreateCellCollectSignaturesPayload);
       if (err.Code !== SigErrorCode.Ok) {
         return new SigResponse(err);
       }
+      message = txSkeleton.signingEntries.get(1)!.message;
       break;
     case 'unlock':
-      err = await verifyUnlockTx(pubKey, params.rawData, payload);
+      err = await verifyUnlockTx(pubKey, params.rawData, payload as ckbUnlockCollectSignaturesPayload);
       if (err.Code !== SigErrorCode.Ok) {
         return new SigResponse(err);
       }
+      message = txSkeleton.signingEntries.get(0)!.message;
       break;
     default:
       return SigResponse.fromSigError(SigErrorCode.InvalidParams, `invalid sigType:${payload.sigType}`);
   }
 
-  const message = txSkeleton.signingEntries.get(1)!.message;
   const sig = key.signRecoverable(message, privKey).slice(2);
 
   if (payload.sigType === 'mint') {
+    const payload = params.payload as ckbMintCollectSignaturesPayload;
     asserts(payload.mintRecords);
 
     await SigServer.signedDb.createSigned(
