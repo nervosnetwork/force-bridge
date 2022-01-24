@@ -1,5 +1,7 @@
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
+import { EthDb } from '@force-bridge/x/dist/db';
 import { IEthMint } from '@force-bridge/x/dist/db/model';
+import { SignedDb } from '@force-bridge/x/dist/db/signed';
 import { collectSignaturesParams } from '@force-bridge/x/dist/multisig/multisig-mgr';
 import { EthMintRecord } from '@force-bridge/x/dist/xchain/eth';
 import Safe, { EthersAdapter } from '@gnosis.pm/safe-core-sdk';
@@ -7,11 +9,20 @@ import { SafeSignature, SafeTransaction } from '@gnosis.pm/safe-core-sdk-types';
 import ethers from 'ethers';
 import { ethMintCollectSignaturesPayload } from '../../x/dist/multisig/multisig-mgr';
 import { SigError, SigErrorCode, SigErrorOk } from '../src/error';
-import { SigResponse, SigServer } from '../src/sigServer';
+import { SigResponse } from './response';
 
 class EthMint {
-  async request(params: collectSignaturesParams): Promise<SigResponse> {
-    const privateKey = SigServer.getKey('eth', params.requestAddress!);
+  protected ethDb: EthDb;
+  protected signedDb: SignedDb;
+  protected keys: Map<string, string>;
+  constructor(ethDb: EthDb, signedDb: SignedDb, keys: Map<string, string>) {
+    this.ethDb = ethDb;
+    this.signedDb = signedDb;
+    this.keys = keys;
+  }
+
+  async request(params: collectSignaturesParams): Promise<SigResponse<SafeSignature>> {
+    const privateKey = this.keys['eth'][params.requestAddress];
     if (privateKey === undefined) {
       return SigResponse.fromSigError(
         SigErrorCode.InvalidParams,
@@ -23,7 +34,7 @@ class EthMint {
       return SigResponse.fromSigError(SigErrorCode.BlockSyncUncompleted);
     }
 
-    const signed = await SigServer.signedDb.getSignedByRawData(params.rawData);
+    const signed = await this.signedDb.getSignedByRawData(params.rawData);
     if (signed) {
       return SigResponse.fromData(JSON.parse(signed.signature) as SafeSignature);
     }
@@ -54,13 +65,13 @@ class EthMint {
   async verifyDuplicated(records: EthMintRecord[]): Promise<boolean> {
     const hashes = records.map((r) => r.lockId);
 
-    return !(await SigServer.ethDb.hasOneMinted(hashes));
+    return !(await this.ethDb.hasOneMinted(hashes));
   }
 
   async verifyRecord(records: EthMintRecord[]): Promise<SigError> {
     const hashes = records.map((r) => r.lockId);
 
-    const needToMinted = await SigServer.ethDb.ethToBeMintedByCkbTx(hashes);
+    const needToMinted = await this.ethDb.ethToBeMintedByCkbTx(hashes);
 
     const mapped = new Map<string, IEthMint>();
     needToMinted.forEach((r) => {
