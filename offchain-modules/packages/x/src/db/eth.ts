@@ -138,6 +138,24 @@ export class EthDb implements IQuery {
     await ethUnlockRepo.save(dbRecords);
   }
 
+  async hasOneMinted(ckbTxHashes: string[]): Promise<boolean> {
+    const minted = await this.connection.getRepository(EthMint).find({
+      ckbTxHash: In(ckbTxHashes),
+    });
+
+    if (minted.length > 0) {
+      return true;
+    }
+
+    return false;
+  }
+
+  async ethToBeMintedByCkbTx(ckbTxHash: string[]): Promise<CollectorEthMint[]> {
+    return await this.connection.getRepository(CollectorEthMint).find({
+      ckbTxHash: In(ckbTxHash),
+    });
+  }
+
   async saveCollectorEthUnlock(records: IEthUnlock[]): Promise<void> {
     await this.collectorEthUnlockRepository.save(records.map((r) => this.collectorEthUnlockRepository.create(r)));
   }
@@ -369,6 +387,14 @@ export class EthDb implements IQuery {
     return await this.connection.getRepository(EthLock).find({
       where: {
         uniqueId: In(uniqueIds),
+      },
+    });
+  }
+
+  async getEthBurnsByBurnTxHashes(burnTxHashes: string[]): Promise<EthBurn[]> {
+    return await this.connection.getRepository(EthBurn).find({
+      where: {
+        burnTxHash: In(burnTxHashes),
       },
     });
   }

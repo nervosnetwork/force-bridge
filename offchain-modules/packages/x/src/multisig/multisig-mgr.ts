@@ -1,12 +1,13 @@
 import { key } from '@ckb-lumos/hd';
 import { TransactionSkeletonObject } from '@ckb-lumos/helpers';
+import { SafeTransaction } from '@gnosis.pm/safe-core-sdk-types';
 import * as utils from '@nervosnetwork/ckb-sdk-utils';
 import { JSONRPCResponse } from 'json-rpc-2.0';
 import { MultiSignHost } from '../config';
 import { ForceBridgeCore } from '../core';
 import { asyncSleep } from '../utils';
 import { logger } from '../utils/logger';
-import { EthUnlockRecord } from '../xchain/eth';
+import { EthUnlockRecord, EthMintRecord } from '../xchain/eth';
 import { httpRequest } from './client';
 import { verifyCollector } from './utils';
 
@@ -29,6 +30,11 @@ export interface ethCollectSignaturesPayload {
   nonce: number;
 }
 
+export interface ethMintCollectSignaturesPayload {
+  mintRecords: EthMintRecord[];
+  tx: SafeTransaction;
+}
+
 export type SigType = 'mint' | 'create_cell' | 'unlock';
 
 export interface mintRecord {
@@ -40,25 +46,55 @@ export interface mintRecord {
   sudtExtraData: string;
 }
 
+export interface unlockRecord {
+  id: string;
+  burnTxHash: string;
+  xchain: number;
+  assetIdent: string;
+  amount: string;
+  recipientAddress: string;
+  udtExtraData: string;
+}
+
 export interface createAsset {
   chain: number;
   asset: string;
 }
 
-export interface ckbCollectSignaturesPayload {
+export interface ckbMintCollectSignaturesPayload {
   sigType: SigType;
-  mintRecords?: mintRecord[];
-  createAssets?: createAsset[];
+  mintRecords: mintRecord[];
   txSkeleton: TransactionSkeletonObject;
 }
 
-export type collectSignaturesParamsPayload = ethCollectSignaturesPayload | ckbCollectSignaturesPayload;
+export interface ckbCreateCellCollectSignaturesPayload {
+  sigType: SigType;
+  createAssets: createAsset[];
+  txSkeleton: TransactionSkeletonObject;
+}
+
+export interface ckbUnlockCollectSignaturesPayload {
+  sigType: SigType;
+  unlockRecords: unlockRecord[];
+  txSkeleton: TransactionSkeletonObject;
+}
+
+export type ckbCollectSignaturesPayload =
+  | ckbMintCollectSignaturesPayload
+  | ckbCreateCellCollectSignaturesPayload
+  | ckbUnlockCollectSignaturesPayload;
+
+export type collectSignaturesParamsPayload =
+  | ethCollectSignaturesPayload
+  | ckbCollectSignaturesPayload
+  | ethMintCollectSignaturesPayload;
 
 export interface collectSignaturesParams {
   rawData: string;
   requestAddress?: string;
   payload: collectSignaturesParamsPayload;
   collectorSig?: string;
+  requestMethod?: '' | 'signSafeTx';
 }
 
 export interface getPendingTxParams {
@@ -184,6 +220,10 @@ export class MultiSigMgr {
   }
 
   public async requestSig(host: string, params: collectSignaturesParams): Promise<JSONRPCResponse> {
+    if (params.requestMethod) {
+      return httpRequest(host, params.requestMethod, params);
+    }
+
     let method: string;
     switch (this.chainType) {
       case 'CKB':

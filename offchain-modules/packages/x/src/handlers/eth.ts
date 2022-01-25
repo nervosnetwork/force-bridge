@@ -77,6 +77,10 @@ export class EthHandler {
     return { height: this.lastHandledBlockHeight, hash: this.lastHandledBlockHash };
   }
 
+  async checkBlockSync(): Promise<boolean> {
+    return (await this.getTipBlock()).height - this.getHandledBlock().height >= 10;
+  }
+
   async getTipBlock(): Promise<{ height: number; hash: string }> {
     const tipHeight = await this.ethChain.getCurrentBlockNumber();
     const tipBlock = await this.ethChain.getBlock(tipHeight);

@@ -337,6 +337,14 @@ export class CkbDb implements IQuery {
     });
   }
 
+  async getCkbUnlockByIds(ids: string[]): Promise<CkbUnlock[]> {
+    return await this.connection.getRepository(CkbUnlock).find({
+      where: {
+        id: In(ids),
+      },
+    });
+  }
+
   async getCkbLockByTxHashes(ckbTxHashes: string[]): Promise<CkbLock[]> {
     return await this.connection.getRepository(CkbLock).find({
       where: {
