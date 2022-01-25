@@ -36,7 +36,7 @@ export class EthBurn {
   @Column()
   blockNumber: number;
 
-  @Column()
+  @Column({ type: 'bigint' })
   blockTimestamp: number;
 
   @Column()

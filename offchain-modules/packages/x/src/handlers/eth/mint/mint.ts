@@ -1,18 +1,21 @@
 import { ethers } from 'ethers';
 import { forceBridgeRole as ForceBridgeRole } from '../../../config';
-import { EthDb } from '../../../db';
+import { EthDb, CkbDb } from '../../../db';
 import { EthMint } from '../../../db/entity/EthMint';
 import { BridgeMetricSingleton } from '../../../metric/bridge-metric';
 import { ParsedLog, Log, EthChain } from '../../../xchain/eth';
+import { IEthMint } from '../../../db/model';
 
 abstract class Mint {
   protected ethDb: EthDb;
+  protected ckbDb: CkbDb;
   protected ethChain: EthChain;
   protected block: ethers.providers.Block | undefined = undefined;
   protected abstract role: ForceBridgeRole;
 
-  constructor(ethDb: EthDb, ethChain: EthChain) {
+  constructor(ethDb: EthDb, ckbDb: CkbDb, ethChain: EthChain) {
     this.ethDb = ethDb;
+    this.ckbDb = ckbDb;
     this.ethChain = ethChain;
   }
 
@@ -36,44 +39,52 @@ abstract class Mint {
     ]);
   }
 
-  protected async getMintRecord(parsedLog: ParsedLog, log: Log): Promise<EthMint> {
-    let record = await this.ethDb.getEthMint(parsedLog.args.lockId);
+  protected async getMintRecord(parsedLog: ParsedLog, log: Log): Promise<IEthMint> {
+    const record = await this.ethDb.getEthMint(parsedLog.args.lockId);
 
     if (record == undefined) {
       await this.initBlock(log.blockHash);
 
-      record = new EthMint();
-      record.ckbTxHash = parsedLog.args.lockId;
-      record.nervosAssetId = parsedLog.args.assetId;
-      record.erc20TokenAddress = parsedLog.args.token;
-      record.amount = parsedLog.args.amount;
-      record.recipientAddress = parsedLog.args.to;
-      record.blockTimestamp = (this.block as ethers.providers.Block).timestamp;
-      record.blockNumber = log.blockNumber;
+      const amount = `0x${BigInt(parsedLog.args.amount.toString()).toString(16)}`;
 
-      await this.ethDb.saveEthMint(record);
+      const iEthMint = {
+        ckbTxHash: parsedLog.args.lockId,
+        erc20TokenAddress: parsedLog.args.token,
+        nervosAssetId: parsedLog.args.assetId,
+        amount,
+        recipientAddress: parsedLog.args.to,
+        blockNumber: log.blockNumber,
+        blockTimestamp: (this.block as ethers.providers.Block).timestamp,
+        ethTxHash: log.transactionHash,
+      };
+
+      await this.ethDb.createEthMint([iEthMint]);
+      return iEthMint;
     }
 
-    return record;
+    return record as IEthMint;
   }
 
   protected isCkb(assetId: string): boolean {
-    return assetId == '0x0000000000000000000000000000000000000000000000000000000000000000';
+    return assetId == '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
   }
 
-  async saveBridgeFee(parsedLog: ParsedLog, record: EthMint): Promise<void> {
-    if (!this.isCkb(parsedLog.args.assetId())) {
+  async saveBridgeFee(parsedLog: ParsedLog, record: IEthMint): Promise<void> {
+    if (!this.isCkb(parsedLog.args.assetId)) {
       return;
     }
 
     const ckbRecord = await this.ethDb.getCkbLock(parsedLog.args.lockId);
     if (ckbRecord != undefined) {
-      ckbRecord.bridgeFee = ethers.BigNumber.from(ckbRecord.amount)
-        .sub(ethers.BigNumber.from(record.amount))
-        .toString();
+      const bridgeFee = ethers.BigNumber.from(ckbRecord.amount).sub(ethers.BigNumber.from(record.amount)).toString();
 
-      ckbRecord.amount = record.amount;
-      await this.ethDb.saveCkbLock(ckbRecord);
+      await this.ckbDb.updateLockAmountAndBridgeFee([
+        {
+          ckbTxHash: ckbRecord.ckbTxHash,
+          amount: record.amount,
+          bridgeFee,
+        },
+      ]);
     }
   }
 }

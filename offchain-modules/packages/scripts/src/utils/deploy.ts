@@ -10,6 +10,7 @@ import { ethers } from 'ethers';
 import * as lodash from 'lodash';
 import { genRandomVerifierConfig, VerifierConfig } from './generate';
 import { pathFromProjectRoot } from './index';
+import { ContractNetworksConfig } from '@gnosis.pm/safe-core-sdk';
 
 export interface DeployDevResult {
   assetWhiteList: WhiteListEthAsset[];
@@ -28,6 +29,7 @@ export interface DeployDevResult {
   ethPrivateKey: string;
   assetManagerContractAddress: string;
   safeAddress: string;
+  contractNetworks: ContractNetworksConfig;
 }
 
 export async function deployDev(
@@ -58,8 +60,13 @@ export async function deployDev(
   );
   logger.info(`bridge address: ${bridgeEthAddress}`);
 
-  const safeAddress = await deploySafe(ETH_RPC_URL, ethPrivateKey, MULTISIG_THRESHOLD, ethMultiSignAddresses);
-  logger.info(`safe address: ${safeAddress}`);
+  const { safeAddress, contractNetworks } = await deploySafe(
+    ETH_RPC_URL,
+    ethPrivateKey,
+    MULTISIG_THRESHOLD,
+    ethMultiSignAddresses,
+  );
+  logger.info(`safe address: ${safeAddress}, contractNetworks: ${contractNetworks}`);
 
   const ckbDeployGenerator = new CkbDeployManager(CKB_RPC_URL, CKB_INDEXER_URL);
   if (!ckbDeps) {
@@ -144,18 +151,6 @@ export async function deployDev(
   );
   logger.info('omniLockConfig', omniLockConfig);
 
-  const ckbToEthMirror = new Array<{ assetId: string; name: string; symbol: string; decimals: number }>();
-
-  ckbToEthMirror.push({
-    assetId: '0x0000000000000000000000000000000000000000000000000000000000000000',
-    name: 'CKB',
-    symbol: 'CKB',
-    decimals: 8,
-  });
-
-  const assetManagerContract = await deployAssetManager(ETH_RPC_URL, ethPrivateKey, safeAddress, ckbToEthMirror);
-  logger.info(`asset manager address: ${assetManagerContract.address}`);
-
   // generate_configs
   let assetWhiteListPath: string;
   let nervosAssetWhiteListPath: string;
@@ -174,6 +169,10 @@ export async function deployDev(
     threshold: MULTISIG_THRESHOLD,
     verifiers: verifierConfigs,
   };
+
+  const assetManagerContract = await deployAssetManager(ETH_RPC_URL, ethPrivateKey, safeAddress, nervosAssetWhiteList);
+  logger.info(`asset manager address: ${assetManagerContract.address}`);
+
   // get start height
   const provider = new ethers.providers.JsonRpcProvider(ETH_RPC_URL);
   const delta = 1;
@@ -195,6 +194,7 @@ export async function deployDev(
     ckbPrivateKey,
     assetManagerContractAddress: assetManagerContract.address,
     safeAddress,
+    contractNetworks,
   };
   if (cachePath) {
     writeJsonToFile(data, cachePath);

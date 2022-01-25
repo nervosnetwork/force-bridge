@@ -27,6 +27,23 @@ export class NervosAsset {
     return undefined !== this.getAssetInfo(xchain);
   }
 
+  public getMinimalAmount(xchain: ChainType): string {
+    switch (xchain) {
+      case ChainType.ETH: {
+        const asset = ForceBridgeCore.config.eth.nervosAssetWhiteList.find(
+          (asset) => asset.typescriptHash === this.typescriptHash,
+        );
+        if (!asset) throw new Error('minimal amount not configed');
+        return asset.minimalBridgeAmount;
+      }
+      case ChainType.BTC:
+      case ChainType.EOS:
+      case ChainType.TRON:
+      case ChainType.POLKADOT:
+        return '0';
+    }
+  }
+
   public getBridgeFee(direction: 'lock' | 'burn', xchain: ChainType): string {
     switch (xchain) {
       case ChainType.ETH: {

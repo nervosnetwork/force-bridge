@@ -24,7 +24,7 @@ export class EthMint {
   @Column({ nullable: true })
   blockNumber: number; // mint tx block number
 
-  @Column()
+  @Column({ nullable: true, type: 'bigint' })
   blockTimestamp: number; // mint tx block timestamp
 
   @Column({ nullable: true })
