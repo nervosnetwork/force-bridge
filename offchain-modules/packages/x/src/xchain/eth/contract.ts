@@ -242,7 +242,7 @@ export class EthChain {
     return false;
   }
 
-  async sendMintTxs(records: IEthMint[]): Promise<ethers.providers.TransactionResponse | undefined> {
+  async sendMintTxs(records: IEthMint[]): Promise<ethers.providers.TransactionResponse | undefined | boolean> {
     try {
       const safe = await Safe.create({
         ethAdapter: new EthersAdapter({ ethers, signer: this.wallet }),
@@ -263,7 +263,11 @@ export class EthChain {
         ]),
       };
       const tx = await safe.createTransaction(partialTx);
-      const signatures = await this.signMintTx(tx, safe);
+      const signatures = await this.signMintTx(tx, safe, records);
+      if (typeof signatures == 'boolean') {
+        return signatures;
+      }
+
       for (const signature of signatures) {
         tx.addSignature(signature);
       }
@@ -276,40 +280,28 @@ export class EthChain {
     }
   }
 
-  // TODO: virifiers.
-  async signMintTx(tx: SafeTransaction, safe: Safe): Promise<SafeSignature[]> {
-    const safes: Safe[] = [];
-    safes.push(
-      await safe.connect({
-        ethAdapter: new EthersAdapter({
-          ethers,
-          signer: new ethers.Wallet(ForceBridgeCore.keystore.getDecryptedByKeyID('signer1'), this.provider),
+  async signMintTx(tx: SafeTransaction, safe: Safe, records: IEthMint[]): Promise<SafeSignature[] | boolean> {
+    const rawData = buildSigRawData('', '', records, tx.data.nonce);
+    const sigs = await this.multisigMgr.collectSignatures({
+      rawData: rawData,
+      payload: {
+        tx: tx,
+        mintRecords: records.map((r) => {
+          return {
+            assetId: r.nervosAssetId,
+            to: r.recipientAddress,
+            amount: r.amount,
+            lockId: r.ckbTxHash,
+          };
         }),
-      }),
-    );
-    safes.push(
-      await safe.connect({
-        ethAdapter: new EthersAdapter({
-          ethers,
-          signer: new ethers.Wallet(ForceBridgeCore.keystore.getDecryptedByKeyID('signer3'), this.provider),
-        }),
-      }),
-    );
-    safes.push(
-      await safe.connect({
-        ethAdapter: new EthersAdapter({
-          ethers,
-          signer: new ethers.Wallet(ForceBridgeCore.keystore.getDecryptedByKeyID('signer2'), this.provider),
-        }),
-      }),
-    );
+      },
+    });
 
-    const signatures: SafeSignature[] = [];
-    for (const s of safes) {
-      signatures.push(await s.signTransactionHash(await s.getTransactionHash(tx)));
+    if (typeof sigs == 'boolean') {
+      return sigs;
     }
 
-    return signatures;
+    return sigs.map((s) => JSON.parse(s) as SafeSignature);
   }
 
   async sendUnlockTxs(records: IEthUnlock[]): Promise<ethers.providers.TransactionResponse | boolean | Error> {

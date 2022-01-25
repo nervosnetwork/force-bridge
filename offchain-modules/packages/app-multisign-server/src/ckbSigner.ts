@@ -1,4 +1,4 @@
-import { Cell, utils } from '@ckb-lumos/base';
+import { Cell } from '@ckb-lumos/base';
 import { common } from '@ckb-lumos/common-scripts';
 import { key } from '@ckb-lumos/hd';
 import {
@@ -9,7 +9,7 @@ import {
   TransactionSkeletonObject,
 } from '@ckb-lumos/helpers';
 import { BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
-import { getFromAddr, getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
+import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { EthLock } from '@force-bridge/x/dist/db/entity/EthLock';
 import { asserts, nonNullable } from '@force-bridge/x/dist/errors';
@@ -20,7 +20,6 @@ import {
   ckbUnlockCollectSignaturesPayload,
   collectSignaturesParams,
   mintRecord,
-  unlockRecord,
 } from '@force-bridge/x/dist/multisig/multisig-mgr';
 import { verifyCollector } from '@force-bridge/x/dist/multisig/utils';
 import { compareCkbAddress } from '@force-bridge/x/dist/utils';
@@ -186,8 +185,11 @@ async function verifyMintTx(
 }
 
 async function verifyUnlockTx(
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   pubKey: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   rawData: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   payload: ckbUnlockCollectSignaturesPayload,
 ): Promise<SigError> {
   return SigErrorOk;

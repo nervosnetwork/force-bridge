@@ -166,6 +166,7 @@ export async function getDBConnection(): Promise<Connection> {
       EthBurn,
       CollectorEthUnlock,
       CollectorEthMint,
+      CollectorEthUnlock,
       KV,
       SignedTx,
       TronLock,

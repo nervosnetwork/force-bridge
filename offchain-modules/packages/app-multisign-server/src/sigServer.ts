@@ -9,6 +9,7 @@ import { ServerSingleton } from '@force-bridge/x/dist/server/serverSingleton';
 import { getDBConnection, privateKeyToCkbAddress, privateKeyToEthAddress } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
 import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
+import { SafeSignature } from '@gnosis.pm/safe-core-sdk-types';
 import bodyParser from 'body-parser';
 import { ethers } from 'ethers';
 import { JSONRPCServer } from 'json-rpc-2.0';
@@ -16,6 +17,7 @@ import * as snappy from 'snappy';
 import { Connection } from 'typeorm';
 import { signCkbTx } from './ckbSigner';
 import { SigError, SigErrorCode } from './error';
+import EthMint from './ethMint';
 import { signEthTx } from './ethSigner';
 import { getPendingTx, getPendingTxResult } from './pendingTx';
 import { serverStatus, serverStatusResult } from './status';
@@ -26,7 +28,7 @@ const apiPath = '/force-bridge/sign-server/api/v1';
 const ethPendingTxKey = 'ethPendingTx';
 const ckbPendingTxKey = 'ckbPendingTx';
 
-export type SigResponseData = string | serverStatusResult | getPendingTxResult;
+export type SigResponseData = string | serverStatusResult | getPendingTxResult | SafeSignature;
 
 export class SigResponse {
   Data?: SigResponseData;
@@ -174,6 +176,11 @@ export async function startSigServer(configPath: string): Promise<void> {
       return SigResponse.fromSigError(SigErrorCode.UnknownError, e.message);
     }
   });
+
+  server.addMethod('signSafeTx', async (params: collectSignaturesParams) => {
+    return await new EthMint(SigServer.ethDb, SigServer.signedDb, SigServer.keys['eth']).request(params);
+  });
+
   server.addMethod('status', async () => {
     try {
       return await serverStatus();
