@@ -5,7 +5,7 @@ import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
 import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
-import { EthDb, TronDb } from '@force-bridge/x/dist/db';
+import { CkbDb, EthDb, TronDb } from '@force-bridge/x/dist/db';
 import { BtcDb } from '@force-bridge/x/dist/db/btc';
 import { EosDb } from '@force-bridge/x/dist/db/eos';
 import { IQuery, LockRecord, UnlockRecord } from '@force-bridge/x/dist/db/model';
@@ -305,6 +305,9 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         break;
       case 'Tron':
         dbHandler = new TronDb(this.connection);
+        break;
+      case 'Nervos':
+        dbHandler = new CkbDb(this.connection);
         break;
       default:
         throw new Error('invalid bridge chain type');

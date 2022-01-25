@@ -28,10 +28,135 @@ import {
   ICkbLock,
   IEthMint,
   ICkbUnlock,
+  IQuery,
+  LockRecord,
+  UnlockRecord,
 } from './model';
 
-export class CkbDb {
+export class CkbDb implements IQuery {
   constructor(private connection: Connection) {}
+  async getLockRecordsByCkbAddress(ckbSenderAddress: string, ckbAsset: string): Promise<LockRecord[]> {
+    return await this.connection
+      .getRepository(CkbLock)
+      .createQueryBuilder('ckb')
+      .leftJoinAndSelect('eth_mint', 'eth', 'ckb.ckb_tx_hash = eth.ckb_tx_hash')
+      .where('ckb.sender_address = :sender AND ckb.asset_ident = :asset', {
+        sender: ckbSenderAddress,
+        asset: ckbAsset,
+      })
+      .select(
+        `
+        ckb.sender_address as sender,
+        ckb.recipient_address as recipient,
+        ckb.amount as lock_amount,
+        eth.amount as mint_amount,
+        ckb.ckb_tx_hash as lock_hash,
+        eth.eth_tx_hash as mint_hash,
+        ckb.updated_at as lock_time,
+        ckb.confirm_number as lock_confirm_number,
+        ckb.confirm_status as lock_confirm_status,
+        eth.updated_at as mint_time,
+        ckb_asset_ident as asset,
+        case when isnull(eth.amount) then null else 'success' end as status,
+        '' as message,
+        ckb.bridge_fee as bridge_fee
+        `,
+      )
+      .orderBy('eth.updated_at', 'DESC')
+      .getRawMany();
+  }
+
+  async getUnlockRecordsByCkbAddress(ckbRecipientAddress: string, xchainToken: string): Promise<UnlockRecord[]> {
+    return await this.connection
+      .getRepository(EthBurn)
+      .createQueryBuilder('eth')
+      .leftJoinAndSelect('ckb_unlock', 'ckb', 'ckb.unique_id = eth.id')
+      .where('eth.recipient = :recipient ADN eth.xchain_token_id = :token', {
+        recipient: ckbRecipientAddress,
+        token: xchainToken,
+      })
+      .select(
+        `
+        eth.sender as sender,
+        eth.recipient as recipient,
+        eth.amount as burn_amount,
+        ckb.amount as unlock_amount,
+        eth.burn_tx_hash as burn_hash,
+        ckb.unlock_tx_hash as unlock_hash,
+        ckb.updated_at as unlock_time,
+        eth.updated_at as burn_time,
+        eth.confirm_number as burn_confirm_number,
+        eth.confirm_status as burn_confirm_status,
+        eth.xchain_token_id as asset,
+        case when isnull(ckb.amount) then null else 'success' end as status,
+        '' as message,
+        eth.bridge_fee as bridge_fee
+        `,
+      )
+      .orderBy('eth.updated_at', 'DESC')
+      .getRawMany();
+  }
+
+  async getLockRecordsByXChainAddress(xchainRecipientAddress: string, ckbAsset: string): Promise<LockRecord[]> {
+    return await this.connection
+      .getRepository(CkbLock)
+      .createQueryBuilder('ckb')
+      .leftJoinAndSelect('eth_mint', 'eth', 'ckb.ckb_tx_hash=eth.ckb_tx_hash')
+      .where('ckb.recipient_address=:recipient AND ckb.asset_ident=:asset', {
+        recipient: xchainRecipientAddress,
+        asset: ckbAsset,
+      })
+      .select(
+        `
+        ckb.sender as sender,
+        ckb.recipient as recipient,
+        ckb.amount as lock_amount,
+        eth.amount as mint_amount,
+        ckb.ckb_tx_hash as lock_hash,
+        eth.eth_tx_hash as mint_hash,
+        ckb.updated_at as lock_time,
+        eth.updated_at as mint_time,
+        ckb.confirm_number as lock_confirm_number,
+        ckb.confirm_status as mint_confirm_status,
+        ckb.asset_ident as asset,
+        case when isnull(eth.amount) then null else 'success' end as status,
+        ckb.bridge_fee as bridge_fee
+        `,
+      )
+      .orderBy('eth.updated_at', 'DESC')
+      .getRawMany();
+  }
+
+  async getUnlockRecordsByXChainAddress(xchainSenderAddress: string, xchainToken: string): Promise<UnlockRecord[]> {
+    return await this.connection
+      .getRepository(EthBurn)
+      .createQueryBuilder('eth')
+      .leftJoinAndSelect('ckb_unlock', 'ckb', 'ckb.id=eth.uinque_id')
+      .where('eth.sender=:sender AND eth.xchain_token_id=:token', {
+        sender: xchainSenderAddress,
+        token: xchainToken,
+      })
+      .select(
+        `
+        eth.sender as sender,
+        eth.recipient as recipient,
+        eth.amount as burn_amount,
+        ckb.amount as unlock_amount,
+        eth.eth_tx_hash as burn_hash,
+        ckb.ckb_tx_hash as unlock_hash,
+        ckb.updated_at as unlock_time,
+        eth.updated_at as burn_time,
+        eth.confirm_number as burn_confirm_number,
+        eth.confirm_status as burn_confirm_status,
+        eth.xchain_token_id as asset,
+        case when is_null(ckb.amount) then null else 'success' end as status,
+        '' as message,
+        eth.bridge_fee as bridge_fee
+        `,
+      )
+      .orderBy('eth.updated_at', 'DESC')
+      .getRawMany();
+  }
 
   // invoke when getting new burn events
   async saveCkbBurn(records: ICkbBurn[]): Promise<void> {
