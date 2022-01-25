@@ -14,9 +14,10 @@ class Nervos extends SummaryResponse {
       args: new EthAsset(XChainToken, getOwnerTypeHash()).toBridgeLockscriptArgs(),
     });
   }
+
   responseLock(record: LockRecord): TransactionSummary {
     const confirmStatus = record.lock_confirm_status === 'confirmed' ? 'confirmed' : record.lock_confirm_number;
-    const bridgeFee = new EthAsset(record.asset).getBridgeFee('in');
+    const bridgeFee = ForceBridgeCore.config.eth.lockNervosAssetFee;
     const mintAmount =
       record.mint_amount === null
         ? new Amount(record.lock_amount, 0).sub(new Amount(bridgeFee, 0)).toString(0)
@@ -24,14 +25,14 @@ class Nervos extends SummaryResponse {
     const summary: TransactionSummary = {
       txSummary: {
         fromAsset: {
-          network: 'Ethereum',
+          network: 'Nervos',
           ident: record.asset,
           amount: record.lock_amount,
         },
         toAsset: {
-          network: 'Nervos',
+          network: 'Ethereum',
           // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          ident: this.getTokenShadowIdent(record.asset)!,
+          ident: record.mint_asset!,
           amount: mintAmount,
         },
         sender: record.sender,
@@ -49,9 +50,10 @@ class Nervos extends SummaryResponse {
 
     return summary;
   }
+
   responseUnlock(record: UnlockRecord): TransactionSummary {
     const confirmStatus = record.burn_confirm_status === 'confirmed' ? 'confirmed' : record.burn_confirm_number;
-    const bridgeFee = new EthAsset(record.asset).getBridgeFee('out');
+    const bridgeFee = ForceBridgeCore.config.eth.burnNervosAssetFee;
     const unlockAmount =
       record.unlock_amount === null
         ? new Amount(record.burn_amount, 0).sub(new Amount(bridgeFee, 0)).toString(0)
@@ -61,7 +63,7 @@ class Nervos extends SummaryResponse {
         fromAsset: {
           network: 'Nervos',
           // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          ident: this.getTokenShadowIdent(record.asset)!,
+          ident: record.unlock_asset!,
           amount: record.burn_amount,
         },
         toAsset: {

@@ -56,7 +56,8 @@ export class CkbDb implements IQuery {
         ckb.confirm_number as lock_confirm_number,
         ckb.confirm_status as lock_confirm_status,
         eth.updated_at as mint_time,
-        ckb_asset_ident as asset,
+        ckb.asset_ident as asset,
+        eth.erc20_token_address as mint_asset,
         case when isnull(eth.amount) then null else 'success' end as status,
         '' as message,
         ckb.bridge_fee as bridge_fee
@@ -88,6 +89,7 @@ export class CkbDb implements IQuery {
         eth.confirm_number as burn_confirm_number,
         eth.confirm_status as burn_confirm_status,
         eth.xchain_token_id as asset,
+        ckb.asset_ident as unlock_asset,
         case when isnull(ckb.amount) then null else 'success' end as status,
         '' as message,
         eth.bridge_fee as bridge_fee
@@ -119,6 +121,7 @@ export class CkbDb implements IQuery {
         ckb.confirm_number as lock_confirm_number,
         ckb.confirm_status as mint_confirm_status,
         ckb.asset_ident as asset,
+        eth.erc20_token_address as mint_asset,
         case when isnull(eth.amount) then null else 'success' end as status,
         ckb.bridge_fee as bridge_fee
         `,
@@ -149,6 +152,7 @@ export class CkbDb implements IQuery {
         eth.confirm_number as burn_confirm_number,
         eth.confirm_status as burn_confirm_status,
         eth.xchain_token_id as asset,
+        ckb.asset_ident as unlock_asset,
         case when is_null(ckb.amount) then null else 'success' end as status,
         '' as message,
         eth.bridge_fee as bridge_fee

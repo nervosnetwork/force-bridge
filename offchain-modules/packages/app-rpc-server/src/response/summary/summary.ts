@@ -2,6 +2,9 @@ import { LockRecord, UnlockRecord } from '@force-bridge/x/dist/db/model';
 import { TransactionSummaryWithStatus, TransactionSummary, BridgeTransactionStatus } from '../../types/apiv1';
 
 abstract class SummaryResponse {
+  protected abstract responseLock(record: LockRecord): TransactionSummary;
+  protected abstract responseUnlock(record: UnlockRecord): TransactionSummary;
+
   response(record: LockRecord | UnlockRecord): TransactionSummaryWithStatus {
     let summary: TransactionSummary;
     if ('lock_hash' in record) {
@@ -36,9 +39,6 @@ abstract class SummaryResponse {
         throw new Error(`${record.status} which mean the tx status is unexpect`);
     }
   }
-
-  protected abstract responseLock(record: LockRecord): TransactionSummary;
-  protected abstract responseUnlock(record: UnlockRecord): TransactionSummary;
 }
 
 export default SummaryResponse;

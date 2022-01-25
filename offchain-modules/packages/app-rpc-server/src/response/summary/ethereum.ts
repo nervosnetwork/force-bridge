@@ -14,6 +14,7 @@ class Ethereum extends SummaryResponse {
       args: new EthAsset(XChainToken, getOwnerTypeHash()).toBridgeLockscriptArgs(),
     });
   }
+
   responseLock(record: LockRecord): TransactionSummary {
     const confirmStatus = record.lock_confirm_status === 'confirmed' ? 'confirmed' : record.lock_confirm_number;
     const bridgeFee = new EthAsset(record.asset).getBridgeFee('in');
@@ -49,6 +50,7 @@ class Ethereum extends SummaryResponse {
 
     return summary;
   }
+
   responseUnlock(record: UnlockRecord): TransactionSummary {
     const confirmStatus = record.burn_confirm_status === 'confirmed' ? 'confirmed' : record.burn_confirm_number;
     const bridgeFee = new EthAsset(record.asset).getBridgeFee('out');
