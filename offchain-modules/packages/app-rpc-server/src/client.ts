@@ -19,7 +19,7 @@ import {
   SignedTransactionPayload,
   TransactionIdent,
   TransactionSummaryWithStatus,
-  XChainNetWork,
+  BlockChainNetWork,
   GetMinimalBridgeAmountPayload,
   GetMinimalBridgeAmountResponse,
   GenerateBridgeNervosToXchainLockTxPayload,
@@ -80,7 +80,7 @@ export class ForceBridgeAPIV1Client implements ForceBridgeAPIV1 {
         break;
       default:
         //TODO add other chains
-        Promise.reject(new Error('not yet'));
+        void Promise.reject(new Error('not yet'));
     }
     return result;
   }
@@ -102,7 +102,7 @@ export class ForceBridgeAPIV1Client implements ForceBridgeAPIV1 {
   }
 
   async getBridgeTransactionSummaries(
-    payload: GetBridgeTransactionSummariesPayload<XChainNetWork>,
+    payload: GetBridgeTransactionSummariesPayload<BlockChainNetWork>,
   ): Promise<TransactionSummaryWithStatus[]> {
     return await this.client.request('getBridgeTransactionSummaries', payload);
   }

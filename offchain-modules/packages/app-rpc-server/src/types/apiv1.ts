@@ -72,9 +72,9 @@ export type GetBridgeTransactionStatusPayload = {
   txId: string;
 };
 
-export type XChainNetWork = 'Bitcoin' | 'Ethereum' | 'EOS' | 'Tron' | 'Nervos';
+export type BlockChainNetWork = 'Bitcoin' | 'Ethereum' | 'EOS' | 'Tron' | 'Nervos';
 
-export interface GetBridgeTransactionSummariesPayload<N extends XChainNetWork> {
+export interface GetBridgeTransactionSummariesPayload<N extends BlockChainNetWork> {
   network: N;
   xchainAssetIdent: string;
   user: {
@@ -191,7 +191,7 @@ export interface ForceBridgeAPIV1 {
   getBridgeOutNervosBridgeFee: (payload: GetBridgeOutNervosBridgeFeePayload) => Promise<GetBridgeOutNervosBridgeFeeResponse>
 
   // prettier-ignore
-  getBridgeTransactionSummaries: (payload: GetBridgeTransactionSummariesPayload<XChainNetWork>) => Promise<TransactionSummaryWithStatus[]>;
+  getBridgeTransactionSummaries: (payload: GetBridgeTransactionSummariesPayload<BlockChainNetWork>) => Promise<TransactionSummaryWithStatus[]>;
 
   // get an asset list, or if no `name` param is passed in, return a default list of whitelisted assets
   getAssetList: (name?: string) => Promise<RequiredAsset<'info'>[]>;

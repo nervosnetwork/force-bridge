@@ -37,7 +37,7 @@ import {
   GetBridgeOutNervosBridgeFeeResponse,
   GetBridgeTransactionSummariesPayload,
   TransactionSummaryWithStatus,
-  XChainNetWork,
+  BlockChainNetWork,
   GenerateBridgeNervosToXchainLockTxPayload,
   GenerateTransactionResponse,
   GenerateBridgeNervosToXchainBurnTxPayload,
@@ -284,15 +284,15 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
   }
 
   async getBridgeTransactionSummaries(
-    payload: GetBridgeTransactionSummariesPayload<XChainNetWork>,
+    payload: GetBridgeTransactionSummariesPayload<BlockChainNetWork>,
   ): Promise<TransactionSummaryWithStatus[]> {
-    const XChainNetwork = payload.network;
+    const network = payload.network;
     const userAddress = payload.user.ident;
     const addressType = payload.user.network;
     const assetName = payload.xchainAssetIdent;
     let dbHandler: IQuery;
 
-    switch (XChainNetwork) {
+    switch (network) {
       case 'Bitcoin':
         dbHandler = new BtcDb(this.connection);
         break;
@@ -312,7 +312,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         throw new Error('invalid bridge chain type');
     }
     logger.info(
-      `XChainNetwork :  ${XChainNetwork}, token Asset ${assetName} address type ${addressType} , userAddress:  ${userAddress}`,
+      `XChainNetwork :  ${network}, token Asset ${assetName} address type ${addressType} , userAddress:  ${userAddress}`,
     );
     let lockRecords: LockRecord[];
     let unlockRecords: UnlockRecord[];
@@ -336,10 +336,10 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
 
     const result: TransactionSummaryWithStatus[] = [];
     lockRecords.forEach((lockRecord) => {
-      result.push(SummaryResponseFactory.fromNetwrok(XChainNetwork).response(lockRecord));
+      result.push(SummaryResponseFactory.fromNetwrok(network).response(lockRecord));
     });
     unlockRecords.forEach((unlockRecord) => {
-      result.push(SummaryResponseFactory.fromNetwrok(XChainNetwork).response(unlockRecord));
+      result.push(SummaryResponseFactory.fromNetwrok(network).response(unlockRecord));
     });
     // Todo: add paging
     return result;
@@ -519,7 +519,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
   }
 }
 
-function getTokenShadowIdent(XChainNetwork: XChainNetWork, XChainToken: string): string | undefined {
+function getTokenShadowIdent(XChainNetwork: BlockChainNetWork, XChainToken: string): string | undefined {
   const ownerTypeHash = getOwnerTypeHash();
   let asset: Asset;
   switch (XChainNetwork) {
