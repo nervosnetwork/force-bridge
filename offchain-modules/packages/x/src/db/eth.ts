@@ -391,6 +391,14 @@ export class EthDb implements IQuery {
     });
   }
 
+  async getEthBurnsByBurnTxHashes(burnTxHashes: string[]): Promise<EthBurn[]> {
+    return await this.connection.getRepository(EthBurn).find({
+      where: {
+        burnTxHash: In(burnTxHashes),
+      },
+    });
+  }
+
   async getEthUnlockByCkbTxHashes(ckbTxHashes: string[]): Promise<EthUnlock[]> {
     return await this.connection.getRepository(EthUnlock).find({
       where: {

@@ -1,5 +1,7 @@
 import {
   ckbCollectSignaturesPayload,
+  ckbMintCollectSignaturesPayload,
+  ckbUnlockCollectSignaturesPayload,
   collectSignaturesParams,
   ethCollectSignaturesPayload,
   getPendingTxParams,
@@ -29,9 +31,20 @@ async function getCkbPendingTx(): Promise<SigResponse> {
     return SigResponse.fromData(undefined);
   }
   const ckbPayload = (pendingTx as collectSignaturesParams).payload as ckbCollectSignaturesPayload;
-  const mintRecords = await SigServer.ckbDb.getCkbMintByIds([ckbPayload.mintRecords![0].id]);
-  if (mintRecords.length > 0) {
-    return SigResponse.fromData(undefined);
+  if (ckbPayload.sigType === 'mint') {
+    const records = await SigServer.ckbDb.getCkbMintByIds([
+      (ckbPayload as ckbMintCollectSignaturesPayload).mintRecords![0].id,
+    ]);
+    if (records.length > 0) {
+      return SigResponse.fromData(undefined);
+    }
+  } else if (ckbPayload.sigType === 'unlock') {
+    const records = await SigServer.ckbDb.getCkbUnlockByIds([
+      (ckbPayload as ckbUnlockCollectSignaturesPayload).unlockRecords![0].id,
+    ]);
+    if (records.length > 0) {
+      return SigResponse.fromData(undefined);
+    }
   }
   return SigResponse.fromData(pendingTx);
 }
