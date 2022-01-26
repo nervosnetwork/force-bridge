@@ -506,8 +506,6 @@ export class CkbTxGenerator extends CkbTxHelper {
           message: messageForSigning,
         });
       });
-    } else {
-      txSkeleton = common.prepareSigningEntries(txSkeleton);
     }
 
     logger.debug(`txSkeleton: ${transactionSkeletonToJSON(txSkeleton)}`);
