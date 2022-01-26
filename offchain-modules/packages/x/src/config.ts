@@ -33,6 +33,7 @@ export interface CkbDeps {
   recipientType: ConfigItem;
   sudtType: ConfigItem;
   pwLock?: ConfigItem;
+  omniLock?: ConfigItem;
 }
 
 export interface CkbConfig {
