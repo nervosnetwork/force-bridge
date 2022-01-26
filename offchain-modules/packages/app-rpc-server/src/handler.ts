@@ -5,7 +5,7 @@ import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
 import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
-import { EthDb, TronDb } from '@force-bridge/x/dist/db';
+import { CkbDb, EthDb, TronDb } from '@force-bridge/x/dist/db';
 import { BtcDb } from '@force-bridge/x/dist/db/btc';
 import { EosDb } from '@force-bridge/x/dist/db/eos';
 import { IQuery, LockRecord, UnlockRecord } from '@force-bridge/x/dist/db/model';
@@ -23,10 +23,10 @@ import { Connection } from 'typeorm';
 import Web3 from 'web3';
 import { AbiItem } from 'web3-utils';
 import { Factory as BurnHandlerFactory } from './handler/burn/factory';
+import { Factory as SummaryResponseFactory } from './response/summary/factory';
 import { API, AssetType, NetworkTypes, RequiredAsset } from './types';
 import {
   BalancePayload,
-  BridgeTransactionStatus,
   GetBalancePayload,
   GetBalanceResponse,
   GetBridgeInNervosBridgeFeePayload,
@@ -36,9 +36,8 @@ import {
   GetBridgeOutNervosBridgeFeePayload,
   GetBridgeOutNervosBridgeFeeResponse,
   GetBridgeTransactionSummariesPayload,
-  TransactionSummary,
   TransactionSummaryWithStatus,
-  XChainNetWork,
+  BlockChainNetWork,
   GenerateBridgeNervosToXchainLockTxPayload,
   GenerateTransactionResponse,
   GenerateBridgeNervosToXchainBurnTxPayload,
@@ -285,15 +284,15 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
   }
 
   async getBridgeTransactionSummaries(
-    payload: GetBridgeTransactionSummariesPayload<XChainNetWork>,
+    payload: GetBridgeTransactionSummariesPayload<BlockChainNetWork>,
   ): Promise<TransactionSummaryWithStatus[]> {
-    const XChainNetwork = payload.network;
+    const network = payload.network;
     const userAddress = payload.user.ident;
     const addressType = payload.user.network;
     const assetName = payload.xchainAssetIdent;
     let dbHandler: IQuery;
 
-    switch (XChainNetwork) {
+    switch (network) {
       case 'Bitcoin':
         dbHandler = new BtcDb(this.connection);
         break;
@@ -306,11 +305,14 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
       case 'Tron':
         dbHandler = new TronDb(this.connection);
         break;
+      case 'Nervos':
+        dbHandler = new CkbDb(this.connection);
+        break;
       default:
         throw new Error('invalid bridge chain type');
     }
     logger.info(
-      `XChainNetwork :  ${XChainNetwork}, token Asset ${assetName} address type ${addressType} , userAddress:  ${userAddress}`,
+      `XChainNetwork :  ${network}, token Asset ${assetName} address type ${addressType} , userAddress:  ${userAddress}`,
     );
     let lockRecords: LockRecord[];
     let unlockRecords: UnlockRecord[];
@@ -334,10 +336,10 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
 
     const result: TransactionSummaryWithStatus[] = [];
     lockRecords.forEach((lockRecord) => {
-      result.push(transferDbRecordToResponse(XChainNetwork, lockRecord));
+      result.push(SummaryResponseFactory.fromNetwrok(network).response(lockRecord));
     });
     unlockRecords.forEach((unlockRecord) => {
-      result.push(transferDbRecordToResponse(XChainNetwork, unlockRecord));
+      result.push(SummaryResponseFactory.fromNetwrok(network).response(unlockRecord));
     });
     // Todo: add paging
     return result;
@@ -517,102 +519,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
   }
 }
 
-function transferDbRecordToResponse(
-  XChainNetwork: XChainNetWork,
-  record: LockRecord | UnlockRecord,
-): TransactionSummaryWithStatus {
-  let bridgeTxRecord: TransactionSummary;
-  if ('lock_hash' in record) {
-    const confirmStatus = record.lock_confirm_status === 'confirmed' ? 'confirmed' : record.lock_confirm_number;
-    const bridgeFee = new EthAsset(record.asset).getBridgeFee('in');
-    const mintAmount =
-      record.mint_amount === null
-        ? new Amount(record.lock_amount, 0).sub(new Amount(bridgeFee, 0)).toString(0)
-        : record.mint_amount;
-    bridgeTxRecord = {
-      txSummary: {
-        fromAsset: {
-          network: XChainNetwork,
-          ident: record.asset,
-          amount: record.lock_amount,
-        },
-        toAsset: {
-          network: 'Nervos',
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          ident: getTokenShadowIdent(XChainNetwork, record.asset)!,
-          amount: mintAmount,
-        },
-        sender: record.sender,
-        recipient: record.recipient,
-        fromTransaction: {
-          txId: record.lock_hash,
-          timestamp: record.lock_time,
-          confirmStatus: confirmStatus,
-        },
-      },
-    };
-    if (record.mint_hash) {
-      bridgeTxRecord.txSummary.toTransaction = { txId: record.mint_hash, timestamp: record.mint_time };
-    }
-  } else if ('burn_hash' in record) {
-    const confirmStatus = record.burn_confirm_status === 'confirmed' ? 'confirmed' : record.burn_confirm_number;
-    const bridgeFee = new EthAsset(record.asset).getBridgeFee('out');
-    const unlockAmount =
-      record.unlock_amount === null
-        ? new Amount(record.burn_amount, 0).sub(new Amount(bridgeFee, 0)).toString(0)
-        : record.unlock_amount;
-    bridgeTxRecord = {
-      txSummary: {
-        fromAsset: {
-          network: 'Nervos',
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          ident: getTokenShadowIdent(XChainNetwork, record.asset)!,
-          amount: record.burn_amount,
-        },
-        toAsset: {
-          network: XChainNetwork,
-          ident: record.asset,
-          amount: unlockAmount,
-        },
-        sender: record.sender,
-        recipient: record.recipient,
-        fromTransaction: {
-          txId: record.burn_hash,
-          timestamp: record.burn_time,
-          confirmStatus: confirmStatus,
-        },
-      },
-    };
-    if (record.unlock_hash) {
-      bridgeTxRecord.txSummary.toTransaction = { txId: record.unlock_hash, timestamp: record.unlock_time };
-    }
-  } else {
-    throw new Error(`the params record ${JSON.stringify(record, null, 2)} is unexpect`);
-  }
-  let txSummaryWithStatus: TransactionSummaryWithStatus;
-  switch (record.status) {
-    case null:
-    case 'todo':
-    case 'pending':
-      txSummaryWithStatus = { txSummary: bridgeTxRecord.txSummary, status: BridgeTransactionStatus.Pending };
-      break;
-    case 'success':
-      txSummaryWithStatus = { txSummary: bridgeTxRecord.txSummary, status: BridgeTransactionStatus.Successful };
-      break;
-    case 'error':
-      txSummaryWithStatus = {
-        txSummary: bridgeTxRecord.txSummary,
-        message: record.message,
-        status: BridgeTransactionStatus.Failed,
-      };
-      break;
-    default:
-      throw new Error(`${record.status} which mean the tx status is unexpect`);
-  }
-  return txSummaryWithStatus;
-}
-
-function getTokenShadowIdent(XChainNetwork: XChainNetWork, XChainToken: string): string | undefined {
+function getTokenShadowIdent(XChainNetwork: BlockChainNetWork, XChainToken: string): string | undefined {
   const ownerTypeHash = getOwnerTypeHash();
   let asset: Asset;
   switch (XChainNetwork) {

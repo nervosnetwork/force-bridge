@@ -268,6 +268,7 @@ export interface LockRecord {
   asset: string;
   message: string;
   bridge_fee: string;
+  mint_asset?: string;
 }
 
 export interface UnlockRecord {
@@ -285,6 +286,7 @@ export interface UnlockRecord {
   asset: string;
   message: string;
   bridge_fee: string;
+  unlock_asset?: string;
 }
 
 export interface MintedRecord {

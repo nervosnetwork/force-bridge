@@ -7,7 +7,7 @@ import { logger } from '@force-bridge/x/dist/utils/logger';
 import bodyParser from 'body-parser';
 import { JSONRPCServer } from 'json-rpc-2.0';
 import { ForceBridgeAPIV1Handler } from './handler';
-import { GetBalancePayload, GetBridgeTransactionSummariesPayload, XChainNetWork } from './types/apiv1';
+import { GetBalancePayload, GetBridgeTransactionSummariesPayload, BlockChainNetWork } from './types/apiv1';
 
 const version = '0.0.15';
 const forceBridgePath = '/force-bridge/api/v1';
@@ -59,7 +59,7 @@ export async function startRpcServer(configPath: string): Promise<void> {
   server.addMethod('getBridgeOutNervosBridgeFee', forceBridgeRpc.getBridgeOutNervosBridgeFee);
   server.addMethod(
     'getBridgeTransactionSummaries',
-    async (payload: GetBridgeTransactionSummariesPayload<XChainNetWork>) => {
+    async (payload: GetBridgeTransactionSummariesPayload<BlockChainNetWork>) => {
       return await forceBridgeRpc.getBridgeTransactionSummaries(payload);
     },
   );
