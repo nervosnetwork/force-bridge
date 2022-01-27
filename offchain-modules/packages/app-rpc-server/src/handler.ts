@@ -446,11 +446,13 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
 
   async getBridgeConfig(): Promise<API.GetBridgeConfigResponse> {
     const ethConfig = ForceBridgeCore.config.eth;
-
+    if (!ForceBridgeCore.config.ckb.deps.omniLock) throw new Error('omniLock not configed');
     return {
       nervos: {
         network: ForceBridgeCore.config.common.network,
         confirmNumber: ForceBridgeCore.config.ckb.confirmNumber,
+        omniLockCodeHash: ForceBridgeCore.config.ckb.deps.omniLock.script.codeHash,
+        omniLockHashType: ForceBridgeCore.config.ckb.deps.omniLock.script.hashType,
       },
       xchains: {
         Ethereum: {

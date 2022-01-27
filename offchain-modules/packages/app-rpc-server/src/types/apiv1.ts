@@ -1,3 +1,4 @@
+import { HashType } from '@ckb-lumos/base';
 import { NervosNetwork, NetworkBase, NetworkTypes, RequiredAsset } from './network';
 
 export enum BridgeTransactionStatus {
@@ -126,6 +127,8 @@ export interface GetBridgeConfigResponse {
   nervos: {
     network: 'mainnet' | 'testnet';
     confirmNumber: number;
+    omniLockCodeHash: string;
+    omniLockHashType: HashType;
   };
 
   xchains: {
