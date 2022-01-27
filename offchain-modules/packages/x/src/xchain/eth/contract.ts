@@ -215,7 +215,7 @@ export class EthChain {
     gasPrice: BigNumber,
   ): Promise<ethers.providers.TransactionResponse | boolean | Error> {
     const maxTryTimes = 30;
-    for (let tryTime = 0; ; tryTime++) {
+    for (let tryTime = 0; ; ) {
       logger.debug('contract balance', await this.provider.getBalance(this.bridgeContractAddr));
       const params: EthUnlockRecord[] = records.map((r) => {
         return {
@@ -265,7 +265,18 @@ export class EthChain {
         logger.info(`send unlockTx: ${JSON.stringify({ params, nonce, signature, options })}`);
         return await this.bridge.unlock(params, nonce, signature, options);
       } catch (e) {
-        logger.error(`sendUnlockTxs error, params: ${params}, tryTime: ${tryTime}, error: ${e.stack}`);
+        if (
+          e.message &&
+          e.message.includes(`-32000`) &&
+          e.message.includes(`err: max fee per gas less than block base fee`)
+        ) {
+          logger.warn(
+            `sendUnlockTxs error of low gas price, will wait and retry, params: ${params}, error: ${e.stack}`,
+          );
+        } else {
+          logger.error(`sendUnlockTxs error, params: ${params}, tryTime: ${tryTime}, error: ${e.stack}`);
+          tryTime++;
+        }
         if (tryTime >= maxTryTimes) {
           return e;
         }
