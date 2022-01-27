@@ -1,6 +1,6 @@
 {
   "name": "@force-bridge/keystore",
-  "version": "0.0.21",
+  "version": "0.0.22",
   "main": "dist",
   "scripts": {
     "build": "yarn run clean && yarn run compile",
