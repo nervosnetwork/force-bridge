@@ -368,21 +368,12 @@ export class EthHandler {
 
     for (;;) {
       try {
-        // check gas price
-        const gasPrice = await this.ethChain.getGasPrice();
-        const gasPriceLimit = BigNumber.from(nonNullable(ForceBridgeCore.config.collector).gasPriceGweiLimit * 10 ** 9);
-        logger.debug(`gasPrice ${gasPrice}, gasPriceLimit ${gasPriceLimit}`);
-        if (gasPrice.gt(gasPriceLimit)) {
-          const waitSeconds = 30;
-          logger.warn(`gasPrice ${gasPrice} exceeds limit ${gasPriceLimit}, waiting for ${waitSeconds}s`);
-          await asyncSleep(waitSeconds * 1000);
-          continue;
-        }
         // write db first, avoid send tx success and fail to write db
         records.map((r) => {
           r.status = 'pending';
         });
         await this.ethDb.saveCollectorEthUnlock(records);
+        const gasPrice = await this.ethChain.getGasPrice();
         const txRes = await this.ethChain.sendUnlockTxs(records, gasPrice);
         if (typeof txRes === 'boolean') {
           records.map((r) => {
@@ -398,22 +389,9 @@ export class EthHandler {
             }
             return;
           }
-          const errorMessage = (txRes as Error).message;
-          if (
-            errorMessage &&
-            errorMessage.includes(`-32000`) &&
-            errorMessage.includes(`err: max fee per gas less than block base fee`)
-          ) {
-            logger.warn(
-              `EthHandler doHandleUnlockRecords ckbTxHashes:${unlockTxHashes}  gas price error after retry:${
-                txRes as Error
-              }`,
-            );
-            continue;
-          }
           records.map((r) => {
             r.status = 'error';
-            r.message = errorMessage;
+            r.message = (txRes as Error).message;
           });
           BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_unlock', 'failed');
           logger.error(
