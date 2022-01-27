@@ -265,7 +265,17 @@ export class EthChain {
         logger.info(`send unlockTx: ${JSON.stringify({ params, nonce, signature, options })}`);
         return await this.bridge.unlock(params, nonce, signature, options);
       } catch (e) {
-        logger.error(`sendUnlockTxs error, params: ${params}, tryTime: ${tryTime}, error: ${e.stack}`);
+        if (
+          e.message &&
+          e.message.includes(`-32000`) &&
+          e.message.includes(`err: max fee per gas less than block base fee`)
+        ) {
+          logger.warn(
+            `sendUnlockTxs error of low gas price, params: ${params}, tryTime: ${tryTime}, error: ${e.stack}`,
+          );
+        } else {
+          logger.error(`sendUnlockTxs error, params: ${params}, tryTime: ${tryTime}, error: ${e.stack}`);
+        }
         if (tryTime >= maxTryTimes) {
           return e;
         }

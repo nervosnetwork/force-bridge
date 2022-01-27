@@ -398,9 +398,22 @@ export class EthHandler {
             }
             return;
           }
+          const errorMessage = (txRes as Error).message;
+          if (
+            errorMessage &&
+            errorMessage.includes(`-32000`) &&
+            errorMessage.includes(`err: max fee per gas less than block base fee`)
+          ) {
+            logger.warn(
+              `EthHandler doHandleUnlockRecords ckbTxHashes:${unlockTxHashes}  gas price error after retry:${
+                txRes as Error
+              }`,
+            );
+            continue;
+          }
           records.map((r) => {
             r.status = 'error';
-            r.message = (txRes as Error).message;
+            r.message = errorMessage;
           });
           BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_unlock', 'failed');
           logger.error(
