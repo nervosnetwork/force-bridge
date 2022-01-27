@@ -408,7 +408,12 @@ export class Monitor {
         onRejectedInterval: 15000,
         onResolvedInterval: 0,
         onRejected: (e: Error) => {
-          logger.error(`Monitor observeEthLock error:${e.stack}`);
+          // TODO look into this error
+          if (e.message && e.message.includes(`Error: invalid BigNumber value`)) {
+            logger.warn(`Monitor observeEthLock error:${e.stack}`);
+          } else {
+            logger.error(`Monitor observeEthLock error:${e.stack}`);
+          }
         },
       },
     );
