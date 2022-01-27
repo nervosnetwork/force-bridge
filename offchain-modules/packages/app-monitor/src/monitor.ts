@@ -410,7 +410,7 @@ export class Monitor {
         onRejected: (e: Error) => {
           // TODO look into this error
           if (e.stack && e.stack.includes(`invalid BigNumber value`)) {
-            logger.warn(`Monitor observeEthLock error:${e.stack}`);
+            logger.warn(`Monitor observeEthLock error:${e.stack}, this does not matter the function`);
           } else {
             logger.error(`Monitor observeEthLock error:${e.stack}`);
           }
