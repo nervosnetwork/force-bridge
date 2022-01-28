@@ -1,3 +1,9 @@
+## v0.0.23 (2022-1-28)
+
+### Bug fixes
+
+- [handle bsc node network jitter](https://github.com/nervosnetwork/force-bridge/pull/309)
+
 ## v0.0.21 (2022-1-27)
 
 ### Bug fixes
