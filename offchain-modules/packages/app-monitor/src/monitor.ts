@@ -378,6 +378,7 @@ export class Monitor {
   }
 
   async observeEthEvent(): Promise<void> {
+    let continuousErrorCount = 0;
     foreverPromise(
       async () => {
         const fromBlock = this.durationConfig.eth.lastHandledBlock + 1;
@@ -403,16 +404,21 @@ export class Monitor {
           .subscribe((record) => this.onEthUnlockRecord(record));
 
         this.durationConfig.eth.lastHandledBlock = toBlock;
+        continuousErrorCount = 0;
       },
       {
         onRejectedInterval: 15000,
-        onResolvedInterval: 0,
+        onResolvedInterval: 1000,
         onRejected: (e: Error) => {
-          // TODO look into this error
-          if (e.stack && e.stack.includes(`invalid BigNumber value`)) {
-            logger.warn(`Monitor observeEthLock error:${e.stack}, this does not matter the function`);
+          continuousErrorCount++;
+          if (continuousErrorCount > 10) {
+            logger.error(
+              `Monitor observeEthLock error, continuousErrorCount: ${continuousErrorCount}, stack: ${e.stack}`,
+            );
           } else {
-            logger.error(`Monitor observeEthLock error:${e.stack}`);
+            logger.warn(
+              `Monitor observeEthLock error, continuousErrorCount: ${continuousErrorCount}, stack: ${e.stack}`,
+            );
           }
         },
       },
