@@ -3,6 +3,7 @@ import { stringToUint8Array } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
 import { abi } from '@force-bridge/x/dist/xchain/eth/abi/AssetManager.json';
 import { checkBurn } from '@force-bridge/x/dist/xchain/eth/check';
+import { formatCkbAsset } from '@force-bridge/x/dist/xchain/eth/utils';
 import ethers from 'ethers';
 import { GenerateBridgeNervosToXchainBurnTxPayload, GenerateTransactionResponse } from '../../types/apiv1';
 import { NetworkBase } from '../../types/network';
@@ -30,7 +31,7 @@ class Eth extends Burn {
     );
 
     const tx = await contract.populateTransaction.burn(
-      payload.asset,
+      formatCkbAsset(payload.asset),
       ethers.utils.parseUnits(payload.amount, 0),
       stringToUint8Array(payload.recipient),
       '0x',

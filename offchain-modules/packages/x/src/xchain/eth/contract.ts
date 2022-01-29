@@ -11,7 +11,7 @@ import { asyncSleep, retryPromise } from '../../utils';
 import { logger } from '../../utils/logger';
 import { abi as asAbi } from './abi/AssetManager.json';
 import { abi } from './abi/ForceBridge.json';
-import { buildSigRawData } from './utils';
+import { buildSigRawData, formatCkbAsset } from './utils';
 
 export type Log = Parameters<Interface['parseLog']>[0] & {
   transactionHash: string;
@@ -254,7 +254,7 @@ export class EthChain {
         data: this.assetManager.interface.encodeFunctionData('mint', [
           records.map((r) => {
             return {
-              assetId: r.nervosAssetId,
+              assetId: formatCkbAsset(r.nervosAssetId),
               amount: r.amount,
               to: r.recipientAddress,
               lockId: r.ckbTxHash,

@@ -51,7 +51,7 @@ export async function deployAssetManager(
     logger.info(`ckb mirror address: ${ckbEthMirror.address} asset id:${v.assetId}`);
 
     await (await ckbEthMirror.transferOwnership(contract.address)).wait();
-    await (await contract.addAsset(ckbEthMirror.address, v.assetId)).wait();
+    await (await contract.addAsset(ckbEthMirror.address, formatCkbAsset(v.assetId))).wait();
     logger.info(`ckb mirror added to asset manager. address: ${ckbEthMirror.address} asset id:${v.assetId}`);
   }
 
@@ -173,4 +173,15 @@ export function buildChangeValidatorsSigRawData(
       ],
     ),
   );
+}
+
+export function formatCkbAsset(assetId: string): string {
+  switch (assetId) {
+    case '0x0000000000000000000000000000000000000000000000000000000000000000':
+      return '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+    case '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff':
+      return '0x0000000000000000000000000000000000000000000000000000000000000000';
+    default:
+      return assetId;
+  }
 }
