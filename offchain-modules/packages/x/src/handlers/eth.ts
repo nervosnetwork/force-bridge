@@ -12,7 +12,7 @@ import { asserts, nonNullable } from '../errors';
 import { BridgeMetricSingleton, txTokenInfo } from '../metric/bridge-metric';
 import { asyncSleep, foreverPromise, fromHexString, retryPromise, uint8ArrayToString } from '../utils';
 import { logger } from '../utils/logger';
-import { EthChain, WithdrawBridgeFeeTopic, Log, ParsedLog } from '../xchain/eth';
+import { EthChain, WithdrawBridgeFeeTopic, Log, ParsedLog, formatCkbAsset } from '../xchain/eth';
 import { checkLock } from '../xchain/eth/check';
 import { Factory as BurnHandlerFactory } from './eth/burn/factory';
 import { Factory as MintHandlerFactory } from './eth/mint/factory';
@@ -172,7 +172,11 @@ export class EthHandler {
         break;
       case 'Mint':
         logger.info(
-          `EthHandler watchMintEvents receiveLog blockHeight:${log.blockNumber} blockHash:${log.blockHash} txHash:${log.transactionHash} amount:${parsedLog.args.amount} asset:${parsedLog.args.assetId} recipient:${parsedLog.args.to} ckbTxHash:${parsedLog.args.lockId}`,
+          `EthHandler watchMintEvents receiveLog blockHeight:${log.blockNumber} blockHash:${log.blockHash} txHash:${
+            log.transactionHash
+          } amount:${parsedLog.args.amount} asset:${formatCkbAsset(parsedLog.args.assetId)} recipient:${
+            parsedLog.args.to
+          } ckbTxHash:${parsedLog.args.lockId}`,
         );
         await MintHandlerFactory.fromRole(this.role, this.ethDb, this.ethChain)?.handle(log, parsedLog);
         break;

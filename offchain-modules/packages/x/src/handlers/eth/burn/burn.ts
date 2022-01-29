@@ -6,7 +6,7 @@ import { EthBurn } from '../../../db/entity/EthBurn';
 import { TxConfirmStatus } from '../../../db/model';
 import { BridgeMetricSingleton } from '../../../metric/bridge-metric';
 import { logger } from '../../../utils/logger';
-import { EthChain, ParsedLog, Log } from '../../../xchain/eth';
+import { EthChain, ParsedLog, Log, formatCkbAsset } from '../../../xchain/eth';
 
 abstract class Burn {
   protected ethDb: EthDb;
@@ -62,7 +62,7 @@ abstract class Burn {
       record.amount = parsedLog.args.amount.toString();
       record.xchainTokenId = parsedLog.args.token;
       record.recipient = parsedLog.args.recipient;
-      record.nervosAssetId = parsedLog.args.assetId;
+      record.nervosAssetId = formatCkbAsset(parsedLog.args.assetId);
       record.udtExtraData = parsedLog.args.extraData;
       record.sender = parsedLog.args.from;
       record.uniqueId = EthBurn.primaryKey(log.logIndex, log.transactionHash);

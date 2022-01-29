@@ -5,7 +5,7 @@ import { forceBridgeRole as ForceBridgeRole } from '../../../config';
 import { ForceBridgeCore } from '../../../core';
 import { EthBurn } from '../../../db/entity/EthBurn';
 import { logger } from '../../../utils/logger';
-import { ParsedLog, Log } from '../../../xchain/eth';
+import { ParsedLog, Log, formatCkbAsset } from '../../../xchain/eth';
 import { checkBurn } from '../../../xchain/eth/check';
 import Burn from './burn';
 
@@ -66,7 +66,7 @@ class Collector extends Burn {
         burnTxHash: log.transactionHash,
         xchain: ChainType.ETH,
         udtExtraData: parsedLog.args.extraData,
-        assetIdent: parsedLog.args.assetId,
+        assetIdent: formatCkbAsset(parsedLog.args.assetId),
         amount: parsedLog.args.amount,
         recipientAddress: recipient,
         blockTimestamp: 0,

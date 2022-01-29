@@ -3,7 +3,7 @@ import { forceBridgeRole as ForceBridgeRole } from '../../../config';
 import { EthDb } from '../../../db';
 import { EthMint } from '../../../db/entity/EthMint';
 import { BridgeMetricSingleton } from '../../../metric/bridge-metric';
-import { ParsedLog, Log, EthChain } from '../../../xchain/eth';
+import { ParsedLog, Log, EthChain, formatCkbAsset } from '../../../xchain/eth';
 
 abstract class Mint {
   protected ethDb: EthDb;
@@ -44,7 +44,7 @@ abstract class Mint {
 
       record = new EthMint();
       record.ckbTxHash = parsedLog.args.lockId;
-      record.nervosAssetId = parsedLog.args.assetId;
+      record.nervosAssetId = formatCkbAsset(parsedLog.args.assetId);
       record.erc20TokenAddress = parsedLog.args.token;
       record.amount = parsedLog.args.amount;
       record.recipientAddress = parsedLog.args.to;
@@ -62,7 +62,7 @@ abstract class Mint {
   }
 
   async saveBridgeFee(parsedLog: ParsedLog, record: EthMint): Promise<void> {
-    if (!this.isCkb(parsedLog.args.assetId())) {
+    if (!this.isCkb(formatCkbAsset(parsedLog.args.assetId()))) {
       return;
     }
 
