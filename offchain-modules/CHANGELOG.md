@@ -1,3 +1,9 @@
+## v0.0.24 (2022-1-30)
+
+### Features
+
+- [replace pw-lock with omni-lock](https://github.com/nervosnetwork/force-bridge/pull/310)
+
 ## v0.0.23 (2022-1-28)
 
 ### Bug fixes
