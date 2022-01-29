@@ -1,4 +1,4 @@
-import { parseAddress } from '@ckb-lumos/helpers';
+import { parseAddress, transactionSkeletonToObject } from '@ckb-lumos/helpers';
 import { Asset, BtcAsset, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
@@ -185,10 +185,11 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
       ForceBridgeCore.config.ckb.ckbRpcUrl,
       ForceBridgeCore.config.ckb.ckbIndexerUrl,
     );
-    const burnTx = await ckbTxGenerator.burn(fromLockscript, payload.recipient, asset, BigInt(amount));
+    const burnTxSkeleton = await ckbTxGenerator.burn(fromLockscript, payload.recipient, asset, BigInt(amount));
+
     return {
       network: 'Nervos',
-      rawTransaction: burnTx,
+      rawTransaction: transactionSkeletonToObject(burnTxSkeleton),
     };
   }
 
@@ -445,11 +446,13 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
 
   async getBridgeConfig(): Promise<API.GetBridgeConfigResponse> {
     const ethConfig = ForceBridgeCore.config.eth;
-
+    if (!ForceBridgeCore.config.ckb.deps.omniLock) throw new Error('omniLock not configed');
     return {
       nervos: {
         network: ForceBridgeCore.config.common.network,
         confirmNumber: ForceBridgeCore.config.ckb.confirmNumber,
+        omniLockCodeHash: ForceBridgeCore.config.ckb.deps.omniLock.script.codeHash,
+        omniLockHashType: ForceBridgeCore.config.ckb.deps.omniLock.script.hashType,
       },
       xchains: {
         Ethereum: {
