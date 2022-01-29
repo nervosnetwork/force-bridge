@@ -296,15 +296,15 @@ export class CkbTxGenerator extends CkbTxHelper {
   }
 
   /*
-      table RecipientCellData {
-        recipient_address: Bytes,
-        chain: byte,
-        asset: Bytes,
-        bridge_lock_code_hash: Byte32,
-        owner_lock_hash: Byte32,
-        amount: Uint128,
-      }
-       */
+    table RecipientCellData {
+      recipient_address: Bytes,
+      chain: byte,
+      asset: Bytes,
+      bridge_lock_code_hash: Byte32,
+      owner_lock_hash: Byte32,
+      amount: Uint128,
+    }
+   */
   async burn(
     fromLockscript: Script,
     recipientAddress: string,
@@ -472,7 +472,7 @@ export class CkbTxGenerator extends CkbTxHelper {
         });
       });
 
-      const messageForSigning = (() => {
+      const messageToSign = (() => {
         const hasher = new utils.CKBHasher();
         const rawTxHash = utils.ckbHash(
           core.SerializeRawTransaction(normalizers.NormalizeRawTransaction(createTransactionFromSkeleton(txSkeleton))),
@@ -489,7 +489,6 @@ export class CkbTxGenerator extends CkbTxHelper {
           ),
         });
         hasher.update(rawTxHash);
-        // hashWitness(hasher, serializedWitness);
         const lengthBuffer = new ArrayBuffer(8);
         const view = new DataView(lengthBuffer);
         view.setBigUint64(0, BigInt(new Reader(serializedWitness).length()), true);
@@ -503,7 +502,7 @@ export class CkbTxGenerator extends CkbTxHelper {
         return signingEntries.push({
           type: 'witness_args_lock',
           index: 0,
-          message: messageForSigning,
+          message: messageToSign,
         });
       });
     }
