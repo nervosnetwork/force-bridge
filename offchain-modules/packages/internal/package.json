@@ -1,6 +1,6 @@
 {
   "name": "@force-bridge/internal",
-  "version": "0.0.23",
+  "version": "0.0.24",
   "main": "dist",
   "scripts": {
     "build": "yarn run clean && yarn run compile",
@@ -13,6 +13,6 @@
     "access": "public"
   },
   "dependencies": {
-    "@force-bridge/keystore": "^0.0.23"
+    "@force-bridge/keystore": "^0.0.24"
   }
 }
