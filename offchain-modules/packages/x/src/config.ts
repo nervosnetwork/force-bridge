@@ -1,4 +1,5 @@
 import { DepType, Hash, HashType, Script } from '@ckb-lumos/base';
+import { ContractNetworksConfig } from '@gnosis.pm/safe-core-sdk';
 
 export type forceBridgeRole = 'watcher' | 'collector' | 'verifier';
 
@@ -65,6 +66,7 @@ export interface EthConfig {
   lockNervosAssetFee: string; // bridge fee paid by CKB, unit: shannon
   burnNervosAssetFee: string; // bridge fee paid by ETH, unit: wei
   assetManagerContractAddress: string;
+  networks?: ContractNetworksConfig;
 }
 
 export interface EosConfig {

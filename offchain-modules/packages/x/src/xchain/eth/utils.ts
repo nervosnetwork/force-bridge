@@ -1,4 +1,4 @@
-import { SafeFactory, EthersAdapter } from '@gnosis.pm/safe-core-sdk';
+import { SafeFactory, EthersAdapter, ContractNetworksConfig } from '@gnosis.pm/safe-core-sdk';
 import { Contract, ethers, Wallet } from 'ethers';
 import { logger } from '../../utils/logger';
 import { abi as asabi, bytecode as asbytecode } from './abi/AssetManager.json';
@@ -33,32 +33,34 @@ export async function deployAssetManager(
   privateKey: string,
   safeAddress: string,
   ckbToEthMirror: Array<{ assetId: string; name: string; symbol: string; decimals: number }>,
-): Promise<Contract> {
-  const contract = await new ethers.ContractFactory(
+): Promise<{ assetManagerContract: Contract; ckbEthMirrors: Array<Contract> }> {
+  const assetManagerContract = await new ethers.ContractFactory(
     asabi,
     asbytecode,
     new Wallet(privateKey, new ethers.providers.JsonRpcProvider(url)),
   ).deploy();
-  const receipt = await contract.deployTransaction.wait();
+  const receipt = await assetManagerContract.deployTransaction.wait();
   logger.info(`deploy eth asset manager tx receipt is ${JSON.stringify(receipt)}`);
   if (receipt.status !== 1) {
     logger.info(`failed to deploy asset manager contract.`);
     return Promise.reject('failed to deploy asset manager contract');
   }
 
+  const ckbEthMirrors = new Array<Contract>();
   for (const v of ckbToEthMirror) {
     const ckbEthMirror = await deployEthMirror(url, privateKey, v.name, v.symbol, v.decimals);
     logger.info(`ckb mirror address: ${ckbEthMirror.address} asset id:${v.assetId}`);
 
-    await (await ckbEthMirror.transferOwnership(contract.address)).wait();
-    await (await contract.addAsset(ckbEthMirror.address, v.assetId)).wait();
+    await (await ckbEthMirror.transferOwnership(assetManagerContract.address)).wait();
+    await (await assetManagerContract.addAsset(ckbEthMirror.address, v.assetId)).wait();
     logger.info(`ckb mirror added to asset manager. address: ${ckbEthMirror.address} asset id:${v.assetId}`);
+    ckbEthMirrors.push(ckbEthMirror);
   }
 
-  await contract.transferOwnership(safeAddress);
+  await assetManagerContract.transferOwnership(safeAddress);
   logger.info(`Asset Manager Contract has been transfered to safe address: ${safeAddress}`);
 
-  return contract;
+  return { assetManagerContract, ckbEthMirrors };
 }
 
 export async function deployEthMirror(
@@ -85,36 +87,52 @@ export async function deploySafe(
   privateKey: string,
   threshold: number,
   owners: string[],
-): Promise<string> {
+): Promise<{ safeAddress: string; networks?: ContractNetworksConfig }> {
   const provider = new ethers.providers.JsonRpcProvider(url);
   const signer = new Wallet(privateKey, new ethers.providers.JsonRpcProvider(url));
-  const safeProxyFactoryContract = await new ethers.ContractFactory(pfabi, pfbytecode, signer).deploy();
-  let receipt = await safeProxyFactoryContract.deployTransaction.wait();
-  logger.info(`deploy eth safe proxy factory tx receipt is ${JSON.stringify(receipt)}`);
-  const safeMasterCopyContract = await new ethers.ContractFactory(gsabi, gsbytecode, signer).deploy();
-  receipt = await safeMasterCopyContract.deployTransaction.wait();
-  logger.info(`deploy eth safe master copy tx receipt is ${JSON.stringify(receipt)}`);
-  const multiSendContract = await new ethers.ContractFactory(msabi, msbytecode, signer).deploy();
-  receipt = await multiSendContract.deployTransaction.wait();
-  logger.info(`deploy eth multi send tx receipt is ${JSON.stringify(receipt)}`);
-  const networks = {
-    [(await provider.getNetwork()).chainId]: {
-      multiSendAddress: multiSendContract.address,
-      safeMasterCopyAddress: safeMasterCopyContract.address,
-      safeProxyFactoryAddress: safeProxyFactoryContract.address,
-    },
-  };
+  const chainId = (await provider.getNetwork()).chainId;
 
-  logger.info(`Gnosis Safe networks deployed: ${JSON.stringify(networks)}`);
+  // this chain id is based on the config of Dockerfile.
+  if (chainId == 1234) {
+    const safeProxyFactoryContract = await new ethers.ContractFactory(pfabi, pfbytecode, signer).deploy();
+    let receipt = await safeProxyFactoryContract.deployTransaction.wait();
+    logger.info(`deploy eth safe proxy factory tx receipt is ${JSON.stringify(receipt)}`);
+    const safeMasterCopyContract = await new ethers.ContractFactory(gsabi, gsbytecode, signer).deploy();
+    receipt = await safeMasterCopyContract.deployTransaction.wait();
+    logger.info(`deploy eth safe master copy tx receipt is ${JSON.stringify(receipt)}`);
+    const multiSendContract = await new ethers.ContractFactory(msabi, msbytecode, signer).deploy();
+    receipt = await multiSendContract.deployTransaction.wait();
+    logger.info(`deploy eth multi send tx receipt is ${JSON.stringify(receipt)}`);
+    const networks = {
+      [chainId]: {
+        multiSendAddress: multiSendContract.address,
+        safeMasterCopyAddress: safeMasterCopyContract.address,
+        safeProxyFactoryAddress: safeProxyFactoryContract.address,
+      },
+    };
 
-  return (
-    await (
-      await SafeFactory.create({
-        ethAdapter: new EthersAdapter({ ethers, signer }),
-        contractNetworks: networks,
-      })
-    ).deploySafe({ owners, threshold })
-  ).getAddress();
+    logger.info(`Gnosis Safe networks deployed: ${JSON.stringify(networks)}`);
+
+    return {
+      safeAddress: (
+        await (
+          await SafeFactory.create({
+            ethAdapter: new EthersAdapter({ ethers, signer }),
+            contractNetworks: networks,
+          })
+        ).deploySafe({ owners, threshold })
+      ).getAddress(),
+      networks: networks,
+    };
+  } else {
+    return {
+      safeAddress: (
+        await (
+          await SafeFactory.create({ ethAdapter: new EthersAdapter({ ethers, signer }) })
+        ).deploySafe({ owners, threshold })
+      ).getAddress(),
+    };
+  }
 }
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types

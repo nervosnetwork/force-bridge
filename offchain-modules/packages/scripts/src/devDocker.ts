@@ -3,9 +3,10 @@ import path from 'path';
 import { KeyStore } from '@force-bridge/keystore/dist';
 import { nonNullable } from '@force-bridge/x';
 import { OwnerCellConfig } from '@force-bridge/x/dist/ckb/tx-helper/deploy';
-import { Config, WhiteListEthAsset, CkbDeps } from '@force-bridge/x/dist/config';
+import { Config, WhiteListEthAsset, CkbDeps, WhiteListNervosAsset } from '@force-bridge/x/dist/config';
 import { privateKeyToCkbPubkeyHash, writeJsonToFile } from '@force-bridge/x/dist/utils';
 import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
+import { ContractNetworksConfig } from '@gnosis.pm/safe-core-sdk';
 import * as lodash from 'lodash';
 import * as Mustache from 'mustache';
 import { pathFromProjectRoot } from './utils';
@@ -38,6 +39,8 @@ async function generateConfig(
   password,
   assetManagerContractAddress: string,
   safeAddress: string,
+  safeNetworks: ContractNetworksConfig | undefined,
+  nervosAssetWhiteList: WhiteListNervosAsset[],
 ) {
   const baseConfig: Config = lodash.cloneDeep(initConfig);
   logger.debug(`baseConfig: ${JSON.stringify(baseConfig, null, 2)}`);
@@ -48,6 +51,7 @@ async function generateConfig(
   baseConfig.ckb.deps = ckbDeps;
   baseConfig.ckb.startBlockHeight = ckbStartHeight;
   baseConfig.eth.startBlockHeight = ethStartHeight;
+  baseConfig.eth.nervosAssetWhiteList = nervosAssetWhiteList;
   baseConfig.ckb.ownerCellTypescript = ownerCellConfig.ownerCellTypescript;
   // collector
   const collectorConfig: Config = lodash.cloneDeep(baseConfig);
@@ -56,6 +60,7 @@ async function generateConfig(
   collectorConfig.common.orm!.host = 'collector_db';
   collectorConfig.common.collectorPubKeyHash.push(privateKeyToCkbPubkeyHash(CKB_PRIVATE_KEY));
   collectorConfig.eth.privateKey = 'eth';
+  collectorConfig.eth.networks = safeNetworks;
   collectorConfig.ckb.privateKey = 'ckb';
   collectorConfig.eth.multiSignThreshold = multisigConfig.threshold;
   collectorConfig.eth.multiSignAddresses = multisigConfig.verifiers.map((v) => v.ethAddress);
@@ -321,6 +326,8 @@ async function main() {
     ethStartHeight,
     assetManagerContractAddress,
     safeAddress,
+    safeNetworks,
+    nervosAssetWhiteList,
   } = await deployDev(
     ETH_RPC_URL,
     CKB_RPC_URL,
@@ -347,6 +354,8 @@ async function main() {
     FORCE_BRIDGE_KEYSTORE_PASSWORD,
     assetManagerContractAddress,
     safeAddress,
+    safeNetworks,
+    nervosAssetWhiteList,
   );
 
   const verifiers = lodash.range(MULTISIG_NUMBER).map((i) => {
