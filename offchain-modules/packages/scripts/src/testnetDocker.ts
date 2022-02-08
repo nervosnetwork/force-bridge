@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { KeyStore } from '@force-bridge/keystore/dist';
 import { OwnerCellConfig } from '@force-bridge/x/dist/ckb/tx-helper/deploy';
-import { Config, WhiteListEthAsset, CkbDeps } from '@force-bridge/x/dist/config';
+import { Config, WhiteListEthAsset, CkbDeps, WhiteListNervosAsset } from '@force-bridge/x/dist/config';
 import { getFromEnv, privateKeyToCkbPubkeyHash, writeJsonToFile } from '@force-bridge/x/dist/utils';
 import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
 import * as dotenv from 'dotenv';
@@ -40,6 +40,7 @@ async function generateConfig(
   monitorDiscordWebHook: string,
   assetManagerContractAddress: string,
   safeAddress: string,
+  nervosAssetWhiteList: WhiteListNervosAsset[],
 ) {
   const baseConfig: Config = lodash.cloneDeep(initConfig);
   logger.debug(`baseConfig: ${JSON.stringify(baseConfig, null, 2)}`);
@@ -48,6 +49,7 @@ async function generateConfig(
   baseConfig.eth.assetManagerContractAddress = assetManagerContractAddress;
   baseConfig.eth.safeMultisignContractAddress = safeAddress;
   baseConfig.ckb.deps = ckbDeps;
+  baseConfig.eth.nervosAssetWhiteList = nervosAssetWhiteList;
   baseConfig.ckb.ownerCellTypescript = ownerCellConfig.ownerCellTypescript;
   baseConfig.ckb.startBlockHeight = ckbStartHeight;
   baseConfig.eth.startBlockHeight = ethStartHeight;
@@ -329,6 +331,7 @@ async function main() {
     ethStartHeight,
     assetManagerContractAddress,
     safeAddress,
+    nervosAssetWhiteList,
   } = await deployDev(
     ETH_RPC_URL,
     CKB_RPC_URL,
@@ -357,6 +360,7 @@ async function main() {
     MONITOR_DISCORD_WEBHOOK,
     assetManagerContractAddress,
     safeAddress,
+    nervosAssetWhiteList,
   );
 
   const verifiers = lodash.range(MULTISIG_NUMBER).map((i) => {
