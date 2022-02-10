@@ -3,6 +3,8 @@ import { ContractNetworksConfig } from '@gnosis.pm/safe-core-sdk';
 
 export type forceBridgeRole = 'watcher' | 'collector' | 'verifier';
 
+export const ETH_TOKEN_ADDRESS = '0x0000000000000000000000000000000000000000';
+
 export const CKB_TYPESCRIPT_HASH = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
 
 export interface ConfigItem {
@@ -69,6 +71,7 @@ export interface EthConfig {
   lockNervosAssetFee: string; // bridge fee paid by CKB, unit: shannon
   burnNervosAssetFee: string; // bridge fee paid by ETH, unit: wei
   assetManagerContractAddress: string;
+  networks?: ContractNetworksConfig;
 }
 
 export interface EosConfig {
@@ -163,7 +166,7 @@ export interface WhiteListEthAsset {
 
 export interface WhiteListNervosAsset {
   typescriptHash: Hash; // udt typescript hash, 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff for CKB
-  typescript?: Script; // udt typescript, undefined for CKB
+  sudtArgs?: Hash; // sudtArgs undefined for CKB
   xchainTokenAddress: string; // image token address
   name: string;
   symbol: string;

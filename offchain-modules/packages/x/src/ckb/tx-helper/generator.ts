@@ -530,9 +530,9 @@ export class CkbTxGenerator extends CkbTxHelper {
     const assetInfo = new NervosAsset(assetIdent).getAssetInfo(ChainType.ETH);
     if (!assetInfo) throw new Error('asset not in white list');
 
-    if (assetInfo.typescript)
-      return this.lockSUDT(senderLockscript, recipientAddress, assetInfo.typescript.args, amount, xchain);
-    return this.lockCKB(senderLockscript, recipientAddress, amount, xchain);
+    if (assetInfo.typescriptHash === CKB_TYPESCRIPT_HASH)
+      return this.lockCKB(senderLockscript, recipientAddress, amount, xchain);
+    return this.lockSUDT(senderLockscript, recipientAddress, assetInfo.sudtArgs!, amount, xchain);
   }
 
   async lockCKB(
@@ -678,13 +678,16 @@ export class CkbTxGenerator extends CkbTxHelper {
     switch (lockType(senderLockscript, ForceBridgeCore.config.ckb.deps)) {
       case 'SECP256K1_BLAKE160':
         txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
-          return cellDeps.push({
-            out_point: {
-              tx_hash: secp256k1.TX_HASH,
-              index: secp256k1.INDEX,
+          return cellDeps.push(
+            {
+              out_point: {
+                tx_hash: secp256k1.TX_HASH,
+                index: secp256k1.INDEX,
+              },
+              dep_type: secp256k1.DEP_TYPE,
             },
-            dep_type: secp256k1.DEP_TYPE,
-          });
+            this.sudtDep,
+          );
         });
         break;
       case 'OmniLock': {
@@ -705,6 +708,7 @@ export class CkbTxGenerator extends CkbTxHelper {
               },
               dep_type: secp256k1.DEP_TYPE,
             },
+            this.sudtDep,
           );
         });
         break;
@@ -868,7 +872,7 @@ export class CkbTxGenerator extends CkbTxHelper {
       if (!assetInfo) {
         return;
       }
-      const sudtArgs = assetInfo.typescript!.args;
+      const sudtArgs = assetInfo.sudtArgs!;
       return await this.unlockSUDT(
         sudtArgs,
         records.map((r) => ({
@@ -1107,6 +1111,9 @@ export class CkbTxGenerator extends CkbTxHelper {
       });
     });
     txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
+      return cellDeps.push(this.sudtDep);
+    });
+    txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
       return cellDeps.push(adminCellCellDep);
     });
     txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
@@ -1251,9 +1258,23 @@ export class CkbTxGenerator extends CkbTxHelper {
       return witnesses.push(...collectorWitnessGroup);
     });
 
+    const burnIds = records
+      .filter((record) => record.burnId.indexOf('-') >= 0)
+      .map((record) => {
+        const burnId = record.burnId;
+        const burnHashSeparatorIndex = burnId.indexOf('-');
+        const burnTxHash = burnId.substring(0, burnHashSeparatorIndex);
+        const logIndex = burnId.substring(burnHashSeparatorIndex + 1);
+        const logIndexHex = BigInt(logIndex).toString(16);
+        const logIndexReader = new Reader(`0x${logIndexHex.length % 2 === 0 ? '' : '0'}${logIndexHex}`);
+        return {
+          burnTxHash: new Reader(burnTxHash),
+          logIndex: logIndexReader,
+        };
+      });
     const unlockMemo = SerializeUnlockMemo({
       xchain: 1,
-      burnIds: records.map((record) => new Reader(record.burnId)),
+      burnIds,
     });
     // put unlockMemo in witnesses[inputs.len]
     txSkeleton = txSkeleton.update('witnesses', (witnesses) => {

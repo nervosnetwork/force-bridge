@@ -1,15 +1,17 @@
 import fs from 'fs';
 import path from 'path';
 import { KeyStore } from '@force-bridge/keystore/dist';
-import { OwnerCellConfig } from '@force-bridge/x/dist/ckb/tx-helper/deploy';
-import { Config, WhiteListEthAsset, CkbDeps } from '@force-bridge/x/dist/config';
+import { nonNullable } from '@force-bridge/x';
+import { OmniLockCellConfig, OwnerCellConfig } from '@force-bridge/x/dist/ckb/tx-helper/deploy';
+import { Config, WhiteListEthAsset, CkbDeps, WhiteListNervosAsset } from '@force-bridge/x/dist/config';
 import { getFromEnv, privateKeyToCkbPubkeyHash, writeJsonToFile } from '@force-bridge/x/dist/utils';
 import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
 import * as dotenv from 'dotenv';
 import * as lodash from 'lodash';
 import * as Mustache from 'mustache';
-import { execShellCmd, PATH_PROJECT_ROOT, pathFromProjectRoot } from './utils';
+import { execShellCmd, pathFromProjectRoot } from './utils';
 import { deployDev } from './utils/deploy';
+import { ContractNetworksConfig } from '@gnosis.pm/safe-core-sdk';
 dotenv.config({ path: process.env.DOTENV_PATH || '.env' });
 
 export interface VerifierConfig {
@@ -29,6 +31,7 @@ async function generateConfig(
   assetWhiteList: WhiteListEthAsset[],
   ckbDeps: CkbDeps,
   ownerCellConfig: OwnerCellConfig,
+  omniLockCellConfig: OmniLockCellConfig,
   ethContractAddress: string,
   multisigConfig: MultisigConfig,
   ckbStartHeight: number,
@@ -40,17 +43,24 @@ async function generateConfig(
   monitorDiscordWebHook: string,
   assetManagerContractAddress: string,
   safeAddress: string,
+  safeContractNetworks: ContractNetworksConfig,
+  nervosAssetWhiteList: WhiteListNervosAsset[],
 ) {
   const baseConfig: Config = lodash.cloneDeep(initConfig);
   logger.debug(`baseConfig: ${JSON.stringify(baseConfig, null, 2)}`);
   baseConfig.eth.assetWhiteList = assetWhiteList;
+  baseConfig.eth.nervosAssetWhiteList = nervosAssetWhiteList;
   baseConfig.eth.contractAddress = ethContractAddress;
   baseConfig.eth.assetManagerContractAddress = assetManagerContractAddress;
   baseConfig.eth.safeMultisignContractAddress = safeAddress;
   baseConfig.ckb.deps = ckbDeps;
   baseConfig.ckb.ownerCellTypescript = ownerCellConfig.ownerCellTypescript;
+  baseConfig.ckb.omniLockAdminCellTypescript = omniLockCellConfig.adminCellTypescript;
   baseConfig.ckb.startBlockHeight = ckbStartHeight;
   baseConfig.eth.startBlockHeight = ethStartHeight;
+  baseConfig.eth.safeMultisignContractNetworks = safeContractNetworks;
+  baseConfig.eth.lockNervosAssetFee = '20000000000';
+  baseConfig.eth.burnNervosAssetFee = '20000000000';
   // collector
   const collectorConfig: Config = lodash.cloneDeep(baseConfig);
   collectorConfig.common.role = 'collector';
@@ -144,7 +154,7 @@ const dockerComposeTemplate = `
 version: "3.3"
 services:
   script:
-    image: node:14
+    image: node:14.18.3-bullseye
     restart: on-failure
     volumes:
       - ./script:/data
@@ -167,7 +177,7 @@ services:
     ports:
       - 3050:3306
   watcher:
-    image: node:14
+    image: node:14.18.3-bullseye
     restart: on-failure
     environment:
       FORCE_BRIDGE_KEYSTORE_PASSWORD: {{FORCE_BRIDGE_KEYSTORE_PASSWORD}}
@@ -192,7 +202,7 @@ services:
     ports:
       - 3059:3306
   collector:
-    image: node:14
+    image: node:14.18.3-bullseye
     restart: on-failure
     environment:
       FORCE_BRIDGE_KEYSTORE_PASSWORD: {{FORCE_BRIDGE_KEYSTORE_PASSWORD}}
@@ -218,7 +228,7 @@ services:
     ports:
       - {{db_port}}:3306
   {{name}}:
-    image: node:14
+    image: node:14.18.3-bullseye
     restart: on-failure
     environment:
       FORCE_BRIDGE_KEYSTORE_PASSWORD: {{FORCE_BRIDGE_KEYSTORE_PASSWORD}}
@@ -237,7 +247,7 @@ services:
       - {{name}}_db
 {{/verifiers}}
   monitor:
-    image: node:14
+    image: node:14.18.3-bullseye
     restart: on-failure
     environment:
       MONITOR_DURATION_CONFIG_PATH: /data/monitor.json
@@ -258,6 +268,8 @@ volumes:
 async function main() {
   initLog({ level: 'debug', identity: 'testnet-docker' });
   // used for deploy and run service
+  // passed through: docker run -e FORCE_BRIDGE_PROJECT_DIR=$(dirname "$(pwd)")
+  nonNullable(process.env.FORCE_BRIDGE_PROJECT_DIR);
   const CKB_RPC_URL = getFromEnv('CKB_RPC_URL');
   const ETH_RPC_URL = getFromEnv('ETH_RPC_URL');
   const CKB_INDEXER_URL = getFromEnv('CKB_INDEXER_URL');
@@ -297,7 +309,7 @@ async function main() {
     },
     eth: {
       rpcUrl: ETH_RPC_URL,
-      confirmNumber: 12,
+      confirmNumber: 12, // 1 if Bsc
       startBlockHeight: 1,
       batchUnlock: {
         batchNumber: 100,
@@ -309,7 +321,7 @@ async function main() {
       ckbIndexerUrl: CKB_INDEXER_URL,
       startBlockHeight: 1,
       confirmNumber: 15,
-      sudtSize: 150,
+      sudtSize: 200,
     },
   };
 
@@ -323,12 +335,15 @@ async function main() {
     assetWhiteList,
     ckbDeps,
     ownerConfig,
+    omniLockConfig,
     bridgeEthAddress,
     multisigConfig,
     ckbStartHeight,
     ethStartHeight,
     assetManagerContractAddress,
     safeAddress,
+    safeContractNetworks,
+    nervosAssetWhiteList,
   } = await deployDev(
     ETH_RPC_URL,
     CKB_RPC_URL,
@@ -346,6 +361,7 @@ async function main() {
     assetWhiteList,
     ckbDeps,
     ownerConfig,
+    omniLockConfig,
     bridgeEthAddress,
     multisigConfig,
     ckbStartHeight,
@@ -357,6 +373,8 @@ async function main() {
     MONITOR_DISCORD_WEBHOOK,
     assetManagerContractAddress,
     safeAddress,
+    safeContractNetworks,
+    nervosAssetWhiteList,
   );
 
   const verifiers = lodash.range(MULTISIG_NUMBER).map((i) => {
@@ -369,7 +387,7 @@ async function main() {
   await execShellCmd(`mkdir -p ${path.join(configPath, 'script')}`);
   const dockerComposeFile = Mustache.render(dockerComposeTemplate, {
     FORCE_BRIDGE_KEYSTORE_PASSWORD,
-    projectDir: PATH_PROJECT_ROOT,
+    projectDir: process.env.FORCE_BRIDGE_PROJECT_DIR,
     verifiers,
   });
   fs.writeFileSync(path.join(configPath, 'docker-compose.yml'), dockerComposeFile);

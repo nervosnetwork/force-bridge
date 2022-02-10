@@ -5,10 +5,11 @@ import nconf from 'nconf';
 import { CkbIndexer } from './ckb/tx-helper/indexer';
 import { initLumosConfig } from './ckb/tx-helper/init_lumos_config';
 import { getSmtRootAndProof } from './ckb/tx-helper/omni-smt';
-import { Config } from './config';
+import { CKB_TYPESCRIPT_HASH, Config } from './config';
 import { asserts } from './errors';
 import { ServerSingleton } from './server/serverSingleton';
 import { initLog } from './utils/logger';
+import { utils } from '@ckb-lumos/base';
 
 export function bootstrapKeyStore(
   keystorePath = 'keystore.json',
@@ -124,6 +125,24 @@ export class ForceBridgeCore {
       }
     }
 
+    // init lumos config
+    initLumosConfig(config.common.lumosConfigType);
+
+    if (config.eth && config.eth.nervosAssetWhiteList) {
+      const typescript = config.ckb.deps.sudtType.script;
+      config.eth.nervosAssetWhiteList
+        .filter((asset) => asset.typescriptHash !== CKB_TYPESCRIPT_HASH && asset.sudtArgs)
+        .map((asset) => {
+          if (!asset.typescriptHash) {
+            asset.typescriptHash = utils.computeScriptHash({
+              code_hash: typescript.codeHash,
+              hash_type: typescript.hashType,
+              args: asset.sudtArgs!,
+            });
+          }
+        });
+    }
+
     if (config.common.role === 'collector') {
       const { proof } = getSmtRootAndProof(config.ckb.multisigScript);
       ForceBridgeCore._smtProof = proof;
@@ -136,8 +155,6 @@ export class ForceBridgeCore {
     ForceBridgeCore._config = config;
     ForceBridgeCore._keystore = keystore;
     ForceBridgeCore._xChainHandler = new XChainHandlers();
-    // init lumos config
-    initLumosConfig(config.common.lumosConfigType);
     return this;
   }
 }

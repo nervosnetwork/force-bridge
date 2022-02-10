@@ -1,5 +1,6 @@
 // keep sending tx to bridge
 import { TransactionResponse } from '@ethersproject/abstract-provider';
+import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
 import { asyncSleep, getFromEnv, privateKeyToCkbAddress } from '@force-bridge/x/dist/utils';
 import { initLog, logger } from '@force-bridge/x/dist/utils/logger';
 import CKB from '@nervosnetwork/ckb-sdk-core';
@@ -18,6 +19,7 @@ class TxSender {
   provider: providers.JsonRpcProvider;
   ethWallet: Wallet;
   ckb: CKB;
+  ckbIndexer: CkbIndexer;
   ethAddress: string;
 
   constructor(
@@ -33,6 +35,7 @@ class TxSender {
     this.ethAddress = ethers.utils.computeAddress(ethPrivateKey);
     this.ckbAddresses = ckbPrivateKeys.map((k) => privateKeyToCkbAddress(k));
     this.ckb = new CKB(ckbRpcUrl);
+    this.ckbIndexer = new CkbIndexer(ckbRpcUrl, ckbIndexerUrl);
     const client = new JSONRPCClient((jsonRPCRequest) =>
       fetch(forceBridgeUrl, {
         method: 'POST',
@@ -67,12 +70,12 @@ class TxSender {
       const recipient = recipients[i];
       const signedLockTx = await generateLockTx(
         this.client,
+        this.provider,
         this.ethWallet,
         ethTokenAddress,
         startNonce + i,
         recipient,
         lockAmount,
-        this.ethRpcUrl,
       );
       const lockTx = await this.provider.sendTransaction(signedLockTx);
       await asyncSleep(sendIntervalMs);
@@ -116,7 +119,7 @@ class TxSender {
   }
 
   async burnSender(): Promise<void> {
-    await prepareCkbAddresses(this.ckb, this.ckbPrivateKeys, this.ckbPrivateKey, this.ckbRpcUrl, this.ckbIndexerUrl);
+    await prepareCkbAddresses(this.ckb, this.ckbIndexer, this.ckbPrivateKeys, this.ckbPrivateKey);
     for (;;) {
       const ethTokenAddress = '0x0000000000000000000000000000000000000000';
       const recipient = this.ethAddress;
