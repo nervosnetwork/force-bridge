@@ -1,15 +1,17 @@
 import fs from 'fs';
 import path from 'path';
 import { KeyStore } from '@force-bridge/keystore/dist';
-import { OwnerCellConfig } from '@force-bridge/x/dist/ckb/tx-helper/deploy';
+import { nonNullable } from '@force-bridge/x';
+import { OmniLockCellConfig, OwnerCellConfig } from '@force-bridge/x/dist/ckb/tx-helper/deploy';
 import { Config, WhiteListEthAsset, CkbDeps, WhiteListNervosAsset } from '@force-bridge/x/dist/config';
 import { getFromEnv, privateKeyToCkbPubkeyHash, writeJsonToFile } from '@force-bridge/x/dist/utils';
 import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
 import * as dotenv from 'dotenv';
 import * as lodash from 'lodash';
 import * as Mustache from 'mustache';
-import { execShellCmd, PATH_PROJECT_ROOT, pathFromProjectRoot } from './utils';
+import { execShellCmd, pathFromProjectRoot } from './utils';
 import { deployDev } from './utils/deploy';
+
 dotenv.config({ path: process.env.DOTENV_PATH || '.env' });
 
 export interface VerifierConfig {
@@ -29,6 +31,7 @@ async function generateConfig(
   assetWhiteList: WhiteListEthAsset[],
   ckbDeps: CkbDeps,
   ownerCellConfig: OwnerCellConfig,
+  omniLockConfig: OmniLockCellConfig,
   ethContractAddress: string,
   multisigConfig: MultisigConfig,
   ckbStartHeight: number,
@@ -51,8 +54,11 @@ async function generateConfig(
   baseConfig.ckb.deps = ckbDeps;
   baseConfig.eth.nervosAssetWhiteList = nervosAssetWhiteList;
   baseConfig.ckb.ownerCellTypescript = ownerCellConfig.ownerCellTypescript;
+  baseConfig.ckb.omniLockAdminCellTypescript = omniLockConfig.adminCellTypescript;
   baseConfig.ckb.startBlockHeight = ckbStartHeight;
   baseConfig.eth.startBlockHeight = ethStartHeight;
+  baseConfig.eth.lockNervosAssetFee = '1000000000000';
+  baseConfig.eth.burnNervosAssetFee = '0';
   // collector
   const collectorConfig: Config = lodash.cloneDeep(baseConfig);
   collectorConfig.common.role = 'collector';
@@ -260,6 +266,8 @@ volumes:
 async function main() {
   initLog({ level: 'debug', identity: 'testnet-docker' });
   // used for deploy and run service
+  // passed through: docker run -e FORCE_BRIDGE_PROJECT_DIR=$(dirname "$(pwd)")
+  nonNullable(process.env.FORCE_BRIDGE_PROJECT_DIR);
   const CKB_RPC_URL = getFromEnv('CKB_RPC_URL');
   const ETH_RPC_URL = getFromEnv('ETH_RPC_URL');
   const CKB_INDEXER_URL = getFromEnv('CKB_INDEXER_URL');
@@ -299,7 +307,7 @@ async function main() {
     },
     eth: {
       rpcUrl: ETH_RPC_URL,
-      confirmNumber: 12,
+      confirmNumber: 12, // 1 if Bsc
       startBlockHeight: 1,
       batchUnlock: {
         batchNumber: 100,
@@ -311,7 +319,7 @@ async function main() {
       ckbIndexerUrl: CKB_INDEXER_URL,
       startBlockHeight: 1,
       confirmNumber: 15,
-      sudtSize: 150,
+      sudtSize: 200,
     },
   };
 
@@ -325,6 +333,7 @@ async function main() {
     assetWhiteList,
     ckbDeps,
     ownerConfig,
+    omniLockConfig,
     bridgeEthAddress,
     multisigConfig,
     ckbStartHeight,
@@ -349,6 +358,7 @@ async function main() {
     assetWhiteList,
     ckbDeps,
     ownerConfig,
+    omniLockConfig,
     bridgeEthAddress,
     multisigConfig,
     ckbStartHeight,
@@ -373,7 +383,7 @@ async function main() {
   await execShellCmd(`mkdir -p ${path.join(configPath, 'script')}`);
   const dockerComposeFile = Mustache.render(dockerComposeTemplate, {
     FORCE_BRIDGE_KEYSTORE_PASSWORD,
-    projectDir: PATH_PROJECT_ROOT,
+    projectDir: process.env.FORCE_BRIDGE_PROJECT_DIR,
     verifiers,
   });
   fs.writeFileSync(path.join(configPath, 'docker-compose.yml'), dockerComposeFile);
