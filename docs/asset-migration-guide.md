@@ -4,7 +4,7 @@ There are two existing wallets on Nervos Network Mainnet to enable users to use 
 
 For historical reason, Yokaiswap uses omni-lock and Force Bridge uses pw-lock.
 
-When the Yokai wallet and Force Bridge are connected with the same Ethereum account, we can find the associated Nervos address in following places.  
+If both Yokai Wallet and Force Bridge are connected to the same Ethereum account, the relevant Nervos address can be found as below.
 
 https://www.yokaiswap.com/
 
@@ -14,11 +14,11 @@ https://forcebridge.com/bridge/Nervos/Ethereum
 
 ![img_1.png](assets/asset-migration-6.png)
 
-There is no UI for pw-lock to manipulate SUDT on Nervos Network. When users have mirror assets(e.g. `ETH|eth`, `BNB|bsc`) in pw-lock, it's inconvenient to move the assets to Yokaiswap again. They have to bridge the assets to Ethereum and back again, which will cause a big transaction fee loss. Even worse situation is that when their asset is not enough to pay for the cross chain fee, the asset might be stuck in the Force Bridge address.
+On the Nervos network, there is no PW-lock UI to manipulate SUDT. Users who have mirrored assets (e.g. ETH|eth, BNB|bsc) in PW-lock cannot transfer assets to Yokaiswap again. Instead, users have to bridge the assets to Ethereum and back again, which causes a significant transaction fee loss. Worse still, the assets may get stuck in the Force Bridge address if there is insufficient equity to cover the cross-chain fees.
 
-To solve the problems, Force Bridge is planning to switch the wallet from pw-lock to omni-lock. When it's finished, Yokai L1 wallet and Force Bridge wallet will be the same.
+To solve the problems, Force Bridge is planning to switch the wallet from pw-lock to omni-lock. When completed, Yokai L1 wallet and Force Bridge wallet will be the same.
 
-We also provide a tool to help users migrate their assets in pw-lock to omni-lock. 
+A tool is provided to help users migrate assets in PW-lock to omni-lock.
 
 - The migration tool UI: <https://pw-up.vercel.app/>
 - Source Code: <https://github.com/homura/pw-up>
@@ -31,23 +31,23 @@ visit <https://pw-up.vercel.app/>
 
 ![img.png](assets/asset-migration-1.png)
 
-Connect to Metamask. Select the LINA network, check your assets in the wallet you can migrate. Click `Transfer` if you confirm to migrate.
+Connect to Metamask. Select the LINA network, check the assets in the wallet for possible migration. Click Transfer when the migration is confirmed.
 
 ![img_1.png](assets/asset-migration-2.png)
 
-If you got this error, fund the from address with enough CKB.
-You can transfer from your CKB wallet or exchange wallet to the from address. 
+If this error appears, fund the `from address` with enough CKBs.
+Transfer from a CKB wallet or exchange wallet to the `from address`.
 
-> **Note:** Some wallet or exchange may not support the CKB address, it's recommended to use imToken or Binance.
+> **Note:** Some wallets or exchanges may not support this kind of CKB address, it's recommended to use imToken or Binance.
 
 ![img_2.png](assets/asset-migration-3.png)
 
-If everything goes well, you will see the transaction hash below the `Transfer` button. You can click to check it on the Nervos Explorer.
+The transaction hash is available under the "Transfer" button if all proceeds well. Click to check it on Nervos Explorer.
 
 ![img_3.png](assets/asset-migration-4.png)
 
-When the transaction is confirmed, you can see your asset on Yokaiswap too.
+After the transaction is confirmed, the assets will be available for viewing on Yokaiswap as well.
 
 ![img_2.png](assets/asset-migration-7.png)
 
-This tool only migrate all your SUDT assets. If you want to transfer your remain CKB in your pw-lock, you can use [pw-wallet UI](https://ckb.pw/#/).
+This tool only migrates all the SUDT assets. To transfer the remaining CKBs in PW-lock, use the [PW-wallet UI](https://ckb.pw/#/).
