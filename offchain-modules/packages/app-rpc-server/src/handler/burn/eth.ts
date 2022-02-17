@@ -3,7 +3,7 @@ import { stringToUint8Array } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
 import { abi } from '@force-bridge/x/dist/xchain/eth/abi/AssetManager.json';
 import { checkBurn } from '@force-bridge/x/dist/xchain/eth/check';
-import ethers from 'ethers';
+import { ethers } from 'ethers';
 import { GenerateBridgeNervosToXchainBurnTxPayload, GenerateTransactionResponse } from '../../types/apiv1';
 import { NetworkBase } from '../../types/network';
 import Burn from './burn';
@@ -35,7 +35,7 @@ class Eth extends Burn {
       stringToUint8Array(payload.recipient),
       '0x',
       {
-        value: this.bridgeFee(),
+        value: ethers.utils.parseUnits(this.bridgeFee(), 0),
       },
     );
 

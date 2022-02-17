@@ -51,12 +51,16 @@ export async function startRpcServer(configPath: string): Promise<void> {
   server.addMethod('version', () => {
     return version;
   });
+  server.addMethod('generateBridgeNervosToXchainLockTx', forceBridgeRpc.generateBridgeNervosToXchainLockTx);
+  server.addMethod('generateBridgeNervosToXchainBurnTx', forceBridgeRpc.generateBridgeNervosToXchainBurnTx);
   server.addMethod('generateBridgeOutNervosTransaction', forceBridgeRpc.generateBridgeOutNervosTransaction);
   server.addMethod('generateBridgeInNervosTransaction', forceBridgeRpc.generateBridgeInNervosTransaction);
   server.addMethod('sendSignedTransaction', forceBridgeRpc.sendSignedTransaction);
   server.addMethod('getMinimalBridgeAmount', forceBridgeRpc.getMinimalBridgeAmount);
   server.addMethod('getBridgeInNervosBridgeFee', forceBridgeRpc.getBridgeInNervosBridgeFee);
   server.addMethod('getBridgeOutNervosBridgeFee', forceBridgeRpc.getBridgeOutNervosBridgeFee);
+  server.addMethod('getBridgeNervosToXchainLockBridgeFee', forceBridgeRpc.getBridgeNervosToXchainLockBridgeFee);
+  server.addMethod('getBridgeNervosToXchainBurnBridgeFee', forceBridgeRpc.getBridgeNervosToXchainBurnBridgeFee);
   server.addMethod(
     'getBridgeTransactionSummaries',
     async (payload: GetBridgeTransactionSummariesPayload<BlockChainNetWork>) => {

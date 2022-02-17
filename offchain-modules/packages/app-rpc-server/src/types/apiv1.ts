@@ -117,6 +117,26 @@ export interface GetBridgeOutNervosBridgeFeeResponse {
   fee: RequiredAsset<'amount'>;
 }
 
+export interface GetBridgeNervosToXchainLockBridgeFeePayload {
+  xchain: string;
+  typescriptHash: string;
+  amount: string;
+}
+
+export interface GetBridgeNervosToXchainLockBridgeFeeResponse {
+  fee: RequiredAsset<'amount'>;
+}
+
+export interface GetBridgeNervosToXchainBurnBridgeFeePayload {
+  xchain: string;
+  typescriptHash: string;
+  amount: string;
+}
+
+export interface GetBridgeNervosToXchainBurnBridgeFeeResponse {
+  fee: RequiredAsset<'amount'>;
+}
+
 export interface EthereumConfig {
   contractAddress: string;
   confirmNumber: number;

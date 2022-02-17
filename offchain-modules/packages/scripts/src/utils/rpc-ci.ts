@@ -927,11 +927,17 @@ async function getFee(client: JSONRPCClient, network, xchainAssetIdent, amount) 
   return { inFee, outFee };
 }
 
-async function getBalance(client: JSONRPCClient, token_address, ckbAddress, ethAddress) {
+async function getBalance(
+  client: JSONRPCClient,
+  eth_token_address,
+  ckbAddress,
+  ethAddress,
+  ckb_token_address = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff', // 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+) {
   const assets = await client.request('getAssetList', {});
 
   const shadowIdent = assets.map((asset) => {
-    if (asset.ident == token_address) {
+    if (asset.ident == eth_token_address) {
       logger.info(asset.info);
       return asset.info.shadow.ident;
     }
@@ -945,9 +951,15 @@ async function getBalance(client: JSONRPCClient, token_address, ckbAddress, ethA
   const ethBalancePayload = {
     network: 'Ethereum',
     userIdent: ethAddress,
-    assetIdent: token_address,
+    assetIdent: eth_token_address,
   };
-  const balance = await client.request('getBalance', [sudtBalancePayload, ethBalancePayload]);
+  const ckbBalancePayload = {
+    network: 'Nervos',
+    userIdent: ckbAddress,
+    assetIdent: ckb_token_address,
+  };
+  logger.info('balance', sudtBalancePayload, ethBalancePayload, ckbBalancePayload);
+  const balance = await client.request('getBalance', [sudtBalancePayload, ethBalancePayload, ckbBalancePayload]);
   logger.info('balance', balance);
   return balance;
 }

@@ -1,6 +1,6 @@
 import { key } from '@ckb-lumos/hd';
 import { TransactionSkeletonObject } from '@ckb-lumos/helpers';
-import { SafeTransaction } from '@gnosis.pm/safe-core-sdk-types';
+import { SafeSignature, SafeTransaction } from '@gnosis.pm/safe-core-sdk-types';
 import * as utils from '@nervosnetwork/ckb-sdk-utils';
 import { JSONRPCResponse } from 'json-rpc-2.0';
 import { MultiSignHost } from '../config';
