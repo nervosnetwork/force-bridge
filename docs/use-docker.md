@@ -136,6 +136,9 @@ yarn testnet-docker:generate
 # install and build force bridge inside docker
 yarn testnet-docker:install
 yarn startTestnet
+
+# After then, you can use to test your testnet environment.
+yarn testnet-docker:integration
 ```
 
 ### Run Force Bridge UI in Local Environment
