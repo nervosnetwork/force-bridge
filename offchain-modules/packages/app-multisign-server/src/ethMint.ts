@@ -12,6 +12,7 @@ import ethers from 'ethers';
 import { ethMintCollectSignaturesPayload } from '../../x/dist/multisig/multisig-mgr';
 import { SigError, SigErrorCode } from '../src/error';
 import { SigResponse } from './response';
+import { SigServer } from './sigServer';
 
 class EthMint {
   protected ethDb: EthDb;
@@ -26,7 +27,7 @@ class EthMint {
   }
 
   async request(params: collectSignaturesParams): Promise<SigResponse<SafeSignature>> {
-    const privateKey = this.keys['eth'][params.requestAddress];
+    const privateKey = this.keys[params.requestAddress!];
     if (privateKey === undefined) {
       return SigResponse.fromSigError(
         SigErrorCode.InvalidParams,
@@ -40,11 +41,6 @@ class EthMint {
 
     if (await ForceBridgeCore.getXChainHandler().eth!.checkBlockSync!()) {
       return SigResponse.fromSigError(SigErrorCode.BlockSyncUncompleted);
-    }
-
-    const signed = await this.signedDb.getSignedByRawData(params.rawData);
-    if (signed) {
-      return SigResponse.fromData(JSON.parse(signed.signature) as SafeSignature);
     }
 
     const payload = params.payload as ethMintCollectSignaturesPayload;
@@ -85,9 +81,10 @@ class EthMint {
     const safe = await Safe.create({
       ethAdapter: new EthersAdapter({
         ethers,
-        signer: new ethers.Wallet(privateKey),
+        signer: new ethers.Wallet(privateKey, SigServer.ethProvider),
       }),
       safeAddress: ForceBridgeCore.config.eth.safeMultisignContractAddress,
+      contractNetworks: ForceBridgeCore.config.eth.safeMultisignContractNetworks,
     });
 
     return await safe.signTransactionHash(await safe.getTransactionHash(tx));

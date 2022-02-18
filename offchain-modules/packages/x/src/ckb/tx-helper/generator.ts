@@ -69,12 +69,22 @@ export class CkbTxGenerator extends CkbTxHelper {
   }
 
   async fetchOmniLockAdminCell(): Promise<Cell | undefined> {
-    const cellCollector = this.indexer.collector({
-      type: ForceBridgeCore.config.ckb.omniLockAdminCellTypescript,
+    const cells = await this.indexer.getCells({
+      script: ForceBridgeCore.config.ckb.omniLockAdminCellTypescript,
+      script_type: ScriptType.type,
     });
-    for await (const cell of cellCollector.collect()) {
-      return cell;
-    }
+    return cells[0];
+    // const cellCollector = this.indexer.collector({
+    //   type: ForceBridgeCore.config.ckb.omniLockAdminCellTypescript,
+    // });
+    // logger.warn(`cells: ${cells}`);
+    // if (cells.length < 1) {
+    //   return undefined;
+    // }
+    // for await (const cell of cellCollector.collect()) {
+    //   return cell;
+    // }
+    // return undefined;
   }
 
   // fixme: if not find multisig cell, create it
@@ -595,8 +605,8 @@ export class CkbTxGenerator extends CkbTxHelper {
     const lockMemo = SerializeLockMemo({ xchain: 1, recipient: new Reader(recipientAddress).toArrayBuffer() });
     // put lockMemo in witnesses[inputs.len]
     witnesses.push(new Reader(lockMemo).serializeJson());
-    txSkeleton = txSkeleton.update('witnesses', (witnesses) => {
-      return witnesses.push(...witnesses);
+    txSkeleton = txSkeleton.update('witnesses', (w) => {
+      return w.push(...witnesses);
     });
 
     // tx fee
@@ -816,9 +826,9 @@ export class CkbTxGenerator extends CkbTxHelper {
   async unlock(records: ICkbUnlock[]): Promise<TransactionSkeletonType | undefined> {
     records = records.filter((r) => r.xchain === ChainType.ETH);
     const assetIdent = records[0].assetIdent;
-    if (!assetIdent || assetIdent === '0x0000000000000000000000000000000000000000000000000000000000000000') {
+    if (!assetIdent || assetIdent === '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff') {
       return await this.unlockCKB(
-        records.map((r) => ({ burnId: r.burnTxHash, recipient: r.recipientAddress, amount: r.amount })),
+        records.map((r) => ({ burnId: r.id, recipient: r.recipientAddress, amount: r.amount })),
       );
     } else {
       const assetInfo = new NervosAsset(assetIdent).getAssetInfo(ChainType.ETH);
@@ -829,7 +839,7 @@ export class CkbTxGenerator extends CkbTxHelper {
       return await this.unlockSUDT(
         sudtArgs,
         records.map((r) => ({
-          burnId: r.burnTxHash,
+          burnId: r.id,
           recipient: r.recipientAddress,
           amount: r.amount,
         })),
@@ -977,9 +987,23 @@ export class CkbTxGenerator extends CkbTxHelper {
     txSkeleton = txSkeleton.update('witnesses', (witnesses) => {
       return witnesses.push(...collectorWitnessGroup);
     });
+    const burnIds = records
+      .filter((record) => record.burnId.indexOf('-') >= 0)
+      .map((record) => {
+        const burnId = record.burnId;
+        const burnHashSeparatorIndex = burnId.indexOf('-');
+        const burnTxHash = burnId.substring(0, burnHashSeparatorIndex);
+        const logIndex = burnId.substring(burnHashSeparatorIndex + 1);
+        const logIndexHex = BigInt(logIndex).toString(16);
+        const logIndexReader = new Reader(`0x${logIndexHex.length % 2 === 0 ? '' : '0'}${logIndexHex}`);
+        return {
+          burnTxHash: new Reader(burnTxHash),
+          logIndex: logIndexReader,
+        };
+      });
     const unlockMemo = SerializeUnlockMemo({
       xchain: 1,
-      burnIds: records.map((record) => new Reader(record.burnId)),
+      burnIds,
     });
     // put unlockMemo in witnesses[inputs.len]
     txSkeleton = txSkeleton.update('witnesses', (witnesses) => {

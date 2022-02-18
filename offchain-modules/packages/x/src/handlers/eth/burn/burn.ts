@@ -5,6 +5,7 @@ import { EthDb } from '../../../db';
 import { EthBurn } from '../../../db/entity/EthBurn';
 import { TxConfirmStatus } from '../../../db/model';
 import { BridgeMetricSingleton } from '../../../metric/bridge-metric';
+import { fromHexString, uint8ArrayToString } from '../../../utils';
 import { logger } from '../../../utils/logger';
 import { EthChain, ParsedLog, Log } from '../../../xchain/eth';
 
@@ -57,11 +58,13 @@ abstract class Burn {
     if (record == undefined) {
       await this.initBolck(log.blockHash);
 
+      const recipient = uint8ArrayToString(fromHexString(parsedLog.args.recipient));
+
       record = new EthBurn();
       record.burnTxHash = log.transactionHash;
       record.amount = parsedLog.args.amount.toString();
       record.xchainTokenId = parsedLog.args.token;
-      record.recipient = parsedLog.args.recipient;
+      record.recipient = recipient;
       record.nervosAssetId = parsedLog.args.assetId;
       record.udtExtraData = parsedLog.args.extraData;
       record.sender = parsedLog.args.from;
@@ -84,6 +87,8 @@ abstract class Burn {
     }
 
     record.confirmStatus = this.confirmStatus(log, currentHeight);
+
+    record.blockHash = this.block.hash;
 
     await this.ethDb.saveEthBurn(record);
 

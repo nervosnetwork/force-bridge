@@ -29,7 +29,7 @@ export class CkbLock {
   @Column()
   blockNumber: number;
 
-  @Column()
+  @Column({ type: 'bigint' })
   blockTimestamp: number;
 
   @Column({ default: 0 })

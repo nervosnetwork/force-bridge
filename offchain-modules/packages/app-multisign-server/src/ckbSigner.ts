@@ -291,6 +291,7 @@ async function verifyEthMintTx(mintRecord: mintRecord, output: Cell): Promise<Si
   return SigErrorOk;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function verifyTxSkeleton(txSkeleton: TransactionSkeletonType): SigError {
   let newTxSkeleton = TransactionSkeleton({
     cellProvider: txSkeleton.get('cellProvider'),
@@ -354,10 +355,12 @@ export async function signCkbTx(params: collectSignaturesParams): Promise<SigRes
   const pubKey = ForceBridgeCore.ckb.utils.privateKeyToPublicKey(privKey);
   const payload = params.payload as ckbCollectSignaturesPayload;
   const txSkeleton = objectToTransactionSkeleton(payload.txSkeleton);
-  let err: SigError = verifyTxSkeleton(txSkeleton);
-  if (err.Code !== SigErrorCode.Ok) {
-    return new SigResponse(err);
-  }
+  let err: SigError = new SigError(SigErrorCode.Ok);
+  // TODO
+  // let err: SigError = verifyTxSkeleton(txSkeleton);
+  // if (err.Code !== SigErrorCode.Ok) {
+  //   return new SigResponse(err);
+  // }
 
   let message: string;
   switch (payload.sigType) {
@@ -380,7 +383,7 @@ export async function signCkbTx(params: collectSignaturesParams): Promise<SigRes
       if (err.Code !== SigErrorCode.Ok) {
         return new SigResponse(err);
       }
-      message = txSkeleton.signingEntries.get(0)!.message;
+      message = txSkeleton.signingEntries.filter((v) => v.index === 0).get(0)!.message;
       break;
     default:
       return SigResponse.fromSigError(SigErrorCode.InvalidParams, `invalid sigType:${payload.sigType}`);

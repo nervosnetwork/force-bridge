@@ -27,21 +27,25 @@ import { Factory as SummaryResponseFactory } from './response/summary/factory';
 import { API, AssetType, NetworkTypes, RequiredAsset } from './types';
 import {
   BalancePayload,
+  BlockChainNetWork,
+  GenerateBridgeNervosToXchainBurnTxPayload,
+  GenerateBridgeNervosToXchainLockTxPayload,
+  GenerateTransactionResponse,
   GetBalancePayload,
   GetBalanceResponse,
   GetBridgeInNervosBridgeFeePayload,
   GetBridgeInNervosBridgeFeeResponse,
-  GetMinimalBridgeAmountPayload,
-  GetMinimalBridgeAmountResponse,
+  GetBridgeNervosToXchainBurnBridgeFeePayload,
+  GetBridgeNervosToXchainBurnBridgeFeeResponse,
+  GetBridgeNervosToXchainLockBridgeFeePayload,
+  GetBridgeNervosToXchainLockBridgeFeeResponse,
+  GetBridgeNervosToXchainTxSummariesPayload,
   GetBridgeOutNervosBridgeFeePayload,
   GetBridgeOutNervosBridgeFeeResponse,
   GetBridgeTransactionSummariesPayload,
+  GetMinimalBridgeAmountPayload,
+  GetMinimalBridgeAmountResponse,
   TransactionSummaryWithStatus,
-  BlockChainNetWork,
-  GenerateBridgeNervosToXchainLockTxPayload,
-  GenerateTransactionResponse,
-  GenerateBridgeNervosToXchainBurnTxPayload,
-  GetBridgeNervosToXchainTxSummariesPayload,
 } from './types/apiv1';
 
 // The minimum ABI to get ERC20 Token balance
@@ -283,6 +287,52 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     }
   }
 
+  async getBridgeNervosToXchainLockBridgeFee(
+    payload: GetBridgeNervosToXchainLockBridgeFeePayload,
+  ): Promise<GetBridgeNervosToXchainLockBridgeFeeResponse> {
+    switch (payload.xchain) {
+      case 'Ethereum': {
+        checkCKBAddress(payload.typescriptHash);
+        checkCKBAmount(payload.typescriptHash, payload.amount);
+
+        const asset = new NervosAsset(payload.typescriptHash);
+        const bridgeFee = asset.getBridgeFee('lock', ChainType.ETH);
+        return {
+          fee: {
+            network: 'Nervos',
+            ident: payload.typescriptHash,
+            amount: bridgeFee,
+          },
+        };
+      }
+      default:
+        throw new Error('invalid bridge chain type');
+    }
+  }
+
+  async getBridgeNervosToXchainBurnBridgeFee(
+    payload: GetBridgeNervosToXchainBurnBridgeFeePayload,
+  ): Promise<GetBridgeNervosToXchainBurnBridgeFeeResponse> {
+    switch (payload.xchain) {
+      case 'Ethereum': {
+        checkCKBAddress(payload.typescriptHash);
+        checkCKBAmount(payload.typescriptHash, payload.amount);
+
+        const asset = new NervosAsset(payload.typescriptHash);
+        const bridgeFee = asset.getBridgeFee('burn', ChainType.ETH);
+        return {
+          fee: {
+            network: 'Nervos',
+            ident: payload.typescriptHash,
+            amount: bridgeFee,
+          },
+        };
+      }
+      default:
+        throw new Error('invalid bridge chain type');
+    }
+  }
+
   async getBridgeTransactionSummaries(
     payload: GetBridgeTransactionSummariesPayload<BlockChainNetWork>,
   ): Promise<TransactionSummaryWithStatus[]> {
@@ -375,7 +425,36 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
       };
     });
 
-    return assetList.concat(shadowAssetList);
+    const nervosWhiteListAssets = ForceBridgeCore.config.eth.nervosAssetWhiteList;
+    const nervosAssetList = nervosWhiteListAssets.map((asset) => {
+      return {
+        network: 'Nervos',
+        ident: asset.typescriptHash,
+        info: {
+          decimals: asset.decimal,
+          name: asset.name,
+          symbol: asset.symbol,
+          logoURI: asset.logoURI,
+          shadow: { network: 'Ethereum', ident: asset.xchainTokenAddress },
+        },
+      };
+    }) as RequiredAsset<'info'>[];
+
+    const shadowNervosAssetList = nervosAssetList.map((asset) => {
+      return {
+        network: 'Ethereum',
+        ident: asset.info.shadow.ident,
+        info: {
+          decimals: asset.info.decimals,
+          name: 'eth' + asset.info.name,
+          symbol: 'eth' + asset.info.symbol,
+          logoURI: asset.info.logoURI,
+          shadow: { network: 'Nervos', ident: asset.ident },
+        },
+      };
+    }) as RequiredAsset<'info'>[];
+
+    return assetList.concat(shadowAssetList).concat(nervosAssetList).concat(shadowNervosAssetList);
   }
 
   async getBalance(payload: GetBalancePayload): Promise<GetBalanceResponse> {
@@ -419,15 +498,20 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
       }
 
       case 'Nervos': {
-        const userScript = parseAddress(value.userIdent);
-        const sudtType = {
-          code_hash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
-          hash_type: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
-          args: value.assetIdent,
-        };
         const collector = new IndexerCollector(ForceBridgeCore.ckbIndexer);
-        const sudt_amount = await collector.getSUDTBalance(sudtType, userScript);
-        balance = sudt_amount.toString();
+        const userScript = parseAddress(value.userIdent);
+        if (value.assetIdent === '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff') {
+          const ckb_amount = await collector.getBalance(userScript);
+          balance = ckb_amount.toString();
+        } else {
+          const sudtType = {
+            code_hash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
+            hash_type: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
+            args: value.assetIdent,
+          };
+          const sudt_amount = await collector.getSUDTBalance(sudtType, userScript);
+          balance = sudt_amount.toString();
+        }
         break;
       }
 
@@ -565,6 +649,7 @@ function checkETHAddress(address) {
 }
 
 function checkCKBAddress(address) {
+  if (address === '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff') return;
   try {
     parseAddress(address);
   } catch (e) {
@@ -576,6 +661,20 @@ function checkETHAmount(assetIdent, amount) {
   const asset = new EthAsset(assetIdent);
   const minimalAmount = asset.getMinimalAmount();
   const assetInfo = ForceBridgeCore.config.eth.assetWhiteList.find((asset) => asset.address === assetIdent);
+  if (!assetInfo) throw new Error('invalid asset');
+  const humanizeMinimalAmount = new BigNumber(minimalAmount)
+    .times(new BigNumber(10).pow(-assetInfo.decimal))
+    .toString();
+  if (new Amount(amount, 0).lt(new Amount(minimalAmount, 0)))
+    throw new Error(`minimal bridge amount is ${humanizeMinimalAmount} ${assetInfo.symbol}`);
+}
+
+function checkCKBAmount(typescriptHash, amount) {
+  const asset = new NervosAsset(typescriptHash);
+  const minimalAmount = asset.getMinimalAmount(ChainType.ETH);
+  const assetInfo = ForceBridgeCore.config.eth.nervosAssetWhiteList.find(
+    (asset) => asset.typescriptHash === typescriptHash,
+  );
   if (!assetInfo) throw new Error('invalid asset');
   const humanizeMinimalAmount = new BigNumber(minimalAmount)
     .times(new BigNumber(10).pow(-assetInfo.decimal))

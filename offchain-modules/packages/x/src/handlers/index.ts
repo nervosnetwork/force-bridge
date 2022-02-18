@@ -38,7 +38,7 @@ export function startHandlers(conn: Connection): void {
     const ethDb = new EthDb(conn);
     const feeDb = new BridgeFeeDB(conn);
     const ethChain = new EthChain(role);
-    const ethHandler = new EthHandler(ethDb, feeDb, kvDb, ethChain, role);
+    const ethHandler = new EthHandler(ethDb, ckbDb, feeDb, kvDb, ethChain, role);
     ForceBridgeCore.getXChainHandler().eth = ethHandler;
     ethHandler.start();
   }

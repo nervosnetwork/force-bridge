@@ -30,7 +30,7 @@ export class CkbUnlock {
   @Column({ nullable: true })
   blockNumber: number;
 
-  @Column()
+  @Column({ nullable: true, type: 'bigint' })
   blockTimestamp: number;
 
   @Index()
