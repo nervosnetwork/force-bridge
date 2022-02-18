@@ -1,8 +1,10 @@
+import { ChainType } from '@force-bridge/x/dist/ckb/model/asset';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { CkbDb, EthDb } from '@force-bridge/x/dist/db';
 import { SignedDb } from '@force-bridge/x/dist/db/signed';
 import { collectSignaturesParams } from '@force-bridge/x/dist/multisig/multisig-mgr';
 import { verifyCollector } from '@force-bridge/x/dist/multisig/utils';
+import { privateKeyToEthAddress } from '@force-bridge/x/dist/utils';
 import { EthMintRecord } from '@force-bridge/x/dist/xchain/eth';
 import Safe, { EthersAdapter } from '@gnosis.pm/safe-core-sdk';
 import { SafeSignature, SafeTransaction } from '@gnosis.pm/safe-core-sdk-types';
@@ -58,6 +60,23 @@ class EthMint {
     }
 
     const signature = await this.sign(payload.tx, privateKey);
+
+    await this.signedDb.createSigned(
+      payload.mintRecords.map((record) => {
+        return {
+          sigType: 'mint',
+          chain: ChainType.ETH,
+          amount: ethers.BigNumber.from(record.amount).toString(),
+          receiver: record.to,
+          asset: record.assetId,
+          refTxHash: record.lockId,
+          nonce: 0,
+          rawData: params.rawData,
+          pubKey: privateKeyToEthAddress(privateKey),
+          signature: JSON.stringify(signature),
+        };
+      }),
+    );
 
     return SigResponse.fromData(signature);
   }
