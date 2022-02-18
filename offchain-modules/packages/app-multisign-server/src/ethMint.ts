@@ -2,6 +2,7 @@ import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { CkbDb, EthDb } from '@force-bridge/x/dist/db';
 import { SignedDb } from '@force-bridge/x/dist/db/signed';
 import { collectSignaturesParams } from '@force-bridge/x/dist/multisig/multisig-mgr';
+import { verifyCollector } from '@force-bridge/x/dist/multisig/utils';
 import { EthMintRecord } from '@force-bridge/x/dist/xchain/eth';
 import Safe, { EthersAdapter } from '@gnosis.pm/safe-core-sdk';
 import { SafeSignature, SafeTransaction } from '@gnosis.pm/safe-core-sdk-types';
@@ -29,6 +30,10 @@ class EthMint {
         SigErrorCode.InvalidParams,
         `cannot found key by address:${params.requestAddress}`,
       );
+    }
+
+    if (!verifyCollector(params)) {
+      return SigResponse.fromSigError(SigErrorCode.InvalidCollector);
     }
 
     if (await ForceBridgeCore.getXChainHandler().eth!.checkBlockSync!()) {
