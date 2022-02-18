@@ -1,6 +1,5 @@
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
-import { EthDb } from '@force-bridge/x/dist/db';
-import { IEthMint } from '@force-bridge/x/dist/db/model';
+import { CkbDb, EthDb } from '@force-bridge/x/dist/db';
 import { SignedDb } from '@force-bridge/x/dist/db/signed';
 import { collectSignaturesParams } from '@force-bridge/x/dist/multisig/multisig-mgr';
 import { EthMintRecord } from '@force-bridge/x/dist/xchain/eth';
@@ -14,9 +13,11 @@ import { SigResponse } from './response';
 class EthMint {
   protected ethDb: EthDb;
   protected signedDb: SignedDb;
+  protected ckbDb: CkbDb;
   protected keys: Map<string, string>;
-  constructor(ethDb: EthDb, signedDb: SignedDb, keys: Map<string, string>) {
+  constructor(ethDb: EthDb, ckbDb: CkbDb, signedDb: SignedDb, keys: Map<string, string>) {
     this.ethDb = ethDb;
+    this.ckbDb = ckbDb;
     this.signedDb = signedDb;
     this.keys = keys;
   }
@@ -77,11 +78,15 @@ class EthMint {
   async verifyRecord(records: EthMintRecord[]): Promise<void> {
     const hashes = records.map((r) => r.lockId);
 
-    const needToMinted = await this.ethDb.ethToBeMintedByCkbTx(hashes);
+    const needToMinted = await this.ckbDb.ckbLockedByTxHashes(hashes);
 
-    const mapped = new Map<string, IEthMint>();
+    const mapped = new Map<string, { nervosAssetId: string; amount: string; recipientAddress: string }>();
     needToMinted.forEach((r) => {
-      mapped.set(r.ckbTxHash, r);
+      mapped.set(r.ckbTxHash, {
+        nervosAssetId: r.assetIdent,
+        amount: r.amount,
+        recipientAddress: r.recipientAddress,
+      });
     });
 
     for (const record of records) {
