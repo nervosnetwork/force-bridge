@@ -8,7 +8,7 @@ import { privateKeyToEthAddress } from '@force-bridge/x/dist/utils';
 import { EthMintRecord } from '@force-bridge/x/dist/xchain/eth';
 import Safe, { EthersAdapter } from '@gnosis.pm/safe-core-sdk';
 import { SafeSignature, SafeTransaction } from '@gnosis.pm/safe-core-sdk-types';
-import ethers from 'ethers';
+import { ethers } from 'ethers';
 import { ethMintCollectSignaturesPayload } from '../../x/dist/multisig/multisig-mgr';
 import { SigError, SigErrorCode } from '../src/error';
 import { SigResponse } from './response';
