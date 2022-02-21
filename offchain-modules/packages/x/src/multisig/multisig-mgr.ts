@@ -35,7 +35,7 @@ export interface ethMintCollectSignaturesPayload {
   tx: SafeTransaction;
 }
 
-export type SigType = 'mint' | 'create_cell' | 'unlock';
+export type SigType = 'mint' | 'create_cell' | 'unlock' | 'eth_mint';
 
 export interface mintRecord {
   id: string;

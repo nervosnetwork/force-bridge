@@ -1,6 +1,7 @@
 import { ChainType } from '@force-bridge/x/dist/ckb/model/asset';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { CkbDb, EthDb } from '@force-bridge/x/dist/db';
+import { TxConfirmStatus } from '@force-bridge/x/dist/db/model';
 import { SignedDb } from '@force-bridge/x/dist/db/signed';
 import { collectSignaturesParams } from '@force-bridge/x/dist/multisig/multisig-mgr';
 import { verifyCollector } from '@force-bridge/x/dist/multisig/utils';
@@ -60,13 +61,13 @@ class EthMint {
     await this.signedDb.createSigned(
       payload.mintRecords.map((record) => {
         return {
-          sigType: 'mint',
+          sigType: 'eth_mint',
           chain: ChainType.ETH,
           amount: ethers.BigNumber.from(record.amount).toString(),
           receiver: record.to,
           asset: record.assetId,
           refTxHash: record.lockId,
-          nonce: 0,
+          nonce: payload.tx.data.nonce,
           rawData: params.rawData,
           pubKey: privateKeyToEthAddress(privateKey),
           signature: JSON.stringify(signature),
@@ -101,12 +102,16 @@ class EthMint {
 
     const needToMinted = await this.ckbDb.ckbLockedByTxHashes(hashes);
 
-    const mapped = new Map<string, { nervosAssetId: string; amount: string; recipientAddress: string }>();
+    const mapped = new Map<
+      string,
+      { nervosAssetId: string; amount: string; recipientAddress: string; confirmStatus: TxConfirmStatus }
+    >();
     needToMinted.forEach((r) => {
       mapped.set(r.ckbTxHash, {
         nervosAssetId: r.assetIdent,
         amount: r.amount,
         recipientAddress: r.recipientAddress,
+        confirmStatus: r.confirmStatus,
       });
     });
 
@@ -128,6 +133,10 @@ class EthMint {
           SigErrorCode.InvalidRecord,
           `invalid lock amount: ${record.amount}, greater than mint amount: ${mint.amount}`,
         );
+      }
+
+      if (mint.confirmStatus == 'unconfirmed') {
+        throw new SigError(SigErrorCode.TxUnconfirmed, `ckb lock transaction unconfirmed: ${record.lockId}`);
       }
 
       if (mint.recipientAddress !== record.to) {
