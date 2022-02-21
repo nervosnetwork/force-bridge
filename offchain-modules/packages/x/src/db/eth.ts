@@ -398,10 +398,10 @@ export class EthDb implements IQuery {
     });
   }
 
-  async getEthBurnsByBurnTxHashes(burnTxHashes: string[]): Promise<EthBurn[]> {
+  async getEthBurnsByUniqueIds(uniqueIds: string[]): Promise<EthBurn[]> {
     return await this.connection.getRepository(EthBurn).find({
       where: {
-        burnTxHash: In(burnTxHashes),
+        uniqueId: In(uniqueIds),
       },
     });
   }
