@@ -8,14 +8,7 @@ import * as lodash from 'lodash';
 import { ForceBridgeCore } from '../../core';
 import { ICkbUnlock } from '../../db/model';
 import { asserts, nonNullable } from '../../errors';
-import {
-  asyncSleep,
-  fromHexString,
-  uint8ArrayToString,
-  stringToUint8Array,
-  toHexString,
-  transactionSkeletonToJSON,
-} from '../../utils';
+import { asyncSleep, fromHexString, stringToUint8Array, toHexString, transactionSkeletonToJSON } from '../../utils';
 import { logger } from '../../utils/logger';
 import { Asset, ChainType } from '../model/asset';
 import { NervosAsset } from '../model/nervos-asset';

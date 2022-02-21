@@ -1,21 +1,20 @@
+import { HexString, utils } from '@ckb-lumos/base';
+import { SerializeWitnessArgs } from '@ckb-lumos/base/lib/core';
+import { key } from '@ckb-lumos/hd';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
+import { WhiteListNervosAsset } from '@force-bridge/x/dist/config';
 import { asserts } from '@force-bridge/x/dist/errors';
-import { asyncSleep, transactionSkeletonToJSON } from '@force-bridge/x/dist/utils';
+import { asyncSleep } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
 import { Script } from '@lay2/pw-core';
-import { HexString, utils } from '@ckb-lumos/base';
-const { CKBHasher, ckbHash } = utils;
-import { common } from '@ckb-lumos/common-scripts';
+const { CKBHasher } = utils;
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import { AddressPrefix } from '@nervosnetwork/ckb-sdk-utils';
+import { normalizers, Reader } from 'ckb-js-toolkit';
 import { ethers } from 'ethers';
 import { JSONRPCClient } from 'json-rpc-2.0';
 import fetch from 'node-fetch/index';
-import { normalizers, Reader } from 'ckb-js-toolkit';
-import { key } from '@ckb-lumos/hd';
-import { SerializeWitnessArgs } from '@ckb-lumos/base/lib/core';
-import { WhiteListNervosAsset } from '@force-bridge/x/dist/config';
 
 export async function generateLockTx(
   client: JSONRPCClient,
@@ -25,6 +24,7 @@ export async function generateLockTx(
   recipient: string,
   assetIdent: string,
   amount: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
   const lockPayload = {
     assetIdent,
@@ -116,6 +116,7 @@ async function getTransaction(
   assetIdent: string,
   userNetwork: 'Ethereum' | 'Nervos',
   userIdent: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
   const getTxPayload = {
     network: assetNetwork,
@@ -184,6 +185,7 @@ export async function lock(
 ): Promise<Array<string>> {
   const batchNum = ethAddresses.length;
   const lockTxHashes = new Array<string>();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const signedLockTxs = new Array<any>();
 
   for (let i = 0; i < batchNum; i++) {
@@ -387,6 +389,7 @@ export async function prepareCkbAddresses(
   return addresses;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function hashWitness(hasher: any, witness: HexString): void {
   const lengthBuffer = new ArrayBuffer(8);
   const view = new DataView(lengthBuffer);

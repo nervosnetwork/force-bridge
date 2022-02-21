@@ -1,5 +1,6 @@
 import { SafeFactory, EthersAdapter, ContractNetworksConfig } from '@gnosis.pm/safe-core-sdk';
 import { Contract, ethers, Wallet } from 'ethers';
+import { WhiteListNervosAsset } from '../../config';
 import { logger } from '../../utils/logger';
 import { abi as asabi, bytecode as asbytecode } from './abi/AssetManager.json';
 import { abi, bytecode } from './abi/ForceBridge.json';
@@ -7,7 +8,6 @@ import { abi as gsabi, bytecode as gsbytecode } from './abi/GnosisSafe_SV1_3_0.j
 import { abi as msabi, bytecode as msbytecode } from './abi/MultiSend_SV1_3_0.json';
 import { abi as mabi, bytecode as mbytecode } from './abi/NervosMirrorToken.json';
 import { abi as pfabi, bytecode as pfbytecode } from './abi/ProxyFactory_SV1_3_0.json';
-import { WhiteListNervosAsset } from '../../config';
 
 export async function deployEthContract(
   rpcUrl: string,

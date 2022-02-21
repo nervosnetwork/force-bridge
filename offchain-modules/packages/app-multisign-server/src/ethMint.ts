@@ -1,20 +1,28 @@
+import { ChainType } from '@force-bridge/x/dist/ckb/model/asset';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
-import { EthDb } from '@force-bridge/x/dist/db';
+import { CkbDb, EthDb } from '@force-bridge/x/dist/db';
+import { TxConfirmStatus } from '@force-bridge/x/dist/db/model';
 import { SignedDb } from '@force-bridge/x/dist/db/signed';
-import { collectSignaturesParams, ethMintCollectSignaturesPayload } from '@force-bridge/x/dist/multisig/multisig-mgr';
+import { collectSignaturesParams } from '@force-bridge/x/dist/multisig/multisig-mgr';
+import { verifyCollector } from '@force-bridge/x/dist/multisig/utils';
+import { privateKeyToEthAddress } from '@force-bridge/x/dist/utils';
+import { EthMintRecord } from '@force-bridge/x/dist/xchain/eth';
 import Safe, { EthersAdapter } from '@gnosis.pm/safe-core-sdk';
 import { SafeSignature, SafeTransaction } from '@gnosis.pm/safe-core-sdk-types';
 import { ethers } from 'ethers';
-import { SigErrorCode } from './error';
+import { ethMintCollectSignaturesPayload } from '../../x/dist/multisig/multisig-mgr';
+import { SigError, SigErrorCode } from '../src/error';
 import { SigResponse } from './response';
 import { SigServer } from './sigServer';
 
 class EthMint {
   protected ethDb: EthDb;
   protected signedDb: SignedDb;
+  protected ckbDb: CkbDb;
   protected keys: Map<string, string>;
-  constructor(ethDb: EthDb, signedDb: SignedDb, keys: Map<string, string>) {
+  constructor(ethDb: EthDb, ckbDb: CkbDb, signedDb: SignedDb, keys: Map<string, string>) {
     this.ethDb = ethDb;
+    this.ckbDb = ckbDb;
     this.signedDb = signedDb;
     this.keys = keys;
   }
@@ -28,13 +36,44 @@ class EthMint {
       );
     }
 
+    if (!verifyCollector(params)) {
+      return SigResponse.fromSigError(SigErrorCode.InvalidCollector);
+    }
+
     if (await ForceBridgeCore.getXChainHandler().eth!.checkBlockSync!()) {
       return SigResponse.fromSigError(SigErrorCode.BlockSyncUncompleted);
     }
 
     const payload = params.payload as ethMintCollectSignaturesPayload;
 
+    try {
+      await this.verifyRecord(payload.mintRecords);
+    } catch (e) {
+      return new SigResponse(e as SigError);
+    }
+
+    if (!(await this.verifyDuplicated(payload.mintRecords))) {
+      return SigResponse.fromSigError(SigErrorCode.TxCompleted);
+    }
+
     const signature = await this.sign(payload.tx, privateKey);
+
+    await this.signedDb.createSigned(
+      payload.mintRecords.map((record) => {
+        return {
+          sigType: 'eth_mint',
+          chain: ChainType.ETH,
+          amount: ethers.BigNumber.from(record.amount).toString(),
+          receiver: record.to,
+          asset: record.assetId,
+          refTxHash: record.lockId,
+          nonce: payload.tx.data.nonce,
+          rawData: params.rawData,
+          pubKey: privateKeyToEthAddress(privateKey),
+          signature: JSON.stringify(signature),
+        };
+      }),
+    );
 
     return SigResponse.fromData(signature);
   }
@@ -50,6 +89,63 @@ class EthMint {
     });
 
     return await safe.signTransactionHash(await safe.getTransactionHash(tx));
+  }
+
+  async verifyDuplicated(records: EthMintRecord[]): Promise<boolean> {
+    const hashes = records.map((r) => r.lockId);
+
+    return !(await this.ethDb.hasOneMinted(hashes));
+  }
+
+  async verifyRecord(records: EthMintRecord[]): Promise<void> {
+    const hashes = records.map((r) => r.lockId);
+
+    const needToMinted = await this.ckbDb.ckbLockedByTxHashes(hashes);
+
+    const mapped = new Map<
+      string,
+      { nervosAssetId: string; amount: string; recipientAddress: string; confirmStatus: TxConfirmStatus }
+    >();
+    needToMinted.forEach((r) => {
+      mapped.set(r.ckbTxHash, {
+        nervosAssetId: r.assetIdent,
+        amount: r.amount,
+        recipientAddress: r.recipientAddress,
+        confirmStatus: r.confirmStatus,
+      });
+    });
+
+    for (const record of records) {
+      const mint = mapped.get(record.lockId);
+      if (!mint) {
+        throw new SigError(SigErrorCode.TxNotFound, `cannot found ckbLock record by ckbTxHash:${record.lockId}`);
+      }
+
+      if (mint.nervosAssetId != record.assetId) {
+        throw new SigError(
+          SigErrorCode.InvalidRecord,
+          `lockTx:${record.lockId} asset:${record.assetId} != ${mint.nervosAssetId}`,
+        );
+      }
+
+      if (BigInt(record.amount) > BigInt(mint.amount)) {
+        throw new SigError(
+          SigErrorCode.InvalidRecord,
+          `invalid lock amount: ${record.amount}, greater than mint amount: ${mint.amount}`,
+        );
+      }
+
+      if (mint.confirmStatus == 'unconfirmed') {
+        throw new SigError(SigErrorCode.TxUnconfirmed, `ckb lock transaction unconfirmed: ${record.lockId}`);
+      }
+
+      if (mint.recipientAddress !== record.to) {
+        throw new SigError(
+          SigErrorCode.InvalidRecord,
+          `burnTx:${record.lockId} recipientAddress:${record.to} != ${mint.recipientAddress}`,
+        );
+      }
+    }
   }
 }
 

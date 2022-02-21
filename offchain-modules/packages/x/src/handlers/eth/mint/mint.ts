@@ -1,10 +1,9 @@
 import { ethers } from 'ethers';
 import { forceBridgeRole as ForceBridgeRole } from '../../../config';
 import { EthDb, CkbDb } from '../../../db';
-import { EthMint } from '../../../db/entity/EthMint';
+import { IEthMint } from '../../../db/model';
 import { BridgeMetricSingleton } from '../../../metric/bridge-metric';
 import { ParsedLog, Log, EthChain } from '../../../xchain/eth';
-import { IEthMint } from '../../../db/model';
 
 abstract class Mint {
   protected ethDb: EthDb;

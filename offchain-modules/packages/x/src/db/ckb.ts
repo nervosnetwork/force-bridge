@@ -491,4 +491,12 @@ export class CkbDb implements IQuery {
       take,
     });
   }
+
+  async ckbLockedByTxHashes(hashes: string[]): Promise<CkbLock[]> {
+    return await this.connection.getRepository(CkbLock).find({
+      where: {
+        ckbTxHash: In(hashes),
+      },
+    });
+  }
 }

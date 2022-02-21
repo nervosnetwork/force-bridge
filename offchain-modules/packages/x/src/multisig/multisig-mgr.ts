@@ -1,6 +1,6 @@
 import { key } from '@ckb-lumos/hd';
 import { TransactionSkeletonObject } from '@ckb-lumos/helpers';
-import { SafeSignature, SafeTransaction } from '@gnosis.pm/safe-core-sdk-types';
+import { SafeTransaction } from '@gnosis.pm/safe-core-sdk-types';
 import * as utils from '@nervosnetwork/ckb-sdk-utils';
 import { JSONRPCResponse } from 'json-rpc-2.0';
 import { MultiSignHost } from '../config';
@@ -35,7 +35,7 @@ export interface ethMintCollectSignaturesPayload {
   tx: SafeTransaction;
 }
 
-export type SigType = 'mint' | 'create_cell' | 'unlock';
+export type SigType = 'mint' | 'create_cell' | 'unlock' | 'eth_mint';
 
 export interface mintRecord {
   id: string;

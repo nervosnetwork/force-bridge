@@ -1,5 +1,6 @@
 import Safe, { EthersAdapter } from '@gnosis.pm/safe-core-sdk';
 import { SafeSignature, SafeTransaction } from '@gnosis.pm/safe-core-sdk-types';
+import EthSignSignature from '@gnosis.pm/safe-core-sdk/dist/src/utils/signatures/SafeSignature';
 import { BigNumber, ethers } from 'ethers';
 import { Interface, LogDescription } from 'ethers/lib/utils';
 import { EthConfig, forceBridgeRole } from '../../config';
@@ -12,7 +13,6 @@ import { logger } from '../../utils/logger';
 import { abi as asAbi } from './abi/AssetManager.json';
 import { abi } from './abi/ForceBridge.json';
 import { buildSigRawData } from './utils';
-import EthSignSignature from '@gnosis.pm/safe-core-sdk/dist/src/utils/signatures/SafeSignature';
 
 export type Log = ethers.providers.Log; // Parameters<Interface['parseLog']>[0] & {
 // transactionHash: string;

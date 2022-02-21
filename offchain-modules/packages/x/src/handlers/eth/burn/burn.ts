@@ -5,9 +5,9 @@ import { EthDb } from '../../../db';
 import { EthBurn } from '../../../db/entity/EthBurn';
 import { TxConfirmStatus } from '../../../db/model';
 import { BridgeMetricSingleton } from '../../../metric/bridge-metric';
+import { fromHexString, uint8ArrayToString } from '../../../utils';
 import { logger } from '../../../utils/logger';
 import { EthChain, ParsedLog, Log } from '../../../xchain/eth';
-import { fromHexString, uint8ArrayToString } from '../../../utils';
 
 abstract class Burn {
   protected ethDb: EthDb;

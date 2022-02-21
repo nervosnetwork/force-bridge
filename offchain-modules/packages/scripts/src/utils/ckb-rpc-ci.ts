@@ -6,6 +6,7 @@ import { asyncSleep, privateKeyToCkbAddress, privateKeyToEthAddress } from '@for
 import { logger } from '@force-bridge/x/dist/utils/logger';
 import { Amount } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const { CKBHasher, ckbHash } = utils;
 import { normalizers, Reader } from 'ckb-js-toolkit';
 import { ethers } from 'ethers';
@@ -15,8 +16,10 @@ import fetch from 'node-fetch/index';
 function generateCases(
   CKB_TEST_ADDRESS: string,
   ETH_TEST_ADDRESS: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   ETH_TOKEN_ADDRESS: string,
   CKB_TOKEN_ADDRESS: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   bridgeEthAddress: string,
 ) {
   const lockCases = [
@@ -297,6 +300,7 @@ async function getTransaction(client: JSONRPCClient, token_address, userNetwork,
 async function getBalance(
   client: JSONRPCClient,
   assetIdent = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   xchainAssetIdent = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
   ckbAddress,
   ethAddress,
@@ -321,6 +325,7 @@ async function getBalance(
   return balance;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function getFee(client: JSONRPCClient, xchain, typescriptHash, amount) {
   const payload = {
     xchain,
@@ -385,6 +390,7 @@ async function checkTx(client: JSONRPCClient, token_address, txId, ckbAddress, e
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function hashWitness(hasher: any, witness: HexString): void {
   const lengthBuffer = new ArrayBuffer(8);
   const view = new DataView(lengthBuffer);

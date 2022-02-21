@@ -5,12 +5,12 @@ import { CkbDeps, WhiteListEthAsset, WhiteListNervosAsset } from '@force-bridge/
 import { writeJsonToFile } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
 import { deployEthContract, deployAssetManager, deploySafe } from '@force-bridge/x/dist/xchain/eth';
+import { ContractNetworksConfig } from '@gnosis.pm/safe-core-sdk';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import { ethers } from 'ethers';
 import * as lodash from 'lodash';
 import { genRandomVerifierConfig, VerifierConfig } from './generate';
 import { pathFromProjectRoot } from './index';
-import { ContractNetworksConfig } from '@gnosis.pm/safe-core-sdk';
 
 export interface DeployDevResult {
   assetWhiteList: WhiteListEthAsset[];

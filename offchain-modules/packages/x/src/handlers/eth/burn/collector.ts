@@ -4,11 +4,11 @@ import { ChainType } from '../../../ckb/model/asset';
 import { forceBridgeRole as ForceBridgeRole } from '../../../config';
 import { ForceBridgeCore } from '../../../core';
 import { EthBurn } from '../../../db/entity/EthBurn';
+import { fromHexString, uint8ArrayToString } from '../../../utils';
 import { logger } from '../../../utils/logger';
 import { ParsedLog, Log } from '../../../xchain/eth';
 import { checkBurn } from '../../../xchain/eth/check';
 import Burn from './burn';
-import { fromHexString, uint8ArrayToString } from '../../../utils';
 
 class Collector extends Burn {
   protected role: ForceBridgeRole = 'collector';

@@ -1,6 +1,6 @@
 import { Cell, utils } from '@ckb-lumos/base';
 import { common } from '@ckb-lumos/common-scripts';
-import { getConfig, Config } from '@ckb-lumos/config-manager';
+import { getConfig } from '@ckb-lumos/config-manager';
 import { key } from '@ckb-lumos/hd';
 import {
   objectToTransactionSkeleton,
@@ -10,8 +10,10 @@ import {
   TransactionSkeletonType,
 } from '@ckb-lumos/helpers';
 import { BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
-import { getFromAddr, getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
+import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
+import { getOmniLockMultisigAddress } from '@force-bridge/x/dist/ckb/tx-helper/multisig/omni-lock';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
+import { EthBurn } from '@force-bridge/x/dist/db/entity/EthBurn';
 import { EthLock } from '@force-bridge/x/dist/db/entity/EthLock';
 import { asserts, nonNullable } from '@force-bridge/x/dist/errors';
 import {
@@ -29,8 +31,6 @@ import { compareCkbAddress } from '@force-bridge/x/dist/utils';
 import { Amount } from '@lay2/pw-core';
 import { SigError, SigErrorCode, SigErrorOk } from './error';
 import { SigResponse, SigServer } from './sigServer';
-import { getOmniLockMultisigAddress } from '@force-bridge/x/dist/ckb/tx-helper/multisig/omni-lock';
-import { EthBurn } from '@force-bridge/x/dist/db/entity/EthBurn';
 
 async function verifyCreateCellTx(rawData: string, payload: ckbCreateCellCollectSignaturesPayload): Promise<SigError> {
   const txSkeleton = payload.txSkeleton;
