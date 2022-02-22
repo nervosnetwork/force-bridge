@@ -368,21 +368,12 @@ export class EthHandler {
 
     for (;;) {
       try {
-        // check gas price
-        const gasPrice = await this.ethChain.getGasPrice();
-        const gasPriceLimit = BigNumber.from(nonNullable(ForceBridgeCore.config.collector).gasPriceGweiLimit * 10 ** 9);
-        logger.debug(`gasPrice ${gasPrice}, gasPriceLimit ${gasPriceLimit}`);
-        if (gasPrice.gt(gasPriceLimit)) {
-          const waitSeconds = 30;
-          logger.warn(`gasPrice ${gasPrice} exceeds limit ${gasPriceLimit}, waiting for ${waitSeconds}s`);
-          await asyncSleep(waitSeconds * 1000);
-          continue;
-        }
         // write db first, avoid send tx success and fail to write db
         records.map((r) => {
           r.status = 'pending';
         });
         await this.ethDb.saveCollectorEthUnlock(records);
+        const gasPrice = await this.ethChain.getGasPrice();
         const txRes = await this.ethChain.sendUnlockTxs(records, gasPrice);
         if (typeof txRes === 'boolean') {
           records.map((r) => {

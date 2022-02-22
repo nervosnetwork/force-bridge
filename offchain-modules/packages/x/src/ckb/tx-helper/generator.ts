@@ -1,6 +1,12 @@
 import { Cell, Script, Indexer, WitnessArgs, core, utils } from '@ckb-lumos/base';
 import { common } from '@ckb-lumos/common-scripts';
-import { minimalCellCapacity, parseAddress, TransactionSkeleton, TransactionSkeletonType } from '@ckb-lumos/helpers';
+import {
+  minimalCellCapacity,
+  parseAddress,
+  TransactionSkeleton,
+  TransactionSkeletonType,
+  createTransactionFromSkeleton,
+} from '@ckb-lumos/helpers';
 import { Reader, normalizers } from 'ckb-js-toolkit';
 import * as lodash from 'lodash';
 import { ForceBridgeCore } from '../../core';
@@ -11,6 +17,7 @@ import { Asset } from '../model/asset';
 import { CkbTxHelper } from './base_generator';
 import { SerializeRecipientCellData } from './generated/eth_recipient_cell';
 import { SerializeMintWitness } from './generated/mint_witness';
+import { SerializeRcLockWitnessLock } from './generated/omni_lock';
 import { ScriptType } from './indexer';
 import { getFromAddr, getMultisigLock, getOwnerTypeHash } from './multisig/multisig_helper';
 
@@ -159,7 +166,11 @@ export class CkbTxGenerator extends CkbTxHelper {
         });
 
         const mintWitness = this.getMintWitness(records);
-        const mintWitnessArgs = core.SerializeWitnessArgs({ lock: null, input_type: mintWitness, output_type: null });
+        const mintWitnessArgs = core.SerializeWitnessArgs({
+          lock: null,
+          input_type: mintWitness,
+          output_type: null,
+        });
         txSkeleton = txSkeleton.update('witnesses', (witnesses) => {
           if (witnesses.isEmpty()) {
             return witnesses.push(`0x${toHexString(new Uint8Array(mintWitnessArgs))}`);
@@ -285,21 +296,21 @@ export class CkbTxGenerator extends CkbTxHelper {
   }
 
   /*
-  table RecipientCellData {
-    recipient_address: Bytes,
-    chain: byte,
-    asset: Bytes,
-    bridge_lock_code_hash: Byte32,
-    owner_lock_hash: Byte32,
-    amount: Uint128,
-  }
+    table RecipientCellData {
+      recipient_address: Bytes,
+      chain: byte,
+      asset: Bytes,
+      bridge_lock_code_hash: Byte32,
+      owner_lock_hash: Byte32,
+      amount: Uint128,
+    }
    */
   async burn(
     fromLockscript: Script,
     recipientAddress: string,
     asset: Asset,
     amount: bigint,
-  ): Promise<CKBComponents.RawTransactionToSign> {
+  ): Promise<TransactionSkeletonType> {
     if (amount === 0n) {
       throw new Error('amount should larger then zero!');
     }
@@ -404,9 +415,8 @@ export class CkbTxGenerator extends CkbTxHelper {
         .push(this.sudtDep)
         .push(this.recipientDep);
     });
-    logger.debug(`txSkeleton: ${transactionSkeletonToJSON(txSkeleton)}`);
+
     // add change output
-    const fee = 100000n;
     const changeOutput: Cell = {
       cell_output: {
         capacity: '0x0',
@@ -420,6 +430,7 @@ export class CkbTxGenerator extends CkbTxHelper {
       return outputs.push(changeOutput);
     });
     // add inputs
+    const fee = 100000n;
     const capacityDiff = await this.calculateCapacityDiff(txSkeleton);
     logger.debug(`capacityDiff`, capacityDiff);
     const needCapacity = -capacityDiff + fee;
@@ -435,8 +446,8 @@ export class CkbTxGenerator extends CkbTxHelper {
         return inputs.concat(fromCells);
       });
       const capacityDiff = await this.calculateCapacityDiff(txSkeleton);
-      if (capacityDiff < 0) {
-        const humanReadableCapacityDiff = -capacityDiff / 100000000n + (-capacityDiff % 100000000n === 0n ? 0n : 1n);
+      if (capacityDiff < fee) {
+        const humanReadableCapacityDiff = -capacityDiff / 100000000n + 1n; // 1n is 1 ckb to supply fee
         throw new Error(`fromAddress capacity insufficient, need ${humanReadableCapacityDiff.toString()} CKB more`);
       }
       txSkeleton = txSkeleton.update('outputs', (outputs) => {
@@ -444,9 +455,62 @@ export class CkbTxGenerator extends CkbTxHelper {
         return outputs.set(outputs.size - 1, changeOutput);
       });
     }
+
+    const omniLockConfig = ForceBridgeCore.config.ckb.deps.omniLock;
+    if (
+      omniLockConfig &&
+      fromLockscript.code_hash === omniLockConfig.script.codeHash &&
+      fromLockscript.hash_type === omniLockConfig.script.hashType
+    ) {
+      txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
+        return cellDeps.push({
+          out_point: {
+            tx_hash: omniLockConfig.cellDep.outPoint.txHash,
+            index: omniLockConfig.cellDep.outPoint.index,
+          },
+          dep_type: omniLockConfig.cellDep.depType,
+        });
+      });
+
+      const messageToSign = (() => {
+        const hasher = new utils.CKBHasher();
+        const rawTxHash = utils.ckbHash(
+          core.SerializeRawTransaction(normalizers.NormalizeRawTransaction(createTransactionFromSkeleton(txSkeleton))),
+        );
+        // serialized unsigned witness
+        const serializedWitness = core.SerializeWitnessArgs({
+          lock: new Reader(
+            '0x' +
+              '00'.repeat(
+                SerializeRcLockWitnessLock({
+                  signature: new Reader('0x' + '00'.repeat(65)),
+                }).byteLength,
+              ),
+          ),
+        });
+        hasher.update(rawTxHash);
+        const lengthBuffer = new ArrayBuffer(8);
+        const view = new DataView(lengthBuffer);
+        view.setBigUint64(0, BigInt(new Reader(serializedWitness).length()), true);
+
+        hasher.update(lengthBuffer);
+        hasher.update(serializedWitness);
+        return hasher.digestHex();
+      })();
+
+      txSkeleton = txSkeleton.update('signingEntries', (signingEntries) => {
+        return signingEntries.push({
+          type: 'witness_args_lock',
+          index: 0,
+          message: messageToSign,
+        });
+      });
+    }
+
     logger.debug(`txSkeleton: ${transactionSkeletonToJSON(txSkeleton)}`);
     logger.debug(`final fee: ${await this.calculateCapacityDiff(txSkeleton)}`);
-    return txSkeletonToRawTransactionToSign(txSkeleton);
+
+    return txSkeleton;
   }
 }
 
@@ -461,7 +525,9 @@ function transformScript(script: Script | undefined | null): CKBComponents.Scrip
   };
 }
 
-function txSkeletonToRawTransactionToSign(txSkeleton: TransactionSkeletonType): CKBComponents.RawTransactionToSign {
+export function txSkeletonToRawTransactionToSign(
+  txSkeleton: TransactionSkeletonType,
+): CKBComponents.RawTransactionToSign {
   const inputs = txSkeleton
     .get('inputs')
     .toArray()

@@ -1,3 +1,33 @@
+## v0.0.24 (2022-1-30)
+
+### Features
+
+- [replace pw-lock with omni-lock](https://github.com/nervosnetwork/force-bridge/pull/310)
+
+## v0.0.23 (2022-1-28)
+
+### Bug fixes
+
+- [handle bsc node network jitter](https://github.com/nervosnetwork/force-bridge/pull/309)
+
+## v0.0.21 (2022-1-27)
+
+### Bug fixes
+
+- [fix send unlock tx failed in case of low gas price](https://github.com/nervosnetwork/force-bridge/pull/306)
+- [fix bsc monitor log](https://github.com/nervosnetwork/force-bridge/pull/307)
+
+## v0.0.20 (2022-1-21)
+
+### Bug fixes
+
+- [fix capacity insuffient error msg](https://github.com/nervosnetwork/force-bridge/pull/298)
+
+### Features
+
+- [adjust asset white list](https://github.com/nervosnetwork/force-bridge/pull/299)
+- [adjust bridge fee](https://github.com/nervosnetwork/force-bridge/pull/300)
+
 ## v0.0.19 (2022-1-12)
 
 ### Bug fixes
