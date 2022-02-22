@@ -1,7 +1,8 @@
 import { core } from '@ckb-lumos/base';
+import { parseAddress } from '@ckb-lumos/helpers';
 import { CKBIndexerClient, SearchKey, SearchKeyFilter } from '@force-bridge/ckb-indexer-client';
 import type * as Indexer from '@force-bridge/ckb-indexer-client';
-import { CkbBurnRecord, CkbMintRecord } from '@force-bridge/reconc';
+import { CkbBurnRecord, CkbLockRecord, CkbUnlockRecord, CkbMintRecord } from '@force-bridge/reconc';
 import { Amount } from '@lay2/pw-core';
 import { default as RPC } from '@nervosnetwork/ckb-sdk-rpc';
 import { Observable, from } from 'rxjs';
@@ -11,6 +12,9 @@ import { ScriptLike } from '../ckb/model/script';
 import { RecipientCellData } from '../ckb/tx-helper/generated/eth_recipient_cell';
 import { ForceBridgeLockscriptArgs } from '../ckb/tx-helper/generated/force_bridge_lockscript';
 import { MintWitness } from '../ckb/tx-helper/generated/mint_witness';
+import { ScriptType } from '../ckb/tx-helper/indexer';
+import { getOmniLockMultisigAddress } from '../ckb/tx-helper/multisig/omni-lock';
+import { CkbTxInfo, parseLockTx, parseUnlockTx } from '../handlers/ckb';
 import { fromHexString, toHexString, uint8ArrayToString } from '../utils';
 
 export interface CKBRecordObservableProvider {
@@ -38,6 +42,17 @@ export interface CKBBurnFilter {
   toBlock?: string; // hex string
   sender?: ScriptLike;
   filterRecipientData: (data: RecipientCellData) => boolean;
+}
+
+export interface CKBLockFilter {
+  fromBlock?: string; // hex string
+  toBlock?: string; // hex string
+}
+
+export interface CKBUnlockFilter {
+  fromBlock?: string; // hex string
+  toBlock?: string; // hex string
+  asset?: Asset;
 }
 
 function isTypeIDCorrect(args: string, expectOwnerTypeHash: string): boolean {
@@ -208,6 +223,120 @@ export class CKBRecordObservable {
       expand((tx) => indexer.get_transactions({ searchKey, cursor: tx.last_cursor })),
       takeWhile((tx) => tx.objects.length > 0),
       indexerTx2FromRecord(),
+    );
+  }
+
+  observeLockRecord(filter: CKBLockFilter): Observable<CkbLockRecord> {
+    const blockRange: SearchKeyFilter['block_range'] = [
+      filter.fromBlock ? filter.fromBlock : '0x0',
+      filter.toBlock ? filter.toBlock : '0xffffffffffffffff', // u64::Max
+    ];
+    const committeeMultisigLockscript = parseAddress(getOmniLockMultisigAddress());
+    const searchKey: SearchKey = {
+      script_type: ScriptType.lock,
+      script: committeeMultisigLockscript,
+      filter: { block_range: blockRange },
+    };
+
+    const { rpc, indexer } = this.provider;
+
+    return from(indexer.get_transactions({ searchKey })).pipe(
+      expand((tx) => indexer.get_transactions({ searchKey, cursor: tx.last_cursor })),
+      takeWhile((tx) => tx.objects.length > 0),
+      mergeMap((tx) => tx.objects),
+      mergeMap(async (o) => {
+        const txWithStatus = await rpc.getTransaction(o.tx_hash);
+        return {
+          info: o,
+          tx: txWithStatus,
+        };
+      }),
+      takeWhile((ckbTxInfo) => {
+        const firstOutputLockscript = ckbTxInfo.tx.transaction.outputs[0].lock;
+        return (
+          firstOutputLockscript.codeHash === committeeMultisigLockscript.code_hash &&
+          firstOutputLockscript.hashType === committeeMultisigLockscript.hash_type &&
+          firstOutputLockscript.args === committeeMultisigLockscript.args
+        );
+      }),
+      mergeMap(async (ckbTxInfo) => {
+        // tx.objects.map((o) => o.tx_hash)
+        const transaction = ckbTxInfo.tx.transaction;
+        const lockTx = await parseLockTx(transaction);
+        const { amount, recipientAddress, assetIdent, senderAddress } = lockTx!;
+        return {
+          amount: `0x${amount.toString(16)}`,
+          txId: transaction.hash,
+          sender: senderAddress,
+          token: assetIdent,
+          recipient: recipientAddress,
+          blockNumber: Number(ckbTxInfo.info.block_number),
+          blockHash: ckbTxInfo.tx.txStatus.blockHash!,
+        };
+      }),
+    );
+  }
+
+  observeUnlockRecord(filter: CKBUnlockFilter): Observable<CkbUnlockRecord> {
+    const blockRange: SearchKeyFilter['block_range'] = [
+      filter.fromBlock ? filter.fromBlock : '0x0',
+      filter.toBlock ? filter.toBlock : '0xffffffffffffffff', // u64::Max
+    ];
+    const committeeMultisigLockscript = parseAddress(getOmniLockMultisigAddress());
+    const searchKey: SearchKey = {
+      script_type: ScriptType.lock,
+      script: committeeMultisigLockscript,
+      filter: { block_range: blockRange },
+    };
+
+    const { rpc, indexer } = this.provider;
+
+    return from(indexer.get_transactions({ searchKey })).pipe(
+      expand((tx) => indexer.get_transactions({ searchKey, cursor: tx.last_cursor })),
+      takeWhile((tx) => tx.objects.length > 0),
+      mergeMap((tx) => tx.objects),
+      mergeMap(async (o) => {
+        const txWithStatus = await rpc.getTransaction(o.tx_hash);
+        const firstInputPreviousOutput = txWithStatus.transaction.inputs[0].previousOutput!;
+        const firstInputTxWithStatus = await rpc.getTransaction(firstInputPreviousOutput.txHash);
+        const firstInputCell = firstInputTxWithStatus.transaction.outputs[Number(firstInputPreviousOutput.index)];
+        return {
+          info: o,
+          tx: txWithStatus,
+          firstInputCell,
+        };
+      }),
+      rxFilter((ckbTxInfo) => {
+        const firstInputLockscript = ckbTxInfo.firstInputCell.lock;
+        return (
+          firstInputLockscript.codeHash === committeeMultisigLockscript.code_hash &&
+          firstInputLockscript.hashType === committeeMultisigLockscript.hash_type &&
+          firstInputLockscript.args === committeeMultisigLockscript.args
+        );
+      }),
+      mergeMap(async (ckbTxInfo) => {
+        const transaction = ckbTxInfo.tx.transaction;
+        const block = await rpc.getBlock(ckbTxInfo.tx.txStatus.blockHash!);
+        const unlockTx = await parseUnlockTx(
+          transaction,
+          Number(ckbTxInfo.info.block_number),
+          Number(block.header.timestamp),
+        );
+        return unlockTx;
+      }),
+      mergeMap((unlockTx) => unlockTx!.iCkbUnlocks),
+      mergeMap(async (iCkbUnlock) => {
+        const { id, xchain, assetIdent, amount, recipientAddress, udtExtraData, unlockTxHash } = iCkbUnlock!;
+        return {
+          txId: unlockTxHash!,
+          amount: `0x${BigInt(amount).toString(16)}`,
+          xchain,
+          recipient: recipientAddress,
+          fromTxId: id,
+          assetIdent,
+          udtExtraData,
+        };
+      }),
     );
   }
 }

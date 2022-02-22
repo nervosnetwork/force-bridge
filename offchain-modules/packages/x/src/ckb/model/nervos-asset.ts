@@ -9,6 +9,13 @@ export class NervosAsset {
     this.typescriptHash = typescriptHash;
   }
 
+  public static fromErc20Token(token: string): NervosAsset {
+    const whiteAssetList = ForceBridgeCore.config.eth.nervosAssetWhiteList;
+    const nervosAsset = whiteAssetList.find((asset) => asset.xchainTokenAddress === token);
+    if (!nervosAsset) throw new Error('asset not in nervos white list');
+    return new NervosAsset(nervosAsset.xchainTokenAddress);
+  }
+
   public getAssetInfo(xchain: ChainType): WhiteListNervosAsset | undefined {
     switch (xchain) {
       case ChainType.ETH: {

@@ -8,9 +8,10 @@
     "compile": "tsc -p tsconfig.build.json",
     "prepublishOnly": "yarn run build",
     "test": "yarn run build",
-    "codegen": "typechain --target=ethers-v5 --out-dir src/generated/contract ../x/src/xchain/eth/abi/ForceBridge.json",
-    "postinstall": "npm run codegen && npm run patch-typechain",
-    "patch-typechain": "node scripts/patch-typechain.js"
+    "codegen-forcebridge": "typechain --target=ethers-v5 --out-dir src/generated/contracts/ForceBridge ../x/src/xchain/eth/abi/ForceBridge.json",
+    "codegen-assetmanager": "typechain --target=ethers-v5 --out-dir src/generated/contracts/AssetManager ../x/src/xchain/eth/abi/AssetManager.json",
+    "patch-typechain": "node scripts/patch-typechain.js",
+    "postinstall": "npm run codegen-forcebridge && npm run codegen-assetmanager && npm run patch-typechain"
   },
   "dependencies": {
     "@force-bridge/ckb-indexer-client": "^0.0.15",

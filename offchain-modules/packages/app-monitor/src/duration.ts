@@ -15,10 +15,14 @@ export interface EthConfig {
   lastHandledBlock: number;
   matchCount: {
     lock: number;
+    mint: number;
+    burn: number;
     unlock: number;
   };
   pending: {
     locks: Map<string, EventItem>;
+    mints: Map<string, EventItem>;
+    burns: Map<string, EventItem>;
     unlocks: Map<string, EventItem>;
   };
 }
@@ -26,12 +30,16 @@ export interface EthConfig {
 export interface CkbConfig {
   lastHandledBlock: number;
   matchCount: {
-    burn: number;
+    lock: number;
     mint: number;
+    burn: number;
+    unlock: number;
   };
   pending: {
+    locks: Map<string, EventItem>;
     mints: Map<string, EventItem>;
     burns: Map<string, EventItem>;
+    unlocks: Map<string, EventItem>;
   };
 }
 
@@ -46,22 +54,30 @@ export function NewDurationCfg(): Duration {
       lastHandledBlock: ForceBridgeCore.config.eth.startBlockHeight,
       matchCount: {
         lock: 0,
+        mint: 0,
+        burn: 0,
         unlock: 0,
       },
       pending: {
         locks: new Map(),
+        mints: new Map(),
+        burns: new Map(),
         unlocks: new Map(),
       },
     },
     ckb: {
       lastHandledBlock: ForceBridgeCore.config.ckb.startBlockHeight,
       matchCount: {
+        lock: 0,
         mint: 0,
         burn: 0,
+        unlock: 0,
       },
       pending: {
+        locks: new Map(),
         mints: new Map(),
         burns: new Map(),
+        unlocks: new Map(),
       },
     },
   };

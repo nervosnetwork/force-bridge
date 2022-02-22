@@ -196,6 +196,7 @@ export interface feeAccounts {
 export interface monitorConfig {
   expiredTime: number;
   expiredCheckInterval: number;
+  overmintCheckInterval: number;
   discordWebHook: string;
   discordWebHookError?: string;
   scanStep: number;
