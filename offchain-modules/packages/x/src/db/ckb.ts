@@ -71,8 +71,8 @@ export class CkbDb implements IQuery {
     return await this.connection
       .getRepository(EthBurn)
       .createQueryBuilder('eth')
-      .leftJoinAndSelect('ckb_unlock', 'ckb', 'ckb.unique_id = eth.id')
-      .where('eth.recipient = :recipient ADN eth.xchain_token_id = :token', {
+      .leftJoinAndSelect('ckb_unlock', 'ckb', 'ckb.id = eth.unique_id')
+      .where('eth.recipient = :recipient AND eth.xchain_token_id = :token', {
         recipient: ckbRecipientAddress,
         token: xchainToken,
       })
@@ -110,8 +110,8 @@ export class CkbDb implements IQuery {
       })
       .select(
         `
-        ckb.sender as sender,
-        ckb.recipient as recipient,
+        ckb.sender_address as sender,
+        ckb.recipient_address as recipient,
         ckb.amount as lock_amount,
         eth.amount as mint_amount,
         ckb.ckb_tx_hash as lock_hash,
@@ -134,7 +134,7 @@ export class CkbDb implements IQuery {
     return await this.connection
       .getRepository(EthBurn)
       .createQueryBuilder('eth')
-      .leftJoinAndSelect('ckb_unlock', 'ckb', 'ckb.id=eth.uinque_id')
+      .leftJoinAndSelect('ckb_unlock', 'ckb', 'ckb.id=eth.unique_id')
       .where('eth.sender=:sender AND eth.xchain_token_id=:token', {
         sender: xchainSenderAddress,
         token: xchainToken,
@@ -145,15 +145,15 @@ export class CkbDb implements IQuery {
         eth.recipient as recipient,
         eth.amount as burn_amount,
         ckb.amount as unlock_amount,
-        eth.eth_tx_hash as burn_hash,
-        ckb.ckb_tx_hash as unlock_hash,
+        eth.burn_tx_hash as burn_hash,
+        ckb.unlock_tx_hash as unlock_hash,
         ckb.updated_at as unlock_time,
         eth.updated_at as burn_time,
         eth.confirm_number as burn_confirm_number,
         eth.confirm_status as burn_confirm_status,
         eth.xchain_token_id as asset,
         ckb.asset_ident as unlock_asset,
-        case when is_null(ckb.amount) then null else 'success' end as status,
+        case when isnull(ckb.amount) then null else 'success' end as status,
         '' as message,
         eth.bridge_fee as bridge_fee
         `,
@@ -430,13 +430,13 @@ export class CkbDb implements IQuery {
     });
   }
 
-  async setCollectorCkbUnlockToSuccess(ethTxHashes: string[]): Promise<void> {
+  async setCollectorCkbUnlockToSuccess(burnTxHashes: string[]): Promise<void> {
     await this.connection
       .getRepository(CollectorCkbUnlock)
       .createQueryBuilder()
       .update()
       .set({ status: 'success' })
-      .where({ burnTxHash: In(ethTxHashes) })
+      .where({ burnTxHash: In(burnTxHashes) })
       .execute();
   }
 
@@ -489,6 +489,14 @@ export class CkbDb implements IQuery {
         status: 'todo',
       },
       take,
+    });
+  }
+
+  async ckbLockedByTxHashes(hashes: string[]): Promise<CkbLock[]> {
+    return await this.connection.getRepository(CkbLock).find({
+      where: {
+        ckbTxHash: In(hashes),
+      },
     });
   }
 }

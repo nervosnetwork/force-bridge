@@ -62,6 +62,7 @@ export interface EthConfig {
   startBlockHeight: number;
   assetWhiteList: WhiteListEthAsset[];
   safeMultisignContractAddress: string;
+  safeMultisignContractNetworks?: ContractNetworksConfig;
   nervosAssetWhiteList: WhiteListNervosAsset[];
   lockNervosAssetFee: string; // bridge fee paid by CKB, unit: shannon
   burnNervosAssetFee: string; // bridge fee paid by ETH, unit: wei
@@ -160,7 +161,7 @@ export interface WhiteListEthAsset {
 }
 
 export interface WhiteListNervosAsset {
-  typescriptHash: Hash; // udt typescript hash, 0x0000000000000000000000000000000000000000000000000000000000000000 for CKB
+  typescriptHash: Hash; // udt typescript hash, 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff for CKB
   typescript?: Script; // udt typescript, undefined for CKB
   xchainTokenAddress: string; // image token address
   name: string;

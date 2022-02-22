@@ -71,8 +71,9 @@ export class EthDb implements IQuery {
 
   async succeedMint(records: EthMint[]): Promise<string[]> {
     const ids = records.map((r) => r.ckbTxHash);
-    await this.collectorEthMintRepository.update(ids, { status: 'success' });
-
+    if (ids.length > 0) {
+      await this.collectorEthMintRepository.update(ids, { status: 'success' });
+    }
     return ids;
   }
 
@@ -110,6 +111,12 @@ export class EthDb implements IQuery {
 
   async saveEthMint(record: EthMint): Promise<EthMint> {
     return await this.connection.getRepository(EthMint).save(record);
+  }
+
+  async createEthMint(records: IEthMint[]): Promise<void> {
+    await this.connection
+      .getRepository(EthMint)
+      .save(records.map((r) => this.connection.getRepository(EthMint).create(r)));
   }
 
   async saveCkbLock(record: CkbLock): Promise<CkbLock> {
@@ -391,10 +398,10 @@ export class EthDb implements IQuery {
     });
   }
 
-  async getEthBurnsByBurnTxHashes(burnTxHashes: string[]): Promise<EthBurn[]> {
+  async getEthBurnsByUniqueIds(uniqueIds: string[]): Promise<EthBurn[]> {
     return await this.connection.getRepository(EthBurn).find({
       where: {
-        burnTxHash: In(burnTxHashes),
+        uniqueId: In(uniqueIds),
       },
     });
   }

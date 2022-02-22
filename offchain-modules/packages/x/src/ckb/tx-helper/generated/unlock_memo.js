@@ -116,7 +116,43 @@ export function SerializeBytes(value) {
   return array.buffer;
 }
 
-export class BytesVec {
+export class BurnId {
+  constructor(reader, { validate = true } = {}) {
+    this.view = new DataView(assertArrayBuffer(reader));
+    if (validate) {
+      this.validate();
+    }
+  }
+
+  validate(compatible = false) {
+    const offsets = verifyAndExtractOffsets(this.view, 0, true);
+    new Bytes(this.view.buffer.slice(offsets[0], offsets[1]), { validate: false }).validate();
+    new Bytes(this.view.buffer.slice(offsets[1], offsets[2]), { validate: false }).validate();
+  }
+
+  getBurnTxHash() {
+    const start = 4;
+    const offset = this.view.getUint32(start, true);
+    const offset_end = this.view.getUint32(start + 4, true);
+    return new Bytes(this.view.buffer.slice(offset, offset_end), { validate: false });
+  }
+
+  getLogIndex() {
+    const start = 8;
+    const offset = this.view.getUint32(start, true);
+    const offset_end = this.view.byteLength;
+    return new Bytes(this.view.buffer.slice(offset, offset_end), { validate: false });
+  }
+}
+
+export function SerializeBurnId(value) {
+  const buffers = [];
+  buffers.push(SerializeBytes(value.burnTxHash));
+  buffers.push(SerializeBytes(value.logIndex));
+  return serializeTable(buffers);
+}
+
+export class BurnIds {
   constructor(reader, { validate = true } = {}) {
     this.view = new DataView(assertArrayBuffer(reader));
     if (validate) {
@@ -127,7 +163,7 @@ export class BytesVec {
   validate(compatible = false) {
     const offsets = verifyAndExtractOffsets(this.view, 0, true);
     for (let i = 0; i < offsets.length - 1; i++) {
-      new Bytes(this.view.buffer.slice(offsets[i], offsets[i + 1]), { validate: false }).validate();
+      new BurnId(this.view.buffer.slice(offsets[i], offsets[i + 1]), { validate: false }).validate();
     }
   }
 
@@ -146,12 +182,12 @@ export class BytesVec {
     if (i + 1 < this.length()) {
       offset_end = this.view.getUint32(start + 4, true);
     }
-    return new Bytes(this.view.buffer.slice(offset, offset_end), { validate: false });
+    return new BurnId(this.view.buffer.slice(offset, offset_end), { validate: false });
   }
 }
 
-export function SerializeBytesVec(value) {
-  return serializeTable(value.map(item => SerializeBytes(item)));
+export function SerializeBurnIds(value) {
+  return serializeTable(value.map(item => SerializeBurnId(item)));
 }
 
 export class UnlockMemo {
@@ -167,7 +203,7 @@ export class UnlockMemo {
     if (offsets[1] - offsets[0] !== 1) {
       throw new Error(`Invalid offset for xchain: ${offsets[0]} - ${offsets[1]}`)
     }
-    new BytesVec(this.view.buffer.slice(offsets[1], offsets[2]), { validate: false }).validate();
+    new BurnIds(this.view.buffer.slice(offsets[1], offsets[2]), { validate: false }).validate();
   }
 
   getXchain() {
@@ -181,7 +217,7 @@ export class UnlockMemo {
     const start = 8;
     const offset = this.view.getUint32(start, true);
     const offset_end = this.view.byteLength;
-    return new BytesVec(this.view.buffer.slice(offset, offset_end), { validate: false });
+    return new BurnIds(this.view.buffer.slice(offset, offset_end), { validate: false });
   }
 }
 
@@ -190,7 +226,7 @@ export function SerializeUnlockMemo(value) {
   const xchainView = new DataView(new ArrayBuffer(1));
   xchainView.setUint8(0, value.xchain);
   buffers.push(xchainView.buffer)
-  buffers.push(SerializeBytesVec(value.burnIds));
+  buffers.push(SerializeBurnIds(value.burnIds));
   return serializeTable(buffers);
 }
 

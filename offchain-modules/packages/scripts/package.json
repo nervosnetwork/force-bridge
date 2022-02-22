@@ -25,6 +25,7 @@
   },
   "version": "0.0.15",
   "devDependencies": {
-    "@types/shelljs": "^0.8.9"
+    "@types/shelljs": "^0.8.9",
+    "cross-env": "^7.0.3"
   }
 }

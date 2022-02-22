@@ -178,7 +178,9 @@ export async function startSigServer(configPath: string): Promise<void> {
   });
 
   server.addMethod('signSafeTx', async (params: collectSignaturesParams) => {
-    return await new EthMint(SigServer.ethDb, SigServer.signedDb, SigServer.keys['eth']).request(params);
+    return await new EthMint(SigServer.ethDb, SigServer.ckbDb, SigServer.signedDb, SigServer.keys['eth']).request(
+      params,
+    );
   });
 
   server.addMethod('status', async () => {

@@ -1,25 +1,30 @@
-import { Cell } from '@ckb-lumos/base';
+import { Cell, utils } from '@ckb-lumos/base';
 import { common } from '@ckb-lumos/common-scripts';
+import { getConfig } from '@ckb-lumos/config-manager';
 import { key } from '@ckb-lumos/hd';
 import {
-  parseAddress,
   objectToTransactionSkeleton,
+  parseAddress,
   TransactionSkeleton,
-  TransactionSkeletonType,
   TransactionSkeletonObject,
+  TransactionSkeletonType,
 } from '@ckb-lumos/helpers';
 import { BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
+import { getOmniLockMultisigAddress } from '@force-bridge/x/dist/ckb/tx-helper/multisig/omni-lock';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
+import { EthBurn } from '@force-bridge/x/dist/db/entity/EthBurn';
 import { EthLock } from '@force-bridge/x/dist/db/entity/EthLock';
 import { asserts, nonNullable } from '@force-bridge/x/dist/errors';
 import {
   ckbCollectSignaturesPayload,
-  ckbMintCollectSignaturesPayload,
   ckbCreateCellCollectSignaturesPayload,
+  ckbMintCollectSignaturesPayload,
   ckbUnlockCollectSignaturesPayload,
   collectSignaturesParams,
   mintRecord,
+  SigType,
+  unlockRecord,
 } from '@force-bridge/x/dist/multisig/multisig-mgr';
 import { verifyCollector } from '@force-bridge/x/dist/multisig/utils';
 import { compareCkbAddress } from '@force-bridge/x/dist/utils';
@@ -116,6 +121,23 @@ async function verifyDuplicateMintTx(
   return SigErrorOk;
 }
 
+async function verifyDuplicateUnlockTx(
+  pubKey: string,
+  unlockRecords: unlockRecord[],
+  _txSkeleton: TransactionSkeletonObject,
+): Promise<SigError> {
+  const refTxHashes = unlockRecords.map((unlockRecord) => {
+    return unlockRecord.id;
+  });
+
+  const unlocks = await SigServer.ckbDb.getCkbUnlockByIds(refTxHashes);
+  if (unlocks.length !== 0) {
+    return new SigError(SigErrorCode.TxCompleted);
+  }
+
+  return SigErrorOk;
+}
+
 async function verifyMintTx(
   pubKey: string,
   rawData: string,
@@ -185,13 +207,81 @@ async function verifyMintTx(
 }
 
 async function verifyUnlockTx(
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   pubKey: string,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   rawData: string,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   payload: ckbUnlockCollectSignaturesPayload,
 ): Promise<SigError> {
+  const omniLockMultisigScript = parseAddress(getOmniLockMultisigAddress());
+  const txSkeleton = payload.txSkeleton;
+  const sigData = txSkeleton.signingEntries[1].message;
+  if (rawData !== sigData) {
+    return new SigError(SigErrorCode.InvalidParams, `rawData:${rawData} doesn't match with:${sigData}`);
+  }
+
+  const unlockRecords = payload.unlockRecords;
+  asserts(unlockRecords);
+
+  let err = await verifyDuplicateUnlockTx(pubKey, unlockRecords, txSkeleton);
+  if (err.Code !== SigErrorCode.Ok) {
+    return err;
+  }
+
+  const sudtTypescript = ForceBridgeCore.config.ckb.deps.sudtType.script;
+  if (
+    txSkeleton.outputs.some(
+      (output) => output.cell_output.type && output.cell_output.type.code_hash !== sudtTypescript.codeHash,
+    )
+  ) {
+    return new SigError(SigErrorCode.InvalidParams, `unlock recode outputs contains non-sudt typescript`);
+  }
+  const omniLockHash = utils.computeScriptHash(omniLockMultisigScript);
+  const omniOutputIndex = txSkeleton.outputs.findIndex((cell) => {
+    const cellLockHash = utils.computeScriptHash(cell.cell_output.lock);
+    return cellLockHash === omniLockHash;
+  });
+  const unlockCells = txSkeleton.outputs.slice(0, omniOutputIndex);
+  if (unlockRecords.length !== unlockCells.length) {
+    return new SigError(
+      SigErrorCode.InvalidParams,
+      `unlok recode length:${unlockRecords.length} doesn't match with:${unlockCells.length}`,
+    );
+  }
+
+  const typeArgs = unlockCells.map((output) => {
+    const typescript = output.cell_output.type;
+    if (typescript) {
+      return ForceBridgeCore.ckb.utils.scriptToHash({
+        codeHash: typescript.code_hash,
+        hashType: typescript.hash_type,
+        args: typescript.args,
+      });
+    } else {
+      return '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+    }
+  });
+
+  if (new Set(typeArgs).size > 1) {
+    return new SigError(SigErrorCode.InvalidParams, `unlock recode outputs contains not single typescript`);
+  }
+
+  for (let i = 0; i < unlockRecords.length; i++) {
+    const unlockRecord = unlockRecords[i];
+    if (unlockRecord.xchain !== ChainType.ETH) {
+      //those chains doesn't verify now
+      return new SigError(SigErrorCode.InvalidRecord, `unsupported xchain ${unlockRecord.xchain}`);
+    }
+
+    const output = unlockCells[i];
+    err = await verifyEthForUnlockTx(unlockRecord, output);
+    if (err.Code !== SigErrorCode.Ok) {
+      return err;
+    }
+  }
+  err = await verifyEthForUnlockRecords(unlockRecords);
+  if (err.Code !== SigErrorCode.Ok) {
+    return err;
+  }
+
   return SigErrorOk;
 }
 
@@ -229,6 +319,55 @@ async function verifyEthMintRecords(records: mintRecord[]): Promise<SigError> {
       return new SigError(
         SigErrorCode.InvalidRecord,
         `invalid mint amount ${record.amount}, greater than lock amount ${ethLock.amount}`,
+      );
+    }
+  }
+  return SigErrorOk;
+}
+
+async function verifyEthForUnlockRecords(records: unlockRecord[]): Promise<SigError> {
+  const ids = records.map((record) => record.id);
+  const ethBurns = await SigServer.ethDb.getEthBurnsByUniqueIds(ids);
+  const ethBurnMap: { [k: string]: EthBurn } = Object.fromEntries(
+    ethBurns.map((ethBurn) => [ethBurn.burnTxHash, ethBurn]),
+  );
+
+  for (const record of records) {
+    const id = record.id;
+    if (!id || id.indexOf('-') < 0) {
+      return new SigError(SigErrorCode.InvalidRecord, `some burnId invalid :${id}`);
+    }
+    const burnHashSeparatorIndex = id.indexOf('-');
+    const burnTxHash = id.substring(0, burnHashSeparatorIndex);
+    if (burnTxHash !== record.burnTxHash) {
+      return new SigError(
+        SigErrorCode.InvalidRecord,
+        `unequal burnTxHash id: ${record.id}, ${burnTxHash} !== ${record.burnTxHash}`,
+      );
+    }
+    const ethBurn = ethBurnMap[burnTxHash];
+    if (!ethBurn) {
+      return new SigError(SigErrorCode.TxNotFound, `cannot found ethereum burn tx by txHash: ${burnTxHash}, id: ${id}`);
+    }
+    if (ethBurn.confirmStatus !== 'confirmed') {
+      return new SigError(SigErrorCode.TxUnconfirmed, `ethereumForUnlockTx:${ethBurn.burnTxHash} doesn't confirmed`);
+    }
+    if (record.recipientAddress !== ethBurn.recipient) {
+      return new SigError(
+        SigErrorCode.InvalidRecord,
+        `recipientAddress: ${record.recipientAddress} !== recipient: ${ethBurn.recipient}`,
+      );
+    }
+    if (record.assetIdent !== ethBurn.nervosAssetId) {
+      return new SigError(
+        SigErrorCode.InvalidRecord,
+        `ethereumForUnlockTxHash:${ethBurn.burnTxHash} assetIdent:${record.assetIdent} != ${ethBurn.nervosAssetId}`,
+      );
+    }
+    if (BigInt(record.amount) > BigInt(ethBurn.amount)) {
+      return new SigError(
+        SigErrorCode.InvalidRecord,
+        `invalid unlock amount ${record.amount}, greater than lock amount ${ethBurn.amount}`,
       );
     }
   }
@@ -291,7 +430,66 @@ async function verifyEthMintTx(mintRecord: mintRecord, output: Cell): Promise<Si
   return SigErrorOk;
 }
 
-function verifyTxSkeleton(txSkeleton: TransactionSkeletonType): SigError {
+async function verifyEthForUnlockTx(unlockRecord: unlockRecord, output: Cell): Promise<SigError> {
+  const lockScript = output.cell_output.lock;
+  const recipientLockscript = parseAddress(unlockRecord.recipientAddress);
+  if (lockScript.code_hash !== recipientLockscript.code_hash) {
+    return new SigError(
+      SigErrorCode.InvalidRecord,
+      `lockScript code_hash:${lockScript.code_hash} doesn't match with:${recipientLockscript.code_hash}`,
+    );
+  }
+  if (lockScript.hash_type !== recipientLockscript.hash_type) {
+    return new SigError(
+      SigErrorCode.InvalidRecord,
+      `lockScript hash_type:${lockScript.hash_type} doesn't match with:${recipientLockscript.hash_type}`,
+    );
+  }
+  if (lockScript.args !== recipientLockscript.args) {
+    return new SigError(
+      SigErrorCode.InvalidRecord,
+      `lockScript args:${lockScript.args} doesn't match with:${recipientLockscript.args}`,
+    );
+  }
+
+  const typeScript = output.cell_output.type;
+  const sudtTypescript = ForceBridgeCore.config.ckb.deps.sudtType.script;
+  if (typeScript) {
+    // verify sudt typescriptHash
+    const typescriptHash = ForceBridgeCore.ckb.utils.scriptToHash({
+      codeHash: typeScript.code_hash,
+      hashType: typeScript.hash_type,
+      args: typeScript.args,
+    });
+    if (typescriptHash !== unlockRecord.assetIdent) {
+      return new SigError(
+        SigErrorCode.InvalidRecord,
+        `typescript hash_type:${typeScript.hash_type} doesn't match with:${sudtTypescript.hashType}`,
+      );
+    }
+    const data = utils.toBigUInt128LE(BigInt(unlockRecord.amount));
+    if (data !== output.data) {
+      return new SigError(SigErrorCode.InvalidRecord, `data:${output.data} doesn't with ${data}`);
+    }
+  } else {
+    // verify ckb typescriptHash
+    if ('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff' !== unlockRecord.assetIdent) {
+      return new SigError(
+        SigErrorCode.InvalidRecord,
+        `typescript hash_type: 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff doesn't match with:${sudtTypescript.hashType}`,
+      );
+    }
+    if (BigInt(unlockRecord.amount) !== BigInt(output.cell_output.capacity)) {
+      return new SigError(
+        SigErrorCode.InvalidRecord,
+        `capacity: ${unlockRecord.amount} doesn't with ${output.cell_output.capacity}`,
+      );
+    }
+  }
+  return SigErrorOk;
+}
+
+function verifyTxSkeleton(txSkeleton: TransactionSkeletonType, sigType: SigType): SigError {
   let newTxSkeleton = TransactionSkeleton({
     cellProvider: txSkeleton.get('cellProvider'),
     cellDeps: txSkeleton.get('cellDeps'),
@@ -302,7 +500,28 @@ function verifyTxSkeleton(txSkeleton: TransactionSkeletonType): SigError {
     fixedEntries: txSkeleton.get('fixedEntries'),
     inputSinces: txSkeleton.get('inputSinces'),
   });
-  newTxSkeleton = common.prepareSigningEntries(newTxSkeleton);
+  if (sigType === 'unlock') {
+    // Lumos not support omni-lock, so we use a tricky way to workaround
+    const lumosConfig = getConfig();
+    const trickyLumosConfig = {
+      PREFIX: lumosConfig.PREFIX,
+      SCRIPTS: {
+        SECP256K1_BLAKE160_MULTISIG: {
+          CODE_HASH: nonNullable(ForceBridgeCore.config.ckb.deps.omniLock?.script.codeHash),
+          HASH_TYPE: nonNullable(ForceBridgeCore.config.ckb.deps.omniLock?.script.hashType) as 'type' | 'data',
+          TX_HASH: nonNullable(ForceBridgeCore.config.ckb.deps.omniLock?.cellDep.outPoint.txHash),
+          INDEX: nonNullable(ForceBridgeCore.config.ckb.deps.omniLock?.cellDep.outPoint.index),
+          DEP_TYPE: nonNullable(ForceBridgeCore.config.ckb.deps.omniLock?.cellDep.depType),
+        },
+        SECP256K1_BLAKE160: lumosConfig.SCRIPTS.SECP256K1_BLAKE160,
+      },
+    };
+    newTxSkeleton = common.prepareSigningEntries(newTxSkeleton, {
+      config: trickyLumosConfig,
+    });
+  } else {
+    newTxSkeleton = common.prepareSigningEntries(newTxSkeleton);
+  }
   const newSigningEntries = newTxSkeleton.get('signingEntries');
 
   if (newSigningEntries.size !== txSkeleton.get('signingEntries').size) {
@@ -354,7 +573,7 @@ export async function signCkbTx(params: collectSignaturesParams): Promise<SigRes
   const pubKey = ForceBridgeCore.ckb.utils.privateKeyToPublicKey(privKey);
   const payload = params.payload as ckbCollectSignaturesPayload;
   const txSkeleton = objectToTransactionSkeleton(payload.txSkeleton);
-  let err: SigError = verifyTxSkeleton(txSkeleton);
+  let err: SigError = verifyTxSkeleton(txSkeleton, payload.sigType);
   if (err.Code !== SigErrorCode.Ok) {
     return new SigResponse(err);
   }
@@ -380,7 +599,7 @@ export async function signCkbTx(params: collectSignaturesParams): Promise<SigRes
       if (err.Code !== SigErrorCode.Ok) {
         return new SigResponse(err);
       }
-      message = txSkeleton.signingEntries.get(0)!.message;
+      message = txSkeleton.signingEntries.filter((v) => v.index === 0).get(0)!.message;
       break;
     default:
       return SigResponse.fromSigError(SigErrorCode.InvalidParams, `invalid sigType:${payload.sigType}`);

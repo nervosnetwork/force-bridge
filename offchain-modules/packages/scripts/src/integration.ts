@@ -6,9 +6,12 @@ import { OmniLockCellConfig, OwnerCellConfig } from '@force-bridge/x/dist/ckb/tx
 import { Config, WhiteListEthAsset, WhiteListNervosAsset, CkbDeps } from '@force-bridge/x/dist/config';
 import { asyncSleep, privateKeyToCkbPubkeyHash, writeJsonToFile } from '@force-bridge/x/dist/utils';
 import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
+import { ContractNetworksConfig } from '@gnosis.pm/safe-core-sdk';
 import * as lodash from 'lodash';
 import * as shelljs from 'shelljs';
 import { execShellCmd, pathFromProjectRoot } from './utils';
+import { rpcTest as ckbRpcTest } from './utils/ckb-rpc-ci';
+import { ckbBatchTest } from './utils/ckb_batch_test';
 import { deployDev } from './utils/deploy';
 import { ethBatchTest } from './utils/eth_batch_test';
 import { genRandomVerifierConfig } from './utils/generate';
@@ -66,6 +69,7 @@ async function generateConfig(
   password: string,
   assetManagerContractAddress: string,
   safeAddress: string,
+  safeNetworks?: ContractNetworksConfig,
   sudtSize = 200,
 ) {
   const baseConfig: Config = lodash.cloneDeep(initConfig);
@@ -78,6 +82,9 @@ async function generateConfig(
   baseConfig.ckb.startBlockHeight = ckbStartHeight;
   baseConfig.eth.startBlockHeight = ethStartHeight;
   baseConfig.eth.safeMultisignContractAddress = safeAddress;
+  baseConfig.eth.safeMultisignContractNetworks = safeNetworks;
+  baseConfig.eth.lockNervosAssetFee = '1000000000000';
+  baseConfig.eth.burnNervosAssetFee = '0';
   // collector
   const collectorConfig: Config = lodash.cloneDeep(baseConfig);
   collectorConfig.common.role = 'collector';
@@ -172,12 +179,12 @@ async function startVerifierService(
 ) {
   for (let i = 1; i <= MULTISIG_NUMBER; i++) {
     await execShellCmd(
-      `FORCE_BRIDGE_KEYSTORE_PASSWORD=${FORCE_BRIDGE_KEYSTORE_PASSWORD} ${forcecli} verifier -cfg ${configPath}/verifier${i}/force_bridge.json`,
+      `cross-env FORCE_BRIDGE_KEYSTORE_PASSWORD=${FORCE_BRIDGE_KEYSTORE_PASSWORD} ${forcecli} verifier -cfg ${configPath}/verifier${i}/force_bridge.json`,
       false,
     );
   }
   await execShellCmd(
-    `FORCE_BRIDGE_KEYSTORE_PASSWORD=${FORCE_BRIDGE_KEYSTORE_PASSWORD} ${forcecli} rpc -cfg ${path.join(
+    `cross-env FORCE_BRIDGE_KEYSTORE_PASSWORD=${FORCE_BRIDGE_KEYSTORE_PASSWORD} ${forcecli} rpc -cfg ${path.join(
       configPath,
       'watcher/force_bridge.json',
     )}`,
@@ -187,7 +194,7 @@ async function startVerifierService(
 
 async function startCollectorService(FORCE_BRIDGE_KEYSTORE_PASSWORD: string, forcecli: string, configPath: string) {
   await execShellCmd(
-    `FORCE_BRIDGE_KEYSTORE_PASSWORD=${FORCE_BRIDGE_KEYSTORE_PASSWORD} ${forcecli} collector -cfg ${configPath}/collector/force_bridge.json`,
+    `cross-env FORCE_BRIDGE_KEYSTORE_PASSWORD=${FORCE_BRIDGE_KEYSTORE_PASSWORD} ${forcecli} collector -cfg ${configPath}/collector/force_bridge.json`,
     false,
   );
 }
@@ -292,6 +299,9 @@ async function main() {
   const ETH_TEST_PRIVKEY = '0x719e94ec5d2ecef67b5878503ffd6e1e0e2fe7a52ddd55c436878cb4d52d376d';
   const CKB_TEST_PRIVKEY = '0xa6b8e0cbadda5c0d91cf82d1e8d8120b755aa06bc49030ca6e8392458c65fc80';
 
+  const ETH_TEST_PRIVKEY_2 = '0x627ed509aa9ef55858d01453c62f44287f639a4fa5a444af150f333b6010a3b6';
+  const CKB_TEST_PRIVKEY_2 = '0x13b08bb054d5dd04013156dced8ba2ce4d8cc5973e10d905a228ea1abc267e60';
+
   const MULTISIG_NUMBER = 2;
   const MULTISIG_THRESHOLD = 2;
   const EXTRA_MULTISIG_NUMBER = 3;
@@ -352,6 +362,7 @@ async function main() {
     ethStartHeight,
     assetManagerContractAddress,
     safeAddress,
+    safeNetworks,
   } = await deployDev(
     ETH_RPC_URL,
     CKB_RPC_URL,
@@ -387,6 +398,7 @@ async function main() {
     FORCE_BRIDGE_KEYSTORE_PASSWORD,
     assetManagerContractAddress,
     safeAddress,
+    safeNetworks,
   );
   await handleDb('drop', MULTISIG_NUMBER + EXTRA_MULTISIG_NUMBER);
   await handleDb('create', MULTISIG_NUMBER + EXTRA_MULTISIG_NUMBER);
@@ -396,19 +408,51 @@ async function main() {
     configPath,
     MULTISIG_NUMBER + EXTRA_MULTISIG_NUMBER,
   );
-  const command = `FORCE_BRIDGE_KEYSTORE_PASSWORD=${FORCE_BRIDGE_KEYSTORE_PASSWORD} ${forcecli} collector -cfg ${configPath}/collector/force_bridge.json`;
-  await asyncSleep(60000);
+  const command = `cross-env FORCE_BRIDGE_KEYSTORE_PASSWORD=${FORCE_BRIDGE_KEYSTORE_PASSWORD} ${forcecli} collector -cfg ${configPath}/collector/force_bridge.json`;
+  await asyncSleep(120000);
   const collectorProcess = shelljs.exec(command, { async: true });
-  await ethBatchTest(
+  await ethereumIntegration(
     ETH_TEST_PRIVKEY,
     CKB_TEST_PRIVKEY,
     ETH_RPC_URL,
     CKB_RPC_URL,
     CKB_INDEXER_URL,
     FORCE_BRIDGE_URL,
-    3,
+    bridgeEthAddress,
   );
-  await rpcTest(FORCE_BRIDGE_URL, CKB_RPC_URL, ETH_RPC_URL, CKB_TEST_PRIVKEY, ETH_TEST_PRIVKEY, bridgeEthAddress);
+  await nervosIntegration(
+    ETH_TEST_PRIVKEY_2,
+    CKB_TEST_PRIVKEY_2,
+    ETH_RPC_URL,
+    CKB_RPC_URL,
+    CKB_INDEXER_URL,
+    FORCE_BRIDGE_URL,
+    bridgeEthAddress,
+    nervosAssetWhiteList,
+  );
+  /* TODO
+  await Promise.all([
+    ethereumIntegration(
+      ETH_TEST_PRIVKEY,
+      CKB_TEST_PRIVKEY,
+      ETH_RPC_URL,
+      CKB_RPC_URL,
+      CKB_INDEXER_URL,
+      FORCE_BRIDGE_URL,
+      bridgeEthAddress,
+    ),
+    nervosIntegration(
+      ETH_TEST_PRIVKEY_2,
+      CKB_TEST_PRIVKEY_2,
+      ETH_RPC_URL,
+      CKB_RPC_URL,
+      CKB_INDEXER_URL,
+      FORCE_BRIDGE_URL,
+      bridgeEthAddress,
+      nervosAssetWhiteList,
+    ),
+  ]);
+   */
   logger.info('integration test pass!');
   // only test change validator when the env is set
   if (!process.env.TEST_CHANGE_VALIDATOR) {
@@ -426,6 +470,39 @@ async function main() {
   );
   await asyncSleep(60000);
   await startCollectorService(FORCE_BRIDGE_KEYSTORE_PASSWORD, forcecli, configPath);
+  await Promise.all([
+    ethereumIntegration(
+      ETH_TEST_PRIVKEY,
+      CKB_TEST_PRIVKEY,
+      ETH_RPC_URL,
+      CKB_RPC_URL,
+      CKB_INDEXER_URL,
+      FORCE_BRIDGE_URL,
+      bridgeEthAddress,
+    ),
+    nervosIntegration(
+      ETH_TEST_PRIVKEY_2,
+      CKB_TEST_PRIVKEY_2,
+      ETH_RPC_URL,
+      CKB_RPC_URL,
+      CKB_INDEXER_URL,
+      FORCE_BRIDGE_URL,
+      bridgeEthAddress,
+      nervosAssetWhiteList,
+    ),
+  ]);
+  logger.info('change validator test pass!');
+}
+
+async function ethereumIntegration(
+  ETH_TEST_PRIVKEY: string,
+  CKB_TEST_PRIVKEY: string,
+  ETH_RPC_URL: string,
+  CKB_RPC_URL: string,
+  CKB_INDEXER_URL: string,
+  FORCE_BRIDGE_URL: string,
+  bridgeEthAddress: string,
+) {
   await ethBatchTest(
     ETH_TEST_PRIVKEY,
     CKB_TEST_PRIVKEY,
@@ -436,7 +513,29 @@ async function main() {
     3,
   );
   await rpcTest(FORCE_BRIDGE_URL, CKB_RPC_URL, ETH_RPC_URL, CKB_TEST_PRIVKEY, ETH_TEST_PRIVKEY, bridgeEthAddress);
-  logger.info('change validator test pass!');
+}
+
+async function nervosIntegration(
+  ETH_TEST_PRIVKEY: string,
+  CKB_TEST_PRIVKEY: string,
+  ETH_RPC_URL: string,
+  CKB_RPC_URL: string,
+  CKB_INDEXER_URL: string,
+  FORCE_BRIDGE_URL: string,
+  bridgeEthAddress: string,
+  nervosAssetWhiteList: WhiteListNervosAsset[],
+) {
+  await ckbBatchTest(
+    ETH_TEST_PRIVKEY,
+    CKB_TEST_PRIVKEY,
+    ETH_RPC_URL,
+    CKB_RPC_URL,
+    CKB_INDEXER_URL,
+    FORCE_BRIDGE_URL,
+    1,
+    nervosAssetWhiteList,
+  );
+  await ckbRpcTest(FORCE_BRIDGE_URL, CKB_RPC_URL, ETH_RPC_URL, CKB_TEST_PRIVKEY, ETH_TEST_PRIVKEY, bridgeEthAddress);
 }
 
 main()

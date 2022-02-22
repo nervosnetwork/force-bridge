@@ -4,7 +4,7 @@ import { TransferOutSwitch } from '../audit/switch';
 import { ChainType, EthAsset } from '../ckb/model/asset';
 import { forceBridgeRole } from '../config';
 import { ForceBridgeCore } from '../core';
-import { EthDb, KVDb, BridgeFeeDB } from '../db';
+import { EthDb, CkbDb, KVDb, BridgeFeeDB } from '../db';
 import { CollectorEthMint } from '../db/entity/EthMint';
 import { EthUnlockStatus } from '../db/entity/EthUnlock';
 import { EthUnlock, IEthUnlock } from '../db/model';
@@ -40,6 +40,7 @@ export class EthHandler {
 
   constructor(
     private ethDb: EthDb,
+    private ckbDb: CkbDb,
     private feeDb: BridgeFeeDB,
     private kvDb: KVDb,
     private ethChain: EthChain,
@@ -174,7 +175,7 @@ export class EthHandler {
         logger.info(
           `EthHandler watchMintEvents receiveLog blockHeight:${log.blockNumber} blockHash:${log.blockHash} txHash:${log.transactionHash} amount:${parsedLog.args.amount} asset:${parsedLog.args.assetId} recipient:${parsedLog.args.to} ckbTxHash:${parsedLog.args.lockId}`,
         );
-        await MintHandlerFactory.fromRole(this.role, this.ethDb, this.ethChain)?.handle(log, parsedLog);
+        await MintHandlerFactory.fromRole(this.role, this.ethDb, this.ckbDb, this.ethChain)?.handle(log, parsedLog);
         break;
       default:
         logger.info(`not handled log type ${parsedLog.name}, log: ${JSON.stringify(log)}`);

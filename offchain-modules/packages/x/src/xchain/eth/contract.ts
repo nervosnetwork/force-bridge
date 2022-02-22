@@ -1,5 +1,6 @@
 import Safe, { EthersAdapter } from '@gnosis.pm/safe-core-sdk';
 import { SafeSignature, SafeTransaction } from '@gnosis.pm/safe-core-sdk-types';
+import EthSignSignature from '@gnosis.pm/safe-core-sdk/dist/src/utils/signatures/SafeSignature';
 import { BigNumber, ethers } from 'ethers';
 import { Interface, LogDescription } from 'ethers/lib/utils';
 import { EthConfig, forceBridgeRole } from '../../config';
@@ -13,12 +14,12 @@ import { abi as asAbi } from './abi/AssetManager.json';
 import { abi } from './abi/ForceBridge.json';
 import { buildSigRawData } from './utils';
 
-export type Log = Parameters<Interface['parseLog']>[0] & {
-  transactionHash: string;
-  blockHash: string;
-  blockNumber: number;
-  logIndex: number;
-};
+export type Log = ethers.providers.Log; // Parameters<Interface['parseLog']>[0] & {
+// transactionHash: string;
+// blockHash: string;
+// blockNumber: number;
+// logIndex: number;
+// };
 export type ParsedLog = ReturnType<Interface['parseLog']>;
 export type HandleLogFn = (log: Log, parsedLog: ParsedLog) => Promise<void> | void;
 
@@ -89,8 +90,13 @@ export class EthChain {
     switch (tx.to) {
       case this.bridgeContractAddr:
         return this.iface.parseLog(log);
-      case this.assetManagerContract.address:
+      case ForceBridgeCore.config.eth.assetManagerContractAddress:
         return this.asIface.parseLog(log);
+      case ForceBridgeCore.config.eth.safeMultisignContractAddress:
+        if (log.address === ForceBridgeCore.config.eth.assetManagerContractAddress) {
+          return this.asIface.parseLog(log);
+        }
+        return null;
       default:
         return null;
     }
@@ -166,7 +172,12 @@ export class EthChain {
       address: ForceBridgeCore.config.eth.contractAddress,
       toBlock: toBlock,
     });
-    return logs;
+    const assetManagerLogs: Log[] = await this.provider.getLogs({
+      fromBlock: fromBlock,
+      address: ForceBridgeCore.config.eth.assetManagerContractAddress,
+      toBlock: toBlock,
+    });
+    return logs.concat(assetManagerLogs);
   }
 
   async getLockLogs(
@@ -247,6 +258,7 @@ export class EthChain {
       const safe = await Safe.create({
         ethAdapter: new EthersAdapter({ ethers, signer: this.wallet }),
         safeAddress: this.config.safeMultisignContractAddress,
+        contractNetworks: this.config.safeMultisignContractNetworks,
       });
       const partialTx = {
         to: this.assetManager.address,
@@ -269,7 +281,7 @@ export class EthChain {
       }
 
       for (const signature of signatures) {
-        tx.addSignature(signature);
+        tx.addSignature(new EthSignSignature(signature.signer, signature.data));
       }
       const response = await safe.executeTransaction(tx);
       logger.info(`eth sendMintTxs finish. hash:${response.hash}`);
@@ -281,9 +293,10 @@ export class EthChain {
   }
 
   async signMintTx(tx: SafeTransaction, safe: Safe, records: IEthMint[]): Promise<SafeSignature[] | boolean> {
-    const rawData = buildSigRawData('', '', records, tx.data.nonce);
+    // const rawData = buildSigRawData('', '0x', records, tx.data.nonce);
     const sigs = await this.multisigMgr.collectSignatures({
-      rawData: rawData,
+      requestMethod: 'signSafeTx',
+      rawData: '',
       payload: {
         tx: tx,
         mintRecords: records.map((r) => {
@@ -301,7 +314,13 @@ export class EthChain {
       return sigs;
     }
 
-    return sigs.map((s) => JSON.parse(s) as SafeSignature);
+    return sigs.map((s) => {
+      if (typeof s === 'object') {
+        return JSON.parse(JSON.stringify(s)) as SafeSignature;
+      } else {
+        return JSON.parse(s) as SafeSignature;
+      }
+    });
   }
 
   async sendUnlockTxs(records: IEthUnlock[]): Promise<ethers.providers.TransactionResponse | boolean | Error> {

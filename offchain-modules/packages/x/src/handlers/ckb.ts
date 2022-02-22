@@ -20,7 +20,7 @@ import { ForceBridgeLockscriptArgs } from '../ckb/tx-helper/generated/force_brid
 import { LockMemo } from '../ckb/tx-helper/generated/lock_memo';
 import { MintWitness } from '../ckb/tx-helper/generated/mint_witness';
 import { SerializeRcLockWitnessLock } from '../ckb/tx-helper/generated/omni_lock';
-import { BytesVec, UnlockMemo } from '../ckb/tx-helper/generated/unlock_memo';
+import { BurnIds, UnlockMemo } from '../ckb/tx-helper/generated/unlock_memo';
 import { CkbTxGenerator, MintAssetRecord } from '../ckb/tx-helper/generator';
 import { GetTransactionsResult, ScriptType, SearchKey } from '../ckb/tx-helper/indexer';
 import { getOwnerTypeHash } from '../ckb/tx-helper/multisig/multisig_helper';
@@ -442,7 +442,10 @@ export class CkbHandler {
     const confirmed = confirmedNumber >= ForceBridgeCore.config.ckb.confirmNumber;
     const confirmStatus = confirmed ? 'confirmed' : 'unconfirmed';
     const block = await this.ckb.rpc.getBlock(txInfo.tx.txStatus.blockHash!);
-    logger.info(`handle ckb lock tx ${txHash}, confirmed number: ${confirmedNumber}, confirmed: ${confirmed}`);
+    const blockTimestamp = Number(block.header.timestamp);
+    logger.info(
+      `handle ckb lock tx ${txHash}, confirmed number: ${confirmedNumber}, confirmed: ${confirmed}, blockTimestamp: ${blockTimestamp}`,
+    );
     // create new CkbLock record
     if (records.length === 0) {
       logger.info(
@@ -459,7 +462,7 @@ export class CkbHandler {
           bridgeFee: `0x${bridgeFee.toString(16)}`,
           recipientAddress,
           blockNumber,
-          blockTimestamp: Number(block.header.timestamp),
+          blockTimestamp,
           confirmNumber: confirmedNumber,
           confirmStatus,
         },
@@ -477,7 +480,7 @@ export class CkbHandler {
       await this.db.updateLockConfirmNumber([{ ckbTxHash, confirmedNumber, confirmStatus }]);
       logger.info(`update lock record ${txHash} status, confirmed number: ${confirmedNumber}, status: ${confirmed}`);
     }
-    if (assetIdent == '0x0000000000000000000000000000000000000000000000000000000000000000') {
+    if (assetIdent == '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff') {
       const ethMints = await this.db.getEthMintByCkbTxHashes([tx.hash]);
       if (ethMints && ethMints.length === 1) {
         const amountFromEthMint = BigInt(ethMints[0].amount);
@@ -489,7 +492,9 @@ export class CkbHandler {
           },
         ]);
         logger.info(
-          `get EthMint when check ckb lock ethMints for update ckb lock, records: ${records}, tx: ${tx}, bridgeFee: ${ethMints}`,
+          `get EthMint when check ckb lock ethMints for update ckb lock, records: ${JSON.stringify(
+            records,
+          )}, tx: ${JSON.stringify(tx)}, ethMints: ${JSON.stringify(ethMints)}`,
         );
       }
     }
@@ -510,7 +515,7 @@ export class CkbHandler {
       }
       const nervosAsset = new NervosAsset(assetIdent).getAssetInfo(xchain);
       let mintAmount: bigint;
-      if (assetIdent == '0x0000000000000000000000000000000000000000000000000000000000000000') {
+      if (assetIdent == '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff') {
         const bridgeFeeFromConfig = BigInt(ForceBridgeCore.config.eth.lockNervosAssetFee);
         mintAmount = BigInt(ckbLock.amount) - bridgeFeeFromConfig;
       } else {
@@ -555,7 +560,7 @@ export class CkbHandler {
         if (this.role === 'collector') {
           await Promise.all(
             iCkbUnlocks.map((iCkbUnlock) =>
-              this.db.updateCollectorUnlockStatus(iCkbUnlock.burnTxHash, iCkbUnlock.blockNumber, 'success'),
+              this.db.updateCollectorUnlockStatus(iCkbUnlock.burnTxHash, iCkbUnlock.blockNumber!, 'success'),
             ),
           );
         }
@@ -1058,7 +1063,7 @@ export class CkbHandler {
         const { message: collectorMessageToSign } = nonNullable(
           txSkeleton
             .get('signingEntries')
-            .filter((value) => value.index === 1)
+            .filter((value) => value.index !== 0)
             .get(0),
         );
         logger.info(`collectorMessageToSign: ${collectorMessageToSign}`);
@@ -1084,7 +1089,7 @@ export class CkbHandler {
         });
 
         const transaction = createTransactionFromSkeleton(signedTxSkeleton);
-        const txHash = await this.rpc.send_transaction(transaction);
+        const txHash = await this.rpc.send_transaction(transaction, 'passthrough');
         const txStatus = await this.waitUntilCommitted(txHash, 200);
         if (txStatus && txStatus.txStatus.status === 'committed') {
           const unlockTokens: txTokenInfo[] = [];
@@ -1132,12 +1137,14 @@ export class CkbHandler {
     }
     const assetIdent = latestCollectorCkbToUnlock.assetIdent;
     const toUnlockRecords = await this.db.getCollectorCkbUnlockRecordsToUnlockByAssetIdent(assetIdent, take);
-    const unlockedRecords = (await this.db.getCkbUnlockByBurnTxHashes(toUnlockRecords.map((r) => r.burnTxHash))).map(
-      (r) => r.burnTxHash,
-    );
-    if (unlockedRecords.length > 0) {
-      await this.db.setCollectorCkbUnlockToSuccess(unlockedRecords);
-      return toUnlockRecords.filter((r) => unlockedRecords.indexOf(r.burnTxHash) < 0);
+    const unlockedRecordsBurnTxHashes = (
+      await this.db.getCkbUnlockByBurnTxHashes(toUnlockRecords.map((r) => r.burnTxHash))
+    )
+      .filter((r) => r.unlockTxHash)
+      .map((r) => r.burnTxHash);
+    if (unlockedRecordsBurnTxHashes.length > 0) {
+      await this.db.setCollectorCkbUnlockToSuccess(unlockedRecordsBurnTxHashes);
+      return toUnlockRecords.filter((r) => unlockedRecordsBurnTxHashes.indexOf(r.burnTxHash) < 0);
     } else {
       return toUnlockRecords;
     }
@@ -1262,7 +1269,7 @@ export class CkbHandler {
     } else if (!recipientTypescript) {
       // lock ckb
       amount = committeeMultisigCellCapacity;
-      assetIdent = '0x0000000000000000000000000000000000000000000000000000000000000000';
+      assetIdent = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
       bridgeFee = BigInt(0);
     } else {
       logger.error(`unsupported type script ${recipientTypescript}`);
@@ -1356,14 +1363,11 @@ export class CkbHandler {
       return null;
     }
     const xchain = unlockMemo.getXchain();
-    const burnIdBytes: BytesVec = unlockMemo.getBurnIds();
-    const burnIds = lodash
-      .range(burnIdBytes.length())
-      .map((i) => new Reader(burnIdBytes.indexAt(i).raw()).serializeJson());
+    const burnIds: BurnIds = unlockMemo.getBurnIds();
 
     const isCkb = !senderTypescript;
     const assetIdent = isCkb
-      ? '0x0000000000000000000000000000000000000000000000000000000000000000'
+      ? '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
       : utils.computeScriptHash({
           code_hash: senderTypescript!.codeHash,
           hash_type: senderTypescript!.hashType,
@@ -1371,14 +1375,11 @@ export class CkbHandler {
         });
 
     const iCkbUnlocks: ICkbUnlock[] = [];
-    for (let i = 0; i < burnIds.length; i++) {
-      const burnId = burnIds[i];
-      const burnHashSeparatorIndex = burnId.indexOf('-');
-      if (burnHashSeparatorIndex < 0) {
-        logger.error(`invalid unlock tx: invalid burnId in unlockMemoWitness, tx: ${tx}, burnId: ${burnId}`);
-        return null;
-      }
-      const burnTxHash = burnId.substring(0, burnHashSeparatorIndex);
+    for (let i = 0; i < burnIds.length(); i++) {
+      const burnId = burnIds.indexAt(i);
+      const burnTxHash = new Reader(burnId.getBurnTxHash().raw()).serializeJson();
+      const logIndex = new Reader(burnId.getLogIndex().raw()).serializeJson();
+      const burnIdStr = `${burnTxHash}-${BigInt(logIndex).toString(10)}`;
       const output = tx.outputs[i];
       if (!output) {
         logger.error(
@@ -1414,7 +1415,7 @@ export class CkbHandler {
       });
       const udtExtraData = tx.outputsData[i];
       const iCkbUnlock: ICkbUnlock = {
-        id: burnId,
+        id: burnIdStr,
         burnTxHash,
         xchain,
         assetIdent,
@@ -1508,7 +1509,7 @@ export function checkLock(
   const minimalAmount = nervosAssetInfo!.minimalBridgeAmount;
   const bridgeFeeFromConfig = BigInt(ForceBridgeCore.config.eth.lockNervosAssetFee);
   const bridgeFeeSaved = BigInt(ckbLock.bridgeFee);
-  if (assetIdent == '0x0000000000000000000000000000000000000000000000000000000000000000') {
+  if (assetIdent == '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff') {
     // lock ckb
     if (BigInt(ckbLock.amount) < BigInt(minimalAmount)) {
       const humanizeMinimalAmount = new BigNumber(minimalAmount)

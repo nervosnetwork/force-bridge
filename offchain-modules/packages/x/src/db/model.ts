@@ -168,9 +168,9 @@ export interface ICkbUnlock {
   amount: string;
   recipientAddress: string; // ckb address
   udtExtraData: string;
-  blockNumber: number;
-  blockTimestamp: number;
-  unlockTxHash: string; // ckb tx hash
+  blockNumber?: number;
+  blockTimestamp?: number;
+  unlockTxHash?: string; // ckb tx hash
   status?: CkbUnlockStatus;
   message?: string;
 }
