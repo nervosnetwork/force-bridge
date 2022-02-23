@@ -211,7 +211,7 @@ export async function burn(
       provider,
       ethWallets[i],
       xchainTokenAddress,
-      startNonce + i,
+      startNonce,
       ckbAddress,
       burnAmount,
     );
@@ -224,12 +224,12 @@ export async function burn(
       logger.info('>>> tx', tx);
       const txReceipt = await tx.wait();
       logger.info('>>> txReceipt', txReceipt);
-      const lockTxHash = tx.hash;
-      logger.info('>>> lockTxHash', lockTxHash);
+      const burnTxHash = tx.hash;
+      logger.info('>>> burnTxHash', burnTxHash);
       await asyncSleep(intervalMs);
-      burnTxHashes.push(lockTxHash);
+      burnTxHashes.push(burnTxHash);
     } catch (e) {
-      logger.error(e.track);
+      logger.error(e.stack);
     }
   }
   logger.info('burn txs', burnTxHashes);
@@ -293,6 +293,7 @@ export async function prepareCkbAddresses(
   ckbPrivateKey: string,
   ckbNodeUrl: string,
   ckbIndexerUrl: string,
+  lockCkbAmount: string,
 ): Promise<Array<string>> {
   const batchNum = ckbPrivateKey.length;
   const { secp256k1Dep } = await ckb.loadDeps();
@@ -312,10 +313,11 @@ export async function prepareCkbAddresses(
     hash_type: secp256k1Dep.hashType,
   };
   asserts(fromLockscript);
-  const needSupplyCap = batchNum * 600 * 100000000 + 100000;
+  const capacity = (BigInt(lockCkbAmount) * BigInt(11)) / BigInt(10);
+  const needSupplyCap = BigInt(batchNum) * capacity + BigInt(100000);
   const collector = new IndexerCollector(new CkbIndexer(ckbNodeUrl, ckbIndexerUrl));
 
-  const needSupplyCapCells = await collector.getCellsByLockscriptAndCapacity(fromLockscript, BigInt(needSupplyCap));
+  const needSupplyCapCells = await collector.getCellsByLockscriptAndCapacity(fromLockscript, needSupplyCap);
   const inputs = needSupplyCapCells.map((cell) => {
     return { previousOutput: { txHash: cell.out_point!.tx_hash, index: cell.out_point!.index }, since: '0x0' };
   });
@@ -334,7 +336,6 @@ export async function prepareCkbAddresses(
       args: toArgs,
       hash_type: secp256k1Dep.hashType,
     });
-    const capacity = 600 * 100000000;
     const toScriptCell = {
       lock: toScript,
       capacity: `0x${capacity.toString(16)}`,
@@ -367,7 +368,15 @@ export async function prepareCkbAddresses(
   logger.info('signedTx', signedTx);
 
   const burnTxHash = await ckb.rpc.sendTransaction(signedTx, 'passthrough');
-  logger.info('tx', burnTxHash);
+  logger.info('txHash', burnTxHash);
+  for (let i = 0; i < 600; i++) {
+    const tx = await ckb.rpc.getTransaction(burnTxHash);
+    logger.info('tx', tx);
+    if (tx.txStatus.status === 'committed') {
+      break;
+    }
+    await asyncSleep(6000);
+  }
   return addresses;
 }
 
@@ -436,28 +445,52 @@ export async function ckbBatchTest(
   const xchainTokenAddress = assetInfo!.xchainTokenAddress;
   const provider = new ethers.providers.JsonRpcProvider(ethNodeUrl);
 
-  // ckbPrivateKey
-  const ckbAddress = ckb.utils.privateKeyToAddress(ckbPrivateKey, { prefix: AddressPrefix.Testnet });
-  // const value = ethers.utils.parseUnits('10000000000', 18);
-  const ethWallets = await prepareEthWallets(provider, ethPrivateKey, batchNum, 10000000000);
-  // const theWallet = new ethers.Wallet(ethPrivateKey, provider);
-  // const ethWallets = [theWallet];
-  const ethAddresses = ethWallets.map((ethWallet) => ethWallet.address);
-
-  const lockTxs = await lock(client, rpc, ckbPrivateKey, ckbAddress, ethAddresses, ckbTypescriptHash, lockAmount);
-  logger.info('====================================================================');
-  logger.info(
-    `batchNum: ${batchNum}, ckbTypescriptHash: ${ckbTypescriptHash}, ethAddresses: ${JSON.stringify(
-      ethAddresses,
-    )}, lockTxs: ${JSON.stringify(lockTxs)}`,
+  const ckbPrivKeys = prepareCkbPrivateKeys(batchNum);
+  const ckbAddresses = await prepareCkbAddresses(
+    ckb,
+    ckbPrivKeys,
+    ckbPrivateKey,
+    ckbNodeUrl,
+    ckbIndexerUrl,
+    lockAmount,
   );
-  /*
-  batchNum: 1, ckbTypescriptHash: 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff, ethAddresses: ["0xA16495b1d03e40D8969ecCeE863Cedbeaa6E2878"], lockTxs: ["0xe20a14c1de824f50c50843011c14b688aa837f57be31b96b44e363b4204921a9"]
-   */
-  logger.info('====================================================================');
-  await check(client, batchNum, 'Nervos', ckbTypescriptHash, 'Ethereum', ethAddresses, lockTxs);
-  const burnTxs = await burn(client, provider, ethWallets, ckbAddress, xchainTokenAddress, burnAmount);
-  logger.info(`burnTxs: ${burnTxs}`);
-  await check(client, batchNum, 'Nervos', xchainTokenAddress, 'Ethereum', ethAddresses, burnTxs);
+  logger.info(`prepared ckb addresses ${ckbAddresses}`);
+
+  const ethWallets = await prepareEthWallets(provider, ethPrivateKey, batchNum, 100000000000000);
+  const ethAddresses = ethWallets.map((ethWallet) => ethWallet.address);
+  const ckbTestAddress = ckb.utils.privateKeyToAddress(ckbPrivateKey, { prefix: AddressPrefix.Testnet });
+
+  const lockCkbTxs = await Promise.all(
+    ckbPrivKeys.map(async (ckbPrivKey, i) => {
+      const ckbAddress = ckb.utils.privateKeyToAddress(ckbPrivKey, { prefix: AddressPrefix.Testnet });
+      logger.info(`start ${i} ckb lock`);
+      const lockCkbTxs = await lock(
+        client,
+        rpc,
+        ckbPrivKey,
+        ckbAddress,
+        [ethAddresses[i]],
+        ckbTypescriptHash,
+        lockAmount,
+        0,
+      );
+      logger.info(`${i} ckb lock tx ${lockCkbTxs}`);
+      await checkTx(client, 'Nervos', ckbTypescriptHash, 'Ethereum', ethAddresses[i], lockCkbTxs[0]);
+      logger.info(`${i} ckb lock succeed`);
+      return lockCkbTxs[0];
+    }),
+  );
+  logger.info(`ckb lock succeed eth: ${ethAddresses} tx: ${JSON.stringify(lockCkbTxs)}`);
+
+  const burnTxs = await Promise.all(
+    ethWallets.map(async (ethWallet, i) => {
+      logger.info(`start ${i} eth burn`);
+      const burnTxs = await burn(client, provider, [ethWallet], ckbTestAddress, xchainTokenAddress, burnAmount);
+      logger.info(`${i} eth burn tx ${burnTxs}`);
+      await checkTx(client, 'Nervos', xchainTokenAddress, 'Ethereum', ethAddresses[i], burnTxs[0]);
+      logger.info(`${i} eth burn succeed`);
+    }),
+  );
+  logger.info(`eth burn succeed eth: ${ethAddresses} tx: ${JSON.stringify(burnTxs)}`);
   logger.info('ckbBatchTest pass!');
 }
