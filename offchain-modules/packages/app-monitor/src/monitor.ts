@@ -15,6 +15,7 @@ import {
 import axios from 'axios';
 import { ethers } from 'ethers';
 import { assetListPriceChange } from './assetPrice';
+import { BalanceProvider } from './balanceProvider';
 import { WebHook } from './discord';
 import { Duration, EventItem, monitorEvent, NewDurationCfg, readMonitorConfig, writeMonitorConfig } from './duration';
 
@@ -54,6 +55,7 @@ export class Monitor {
   private ethProvider: ethers.providers.JsonRpcProvider;
   private ownerTypeHash: string;
   private durationConfig: Duration;
+  private balanceProvider: BalanceProvider;
   webHookInfoUrl: string;
   webHookErrorUrl: string;
 
@@ -62,6 +64,11 @@ export class Monitor {
     this.webHookErrorUrl = ForceBridgeCore.config.monitor!.discordWebHookError || this.webHookInfoUrl;
     this.ethProvider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
     this.ownerTypeHash = getOwnerTypeHash();
+    this.balanceProvider = new BalanceProvider(
+      ForceBridgeCore.config.eth.rpcUrl,
+      ForceBridgeCore.config.ckb.ckbRpcUrl,
+      ForceBridgeCore.config.ckb.ckbIndexerUrl,
+    );
   }
 
   async onEthLockRecord(lock: EthLockRecord): Promise<void> {
@@ -154,6 +161,10 @@ export class Monitor {
     setTimeout(() => {
       this.checkExpiredEvent();
     }, ForceBridgeCore.config.monitor!.expiredCheckInterval);
+
+    setTimeout(() => {
+      this.checkOvermintEvent();
+    }, ForceBridgeCore.config.monitor!.overmintCheckInterval);
   }
 
   async init(): Promise<void> {
@@ -326,6 +337,54 @@ export class Monitor {
       .addTimeStamp()
       .success()
       .send();
+  }
+
+  checkOvermintEvent(): void {
+    foreverPromise(
+      async () => {
+        logger.info('start overmint check');
+        const contractAddress = ForceBridgeCore.config.eth.contractAddress;
+        const balances = await Promise.all(
+          ForceBridgeCore.config.eth.assetWhiteList.map(async (asset) => ({
+            asset: asset,
+            ethereumBalance:
+              asset.address === '0x0000000000000000000000000000000000000000'
+                ? await this.balanceProvider.ethBalance(contractAddress)
+                : await this.balanceProvider.ethErc20Balance(contractAddress, asset.address),
+            nervosBalance: await this.balanceProvider.ckbSudtBalance(asset.address),
+          })),
+        );
+        logger.info(
+          `overmint check balances: ${JSON.stringify(
+            balances.map((balance) => ({
+              name: balance.asset.name,
+              ethereum: balance.ethereumBalance.toString(),
+              nervos: balance.nervosBalance.toString(),
+            })),
+          )}`,
+        );
+        const overmintAssets = balances.filter((balance) => balance.nervosBalance > balance.ethereumBalance);
+        if (overmintAssets.length > 0) {
+          const errorMsg = `overmint check error: minted balance from nervos is greater than locked balance on ethereum ${overmintAssets.map(
+            (asset) => `${asset.asset.name}: onNervos: ${asset.nervosBalance} > onEthereum: ${asset.ethereumBalance}`,
+          )}`;
+          await new WebHook(this.webHookErrorUrl)
+            .setTitle('overmint check error' + ` - ${ForceBridgeCore.config.monitor!.env}`)
+            .setDescription(errorMsg)
+            .addTimeStamp()
+            .error()
+            .send();
+          logger.error(errorMsg);
+        }
+      },
+      {
+        onRejectedInterval: ForceBridgeCore.config.monitor!.overmintCheckInterval,
+        onResolvedInterval: ForceBridgeCore.config.monitor!.overmintCheckInterval,
+        onRejected: (e: Error) => {
+          logger.error(`Monitor observeEthLock error:${e.stack}`);
+        },
+      },
+    );
   }
 
   async observeCkbEvent(): Promise<void> {
