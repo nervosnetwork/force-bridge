@@ -3,6 +3,8 @@ import { ContractNetworksConfig } from '@gnosis.pm/safe-core-sdk';
 
 export type forceBridgeRole = 'watcher' | 'collector' | 'verifier';
 
+export const CKB_TYPESCRIPT_HASH = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+
 export interface ConfigItem {
   cellDep: {
     depType: DepType;

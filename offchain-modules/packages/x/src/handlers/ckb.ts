@@ -25,7 +25,7 @@ import { CkbTxGenerator, MintAssetRecord } from '../ckb/tx-helper/generator';
 import { GetTransactionsResult, ScriptType, SearchKey } from '../ckb/tx-helper/indexer';
 import { getOwnerTypeHash } from '../ckb/tx-helper/multisig/multisig_helper';
 import { getOmniLockMultisigAddress } from '../ckb/tx-helper/multisig/omni-lock';
-import { forceBridgeRole } from '../config';
+import { CKB_TYPESCRIPT_HASH, forceBridgeRole } from '../config';
 import { ForceBridgeCore } from '../core';
 import { CkbDb, KVDb } from '../db';
 import { CollectorCkbMint } from '../db/entity/CkbMint';
@@ -76,8 +76,6 @@ export class CkbHandler {
   private lastHandledBlockHeight: number;
   private lastHandledBlockHash: string;
   private startTipBlockHeight: number;
-  private readonly todoRoundHandlers: ((ownerTypeHash: string, generator: CkbTxGenerator) => Promise<void>)[];
-  private todoRoundIndex: number;
 
   constructor(private db: CkbDb, private kvDb: KVDb, private role: forceBridgeRole) {
     this.rpc = new RPC(ForceBridgeCore.config.ckb.ckbRpcUrl);
@@ -88,8 +86,6 @@ export class CkbHandler {
         ForceBridgeCore.config.ckb.multisigScript.M,
       );
     }
-    this.todoRoundHandlers = [this.todoMintRecordsHandler, this.todoUnlockRecordsHandler];
-    this.todoRoundIndex = 0;
   }
 
   async setStartTipBlockHeight(): Promise<void> {
@@ -427,15 +423,15 @@ export class CkbHandler {
     const txHash = txInfo.info.tx_hash;
     const records = await this.db.getCkbLockByTxHashes([txHash]);
     if (records.length > 1) {
-      logger.error('unexpected db find error', records);
-      throw new Error(`unexpected db find error, records.length = ${records.length}`);
+      logger.error('unexpected db find ckb lock error', records);
+      throw new Error(`unexpected db find ckb lock error, records.length = ${records.length}`);
     }
-    const cellData = await this.parseLockTx(tx);
-    if (!cellData) {
+    const parsedLockTxMetaData = await this.parseLockTx(tx);
+    if (!parsedLockTxMetaData) {
       return;
     }
     const { amount, xchain, recipientAddress, committeeMultisigCellCapacity, assetIdent, senderAddress, bridgeFee } =
-      cellData;
+      parsedLockTxMetaData;
     const ckbTxHash = tx.hash;
     const blockNumber = Number(txInfo.info.block_number);
     const confirmedNumber = currentHeight - blockNumber;
@@ -449,9 +445,9 @@ export class CkbHandler {
     // create new CkbLock record
     if (records.length === 0) {
       logger.info(
-        `CkbHandler watchLockEvents receiveLog blockHeight:${blockNumber} blockHash:${txInfo.tx.txStatus.blockHash} txHash:${txHash} amount:${amount} capacity:${committeeMultisigCellCapacity} asset:${cellData?.assetIdent}  sender:${cellData?.senderAddress}, confirmedNumber: ${confirmedNumber}, confirmed: ${confirmed}`,
+        `CkbHandler watchLockEvents receiveLog blockHeight:${blockNumber} blockHash:${txInfo.tx.txStatus.blockHash} txHash:${txHash} amount:${amount} capacity:${committeeMultisigCellCapacity} asset:${parsedLockTxMetaData?.assetIdent}  sender:${parsedLockTxMetaData?.senderAddress}, confirmedNumber: ${confirmedNumber}, confirmed: ${confirmed}`,
       );
-      logger.debug('CkbHandler watchLockEvents eth lockEvtLog:', { tx, cellData });
+      logger.debug('CkbHandler watchLockEvents eth lockEvtLog:', { tx, parsedLockTxMetaData });
       await this.db.createCkbLock([
         {
           ckbTxHash,
@@ -480,7 +476,7 @@ export class CkbHandler {
       await this.db.updateLockConfirmNumber([{ ckbTxHash, confirmedNumber, confirmStatus }]);
       logger.info(`update lock record ${txHash} status, confirmed number: ${confirmedNumber}, status: ${confirmed}`);
     }
-    if (assetIdent == '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff') {
+    if (assetIdent === CKB_TYPESCRIPT_HASH) {
       const ethMints = await this.db.getEthMintByCkbTxHashes([tx.hash]);
       if (ethMints && ethMints.length === 1) {
         const amountFromEthMint = BigInt(ethMints[0].amount);
@@ -492,9 +488,9 @@ export class CkbHandler {
           },
         ]);
         logger.info(
-          `get EthMint when check ckb lock ethMints for update ckb lock, records: ${JSON.stringify(
-            records,
-          )}, tx: ${JSON.stringify(tx)}, ethMints: ${JSON.stringify(ethMints)}`,
+          `get EthMint to update ckb lock bridge fee, records: ${JSON.stringify(records)}, tx: ${JSON.stringify(
+            tx,
+          )}, ethMints: ${JSON.stringify(ethMints)}`,
         );
       }
     }
@@ -510,12 +506,12 @@ export class CkbHandler {
       const ckbLock = ckbLocksSaved[0];
       const filterReason = checkLock(amount, assetIdent, xchain, txHash, ckbLock);
       if (filterReason !== '') {
-        logger.warn(`skip createEthMint for record: ${JSON.stringify(cellData)}, reason: ${filterReason}`);
+        logger.warn(`skip createEthMint for record: ${JSON.stringify(parsedLockTxMetaData)}, reason: ${filterReason}`);
         return;
       }
       const nervosAsset = new NervosAsset(assetIdent).getAssetInfo(xchain);
       let mintAmount: bigint;
-      if (assetIdent == '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff') {
+      if (assetIdent === CKB_TYPESCRIPT_HASH) {
         const bridgeFeeFromConfig = BigInt(ForceBridgeCore.config.eth.lockNervosAssetFee);
         mintAmount = BigInt(ckbLock.amount) - bridgeFeeFromConfig;
       } else {
@@ -533,7 +529,7 @@ export class CkbHandler {
         },
       ];
       await this.db.createCollectorEthMint(mintRecords);
-      logger.info(`save EthMint successful for ckb tx ${txHash}`);
+      logger.info(`save EthMint successful for ckb lock tx ${txHash}`);
     }
   }
 
@@ -1159,13 +1155,12 @@ export class CkbHandler {
   }
 
   handleTodoMintAndUnlockRecords(ownerTypeHash: string, generator: CkbTxGenerator): void {
+    let round = 0;
     foreverPromise(
       async () => {
-        const todoHandler = this.todoRoundHandlers[this.todoRoundIndex];
-        logger.info(`todoHandler to run index: ${this.todoRoundIndex}, function: ${todoHandler.name}`);
-        this.todoRoundIndex = (this.todoRoundIndex + 1) % this.todoRoundHandlers.length;
-        logger.info(`todoHandler next to run index: ${this.todoRoundIndex}`);
-        await todoHandler.apply(this, [ownerTypeHash, generator]);
+        (round ^= 1) == 1
+          ? await this.todoMintRecordsHandler(ownerTypeHash, generator)
+          : await this.todoUnlockRecordsHandler(ownerTypeHash, generator);
       },
       {
         onRejectedInterval: 15000,
@@ -1269,7 +1264,7 @@ export class CkbHandler {
     } else if (!recipientTypescript) {
       // lock ckb
       amount = committeeMultisigCellCapacity;
-      assetIdent = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+      assetIdent = CKB_TYPESCRIPT_HASH;
       bridgeFee = BigInt(0);
     } else {
       logger.error(`unsupported type script ${recipientTypescript}`);
@@ -1367,7 +1362,7 @@ export class CkbHandler {
 
     const isCkb = !senderTypescript;
     const assetIdent = isCkb
-      ? '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
+      ? CKB_TYPESCRIPT_HASH
       : utils.computeScriptHash({
           code_hash: senderTypescript!.codeHash,
           hash_type: senderTypescript!.hashType,
@@ -1509,7 +1504,7 @@ export function checkLock(
   const minimalAmount = nervosAssetInfo!.minimalBridgeAmount;
   const bridgeFeeFromConfig = BigInt(ForceBridgeCore.config.eth.lockNervosAssetFee);
   const bridgeFeeSaved = BigInt(ckbLock.bridgeFee);
-  if (assetIdent == '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff') {
+  if (assetIdent == CKB_TYPESCRIPT_HASH) {
     // lock ckb
     if (BigInt(ckbLock.amount) < BigInt(minimalAmount)) {
       const humanizeMinimalAmount = new BigNumber(minimalAmount)

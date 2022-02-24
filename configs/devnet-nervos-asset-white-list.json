@@ -6,6 +6,6 @@
     "symbol": "CKB",
     "decimal": 8,
     "logoURI": "",
-    "minimalBridgeAmount": "0"
+    "minimalBridgeAmount": "100000000"
   }
 ]

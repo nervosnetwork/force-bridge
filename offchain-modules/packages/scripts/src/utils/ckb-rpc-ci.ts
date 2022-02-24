@@ -2,16 +2,17 @@ import assert from 'assert';
 import { HexString, utils } from '@ckb-lumos/base';
 import { SerializeWitnessArgs } from '@ckb-lumos/base/lib/core';
 import { key } from '@ckb-lumos/hd';
+import { CKB_TYPESCRIPT_HASH } from '@force-bridge/x/dist/config';
 import { asyncSleep, privateKeyToCkbAddress, privateKeyToEthAddress } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
 import { Amount } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const { CKBHasher, ckbHash } = utils;
 import { normalizers, Reader } from 'ckb-js-toolkit';
 import { ethers } from 'ethers';
 import { JSONRPCClient } from 'json-rpc-2.0';
 import fetch from 'node-fetch/index';
+
+const { CKBHasher } = utils;
 
 function generateCases(
   CKB_TEST_ADDRESS: string,
@@ -299,9 +300,9 @@ async function getTransaction(client: JSONRPCClient, token_address, userNetwork,
 
 async function getBalance(
   client: JSONRPCClient,
-  assetIdent = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+  assetIdent = CKB_TYPESCRIPT_HASH,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  xchainAssetIdent = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+  xchainAssetIdent = CKB_TYPESCRIPT_HASH,
   ckbAddress,
   ethAddress,
 ) {
@@ -443,7 +444,7 @@ export async function rpcTest(
   CKB_TEST_ADDRESS: string = privateKeyToCkbAddress(CKB_PRI_KEY),
   ETH_TEST_ADDRESS: string = privateKeyToEthAddress(ETH_PRI_KEY),
   ETH_TOKEN_ADDRESS = '0x0000000000000000000000000000000000000000',
-  CKB_TOKEN_ADDRESS = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+  CKB_TOKEN_ADDRESS = CKB_TYPESCRIPT_HASH,
 ): Promise<void> {
   const ckb = new CKB(CKB_NODE_URL);
 
