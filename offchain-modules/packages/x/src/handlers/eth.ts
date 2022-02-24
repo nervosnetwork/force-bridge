@@ -36,7 +36,6 @@ export class EthHandler {
   private lastHandledBlockHeight: number;
   private lastHandledBlockHash: string;
   private startTipBlockHeight: number;
-  private;
 
   constructor(
     private ethDb: EthDb,

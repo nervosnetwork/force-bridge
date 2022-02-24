@@ -21,6 +21,7 @@ import { ScriptType } from './indexer';
 import { getFromAddr, getMultisigLock, getOwnerTypeHash } from './multisig/multisig_helper';
 import { getOmniLockMultisigAddress, getOmniLockMultisigWitnessPlaceholder } from './multisig/omni-lock';
 import { calculateFee, getTransactionSize } from './utils';
+import { CKB_TYPESCRIPT_HASH } from '../../config';
 
 export interface MintAssetRecord {
   id: string;
@@ -314,15 +315,15 @@ export class CkbTxGenerator extends CkbTxHelper {
   }
 
   /*
-          table RecipientCellData {
-            recipient_address: Bytes,
-            chain: byte,
-            asset: Bytes,
-            bridge_lock_code_hash: Byte32,
-            owner_lock_hash: Byte32,
-            amount: Uint128,
-          }
-           */
+            table RecipientCellData {
+              recipient_address: Bytes,
+              chain: byte,
+              asset: Bytes,
+              bridge_lock_code_hash: Byte32,
+              owner_lock_hash: Byte32,
+              amount: Uint128,
+            }
+             */
   async burn(
     fromLockscript: Script,
     recipientAddress: string,
@@ -826,7 +827,7 @@ export class CkbTxGenerator extends CkbTxHelper {
   async unlock(records: ICkbUnlock[]): Promise<TransactionSkeletonType | undefined> {
     records = records.filter((r) => r.xchain === ChainType.ETH);
     const assetIdent = records[0].assetIdent;
-    if (!assetIdent || assetIdent === '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff') {
+    if (!assetIdent || assetIdent === CKB_TYPESCRIPT_HASH) {
       return await this.unlockCKB(
         records.map((r) => ({ burnId: r.id, recipient: r.recipientAddress, amount: r.amount })),
       );
