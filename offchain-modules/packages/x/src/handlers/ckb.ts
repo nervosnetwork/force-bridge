@@ -76,8 +76,6 @@ export class CkbHandler {
   private lastHandledBlockHeight: number;
   private lastHandledBlockHash: string;
   private startTipBlockHeight: number;
-  private readonly todoRoundHandlers: ((ownerTypeHash: string, generator: CkbTxGenerator) => Promise<void>)[];
-  private todoRoundIndex: number;
 
   constructor(private db: CkbDb, private kvDb: KVDb, private role: forceBridgeRole) {
     this.rpc = new RPC(ForceBridgeCore.config.ckb.ckbRpcUrl);
@@ -88,8 +86,6 @@ export class CkbHandler {
         ForceBridgeCore.config.ckb.multisigScript.M,
       );
     }
-    this.todoRoundHandlers = [this.todoMintRecordsHandler, this.todoUnlockRecordsHandler];
-    this.todoRoundIndex = 0;
   }
 
   async setStartTipBlockHeight(): Promise<void> {
@@ -1159,13 +1155,12 @@ export class CkbHandler {
   }
 
   handleTodoMintAndUnlockRecords(ownerTypeHash: string, generator: CkbTxGenerator): void {
+    let round = 0;
     foreverPromise(
       async () => {
-        const todoHandler = this.todoRoundHandlers[this.todoRoundIndex];
-        logger.info(`todoHandler to run index: ${this.todoRoundIndex}, function: ${todoHandler.name}`);
-        this.todoRoundIndex = (this.todoRoundIndex + 1) % this.todoRoundHandlers.length;
-        logger.info(`todoHandler next to run index: ${this.todoRoundIndex}`);
-        await todoHandler.apply(this, [ownerTypeHash, generator]);
+        (round ^= 1) == 1
+          ? await this.todoMintRecordsHandler(ownerTypeHash, generator)
+          : await this.todoUnlockRecordsHandler(ownerTypeHash, generator);
       },
       {
         onRejectedInterval: 15000,
