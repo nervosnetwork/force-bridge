@@ -1,4 +1,4 @@
-import { parseAddress } from '@ckb-lumos/helpers';
+import { parseAddress, transactionSkeletonToObject } from '@ckb-lumos/helpers';
 import { Asset, BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { NervosAsset } from '@force-bridge/x/dist/ckb/model/nervos-asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
@@ -197,7 +197,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     const burnTx = await ckbTxGenerator.burn(fromLockscript, payload.recipient, asset, BigInt(amount));
     return {
       network: 'Nervos',
-      rawTransaction: burnTx,
+      rawTransaction: transactionSkeletonToObject(burnTx),
     };
   }
 

@@ -2,7 +2,13 @@ import { Cell, CellDep, core, Indexer, Script, utils, WitnessArgs } from '@ckb-l
 import { SerializeWitnessArgs } from '@ckb-lumos/base/lib/core';
 import { common } from '@ckb-lumos/common-scripts';
 import { SECP_SIGNATURE_PLACEHOLDER } from '@ckb-lumos/common-scripts/lib/helper';
-import { minimalCellCapacity, parseAddress, TransactionSkeleton, TransactionSkeletonType } from '@ckb-lumos/helpers';
+import {
+  createTransactionFromSkeleton,
+  minimalCellCapacity,
+  parseAddress,
+  TransactionSkeleton,
+  TransactionSkeletonType,
+} from '@ckb-lumos/helpers';
 import { normalizers, Reader } from 'ckb-js-toolkit';
 import * as lodash from 'lodash';
 import { ForceBridgeCore } from '../../core';
@@ -16,6 +22,7 @@ import { CkbTxHelper } from './base_generator';
 import { SerializeRecipientCellData } from './generated/eth_recipient_cell';
 import { SerializeLockMemo } from './generated/lock_memo';
 import { SerializeMintWitness } from './generated/mint_witness';
+import { SerializeRcLockWitnessLock } from './generated/omni_lock';
 import { SerializeUnlockMemo } from './generated/unlock_memo';
 import { ScriptType } from './indexer';
 import { getFromAddr, getMultisigLock, getOwnerTypeHash } from './multisig/multisig_helper';
@@ -328,7 +335,7 @@ export class CkbTxGenerator extends CkbTxHelper {
     recipientAddress: string,
     asset: Asset,
     amount: bigint,
-  ): Promise<CKBComponents.RawTransactionToSign> {
+  ): Promise<TransactionSkeletonType> {
     if (amount === 0n) {
       throw new Error('amount should larger then zero!');
     }
@@ -473,9 +480,62 @@ export class CkbTxGenerator extends CkbTxHelper {
         return outputs.set(outputs.size - 1, changeOutput);
       });
     }
+
+    const omniLockConfig = ForceBridgeCore.config.ckb.deps.omniLock;
+    if (
+      omniLockConfig &&
+      fromLockscript.code_hash === omniLockConfig.script.codeHash &&
+      fromLockscript.hash_type === omniLockConfig.script.hashType
+    ) {
+      txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
+        return cellDeps.push({
+          out_point: {
+            tx_hash: omniLockConfig.cellDep.outPoint.txHash,
+            index: omniLockConfig.cellDep.outPoint.index,
+          },
+          dep_type: omniLockConfig.cellDep.depType,
+        });
+      });
+
+      const messageToSign = (() => {
+        const hasher = new utils.CKBHasher();
+        const rawTxHash = utils.ckbHash(
+          core.SerializeRawTransaction(normalizers.NormalizeRawTransaction(createTransactionFromSkeleton(txSkeleton))),
+        );
+        // serialized unsigned witness
+        const serializedWitness = core.SerializeWitnessArgs({
+          lock: new Reader(
+            '0x' +
+              '00'.repeat(
+                SerializeRcLockWitnessLock({
+                  signature: new Reader('0x' + '00'.repeat(65)),
+                }).byteLength,
+              ),
+          ),
+        });
+        hasher.update(rawTxHash);
+        const lengthBuffer = new ArrayBuffer(8);
+        const view = new DataView(lengthBuffer);
+        view.setBigUint64(0, BigInt(new Reader(serializedWitness).length()), true);
+
+        hasher.update(lengthBuffer);
+        hasher.update(serializedWitness);
+        return hasher.digestHex();
+      })();
+
+      txSkeleton = txSkeleton.update('signingEntries', (signingEntries) => {
+        return signingEntries.push({
+          type: 'witness_args_lock',
+          index: 0,
+          message: messageToSign,
+        });
+      });
+    }
+
     logger.debug(`txSkeleton: ${transactionSkeletonToJSON(txSkeleton)}`);
     logger.debug(`final fee: ${await this.calculateCapacityDiff(txSkeleton)}`);
-    return txSkeletonToRawTransactionToSign(txSkeleton);
+
+    return txSkeleton;
   }
 
   async lock(
@@ -509,6 +569,7 @@ export class CkbTxGenerator extends CkbTxHelper {
 
     // add cellDeps
     const secp256k1 = nonNullable(this.lumosConfig.SCRIPTS.SECP256K1_BLAKE160);
+    const omniLockConfig = ForceBridgeCore.config.ckb.deps.omniLock;
     if (senderLockscript.code_hash === secp256k1.CODE_HASH && senderLockscript.hash_type === secp256k1.HASH_TYPE) {
       txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
         return cellDeps.push({
@@ -531,6 +592,29 @@ export class CkbTxGenerator extends CkbTxHelper {
               index: ForceBridgeCore.config.ckb.deps.pwLock!.cellDep.outPoint.index,
             },
             dep_type: ForceBridgeCore.config.ckb.deps.pwLock!.cellDep.depType,
+          },
+          {
+            out_point: {
+              tx_hash: secp256k1.TX_HASH,
+              index: secp256k1.INDEX,
+            },
+            dep_type: secp256k1.DEP_TYPE,
+          },
+        );
+      });
+    } else if (
+      omniLockConfig &&
+      senderLockscript.code_hash === omniLockConfig.script.codeHash &&
+      senderLockscript.hash_type === omniLockConfig.script.codeHash
+    ) {
+      txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
+        return cellDeps.push(
+          {
+            out_point: {
+              tx_hash: omniLockConfig.cellDep.outPoint.txHash,
+              index: omniLockConfig.cellDep.outPoint.index,
+            },
+            dep_type: omniLockConfig.cellDep.depType,
           },
           {
             out_point: {
@@ -638,6 +722,7 @@ export class CkbTxGenerator extends CkbTxHelper {
     let txSkeleton = TransactionSkeleton({ cellProvider: this.indexer });
     // add cellDeps
     const secp256k1 = nonNullable(this.lumosConfig.SCRIPTS.SECP256K1_BLAKE160);
+    const omniLockConfig = ForceBridgeCore.config.ckb.deps.omniLock;
     if (senderLockscript.code_hash === secp256k1.CODE_HASH && senderLockscript.hash_type === secp256k1.HASH_TYPE) {
       txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
         return cellDeps.push({
@@ -660,6 +745,29 @@ export class CkbTxGenerator extends CkbTxHelper {
               index: ForceBridgeCore.config.ckb.deps.pwLock!.cellDep.outPoint.index,
             },
             dep_type: ForceBridgeCore.config.ckb.deps.pwLock!.cellDep.depType,
+          },
+          {
+            out_point: {
+              tx_hash: secp256k1.TX_HASH,
+              index: secp256k1.INDEX,
+            },
+            dep_type: secp256k1.DEP_TYPE,
+          },
+        );
+      });
+    } else if (
+      omniLockConfig &&
+      senderLockscript.code_hash === omniLockConfig.script.codeHash &&
+      senderLockscript.hash_type === omniLockConfig.script.codeHash
+    ) {
+      txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
+        return cellDeps.push(
+          {
+            out_point: {
+              tx_hash: omniLockConfig.cellDep.outPoint.txHash,
+              index: omniLockConfig.cellDep.outPoint.index,
+            },
+            dep_type: omniLockConfig.cellDep.depType,
           },
           {
             out_point: {
@@ -1275,7 +1383,7 @@ function transformScript(script: Script | undefined | null): CKBComponents.Scrip
   };
 }
 
-function txSkeletonToRawTransactionToSign(
+export function txSkeletonToRawTransactionToSign(
   txSkeleton: TransactionSkeletonType,
   clearWitness = true,
 ): CKBComponents.RawTransactionToSign {
