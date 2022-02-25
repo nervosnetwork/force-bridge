@@ -350,8 +350,8 @@ export class Monitor {
             ethereumBalance:
               asset.address === '0x0000000000000000000000000000000000000000'
                 ? await this.balanceProvider.ethBalance(contractAddress)
-                : await this.balanceProvider.ethErc20Balance(contractAddress, asset.address),
-            nervosBalance: await this.balanceProvider.ckbSudtBalance(asset.address),
+                : await this.balanceProvider.ethErc20Balance(contractAddress, asset.address, asset.name),
+            nervosBalance: await this.balanceProvider.ckbSudtBalance(asset.address, asset.name),
           })),
         );
         logger.info(
@@ -381,7 +381,7 @@ export class Monitor {
         onRejectedInterval: ForceBridgeCore.config.monitor!.overmintCheckInterval,
         onResolvedInterval: ForceBridgeCore.config.monitor!.overmintCheckInterval,
         onRejected: (e: Error) => {
-          logger.error(`Monitor observeEthLock error:${e.stack}`);
+          logger.error(`Monitor checkOvermintEvent error:${e.stack}`);
         },
       },
     );

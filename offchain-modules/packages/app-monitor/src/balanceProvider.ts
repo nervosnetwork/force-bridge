@@ -1,5 +1,6 @@
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import { CkbIndexer, Order, ScriptType, SearchKey } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
+import { utils } from '@ckb-lumos/base';
 import Web3 from 'web3';
 import { AbiItem } from 'web3-utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
@@ -40,34 +41,41 @@ export class BalanceProvider {
 
   async ethBalance(address: string): Promise<bigint> {
     const balance = await this.web3.eth.getBalance(address);
-    logger.info(`eth_balance address: ${address}, balance: ${balance}`);
+    logger.info(`eth_balance name: ETH, address: ${address}, balance: ${balance}`);
     return BigInt(balance);
   }
 
-  async ethErc20Balance(address: string, tokenAddress: string): Promise<bigint> {
+  async ethErc20Balance(address: string, tokenAddress: string, name: string): Promise<bigint> {
     const TokenContract = new this.web3.eth.Contract(minERC20ABI as AbiItem[], tokenAddress);
     const erc20_amount = await TokenContract.methods.balanceOf(address).call();
     const erc20_balance = erc20_amount.toString();
-    logger.info(`eth_erc20_balance address: ${address}, token: ${address}, balance: ${erc20_balance}`);
+    logger.info(
+      `eth_erc20_balance name: ${name}, address: ${address}, token: ${tokenAddress}, balance: ${erc20_balance}`,
+    );
     return BigInt(erc20_balance);
   }
 
-  async ckbSudtBalance(tokenAddress: string): Promise<bigint> {
-    const typescript = new EthAsset(tokenAddress, this.ownerTypeHash).toTypeScript();
+  async ckbSudtBalance(tokenAddress: string, name: string): Promise<bigint> {
+    const typescriptLike = new EthAsset(tokenAddress, this.ownerTypeHash).toTypeScript();
+    const typescript = {
+      code_hash: typescriptLike.codeHash,
+      hash_type: typescriptLike.hashType,
+      args: typescriptLike.args,
+    };
     const searchKey: SearchKey = {
-      script: {
-        code_hash: typescript.codeHash,
-        hash_type: typescript.hashType,
-        args: typescript.args,
-      },
+      script: typescript,
       script_type: ScriptType.type,
     };
     const cells = await this.ckbIndexer.getCells(searchKey, (_index, _cell) => ({ stop: false, push: true }), {
-      sizeLimit: 0x100000,
+      sizeLimit: 0x1000,
       order: Order.asc,
     });
-    const balance = cells.map((cell) => BigInt(cell.cell_output.capacity)).reduce((c, c0) => c + c0, BigInt(0));
-    logger.info(`ckb get_cells token: ${tokenAddress}, cells.length: ${cells.length}, balance: ${balance}`);
+    const balance = cells.map((cell) => utils.readBigUInt128LE(cell.data)).reduce((b, b0) => b + b0, BigInt(0));
+    logger.info(
+      `ckb get_cells name: ${name} token: ${tokenAddress}, typescript: ${JSON.stringify(
+        typescript,
+      )}, typescriptHash: ${utils.computeScriptHash(typescript)} cells.length: ${cells.length}, balance: ${balance}`,
+    );
     return BigInt(balance);
   }
 }
