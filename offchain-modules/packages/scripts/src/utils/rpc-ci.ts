@@ -1,6 +1,7 @@
 import assert from 'assert';
 import { objectToTransactionSkeleton } from '@ckb-lumos/helpers';
 import { txSkeletonToRawTransactionToSign } from '@force-bridge/x/dist/ckb/tx-helper/generator';
+import { CKB_TYPESCRIPT_HASH } from '@force-bridge/x/dist/config';
 import { asyncSleep, privateKeyToCkbAddress, privateKeyToEthAddress } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
 import { Amount } from '@lay2/pw-core';
@@ -936,7 +937,7 @@ async function getBalance(
   eth_token_address,
   ckbAddress,
   ethAddress,
-  ckb_token_address = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff', // 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+  ckb_token_address = CKB_TYPESCRIPT_HASH,
 ) {
   const assets = await client.request('getAssetList', {});
 

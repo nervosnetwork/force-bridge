@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { forceBridgeRole as ForceBridgeRole } from '../../../config';
+import { CKB_TYPESCRIPT_HASH, forceBridgeRole as ForceBridgeRole } from '../../../config';
 import { EthDb, CkbDb } from '../../../db';
 import { IEthMint } from '../../../db/model';
 import { BridgeMetricSingleton } from '../../../metric/bridge-metric';
@@ -65,7 +65,7 @@ abstract class Mint {
   }
 
   protected isCkb(assetId: string): boolean {
-    return assetId == '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+    return assetId == CKB_TYPESCRIPT_HASH;
   }
 
   async saveBridgeFee(parsedLog: ParsedLog, record: IEthMint): Promise<void> {

@@ -3,18 +3,18 @@ import { SerializeWitnessArgs } from '@ckb-lumos/base/lib/core';
 import { key } from '@ckb-lumos/hd';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
-import { WhiteListNervosAsset } from '@force-bridge/x/dist/config';
+import { WhiteListNervosAsset, CKB_TYPESCRIPT_HASH } from '@force-bridge/x/dist/config';
 import { asserts } from '@force-bridge/x/dist/errors';
 import { asyncSleep } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
 import { Script } from '@lay2/pw-core';
-const { CKBHasher } = utils;
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import { AddressPrefix } from '@nervosnetwork/ckb-sdk-utils';
 import { normalizers, Reader } from 'ckb-js-toolkit';
 import { ethers } from 'ethers';
 import { JSONRPCClient } from 'json-rpc-2.0';
 import fetch from 'node-fetch/index';
+const { CKBHasher } = utils;
 
 export async function generateLockTx(
   client: JSONRPCClient,
@@ -430,7 +430,7 @@ export async function ckbBatchTest(
   forceBridgeUrl: string,
   batchNum = 100,
   nervosAssetWhiteList: WhiteListNervosAsset[],
-  ckbTypescriptHash = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+  ckbTypescriptHash = CKB_TYPESCRIPT_HASH,
   lockAmount = '2000000000000000',
   burnAmount = '100000000000000',
 ): Promise<void> {
@@ -455,7 +455,7 @@ export async function ckbBatchTest(
     }),
   );
 
-  const assetInfo = nervosAssetWhiteList.find((asset) => asset.typescriptHash === ckbTypescriptHash);
+  const assetInfo = nervosAssetWhiteList.find((asset) => asset.typescriptHash === CKB_TYPESCRIPT_HASH);
   if (!assetInfo) {
     logger.error(`unknown nervosAsset not in WhiteList ${ckbTypescriptHash}, ${nervosAssetWhiteList}`);
   }

@@ -12,6 +12,7 @@ import {
 import { BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { getOmniLockMultisigAddress } from '@force-bridge/x/dist/ckb/tx-helper/multisig/omni-lock';
+import { CKB_TYPESCRIPT_HASH } from '@force-bridge/x/dist/config';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { EthBurn } from '@force-bridge/x/dist/db/entity/EthBurn';
 import { EthLock } from '@force-bridge/x/dist/db/entity/EthLock';
@@ -256,7 +257,7 @@ async function verifyUnlockTx(
         args: typescript.args,
       });
     } else {
-      return '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+      return CKB_TYPESCRIPT_HASH;
     }
   });
 
@@ -473,7 +474,7 @@ async function verifyEthForUnlockTx(unlockRecord: unlockRecord, output: Cell): P
     }
   } else {
     // verify ckb typescriptHash
-    if ('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff' !== unlockRecord.assetIdent) {
+    if (CKB_TYPESCRIPT_HASH !== unlockRecord.assetIdent) {
       return new SigError(
         SigErrorCode.InvalidRecord,
         `typescript hash_type: 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff doesn't match with:${sudtTypescript.hashType}`,

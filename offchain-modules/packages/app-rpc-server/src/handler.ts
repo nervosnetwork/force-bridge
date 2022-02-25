@@ -4,6 +4,7 @@ import { NervosAsset } from '@force-bridge/x/dist/ckb/model/nervos-asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
 import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
+import { CKB_TYPESCRIPT_HASH } from '@force-bridge/x/dist/config';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { CkbDb, EthDb, TronDb } from '@force-bridge/x/dist/db';
 import { BtcDb } from '@force-bridge/x/dist/db/btc';
@@ -500,7 +501,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
       case 'Nervos': {
         const collector = new IndexerCollector(ForceBridgeCore.ckbIndexer);
         const userScript = parseAddress(value.userIdent);
-        if (value.assetIdent === '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff') {
+        if (value.assetIdent === CKB_TYPESCRIPT_HASH) {
           const ckb_amount = await collector.getBalance(userScript);
           balance = ckb_amount.toString();
         } else {
@@ -567,9 +568,11 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         checkETHAddress(recipient);
         await checkLockEthAddr(recipient);
         const nervosAssetInfo = new NervosAsset(assetIdent).getAssetInfo(ChainType.ETH);
-        if (!nervosAssetInfo) throw new Error('asset not in white list');
+        if (!nervosAssetInfo) throw new Error('lock asset not in white list');
         if (BigInt(amount) <= BigInt(nervosAssetInfo.minimalBridgeAmount))
-          throw new Error('lock amount should greater than minimal bridge amount');
+          throw new Error(
+            `lock amount should be greater than minimal bridge amount ${nervosAssetInfo.minimalBridgeAmount}`,
+          );
         break;
       }
 
@@ -649,7 +652,7 @@ function checkETHAddress(address) {
 }
 
 function checkCKBAddress(address) {
-  if (address === '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff') return;
+  if (address === CKB_TYPESCRIPT_HASH) return;
   try {
     parseAddress(address);
   } catch (e) {
