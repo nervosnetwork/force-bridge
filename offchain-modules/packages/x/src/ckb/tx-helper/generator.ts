@@ -1,7 +1,8 @@
-import { Cell, CellDep, core, Indexer, Script, utils, WitnessArgs } from '@ckb-lumos/base';
+import { Cell, CellDep, core, HexString, Indexer, Script, utils, WitnessArgs } from '@ckb-lumos/base';
 import { SerializeWitnessArgs } from '@ckb-lumos/base/lib/core';
 import { common } from '@ckb-lumos/common-scripts';
-import { SECP_SIGNATURE_PLACEHOLDER } from '@ckb-lumos/common-scripts/lib/helper';
+import { SECP_SIGNATURE_PLACEHOLDER, hashWitness } from '@ckb-lumos/common-scripts/lib/helper';
+import { getConfig } from '@ckb-lumos/config-manager';
 import {
   createTransactionFromSkeleton,
   minimalCellCapacity,
@@ -11,7 +12,7 @@ import {
 } from '@ckb-lumos/helpers';
 import { normalizers, Reader } from 'ckb-js-toolkit';
 import * as lodash from 'lodash';
-import { CKB_TYPESCRIPT_HASH } from '../../config';
+import { CkbDeps, CKB_TYPESCRIPT_HASH } from '../../config';
 import { ForceBridgeCore } from '../../core';
 import { ICkbUnlock } from '../../db/model';
 import { asserts, nonNullable } from '../../errors';
@@ -498,37 +499,26 @@ export class CkbTxGenerator extends CkbTxHelper {
         });
       });
 
-      const messageToSign = (() => {
-        const hasher = new utils.CKBHasher();
-        const rawTxHash = utils.ckbHash(
-          core.SerializeRawTransaction(normalizers.NormalizeRawTransaction(createTransactionFromSkeleton(txSkeleton))),
-        );
-        // serialized unsigned witness
-        const serializedWitness = core.SerializeWitnessArgs({
-          lock: new Reader(
-            '0x' +
-              '00'.repeat(
-                SerializeRcLockWitnessLock({
-                  signature: new Reader('0x' + '00'.repeat(65)),
-                }).byteLength,
-              ),
-          ),
-        });
-        hasher.update(rawTxHash);
-        const lengthBuffer = new ArrayBuffer(8);
-        const view = new DataView(lengthBuffer);
-        view.setBigUint64(0, BigInt(new Reader(serializedWitness).length()), true);
+      const hasher = new utils.CKBHasher();
 
-        hasher.update(lengthBuffer);
-        hasher.update(serializedWitness);
-        return hasher.digestHex();
-      })();
+      switch (lockType(fromLockscript, ForceBridgeCore.config.ckb.deps)) {
+        case 'OmniLock':
+          hasher.update(
+            core.SerializeRawTransaction(
+              normalizers.NormalizeRawTransaction(createTransactionFromSkeleton(txSkeleton)),
+            ),
+          );
+
+          break;
+      }
+
+      hashWitness(hasher, placeholderWitness(fromLockscript));
 
       txSkeleton = txSkeleton.update('signingEntries', (signingEntries) => {
         return signingEntries.push({
           type: 'witness_args_lock',
           index: 0,
-          message: messageToSign,
+          message: hasher.digestHex(),
         });
       });
     }
@@ -545,7 +535,7 @@ export class CkbTxGenerator extends CkbTxHelper {
     assetIdent: string,
     amount: bigint,
     xchain: string,
-  ): Promise<CKBComponents.RawTransactionToSign> {
+  ): Promise<TransactionSkeletonType> {
     if (xchain !== 'Ethereum') throw new Error('only support bridge to Ethereum for now');
     const assetInfo = new NervosAsset(assetIdent).getAssetInfo(ChainType.ETH);
     if (!assetInfo) throw new Error('asset not in white list');
@@ -560,7 +550,7 @@ export class CkbTxGenerator extends CkbTxHelper {
     recipientAddress: string,
     amount: bigint,
     xchain: string,
-  ): Promise<CKBComponents.RawTransactionToSign> {
+  ): Promise<TransactionSkeletonType> {
     if (xchain !== 'Ethereum') throw new Error('only support bridge to Ethereum for now');
     if (amount <= 0n) {
       throw new Error('amount should larger then zero!');
@@ -570,64 +560,40 @@ export class CkbTxGenerator extends CkbTxHelper {
 
     // add cellDeps
     const secp256k1 = nonNullable(this.lumosConfig.SCRIPTS.SECP256K1_BLAKE160);
-    const omniLockConfig = ForceBridgeCore.config.ckb.deps.omniLock;
-    if (senderLockscript.code_hash === secp256k1.CODE_HASH && senderLockscript.hash_type === secp256k1.HASH_TYPE) {
-      txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
-        return cellDeps.push({
-          out_point: {
-            tx_hash: secp256k1.TX_HASH,
-            index: secp256k1.INDEX,
-          },
-          dep_type: secp256k1.DEP_TYPE,
+    switch (lockType(senderLockscript, ForceBridgeCore.config.ckb.deps)) {
+      case 'SECP256K1_BLAKE160':
+        txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
+          return cellDeps.push({
+            out_point: {
+              tx_hash: secp256k1.TX_HASH,
+              index: secp256k1.INDEX,
+            },
+            dep_type: secp256k1.DEP_TYPE,
+          });
         });
-      });
-    } else if (
-      senderLockscript.code_hash === ForceBridgeCore.config.ckb.deps.pwLock?.script.codeHash &&
-      senderLockscript.hash_type === ForceBridgeCore.config.ckb.deps.pwLock?.script.hashType
-    ) {
-      txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
-        return cellDeps.push(
-          {
-            out_point: {
-              tx_hash: ForceBridgeCore.config.ckb.deps.pwLock!.cellDep.outPoint.txHash,
-              index: ForceBridgeCore.config.ckb.deps.pwLock!.cellDep.outPoint.index,
+        break;
+      case 'OmniLock': {
+        const omniLockConfig = ForceBridgeCore.config.ckb.deps.omniLock!;
+        txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
+          return cellDeps.push(
+            {
+              out_point: {
+                tx_hash: omniLockConfig.cellDep.outPoint.txHash,
+                index: omniLockConfig.cellDep.outPoint.index,
+              },
+              dep_type: omniLockConfig.cellDep.depType,
             },
-            dep_type: ForceBridgeCore.config.ckb.deps.pwLock!.cellDep.depType,
-          },
-          {
-            out_point: {
-              tx_hash: secp256k1.TX_HASH,
-              index: secp256k1.INDEX,
+            {
+              out_point: {
+                tx_hash: secp256k1.TX_HASH,
+                index: secp256k1.INDEX,
+              },
+              dep_type: secp256k1.DEP_TYPE,
             },
-            dep_type: secp256k1.DEP_TYPE,
-          },
-        );
-      });
-    } else if (
-      omniLockConfig &&
-      senderLockscript.code_hash === omniLockConfig.script.codeHash &&
-      senderLockscript.hash_type === omniLockConfig.script.codeHash
-    ) {
-      txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
-        return cellDeps.push(
-          {
-            out_point: {
-              tx_hash: omniLockConfig.cellDep.outPoint.txHash,
-              index: omniLockConfig.cellDep.outPoint.index,
-            },
-            dep_type: omniLockConfig.cellDep.depType,
-          },
-          {
-            out_point: {
-              tx_hash: secp256k1.TX_HASH,
-              index: secp256k1.INDEX,
-            },
-            dep_type: secp256k1.DEP_TYPE,
-          },
-        );
-      });
-    } else {
-      throw new Error('unsupported sender address!');
+          );
+        });
+        break;
+      }
     }
 
     // add inputs
@@ -676,13 +642,7 @@ export class CkbTxGenerator extends CkbTxHelper {
     // add witnesses
     const witnesses = lodash.range(searchedSenderCells.length).map((index) => {
       if (index === 0) {
-        return new Reader(
-          SerializeWitnessArgs(
-            normalizers.NormalizeWitnessArgs({
-              lock: SECP_SIGNATURE_PLACEHOLDER,
-            }),
-          ),
-        ).serializeJson();
+        return new Reader(placeholderWitness(senderLockscript)).serializeJson();
       }
       return '0x';
     });
@@ -705,7 +665,9 @@ export class CkbTxGenerator extends CkbTxHelper {
       });
     });
 
-    return txSkeletonToRawTransactionToSign(txSkeleton, false);
+    txSkeleton = prepareSigningEntries(txSkeleton, senderLockscript);
+
+    return txSkeleton;
   }
 
   async lockSUDT(
@@ -714,73 +676,49 @@ export class CkbTxGenerator extends CkbTxHelper {
     sudtArgs: string,
     amount: bigint,
     xchain: string,
-  ): Promise<CKBComponents.RawTransactionToSign> {
+  ): Promise<TransactionSkeletonType> {
     if (xchain !== 'Ethereum') throw new Error('only support bridge to Ethereum for now');
     if (amount <= 0n) {
       throw new Error('amount should larger then zero!');
     }
 
     let txSkeleton = TransactionSkeleton({ cellProvider: this.indexer });
-    // add cellDeps
     const secp256k1 = nonNullable(this.lumosConfig.SCRIPTS.SECP256K1_BLAKE160);
-    const omniLockConfig = ForceBridgeCore.config.ckb.deps.omniLock;
-    if (senderLockscript.code_hash === secp256k1.CODE_HASH && senderLockscript.hash_type === secp256k1.HASH_TYPE) {
-      txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
-        return cellDeps.push({
-          out_point: {
-            tx_hash: secp256k1.TX_HASH,
-            index: secp256k1.INDEX,
-          },
-          dep_type: secp256k1.DEP_TYPE,
+    // add cellDeps
+    switch (lockType(senderLockscript, ForceBridgeCore.config.ckb.deps)) {
+      case 'SECP256K1_BLAKE160':
+        txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
+          return cellDeps.push({
+            out_point: {
+              tx_hash: secp256k1.TX_HASH,
+              index: secp256k1.INDEX,
+            },
+            dep_type: secp256k1.DEP_TYPE,
+          });
         });
-      });
-    } else if (
-      senderLockscript.code_hash === ForceBridgeCore.config.ckb.deps.pwLock?.script.codeHash &&
-      senderLockscript.hash_type === ForceBridgeCore.config.ckb.deps.pwLock?.script.hashType
-    ) {
-      txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
-        return cellDeps.push(
-          {
-            out_point: {
-              tx_hash: ForceBridgeCore.config.ckb.deps.pwLock!.cellDep.outPoint.txHash,
-              index: ForceBridgeCore.config.ckb.deps.pwLock!.cellDep.outPoint.index,
+        break;
+      case 'OmniLock': {
+        const omniLockConfig = ForceBridgeCore.config.ckb.deps.omniLock!;
+        txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
+          return cellDeps.push(
+            {
+              out_point: {
+                tx_hash: omniLockConfig.cellDep.outPoint.txHash,
+                index: omniLockConfig.cellDep.outPoint.index,
+              },
+              dep_type: omniLockConfig.cellDep.depType,
             },
-            dep_type: ForceBridgeCore.config.ckb.deps.pwLock!.cellDep.depType,
-          },
-          {
-            out_point: {
-              tx_hash: secp256k1.TX_HASH,
-              index: secp256k1.INDEX,
+            {
+              out_point: {
+                tx_hash: secp256k1.TX_HASH,
+                index: secp256k1.INDEX,
+              },
+              dep_type: secp256k1.DEP_TYPE,
             },
-            dep_type: secp256k1.DEP_TYPE,
-          },
-        );
-      });
-    } else if (
-      omniLockConfig &&
-      senderLockscript.code_hash === omniLockConfig.script.codeHash &&
-      senderLockscript.hash_type === omniLockConfig.script.codeHash
-    ) {
-      txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
-        return cellDeps.push(
-          {
-            out_point: {
-              tx_hash: omniLockConfig.cellDep.outPoint.txHash,
-              index: omniLockConfig.cellDep.outPoint.index,
-            },
-            dep_type: omniLockConfig.cellDep.depType,
-          },
-          {
-            out_point: {
-              tx_hash: secp256k1.TX_HASH,
-              index: secp256k1.INDEX,
-            },
-            dep_type: secp256k1.DEP_TYPE,
-          },
-        );
-      });
-    } else {
-      throw new Error('unsupported sender address!');
+          );
+        });
+        break;
+      }
     }
 
     const sudtScript = {
@@ -901,13 +839,7 @@ export class CkbTxGenerator extends CkbTxHelper {
     // add witnesses
     const witnesses = lodash.range(inputCellLength).map((index) => {
       if (index === 0) {
-        return new Reader(
-          SerializeWitnessArgs(
-            normalizers.NormalizeWitnessArgs({
-              lock: SECP_SIGNATURE_PLACEHOLDER,
-            }),
-          ),
-        ).serializeJson();
+        return new Reader(placeholderWitness(senderLockscript)).serializeJson();
       }
       return '0x';
     });
@@ -929,7 +861,9 @@ export class CkbTxGenerator extends CkbTxHelper {
       });
     });
 
-    return txSkeletonToRawTransactionToSign(txSkeleton, false);
+    txSkeleton = prepareSigningEntries(txSkeleton, senderLockscript);
+
+    return txSkeleton;
   }
 
   async unlock(records: ICkbUnlock[]): Promise<TransactionSkeletonType | undefined> {
@@ -1442,4 +1376,82 @@ export function txSkeletonToRawTransactionToSign(
   };
   logger.debug(`generate rawTx: ${JSON.stringify(rawTx, null, 2)}`);
   return rawTx as CKBComponents.RawTransactionToSign;
+}
+
+export function prepareSigningEntries(
+  txSkeleton: TransactionSkeletonType,
+  senderLockscript: Script,
+): TransactionSkeletonType {
+  switch (lockType(senderLockscript, ForceBridgeCore.config.ckb.deps)) {
+    case 'OmniLock': {
+      const trickyLumosConfig = {
+        PREFIX: getConfig().PREFIX,
+        SCRIPTS: {
+          SECP256K1_BLAKE160_MULTISIG: {
+            CODE_HASH: nonNullable(ForceBridgeCore.config.ckb.deps.omniLock?.script.codeHash),
+            HASH_TYPE: nonNullable(ForceBridgeCore.config.ckb.deps.omniLock?.script.hashType) as 'type' | 'data',
+            TX_HASH: nonNullable(ForceBridgeCore.config.ckb.deps.omniLock?.cellDep.outPoint.txHash),
+            INDEX: nonNullable(ForceBridgeCore.config.ckb.deps.omniLock?.cellDep.outPoint.index),
+            DEP_TYPE: nonNullable(ForceBridgeCore.config.ckb.deps.omniLock?.cellDep.depType),
+          },
+          SECP256K1_BLAKE160: getConfig().SCRIPTS.SECP256K1_BLAKE160,
+        },
+      };
+
+      return (txSkeleton = common.prepareSigningEntries(txSkeleton, {
+        config: trickyLumosConfig,
+      }));
+    }
+    default:
+      return common.prepareSigningEntries(txSkeleton);
+  }
+}
+
+export function lockType(
+  lockscript: Script,
+  config: CkbDeps,
+): 'OmniLock' | 'PWLock' | 'SECP256K1_BLAKE160' | 'SECP256K1_BLAKE160_MULTISIG' {
+  const secp256k1 = nonNullable(getConfig().SCRIPTS.SECP256K1_BLAKE160);
+  if (
+    config.omniLock &&
+    config.omniLock?.script.codeHash === lockscript.code_hash &&
+    config.omniLock?.script.hashType === lockscript.hash_type
+  ) {
+    return 'OmniLock';
+  } else if (
+    lockscript.code_hash === ForceBridgeCore.config.ckb.deps.pwLock?.script.codeHash &&
+    lockscript.hash_type === ForceBridgeCore.config.ckb.deps.pwLock?.script.hashType
+  ) {
+    return 'PWLock';
+  } else if (lockscript.code_hash === secp256k1.CODE_HASH && lockscript.hash_type === secp256k1.HASH_TYPE) {
+    return 'SECP256K1_BLAKE160';
+  } else {
+    throw new Error('unsupported lockscript!');
+  }
+}
+
+export function placeholderWitness(senderLockscript: Script): HexString {
+  switch (lockType(senderLockscript, ForceBridgeCore.config.ckb.deps)) {
+    case 'OmniLock':
+      return new Reader(
+        core.SerializeWitnessArgs({
+          lock: new Reader(
+            '0x' +
+              '00'.repeat(
+                SerializeRcLockWitnessLock({
+                  signature: new Reader(SECP_SIGNATURE_PLACEHOLDER),
+                }).byteLength,
+              ),
+          ),
+        }),
+      ).serializeJson();
+    default:
+      return new Reader(
+        SerializeWitnessArgs(
+          normalizers.NormalizeWitnessArgs({
+            lock: SECP_SIGNATURE_PLACEHOLDER,
+          }),
+        ),
+      ).serializeJson();
+  }
 }

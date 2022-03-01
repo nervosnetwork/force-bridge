@@ -46,7 +46,7 @@ export type NervosNetwork = NetworkTypes<{
   DerivedAssetIdent: string;
   UserIdent: string;
   // TODO
-  RawTransaction: TransactionSkeletonObject | CKBComponents.RawTransactionToSign;
+  RawTransaction: TransactionSkeletonObject;
   // TODO
   SignedTransaction: CKBComponents.Transaction;
 }>;

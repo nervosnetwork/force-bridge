@@ -1,18 +1,14 @@
 import assert from 'assert';
-import { HexString, utils } from '@ckb-lumos/base';
-import { SerializeWitnessArgs } from '@ckb-lumos/base/lib/core';
 import { key } from '@ckb-lumos/hd';
+import { objectToTransactionSkeleton, sealTransaction } from '@ckb-lumos/helpers';
+import { RPC } from '@ckb-lumos/rpc';
 import { CKB_TYPESCRIPT_HASH } from '@force-bridge/x/dist/config';
 import { asyncSleep, privateKeyToCkbAddress, privateKeyToEthAddress } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
 import { Amount } from '@lay2/pw-core';
-import CKB from '@nervosnetwork/ckb-sdk-core';
-import { normalizers, Reader } from 'ckb-js-toolkit';
 import { ethers } from 'ethers';
 import { JSONRPCClient } from 'json-rpc-2.0';
 import fetch from 'node-fetch/index';
-
-const { CKBHasher } = utils;
 
 function generateCases(
   CKB_TEST_ADDRESS: string,
@@ -54,7 +50,7 @@ function generateCases(
 }
 
 async function lock(
-  ckb: CKB,
+  rpc: RPC,
   client: JSONRPCClient,
   ETH_NODE_URL: string,
   CKB_PRI_KEY: string,
@@ -85,28 +81,16 @@ async function lock(
       process.exit(1);
     }
     if (testcase.send) {
-      const rawTransaction = lockResult.rawTransaction;
-      const witnesses = rawTransaction.witnesses;
-      const txHash = ckb.utils.rawTransactionToHash(rawTransaction);
-      const hasher = new CKBHasher();
-      hasher.update(txHash);
-      hashWitness(hasher, witnesses[0]);
-      hashWitness(hasher, witnesses[rawTransaction.inputs.length]);
-      const message = hasher.digestHex();
+      const rawTransaction = objectToTransactionSkeleton(lockResult.rawTransaction);
+      const message = lockResult.rawTransaction.signingEntries[0].message;
+      logger.info('message', message);
 
       const signature = key.signRecoverable(message, CKB_PRI_KEY);
-      const witness = new Reader(
-        SerializeWitnessArgs(
-          normalizers.NormalizeWitnessArgs({
-            lock: signature,
-          }),
-        ),
-      ).serializeJson();
-      rawTransaction.witnesses[0] = witness;
+      const signedTx = sealTransaction(rawTransaction, [signature]);
 
-      logger.info('signedTx', rawTransaction);
+      logger.info('signedTx', signedTx);
 
-      const lockTxHash = await ckb.rpc.sendTransaction(rawTransaction, 'passthrough');
+      const lockTxHash = await rpc.send_transaction(signedTx, 'passthrough');
       logger.info('lockTxHash', lockTxHash);
 
       const assets = await client.request('getAssetList', {});
@@ -391,15 +375,6 @@ async function checkTx(client: JSONRPCClient, token_address, txId, ckbAddress, e
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function hashWitness(hasher: any, witness: HexString): void {
-  const lengthBuffer = new ArrayBuffer(8);
-  const view = new DataView(lengthBuffer);
-  view.setBigUint64(0, BigInt(new Reader(witness).length()), true);
-  hasher.update(lengthBuffer);
-  hasher.update(witness);
-}
-
 // const FORCE_BRIDGE_URL = 'http://127.0.0.1:8080/force-bridge/api/v1';
 // const ETH_NODE_URL = 'http://127.0.0.1:8545';
 //
@@ -446,7 +421,7 @@ export async function rpcTest(
   ETH_TOKEN_ADDRESS = '0x0000000000000000000000000000000000000000',
   CKB_TOKEN_ADDRESS = CKB_TYPESCRIPT_HASH,
 ): Promise<void> {
-  const ckb = new CKB(CKB_NODE_URL);
+  const rpc = new RPC(CKB_NODE_URL);
 
   // JSONRPCClient needs to know how to send a JSON-RPC request.
   // Tell it by passing a function to its constructor. The function must take a JSON-RPC request and send it.
@@ -475,7 +450,7 @@ export async function rpcTest(
     bridgeEthAddress,
   );
 
-  await lock(ckb, client, ETH_NODE_URL, CKB_PRI_KEY, CKB_TEST_ADDRESS, ETH_TEST_ADDRESS, lockCases);
+  await lock(rpc, client, ETH_NODE_URL, CKB_PRI_KEY, CKB_TEST_ADDRESS, ETH_TEST_ADDRESS, lockCases);
   await burn(client, ETH_NODE_URL, CKB_PRI_KEY, CKB_TEST_ADDRESS, ETH_TEST_ADDRESS, burnCases);
   await txSummaries(client, txSummaryCases);
   await balance(client, balanceCases);
