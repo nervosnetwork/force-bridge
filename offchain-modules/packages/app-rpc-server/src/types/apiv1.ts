@@ -91,6 +91,7 @@ export type GetBridgeTransactionStatusResponse = {
 export interface GetMinimalBridgeAmountPayload {
   network: string;
   xchainAssetIdent: string;
+  targetChain?: string; // If network == 'Nervos', should provide targetChain
 }
 
 export interface GetMinimalBridgeAmountResponse {
@@ -124,7 +125,7 @@ export interface GetBridgeNervosToXchainLockBridgeFeePayload {
 }
 
 export interface GetBridgeNervosToXchainLockBridgeFeeResponse {
-  fee: RequiredAsset<'amount'>;
+  amount: string;
 }
 
 export interface GetBridgeNervosToXchainBurnBridgeFeePayload {
@@ -134,7 +135,8 @@ export interface GetBridgeNervosToXchainBurnBridgeFeePayload {
 }
 
 export interface GetBridgeNervosToXchainBurnBridgeFeeResponse {
-  fee: RequiredAsset<'amount'>;
+  xchain: string;
+  amount: string;
 }
 
 export interface EthereumConfig {
