@@ -1,6 +1,6 @@
-import { HexString, utils } from '@ckb-lumos/base';
-import { SerializeWitnessArgs } from '@ckb-lumos/base/lib/core';
 import { key } from '@ckb-lumos/hd';
+import { objectToTransactionSkeleton, sealTransaction } from '@ckb-lumos/helpers';
+import { RPC } from '@ckb-lumos/rpc';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
 import { WhiteListNervosAsset, CKB_TYPESCRIPT_HASH } from '@force-bridge/x/dist/config';
@@ -10,15 +10,12 @@ import { logger } from '@force-bridge/x/dist/utils/logger';
 import { Script } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import { AddressPrefix } from '@nervosnetwork/ckb-sdk-utils';
-import { normalizers, Reader } from 'ckb-js-toolkit';
 import { ethers } from 'ethers';
 import { JSONRPCClient } from 'json-rpc-2.0';
 import fetch from 'node-fetch/index';
-const { CKBHasher } = utils;
 
 export async function generateLockTx(
   client: JSONRPCClient,
-  ckb: CKB,
   ckbPrivateKey: string,
   sender: string,
   recipient: string,
@@ -36,33 +33,19 @@ export async function generateLockTx(
 
   for (let i = 0; i < 5; i++) {
     try {
-      const unsignedLockTx = await client.request('generateBridgeNervosToXchainLockTx', lockPayload);
-      logger.info('unsignedLockTx ', unsignedLockTx);
+      const lockSkeleton = await client.request('generateBridgeNervosToXchainLockTx', lockPayload);
+      logger.info('lockSkeleton', lockSkeleton);
 
-      const rawTransaction = unsignedLockTx.rawTransaction;
-      const witnesses = rawTransaction.witnesses;
-      const txHash = ckb.utils.rawTransactionToHash(rawTransaction);
-      const hasher = new CKBHasher();
-      hasher.update(txHash);
-      hashWitness(hasher, witnesses[0]);
-      hashWitness(hasher, witnesses[rawTransaction.inputs.length]);
-      const message = hasher.digestHex();
+      const rawTransaction = objectToTransactionSkeleton(lockSkeleton.rawTransaction);
 
+      const message = lockSkeleton.rawTransaction.signingEntries[0].message;
+      logger.info('message', message);
       const signature = key.signRecoverable(message, ckbPrivateKey);
 
-      const witness = new Reader(
-        SerializeWitnessArgs(
-          normalizers.NormalizeWitnessArgs({
-            lock: signature,
-          }),
-        ),
-      ).serializeJson();
+      const signedTx = sealTransaction(rawTransaction, [signature]);
 
-      rawTransaction.witnesses[0] = witness;
-
-      // const signedTx = ckb.signTransaction(ckbPrivateKey)(unsignedLockTx.rawTransaction);
-      logger.info('signedTx', rawTransaction);
-      return rawTransaction;
+      logger.info('signedTx', signedTx);
+      return signedTx;
     } catch (e) {
       if (i == 4) {
         throw e;
@@ -175,7 +158,7 @@ async function checkTx(
 
 export async function lock(
   client: JSONRPCClient,
-  ckb: CKB,
+  rpc: RPC,
   ckbPrivateKey: string,
   ckbAddress: string,
   ethAddresses: string[],
@@ -191,7 +174,6 @@ export async function lock(
   for (let i = 0; i < batchNum; i++) {
     const signedLockTx = await generateLockTx(
       client,
-      ckb,
       ckbPrivateKey,
       ckbAddress,
       ethAddresses[i],
@@ -200,7 +182,7 @@ export async function lock(
     );
     signedLockTxs.push(signedLockTx);
 
-    const lockTxHash = await ckb.rpc.sendTransaction(signedLockTx, 'passthrough');
+    const lockTxHash = await rpc.send_transaction(signedLockTx, 'passthrough');
     await asyncSleep(intervalMs);
     lockTxHashes.push(lockTxHash);
   }
@@ -389,15 +371,6 @@ export async function prepareCkbAddresses(
   return addresses;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function hashWitness(hasher: any, witness: HexString): void {
-  const lengthBuffer = new ArrayBuffer(8);
-  const view = new DataView(lengthBuffer);
-  view.setBigUint64(0, BigInt(new Reader(witness).length()), true);
-  hasher.update(lengthBuffer);
-  hasher.update(witness);
-}
-
 // const batchNum = 100;
 // const lockAmount = '2000000000000000';
 // const burnAmount = '1000000000000000';
@@ -436,6 +409,7 @@ export async function ckbBatchTest(
 ): Promise<void> {
   logger.info('ckbBatchTest start!');
   const ckb = new CKB(ckbNodeUrl);
+  const rpc = new RPC(ckbNodeUrl);
 
   const client = new JSONRPCClient((jsonRPCRequest) =>
     fetch(forceBridgeUrl, {
@@ -470,7 +444,7 @@ export async function ckbBatchTest(
   // const ethWallets = [theWallet];
   const ethAddresses = ethWallets.map((ethWallet) => ethWallet.address);
 
-  const lockTxs = await lock(client, ckb, ckbPrivateKey, ckbAddress, ethAddresses, ckbTypescriptHash, lockAmount);
+  const lockTxs = await lock(client, rpc, ckbPrivateKey, ckbAddress, ethAddresses, ckbTypescriptHash, lockAmount);
   logger.info('====================================================================');
   logger.info(
     `batchNum: ${batchNum}, ckbTypescriptHash: ${ckbTypescriptHash}, ethAddresses: ${JSON.stringify(

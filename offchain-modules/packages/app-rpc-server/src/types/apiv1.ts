@@ -148,6 +148,8 @@ export interface GetBridgeConfigResponse {
   nervos: {
     network: 'mainnet' | 'testnet';
     confirmNumber: number;
+    omniLockCodeHash: string;
+    omniLockHashType: string;
   };
 
   xchains: {

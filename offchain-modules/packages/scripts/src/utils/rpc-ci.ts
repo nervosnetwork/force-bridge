@@ -1,4 +1,6 @@
 import assert from 'assert';
+import { objectToTransactionSkeleton } from '@ckb-lumos/helpers';
+import { txSkeletonToRawTransactionToSign } from '@force-bridge/x/dist/ckb/tx-helper/generator';
 import { CKB_TYPESCRIPT_HASH } from '@force-bridge/x/dist/config';
 import { asyncSleep, privateKeyToCkbAddress, privateKeyToEthAddress } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
@@ -809,7 +811,9 @@ async function burn(
     if (testcase.send) {
       const beforeBalance = await getBalance(client, testcase.payload.asset, CKB_TEST_ADDRESS, ETH_TEST_ADDRESS);
 
-      const signedTx = ckb.signTransaction(CKB_PRI_KEY)(burnResult.rawTransaction);
+      const signedTx = ckb.signTransaction(CKB_PRI_KEY)(
+        txSkeletonToRawTransactionToSign(objectToTransactionSkeleton(burnResult.rawTransaction)),
+      );
 
       const burnTxHash = await ckb.rpc.sendTransaction(signedTx, 'passthrough');
       logger.info('burnTxHash', burnTxHash);
