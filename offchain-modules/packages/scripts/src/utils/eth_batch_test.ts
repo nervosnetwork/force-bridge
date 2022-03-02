@@ -1,4 +1,6 @@
+import { objectToTransactionSkeleton } from '@ckb-lumos/helpers';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
+import { txSkeletonToRawTransactionToSign } from '@force-bridge/x/dist/ckb/tx-helper/generator';
 import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
 import { asserts } from '@force-bridge/x/dist/errors';
 import { asyncSleep } from '@force-bridge/x/dist/utils';
@@ -68,10 +70,11 @@ export async function generateBurnTx(
 
   for (let i = 0; i < 5; i++) {
     try {
-      const unsignedBurnTx = await client.request('generateBridgeOutNervosTransaction', burnPayload);
+      const burnSkeleton = await client.request('generateBridgeOutNervosTransaction', burnPayload);
+      const unsignedBurnTx = txSkeletonToRawTransactionToSign(objectToTransactionSkeleton(burnSkeleton.rawTransaction));
       logger.info('unsignedBurnTx ', unsignedBurnTx);
 
-      const signedTx = ckb.signTransaction(ckbPriv)(unsignedBurnTx.rawTransaction);
+      const signedTx = ckb.signTransaction(ckbPriv)(unsignedBurnTx);
       logger.info('signedTx', signedTx);
       return signedTx;
     } catch (e) {
