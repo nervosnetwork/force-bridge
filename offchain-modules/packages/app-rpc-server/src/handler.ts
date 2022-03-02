@@ -202,23 +202,8 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     };
   }
 
-  async sendSignedTransaction(): // payload: API.SignedTransactionPayload<T>,
-  Promise<API.TransactionIdent> {
-    // const network = payload.network;
-    // let txId;
-    // switch (network) {
-    //   case 'Nervos':
-    //     txId = await ForceBridgeCore.ckb.rpc.sendTransaction(JSON.parse(payload.signedTransaction));
-    //     break;
-    //   case 'Ethereum':
-    //     const provider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
-    //     txId = (await provider.sendTransaction(ethPayload.signedTransaction)).hash;
-    //     break;
-    //   default:
-    //     Promise.reject(new Error('not yet'));
-    // }
-    const txId = '00';
-    return { txId: txId };
+  async sendSignedTransaction(): Promise<API.TransactionIdent> {
+    throw new Error('not implemented');
   }
 
   async getBridgeTransactionStatus(
@@ -234,6 +219,14 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         const asset = new EthAsset(payload.xchainAssetIdent);
         return {
           minimalAmount: asset.getMinimalAmount(),
+        };
+      }
+      case 'Nervos': {
+        const asset = new NervosAsset(payload.xchainAssetIdent);
+        if (!payload.targetChain || payload.targetChain !== 'Ethereum')
+          throw new Error('only support targeChain Ethereum');
+        return {
+          minimalAmount: asset.getMinimalAmount(ChainType.ETH),
         };
       }
       default:
@@ -299,11 +292,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         const asset = new NervosAsset(payload.typescriptHash);
         const bridgeFee = asset.getBridgeFee('lock', ChainType.ETH);
         return {
-          fee: {
-            network: 'Nervos',
-            ident: payload.typescriptHash,
-            amount: bridgeFee,
-          },
+          amount: bridgeFee,
         };
       }
       default:
@@ -322,11 +311,8 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         const asset = new NervosAsset(payload.typescriptHash);
         const bridgeFee = asset.getBridgeFee('burn', ChainType.ETH);
         return {
-          fee: {
-            network: 'Nervos',
-            ident: payload.typescriptHash,
-            amount: bridgeFee,
-          },
+          xchain: payload.xchain,
+          amount: bridgeFee,
         };
       }
       default:
@@ -412,25 +398,11 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
       };
     }) as RequiredAsset<'info'>[];
 
-    const shadowAssetList = assetList.map((asset) => {
-      return {
-        network: 'Nervos',
-        ident: asset.info.shadow.ident,
-        info: {
-          decimals: asset.info.decimals,
-          name: 'ck' + asset.info.name,
-          symbol: 'ck' + asset.info.name,
-          logoURI: asset.info.logoURI,
-          shadow: { network: 'Ethereum', ident: asset.ident },
-        },
-      };
-    });
-
     const nervosWhiteListAssets = ForceBridgeCore.config.eth.nervosAssetWhiteList;
     const nervosAssetList = nervosWhiteListAssets.map((asset) => {
       return {
         network: 'Nervos',
-        ident: asset.typescriptHash,
+        ident: asset.typescript ? asset.typescript.args : CKB_TYPESCRIPT_HASH,
         info: {
           decimals: asset.decimal,
           name: asset.name,
@@ -441,21 +413,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
       };
     }) as RequiredAsset<'info'>[];
 
-    const shadowNervosAssetList = nervosAssetList.map((asset) => {
-      return {
-        network: 'Ethereum',
-        ident: asset.info.shadow.ident,
-        info: {
-          decimals: asset.info.decimals,
-          name: 'eth' + asset.info.name,
-          symbol: 'eth' + asset.info.symbol,
-          logoURI: asset.info.logoURI,
-          shadow: { network: 'Nervos', ident: asset.ident },
-        },
-      };
-    }) as RequiredAsset<'info'>[];
-
-    return assetList.concat(shadowAssetList).concat(nervosAssetList).concat(shadowNervosAssetList);
+    return assetList.concat(nervosAssetList);
   }
 
   async getBalance(payload: GetBalancePayload): Promise<GetBalanceResponse> {
