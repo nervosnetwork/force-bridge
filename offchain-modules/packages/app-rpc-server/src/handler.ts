@@ -592,7 +592,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
 
     return {
       network: 'Nervos',
-      rawTransaction: lockTx,
+      rawTransaction: transactionSkeletonToObject(lockTx),
     };
   }
 

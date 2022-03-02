@@ -483,12 +483,8 @@ export class CkbTxGenerator extends CkbTxHelper {
       });
     }
 
-    const omniLockConfig = ForceBridgeCore.config.ckb.deps.omniLock;
-    if (
-      omniLockConfig &&
-      fromLockscript.code_hash === omniLockConfig.script.codeHash &&
-      fromLockscript.hash_type === omniLockConfig.script.hashType
-    ) {
+    const omniLockConfig = ForceBridgeCore.config.ckb.deps.omniLock!;
+    if (lockType(fromLockscript, ForceBridgeCore.config.ckb.deps) == 'OmniLock') {
       txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
         return cellDeps.push({
           out_point: {
@@ -501,16 +497,9 @@ export class CkbTxGenerator extends CkbTxHelper {
 
       const hasher = new utils.CKBHasher();
 
-      switch (lockType(fromLockscript, ForceBridgeCore.config.ckb.deps)) {
-        case 'OmniLock':
-          hasher.update(
-            core.SerializeRawTransaction(
-              normalizers.NormalizeRawTransaction(createTransactionFromSkeleton(txSkeleton)),
-            ),
-          );
-
-          break;
-      }
+      hasher.update(
+        core.SerializeRawTransaction(normalizers.NormalizeRawTransaction(createTransactionFromSkeleton(txSkeleton))),
+      );
 
       hashWitness(hasher, placeholderWitness(fromLockscript));
 
@@ -1407,10 +1396,7 @@ export function prepareSigningEntries(
   }
 }
 
-export function lockType(
-  lockscript: Script,
-  config: CkbDeps,
-): 'OmniLock' | 'PWLock' | 'SECP256K1_BLAKE160' | 'SECP256K1_BLAKE160_MULTISIG' {
+export function lockType(lockscript: Script, config: CkbDeps): 'OmniLock' | 'SECP256K1_BLAKE160' {
   const secp256k1 = nonNullable(getConfig().SCRIPTS.SECP256K1_BLAKE160);
   if (
     config.omniLock &&
@@ -1418,11 +1404,6 @@ export function lockType(
     config.omniLock?.script.hashType === lockscript.hash_type
   ) {
     return 'OmniLock';
-  } else if (
-    lockscript.code_hash === ForceBridgeCore.config.ckb.deps.pwLock?.script.codeHash &&
-    lockscript.hash_type === ForceBridgeCore.config.ckb.deps.pwLock?.script.hashType
-  ) {
-    return 'PWLock';
   } else if (lockscript.code_hash === secp256k1.CODE_HASH && lockscript.hash_type === secp256k1.HASH_TYPE) {
     return 'SECP256K1_BLAKE160';
   } else {
