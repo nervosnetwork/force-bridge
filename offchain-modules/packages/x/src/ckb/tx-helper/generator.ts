@@ -484,7 +484,7 @@ export class CkbTxGenerator extends CkbTxHelper {
     }
 
     const omniLockConfig = ForceBridgeCore.config.ckb.deps.omniLock!;
-    if (lockType(fromLockscript, ForceBridgeCore.config.ckb.deps)) {
+    if (lockType(fromLockscript, ForceBridgeCore.config.ckb.deps) == 'OmniLock') {
       txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
         return cellDeps.push({
           out_point: {
