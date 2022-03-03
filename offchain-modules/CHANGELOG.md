@@ -1,3 +1,9 @@
+## v0.0.25 (2022-2-25)
+
+### Features
+
+- [monitor the native and mirror token total balance](https://github.com/nervosnetwork/force-bridge/pull/323)
+
 ## v0.0.24 (2022-1-30)
 
 ### Features
