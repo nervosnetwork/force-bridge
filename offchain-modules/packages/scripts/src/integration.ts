@@ -84,7 +84,7 @@ async function generateConfig(
   baseConfig.eth.safeMultisignContractAddress = safeAddress;
   baseConfig.eth.safeMultisignContractNetworks = contractNetworks;
   baseConfig.eth.lockNervosAssetFee = '1000000000000';
-  baseConfig.eth.burnNervosAssetFee = '0';
+  baseConfig.eth.burnNervosAssetFee = '100000000';
   // collector
   const collectorConfig: Config = lodash.cloneDeep(baseConfig);
   collectorConfig.common.role = 'collector';
@@ -411,26 +411,6 @@ async function main() {
   const command = `cross-env FORCE_BRIDGE_KEYSTORE_PASSWORD=${FORCE_BRIDGE_KEYSTORE_PASSWORD} ${forcecli} collector -cfg ${configPath}/collector/force_bridge.json`;
   await asyncSleep(120000);
   const collectorProcess = shelljs.exec(command, { async: true });
-  await ethereumIntegration(
-    ETH_TEST_PRIVKEY,
-    CKB_TEST_PRIVKEY,
-    ETH_RPC_URL,
-    CKB_RPC_URL,
-    CKB_INDEXER_URL,
-    FORCE_BRIDGE_URL,
-    bridgeEthAddress,
-  );
-  await nervosIntegration(
-    ETH_TEST_PRIVKEY_2,
-    CKB_TEST_PRIVKEY_2,
-    ETH_RPC_URL,
-    CKB_RPC_URL,
-    CKB_INDEXER_URL,
-    FORCE_BRIDGE_URL,
-    bridgeEthAddress,
-    nervosAssetWhiteList,
-  );
-  /* TODO
   await Promise.all([
     ethereumIntegration(
       ETH_TEST_PRIVKEY,
@@ -452,7 +432,6 @@ async function main() {
       nervosAssetWhiteList,
     ),
   ]);
-   */
   logger.info('integration test pass!');
   // only test change validator when the env is set
   if (!process.env.TEST_CHANGE_VALIDATOR) {
@@ -532,7 +511,7 @@ async function nervosIntegration(
     CKB_RPC_URL,
     CKB_INDEXER_URL,
     FORCE_BRIDGE_URL,
-    1,
+    3,
     nervosAssetWhiteList,
   );
   await ckbRpcTest(FORCE_BRIDGE_URL, CKB_RPC_URL, ETH_RPC_URL, CKB_TEST_PRIVKEY, ETH_TEST_PRIVKEY, bridgeEthAddress);
