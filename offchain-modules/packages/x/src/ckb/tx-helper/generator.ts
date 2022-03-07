@@ -1,7 +1,7 @@
-import { Cell, CellDep, core, HexString, Indexer, Script, utils, WitnessArgs } from '@ckb-lumos/base';
+import { Cell, CellDep, core, Indexer, Script, utils, WitnessArgs } from '@ckb-lumos/base';
 import { SerializeWitnessArgs } from '@ckb-lumos/base/lib/core';
 import { common } from '@ckb-lumos/common-scripts';
-import { SECP_SIGNATURE_PLACEHOLDER, hashWitness } from '@ckb-lumos/common-scripts/lib/helper';
+import { SECP_SIGNATURE_PLACEHOLDER } from '@ckb-lumos/common-scripts/lib/helper';
 import { getConfig } from '@ckb-lumos/config-manager';
 import {
   createTransactionFromSkeleton,
@@ -442,9 +442,8 @@ export class CkbTxGenerator extends CkbTxHelper {
         .push(this.sudtDep)
         .push(this.recipientDep);
     });
-    logger.debug(`txSkeleton: ${transactionSkeletonToJSON(txSkeleton)}`);
+
     // add change output
-    const fee = 100000n;
     const changeOutput: Cell = {
       cell_output: {
         capacity: '0x0',
@@ -458,6 +457,7 @@ export class CkbTxGenerator extends CkbTxHelper {
       return outputs.push(changeOutput);
     });
     // add inputs
+    const fee = 100000n;
     const capacityDiff = await this.calculateCapacityDiff(txSkeleton);
     logger.debug(`capacityDiff`, capacityDiff);
     const needCapacity = -capacityDiff + fee;
@@ -473,8 +473,8 @@ export class CkbTxGenerator extends CkbTxHelper {
         return inputs.concat(fromCells);
       });
       const capacityDiff = await this.calculateCapacityDiff(txSkeleton);
-      if (capacityDiff < 0) {
-        const humanReadableCapacityDiff = -capacityDiff / 100000000n + (-capacityDiff % 100000000n === 0n ? 0n : 1n);
+      if (capacityDiff < fee) {
+        const humanReadableCapacityDiff = -capacityDiff / 100000000n + 1n; // 1n is 1 ckb to supply fee
         throw new Error(`fromAddress capacity insufficient, need ${humanReadableCapacityDiff.toString()} CKB more`);
       }
       txSkeleton = txSkeleton.update('outputs', (outputs) => {
@@ -496,12 +496,13 @@ export class CkbTxGenerator extends CkbTxHelper {
       });
 
       const hasher = new utils.CKBHasher();
-
-      hasher.update(
+      const rawTxHash = utils.ckbHash(
         core.SerializeRawTransaction(normalizers.NormalizeRawTransaction(createTransactionFromSkeleton(txSkeleton))),
       );
+      hasher.update(rawTxHash);
 
-      hashWitness(hasher, placeholderWitness(fromLockscript));
+      //TODO: This function will be replaced after the lumos is being up to date.
+      hashWitness(hasher, placeholderWitness(fromLockscript) as ArrayBuffer);
 
       txSkeleton = txSkeleton.update('signingEntries', (signingEntries) => {
         return signingEntries.push({
@@ -1411,28 +1412,35 @@ export function lockType(lockscript: Script, config: CkbDeps): 'OmniLock' | 'SEC
   }
 }
 
-export function placeholderWitness(senderLockscript: Script): HexString {
+export function placeholderWitness(senderLockscript: Script): ArrayBuffer {
   switch (lockType(senderLockscript, ForceBridgeCore.config.ckb.deps)) {
     case 'OmniLock':
-      return new Reader(
-        core.SerializeWitnessArgs({
-          lock: new Reader(
-            '0x' +
-              '00'.repeat(
-                SerializeRcLockWitnessLock({
-                  signature: new Reader(SECP_SIGNATURE_PLACEHOLDER),
-                }).byteLength,
-              ),
-          ),
-        }),
-      ).serializeJson();
-    default:
-      return new Reader(
-        SerializeWitnessArgs(
-          normalizers.NormalizeWitnessArgs({
-            lock: SECP_SIGNATURE_PLACEHOLDER,
-          }),
+      return core.SerializeWitnessArgs({
+        lock: new Reader(
+          '0x' +
+            '00'.repeat(
+              SerializeRcLockWitnessLock({
+                signature: new Reader(SECP_SIGNATURE_PLACEHOLDER),
+              }).byteLength,
+            ),
         ),
-      ).serializeJson();
+      });
+    default:
+      return SerializeWitnessArgs(
+        normalizers.NormalizeWitnessArgs({
+          lock: SECP_SIGNATURE_PLACEHOLDER,
+        }),
+      );
   }
+}
+
+//TODO: This function will be replaced after the lumos is being up to date.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/explicit-module-boundary-types
+export function hashWitness(hasher: any, witness: ArrayBuffer): void {
+  const lengthBuffer = new ArrayBuffer(8);
+  const view = new DataView(lengthBuffer);
+  view.setBigUint64(0, BigInt(new Reader(witness).length()), true);
+
+  hasher.update(lengthBuffer);
+  hasher.update(witness);
 }
