@@ -19,7 +19,7 @@ function generateCases(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   bridgeEthAddress: string,
 ) {
-  const minimalBridgeAmount = 1000000000000000;
+  const minimalBridgeAmount = 100000000;
   const lockCases = [
     {
       description: 'lock CKB should be successful when amount greater than minimalBridgeAmount',
@@ -41,7 +41,7 @@ function generateCases(
         assetIdent: CKB_TOKEN_ADDRESS,
         amount: minimalBridgeAmount.toString(),
       },
-      send: true,
+      error: 'Error: lock amount should be greater than minimal bridge amount 100000000',
     },
     {
       description: 'lock CKB should return error when amount less than minimalBridgeAmount',
@@ -52,17 +52,17 @@ function generateCases(
         assetIdent: CKB_TOKEN_ADDRESS,
         amount: (minimalBridgeAmount - 1).toString(),
       },
-      error: 'Error: minimal bridge amount is ',
+      error: 'Error: lock amount should be greater than minimal bridge amount 100000000',
     },
     {
-      description: 'lock CKB should be successful when miss sender',
+      description: 'lock CKB should return error when miss sender',
       payload: {
         recipient: ETH_TEST_ADDRESS,
         xchain: 'Ethereum',
         assetIdent: CKB_TOKEN_ADDRESS,
         amount: (minimalBridgeAmount + 1).toString(),
       },
-      send: true,
+      error: 'Error: invalid ckb address',
     },
     {
       description: 'lock CKB should return error when miss recipient',
@@ -82,7 +82,7 @@ function generateCases(
         assetIdent: CKB_TOKEN_ADDRESS,
         amount: (minimalBridgeAmount + 1).toString(),
       },
-      error: 'Error: invalid chain type',
+      error: 'Error: unimplement chain type',
     },
     {
       description: 'lock CKB should return error when miss assetIdent',
@@ -92,7 +92,7 @@ function generateCases(
         xchain: 'Ethereum',
         amount: (minimalBridgeAmount + 1).toString(),
       },
-      error: `Error: Cannot read property 'startWith' of undefind`,
+      error: `Error: lock asset not in white list`,
     },
     {
       description: 'lock CKB should return error when miss amount',
@@ -112,7 +112,7 @@ function generateCases(
           let outString = '';
           const inOptions = 'abcdefghijklmnopqrstuvwxyz0123456789';
 
-          for (let i = 0; i < length; i++) {
+          for (let i = 0; i < 10; i++) {
             outString += inOptions.charAt(Math.floor(Math.random() * inOptions.length));
           }
 
@@ -126,7 +126,7 @@ function generateCases(
     {
       description: 'lock CKB should return error when recipient length is not correct',
       payload: {
-        seder: CKB_TEST_ADDRESS,
+        sender: CKB_TEST_ADDRESS,
         recipient: ETH_TEST_ADDRESS + '0',
         assetIdent: CKB_TOKEN_ADDRESS,
         xchain: 'Ethereum',
@@ -142,7 +142,7 @@ function generateCases(
         assetIdent: CKB_TOKEN_ADDRESS,
         amount: (minimalBridgeAmount + 1).toString(),
       },
-      error: 'Error: invalid chain type',
+      error: 'Error: unimplement chain type',
     },
     {
       description: 'lock CKB should return error when assetIdent length is not correct',
@@ -153,7 +153,7 @@ function generateCases(
         xchain: 'Ethereum',
         amount: (minimalBridgeAmount + 1).toString(),
       },
-      error: 'Error: invalid CKB assetIdent address',
+      error: 'Error: lock asset not in white list',
     },
     {
       description: 'lock CKB should return error when amount not number',
@@ -164,7 +164,7 @@ function generateCases(
         xchain: 'Ethereum',
         amount: 'abc',
       },
-      error: 'Error: Cannot convert abc to BigInt',
+      error: 'Error: Cannot convert abc to a BigInt',
     },
   ];
 
