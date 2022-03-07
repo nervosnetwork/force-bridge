@@ -1,4 +1,4 @@
-import { Cell, CellDep, core, HexString, Indexer, Script, utils, WitnessArgs } from '@ckb-lumos/base';
+import { Cell, CellDep, core, Indexer, Script, utils, WitnessArgs } from '@ckb-lumos/base';
 import { SerializeWitnessArgs } from '@ckb-lumos/base/lib/core';
 import { common } from '@ckb-lumos/common-scripts';
 import { SECP_SIGNATURE_PLACEHOLDER } from '@ckb-lumos/common-scripts/lib/helper';
@@ -501,6 +501,7 @@ export class CkbTxGenerator extends CkbTxHelper {
       );
       hasher.update(rawTxHash);
 
+      //TODO: This function will be replaced after the lumos is being up to date.
       hashWitness(hasher, placeholderWitness(fromLockscript) as ArrayBuffer);
 
       txSkeleton = txSkeleton.update('signingEntries', (signingEntries) => {
@@ -1411,7 +1412,7 @@ export function lockType(lockscript: Script, config: CkbDeps): 'OmniLock' | 'SEC
   }
 }
 
-export function placeholderWitness(senderLockscript: Script): HexString | ArrayBuffer {
+export function placeholderWitness(senderLockscript: Script): ArrayBuffer {
   switch (lockType(senderLockscript, ForceBridgeCore.config.ckb.deps)) {
     case 'OmniLock':
       return core.SerializeWitnessArgs({
@@ -1425,16 +1426,15 @@ export function placeholderWitness(senderLockscript: Script): HexString | ArrayB
         ),
       });
     default:
-      return new Reader(
-        SerializeWitnessArgs(
-          normalizers.NormalizeWitnessArgs({
-            lock: SECP_SIGNATURE_PLACEHOLDER,
-          }),
-        ),
-      ).serializeJson();
+      return SerializeWitnessArgs(
+        normalizers.NormalizeWitnessArgs({
+          lock: SECP_SIGNATURE_PLACEHOLDER,
+        }),
+      );
   }
 }
 
+//TODO: This function will be replaced after the lumos is being up to date.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/explicit-module-boundary-types
 export function hashWitness(hasher: any, witness: ArrayBuffer): void {
   const lengthBuffer = new ArrayBuffer(8);
