@@ -19,6 +19,7 @@ function generateCases(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   bridgeEthAddress: string,
 ) {
+  const minimalBridgeAmount = 1000000000000000;
   const lockCases = [
     {
       description: 'lock CKB should be successful when amount greater than minimalBridgeAmount',
@@ -27,9 +28,143 @@ function generateCases(
         recipient: ETH_TEST_ADDRESS,
         xchain: 'Ethereum',
         assetIdent: CKB_TOKEN_ADDRESS,
-        amount: '1000000000000001',
+        amount: (minimalBridgeAmount + 1).toString(),
       },
       send: true,
+    },
+    {
+      description: 'lock CKB should be successful when amount equals to minimalBridgeAmount',
+      payload: {
+        sender: CKB_TEST_ADDRESS,
+        recipient: ETH_TEST_ADDRESS,
+        xchain: 'Ethereum',
+        assetIdent: CKB_TOKEN_ADDRESS,
+        amount: minimalBridgeAmount.toString(),
+      },
+      send: true,
+    },
+    {
+      description: 'lock CKB should return error when amount less than minimalBridgeAmount',
+      payload: {
+        sender: CKB_TEST_ADDRESS,
+        recipient: ETH_TEST_ADDRESS,
+        xchain: 'Ethereum',
+        assetIdent: CKB_TOKEN_ADDRESS,
+        amount: (minimalBridgeAmount - 1).toString(),
+      },
+      error: 'Error: minimal bridge amount is ',
+    },
+    {
+      description: 'lock CKB should be successful when miss sender',
+      payload: {
+        recipient: ETH_TEST_ADDRESS,
+        xchain: 'Ethereum',
+        assetIdent: CKB_TOKEN_ADDRESS,
+        amount: (minimalBridgeAmount + 1).toString(),
+      },
+      send: true,
+    },
+    {
+      description: 'lock CKB should return error when miss recipient',
+      payload: {
+        sender: CKB_TEST_ADDRESS,
+        xchain: 'Ethereum',
+        assetIdent: CKB_TOKEN_ADDRESS,
+        amount: (minimalBridgeAmount + 1).toString(),
+      },
+      error: 'Error: invalid eth address',
+    },
+    {
+      description: 'lock CKB should return error when miss asset.network',
+      payload: {
+        sender: CKB_TEST_ADDRESS,
+        recipient: CKB_TEST_ADDRESS,
+        assetIdent: CKB_TOKEN_ADDRESS,
+        amount: (minimalBridgeAmount + 1).toString(),
+      },
+      error: 'Error: invalid chain type',
+    },
+    {
+      description: 'lock CKB should return error when miss assetIdent',
+      payload: {
+        sender: CKB_TEST_ADDRESS,
+        recipient: ETH_TEST_ADDRESS,
+        xchain: 'Ethereum',
+        amount: (minimalBridgeAmount + 1).toString(),
+      },
+      error: `Error: Cannot read property 'startWith' of undefind`,
+    },
+    {
+      description: 'lock CKB should return error when miss amount',
+      payload: {
+        sender: CKB_TEST_ADDRESS,
+        recipient: ETH_TEST_ADDRESS,
+        xchain: 'Ethereum',
+        assetIdent: CKB_TOKEN_ADDRESS,
+      },
+      error: 'Error: Cannot convert undefined to a BigInt',
+    },
+    {
+      description: 'lock CKB should return error when recipient is random string',
+      payload: {
+        sender: CKB_TEST_ADDRESS,
+        recipient: (() => {
+          let outString = '';
+          const inOptions = 'abcdefghijklmnopqrstuvwxyz0123456789';
+
+          for (let i = 0; i < length; i++) {
+            outString += inOptions.charAt(Math.floor(Math.random() * inOptions.length));
+          }
+
+          return outString;
+        })(),
+        xchain: 'Ethereum',
+        assetIdent: CKB_TOKEN_ADDRESS,
+      },
+      error: `Error: invalid eth address`,
+    },
+    {
+      description: 'lock CKB should return error when recipient length is not correct',
+      payload: {
+        seder: CKB_TEST_ADDRESS,
+        recipient: ETH_TEST_ADDRESS + '0',
+        assetIdent: CKB_TOKEN_ADDRESS,
+        xchain: 'Ethereum',
+        amount: (minimalBridgeAmount + 1).toString(),
+      },
+      error: 'Error: invalid eth address',
+    },
+    {
+      description: 'lock CKB should return error when xchain is not correct',
+      payload: {
+        sender: CKB_TEST_ADDRESS,
+        recipient: ETH_TEST_ADDRESS + '0',
+        assetIdent: CKB_TOKEN_ADDRESS,
+        amount: (minimalBridgeAmount + 1).toString(),
+      },
+      error: 'Error: invalid chain type',
+    },
+    {
+      description: 'lock CKB should return error when assetIdent length is not correct',
+      payload: {
+        sender: CKB_TEST_ADDRESS,
+        recipient: ETH_TEST_ADDRESS,
+        assetIdent: CKB_TOKEN_ADDRESS + '0',
+        xchain: 'Ethereum',
+        amount: (minimalBridgeAmount + 1).toString(),
+      },
+      error: 'Error: invalid CKB assetIdent address',
+    },
+    {
+      description: 'lock CKB should return error when amount not number',
+      payload: {
+        sender: CKB_TEST_ADDRESS,
+        recipient: ETH_TEST_ADDRESS,
+        assetIdent: CKB_TOKEN_ADDRESS,
+        xchain: 'Ethereum',
+        amount: 'abc',
+      },
+      error: 'Error: Cannot convert abc to BigInt',
     },
   ];
 
