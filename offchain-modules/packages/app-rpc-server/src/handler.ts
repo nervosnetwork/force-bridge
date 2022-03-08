@@ -180,7 +180,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
       case 'Ethereum':
         checkETHAmount(assetName, amount);
         checkETHAddress(payload.recipient);
-        await checkLockEthAddr(payload.recipient);
+        await checkLockEthAddr(payload.recipient, 'unlock');
         asset = new EthAsset(assetName, ownerTypeHash);
         break;
       case 'Tron':
@@ -528,7 +528,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     switch (xchain) {
       case 'Ethereum': {
         checkETHAddress(recipient);
-        await checkLockEthAddr(recipient);
+        await checkLockEthAddr(recipient, 'lock');
         const nervosAssetInfo = new NervosAsset(assetIdent).getAssetInfo(ChainType.ETH);
         if (!nervosAssetInfo) throw new Error('lock asset not in white list');
         if (BigInt(amount) <= BigInt(nervosAssetInfo.minimalBridgeAmount))
@@ -596,14 +596,14 @@ function getTokenShadowIdent(XChainNetwork: BlockChainNetWork, XChainToken: stri
   return ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
 }
 
-async function checkLockEthAddr(address: string) {
+async function checkLockEthAddr(address: string, action: string) {
   if (address === '0x0000000000000000000000000000000000000000') {
-    throw new Error('can not unlock to zero address');
+    throw new Error(`can not ${action} to zero address`);
   }
   const provider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
   const getCodeRes = await provider.getCode(address);
   if (getCodeRes !== '0x') {
-    throw new Error('can not unlock to contract');
+    throw new Error(`can not ${action} to contract`);
   }
 }
 

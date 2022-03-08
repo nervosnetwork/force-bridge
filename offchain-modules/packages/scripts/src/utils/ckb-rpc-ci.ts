@@ -17,7 +17,7 @@ function generateCases(
   ETH_TOKEN_ADDRESS: string,
   CKB_TOKEN_ADDRESS: string,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  bridgeEthAddress: string,
+  assetManagerAddress: string,
 ) {
   const minimalBridgeAmount = 100000000;
   const lockCases = [
@@ -166,21 +166,206 @@ function generateCases(
       },
       error: 'Error: Cannot convert abc to a BigInt',
     },
+    {
+      description: 'lock CKB should return error when recipient is zero address',
+      payload: {
+        sender: CKB_TEST_ADDRESS,
+        recipient: '0x0000000000000000000000000000000000000000',
+        assetIdent: CKB_TOKEN_ADDRESS,
+        xchain: 'Ethereum',
+        amount: (minimalBridgeAmount + 1).toString(),
+      },
+      error: 'Error: can not lock to zero address',
+    },
+    {
+      description: 'lock CKB should return error when recipient is contract address',
+      payload: {
+        sender: CKB_TEST_ADDRESS,
+        recipient: assetManagerAddress,
+        assetIdent: CKB_TOKEN_ADDRESS,
+        xchain: 'Ethereum',
+        amount: (minimalBridgeAmount + 1).toString(),
+      },
+      error: 'Error: can not lock to contract',
+    },
   ];
 
-  const burnCases = [];
+  const randomSudtAsset = (() => {
+    let outString = '';
+    const inOptions = 'abcdefghijklmnopqrstuvwxyz0123456789';
 
-  const txSummaryCases = [];
+    for (let i = 0; i < 46; i++) {
+      outString += inOptions.charAt(Math.floor(Math.random() * inOptions.length));
+    }
 
-  const balanceCases = [];
+    return outString;
+  })();
+  const burnCases = [
+    {
+      description: 'burn CKB should be successful when amount greater than minimalBridgeAmount',
+      payload: {
+        asset: ETH_TOKEN_ADDRESS,
+        amount: (minimalBridgeAmount + 1).toString(),
+        xchain: 'Ethereum',
+        recipient: CKB_TEST_ADDRESS,
+        sender: ETH_TEST_ADDRESS,
+      },
+      send: true,
+    },
+    {
+      description: 'burn CKB should be successful when amount equals to minimalBridgeAmount',
+      payload: {
+        asset: ETH_TOKEN_ADDRESS,
+        amount: minimalBridgeAmount.toString(),
+        xchain: 'Ethereum',
+        recipient: CKB_TEST_ADDRESS,
+        sender: ETH_TEST_ADDRESS,
+      },
+      send: true,
+    },
+    {
+      description: 'burn CKB should return error when amount less than minimalBridgeAmount',
+      payload: {
+        asset: ETH_TOKEN_ADDRESS,
+        amount: (minimalBridgeAmount - 1).toString(),
+        xchain: 'Ethereum',
+        recipient: CKB_TEST_ADDRESS,
+        sender: ETH_TEST_ADDRESS,
+      },
+      error: `Error: minimal bridge amount is ${minimalBridgeAmount} CKB`,
+    },
+    {
+      description: 'burn CKB should return error when miss xchain',
+      payload: {
+        asset: ETH_TOKEN_ADDRESS,
+        amount: (minimalBridgeAmount + 1).toString(),
+        recipient: CKB_TEST_ADDRESS,
+        sender: ETH_TEST_ADDRESS,
+      },
+      error: 'Error: invalid chain type: undefined',
+    },
+    {
+      description: 'burn CKB should return error when miss sender',
+      payload: {
+        asset: ETH_TOKEN_ADDRESS,
+        amount: (minimalBridgeAmount + 1).toString(),
+        xchain: 'Ethereum',
+        recipient: CKB_TEST_ADDRESS,
+      },
+      error: 'Error: invalid eth address',
+    },
+    {
+      description: 'burn CKB should return error when miss recipient',
+      payload: {
+        asset: ETH_TOKEN_ADDRESS,
+        amount: (minimalBridgeAmount + 1).toString(),
+        xchain: 'Ethereum',
+        sender: ETH_TEST_ADDRESS,
+      },
+      error: `Error: invalid ckb address`,
+    },
+    {
+      description: 'burn CKB should return error when miss asset',
+      payload: {
+        amount: (minimalBridgeAmount + 1).toString(),
+        xchain: 'Ethereum',
+        recipient: CKB_TEST_ADDRESS,
+        sender: ETH_TEST_ADDRESS,
+      },
+      error: `Error: eth mirror asset is not in whitelist. undefined`,
+    },
+    {
+      description: 'burn CKB should return error when miss amount',
+      payload: {
+        asset: ETH_TOKEN_ADDRESS,
+        xchain: 'Ethereum',
+        recipient: CKB_TEST_ADDRESS,
+        sender: ETH_TEST_ADDRESS,
+      },
+      error: (() => {
+        try {
+          ethers.BigNumber.from(undefined);
+        } catch (e) {
+          return `Error: ${e.message}`;
+        }
+      })(),
+    },
+    {
+      description: 'burn CKB should return error when network is invalid',
+      payload: {
+        asset: ETH_TOKEN_ADDRESS,
+        amount: (minimalBridgeAmount + 1).toString(),
+        xchain: 'Invalid',
+        recipient: CKB_TEST_ADDRESS,
+        sender: ETH_TEST_ADDRESS,
+      },
+      error: 'Error: invalid chain type: Invalid',
+    },
+    {
+      description: 'burn CKB should return error when sender is invalid',
+      payload: {
+        asset: ETH_TOKEN_ADDRESS,
+        amount: (minimalBridgeAmount + 1).toString(),
+        xchain: 'Ethereum',
+        recipient: CKB_TEST_ADDRESS,
+        sender: (() => {
+          let outString = '';
+          const inOptions = 'abcdefghijklmnopqrstuvwxyz0123456789';
 
-  const feeCases = [];
+          for (let i = 0; i < 42; i++) {
+            outString += inOptions.charAt(Math.floor(Math.random() * inOptions.length));
+          }
+
+          return outString;
+        })(),
+      },
+      error: 'Error: invalid eth address',
+    },
+    {
+      description: 'burn CKB should return error when recipient length is too long',
+      payload: {
+        asset: ETH_TOKEN_ADDRESS,
+        amount: (minimalBridgeAmount + 1).toString(),
+        xchain: 'Ethereum',
+        recipient:
+          'ckt1qn3qcg07nlfjc4rwqnu3dntrtrcwd6p48vy72q7rkgkqzvwt5evl5hcqqqqpqqqqqqcqqqqqxyqqqqym2zpn63k5c3jp4cmdze0n5ajgep4ky0g5mjc6fvua3wfekfz2auqj5qqqqqc8sd6pvc6r2dnzvccrqd34v9q5gs2zxfznvsj9vvmygc2yxvmnxvfc8yun2dfsvgurgputy4y',
+        sender: ETH_TEST_ADDRESS,
+      },
+      error: `Error: sudt size exceeds limit. limit: 200 actual: 217`,
+    },
+    {
+      description: 'burn CKB should return error when asset not on whitelist',
+      payload: {
+        asset: randomSudtAsset,
+        amount: (minimalBridgeAmount + 1).toString(),
+        xchain: 'Ethereum',
+        recipient: CKB_TEST_ADDRESS,
+        sender: ETH_TEST_ADDRESS,
+      },
+      error: `Error: eth mirror asset is not in whitelist. ${randomSudtAsset}`,
+    },
+    {
+      description: 'burn CKB should return error when amount is not number',
+      payload: {
+        asset: ETH_TOKEN_ADDRESS,
+        amount: 'abc',
+        xchain: 'Ethereum',
+        recipient: CKB_TEST_ADDRESS,
+        sender: ETH_TEST_ADDRESS,
+      },
+      error: (() => {
+        try {
+          ethers.BigNumber.from('abc');
+        } catch (e) {
+          return `Error: ${e.message}`;
+        }
+      })(),
+    },
+  ];
+
   return {
     lockCases,
     burnCases,
-    txSummaryCases,
-    balanceCases,
-    feeCases,
   };
 }
 
@@ -278,6 +463,8 @@ async function burn(
   const provider = new ethers.providers.JsonRpcProvider(ETH_NODE_URL);
   const wallet = new ethers.Wallet(ETH_PRI_KEY, provider);
   const gasPrice = await provider.getGasPrice();
+  const balance = await provider.getBalance(wallet.address);
+  logger.info(`balance: ${balance}`);
   let nonce = await wallet.getTransactionCount();
 
   const casesLength = testcases.length;
@@ -309,12 +496,11 @@ async function burn(
       nonce++;
 
       const assets = await client.request('getAssetList', {});
-      const shadowAsset = assets.find((asset) => asset.ident === testcase.payload.assetIdent);
-      const xchainAssetIdent = shadowAsset.info.shadow.ident;
+      const shadowAsset = assets.find((asset) => asset.info.shadow.ident === testcase.payload.asset);
       const beforeBalance = await getBalance(
         client,
-        testcase.payload.asset.ident,
-        xchainAssetIdent,
+        shadowAsset.ident,
+        testcase.payload.asset,
         CKB_TEST_ADDRESS,
         ETH_TEST_ADDRESS,
       );
@@ -328,8 +514,8 @@ async function burn(
       for (let j = 0; j < 3; j++) {
         const afterBalance = await getBalance(
           client,
-          testcase.payload.asset.ident,
-          xchainAssetIdent,
+          shadowAsset.ident,
+          testcase.payload.asset,
           CKB_TEST_ADDRESS,
           ETH_TEST_ADDRESS,
         );
@@ -344,60 +530,6 @@ async function burn(
         }
         assert(expectedSUDTBalance.toString() === afterSUDTBalance.toString());
       }
-    }
-  }
-}
-
-async function txSummaries(client: JSONRPCClient, testcases) {
-  const casesLength = testcases.length;
-  for (let i = 0; i < casesLength; i++) {
-    const testcase = testcases[i];
-    let txSummariesResult;
-    try {
-      txSummariesResult = await client.request('getBridgeTransactionSummaries', testcase.payload);
-    } catch (e) {
-      if (testcase.error) {
-        logger.info(`error for testcase ${i} ${testcase.description}, error: ${e}`);
-        assert(e.toString() == testcase.error);
-        continue;
-      }
-      if (testcase.error == undefined) {
-        throw new Error(`should catch error for testcase ${i} ${testcase.description}, error: ${e}`);
-      }
-    }
-    if (testcase.error) {
-      logger.error(`should not catch error for testcase ${i}: ${testcase.description}`);
-      process.exit(1);
-    }
-    if (testcase.result) {
-      assert(txSummariesResult.length == 0);
-    }
-  }
-}
-
-async function balance(client: JSONRPCClient, testcases) {
-  const casesLength = testcases.length;
-  for (let i = 0; i < casesLength; i++) {
-    const testcase = testcases[i];
-    let balanceResult;
-    try {
-      balanceResult = await client.request('getBalance', testcase.payload);
-    } catch (e) {
-      if (testcase.error) {
-        logger.info(`error for testcase ${i} ${testcase.description}, error: ${e}`);
-        assert(e.toString() == testcase.error);
-        continue;
-      }
-      if (testcase.error == undefined) {
-        throw new Error(`should catch error for testcase ${i} ${testcase.description}, error: ${e}`);
-      }
-    }
-    if (testcase.error) {
-      logger.error(`should not catch error for testcase ${i}: ${testcase.description}`);
-      process.exit(1);
-    }
-    if (testcase.result) {
-      assert(balanceResult == testcase.result);
     }
   }
 }
@@ -443,19 +575,6 @@ async function getBalance(
   const balance = await client.request('getBalance', [ckbBalancePayload, ethBalancePayload]);
   logger.info('balance', balance);
   return balance;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function getFee(client: JSONRPCClient, xchain, typescriptHash, amount) {
-  const payload = {
-    xchain,
-    typescriptHash,
-    amount,
-  };
-  const lockFee = await client.request('getBridgeNervosToXchainLockBridgeFee', payload);
-  const burnFee = await client.request('getBridgeNervosToXchainBurnBridgeFee', payload);
-  logger.info('lockFee, burnFee', lockFee, burnFee);
-  return { lockFee, burnFee };
 }
 
 async function checkTx(client: JSONRPCClient, token_address, txId, ckbAddress, ethAddress) {
@@ -551,10 +670,10 @@ export async function rpcTest(
   CKB_PRI_KEY: string,
   ETH_PRI_KEY: string,
   bridgeEthAddress: string,
-  CKB_TEST_ADDRESS: string = privateKeyToCkbAddress(CKB_PRI_KEY),
-  ETH_TEST_ADDRESS: string = privateKeyToEthAddress(ETH_PRI_KEY),
   ETH_TOKEN_ADDRESS = '0x0000000000000000000000000000000000000000',
   CKB_TOKEN_ADDRESS = CKB_TYPESCRIPT_HASH,
+  CKB_TEST_ADDRESS: string = privateKeyToCkbAddress(CKB_PRI_KEY),
+  ETH_TEST_ADDRESS: string = privateKeyToEthAddress(ETH_PRI_KEY),
 ): Promise<void> {
   const rpc = new RPC(CKB_NODE_URL);
 
@@ -577,7 +696,7 @@ export async function rpcTest(
     }),
   );
 
-  const { lockCases, burnCases, txSummaryCases, balanceCases } = generateCases(
+  const { lockCases, burnCases } = generateCases(
     CKB_TEST_ADDRESS,
     ETH_TEST_ADDRESS,
     ETH_TOKEN_ADDRESS,
@@ -586,8 +705,6 @@ export async function rpcTest(
   );
 
   await lock(rpc, client, ETH_NODE_URL, CKB_PRI_KEY, CKB_TEST_ADDRESS, ETH_TEST_ADDRESS, lockCases);
-  await burn(client, ETH_NODE_URL, CKB_PRI_KEY, CKB_TEST_ADDRESS, ETH_TEST_ADDRESS, burnCases);
-  await txSummaries(client, txSummaryCases);
-  await balance(client, balanceCases);
+  await burn(client, ETH_NODE_URL, ETH_PRI_KEY, CKB_TEST_ADDRESS, ETH_TEST_ADDRESS, burnCases);
   logger.info('ckb-rpc-ci test pass!');
 }
