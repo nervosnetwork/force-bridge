@@ -188,13 +188,13 @@ export async function deployDev(
   );
   logger.info(`bridge address: ${bridgeEthAddress}`);
 
-  const { safeAddress, contractNetworks } = await deploySafe(
+  const { safeAddress, contractNetworks: safeContractNetworks } = await deploySafe(
     ETH_RPC_URL,
     ethPrivateKey,
     MULTISIG_THRESHOLD,
     ethMultiSignAddresses,
   );
-  logger.info(`safe address: ${safeAddress}, contractNetworks: ${contractNetworks}`);
+  logger.info(`safeAddress: ${safeAddress}, safeContractNetworks: ${safeContractNetworks}`);
 
   const ckbDeployGenerator = new CkbDeployManager(CKB_RPC_URL, CKB_INDEXER_URL);
   if (!ckbDeps) {
@@ -354,7 +354,7 @@ export async function deployDev(
     ckbPrivateKey,
     assetManagerContractAddress: assetManagerContract.address,
     safeAddress,
-    safeContractNetworks: contractNetworks,
+    safeContractNetworks,
   };
   if (cachePath) {
     writeJsonToFile(data, cachePath);

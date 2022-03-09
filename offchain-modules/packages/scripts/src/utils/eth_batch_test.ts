@@ -224,7 +224,7 @@ export async function prepareCkbAddresses(
   privateKeys: Array<string>,
   ckbPrivateKey: string,
 ): Promise<Array<string>> {
-  const batchNum = ckbPrivateKey.length;
+  const batchNum = privateKeys.length;
   const { secp256k1Dep } = await ckb.loadDeps();
   asserts(secp256k1Dep);
   const cellDeps = [
@@ -242,7 +242,7 @@ export async function prepareCkbAddresses(
     hash_type: secp256k1Dep.hashType,
   };
   asserts(fromLockscript);
-  const needSupplyCap = batchNum * 600 * 100000000 + 100000;
+  const needSupplyCap = batchNum * 10000 * 100000000 + 100000;
   const collector = new IndexerCollector(ckbIndexer);
 
   const needSupplyCapCells = await collector.getCellsByLockscriptAndCapacity(fromLockscript, BigInt(needSupplyCap));
@@ -264,7 +264,7 @@ export async function prepareCkbAddresses(
       args: toArgs,
       hash_type: secp256k1Dep.hashType,
     });
-    const capacity = 600 * 100000000;
+    const capacity = 10000 * 100000000;
     const toScriptCell = {
       lock: toScript,
       capacity: `0x${capacity.toString(16)}`,

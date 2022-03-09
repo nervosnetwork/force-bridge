@@ -179,7 +179,7 @@ async function stressLock(
   lockEthAmount: string,
   erc20TokenAddress: string,
   lockErc20Amount: string,
-  intervalMs = 0,
+  intervalMs = 5000,
 ) {
   for (let i = 0; i < roundNumber; i++) {
     logger.info(`start ${i + 1} round stress lock test`);
@@ -219,7 +219,7 @@ async function stressBurn(
   burnEthSudtAmount: string,
   erc20TokenAddress: string,
   burnCkbErc20SudtAmount: string,
-  intervalMs = 0,
+  intervalMs = 5000,
 ) {
   for (let i = 0; i < roundNumber; i++) {
     logger.info(`start ${i + 1} round stress burn test`);

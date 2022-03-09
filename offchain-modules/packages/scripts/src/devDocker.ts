@@ -40,7 +40,7 @@ async function generateConfig(
   password,
   assetManagerContractAddress: string,
   safeAddress: string,
-  safeContractNetworks: ContractNetworksConfig | undefined,
+  safeContractNetworks: ContractNetworksConfig,
 ) {
   const baseConfig: Config = lodash.cloneDeep(initConfig);
   logger.debug(`baseConfig: ${JSON.stringify(baseConfig, null, 2)}`);
@@ -62,7 +62,7 @@ async function generateConfig(
   collectorConfig.common.orm!.host = 'collector_db';
   collectorConfig.common.collectorPubKeyHash.push(privateKeyToCkbPubkeyHash(CKB_PRIVATE_KEY));
   collectorConfig.eth.privateKey = 'eth';
-  collectorConfig.eth.networks = safeContractNetworks;
+  collectorConfig.eth.safeMultisignContractNetworks = safeContractNetworks;
   collectorConfig.ckb.privateKey = 'ckb';
   collectorConfig.eth.multiSignThreshold = multisigConfig.threshold;
   collectorConfig.eth.multiSignAddresses = multisigConfig.verifiers.map((v) => v.ethAddress);

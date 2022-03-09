@@ -12,12 +12,14 @@ import { ckbOriginStressTest } from './stress-ckb-test';
 import { ethOriginStressTest } from './stress-test';
 
 function devConfig(): StressConfig {
-  // your send lock tx account privkey
+  // your send lock tx account privkey; * 1. eth needs, 2. ethDai token needs *
   const ethPrivateKey = '';
-  // your transfer ckb to recipients account privkey
+  // your transfer ckb to recipients account privkey, * 1. ckb needs, 2. dev_token of sudtTypescriptHash needs *
   const ckbPrivateKey = '';
-  // for ethOrigin distribute test ckbPrivKeys
+  // for ethOrigin distribute test ckbPrivKeys, * 1. ckb needs *
   const ethOriginUsedCkbPrivateKey = '';
+  // for ckbOrigin distribute test ethPrivKeys, * 1. eth needs *
+  const ckbOriginUsedEthPrivateKey = '';
   const ethNodeUrl = 'http://127.0.0.1:8545';
   const ckbNodeUrl = 'http://127.0.0.1:8114';
   const ckbIndexerUrl = 'http://127.0.0.1:8116';
@@ -67,6 +69,7 @@ function devConfig(): StressConfig {
     ethPrivateKey,
     ckbPrivateKey,
     ethOriginUsedCkbPrivateKey,
+    ckbOriginUsedEthPrivateKey,
     ethNodeUrl,
     ckbNodeUrl,
     ckbIndexerUrl,
@@ -95,6 +98,8 @@ function testnetConfig(): StressConfig {
   const ckbPrivateKey = '';
   // for ethOrigin distribute test ckbPrivKeys, * 1. ckb needs *
   const ethOriginUsedCkbPrivateKey = '';
+  // for ckbOrigin distribute test ethPrivKeys, * 1. eth needs *
+  const ckbOriginUsedEthPrivateKey = '';
   // const ethNodeUrl = 'https://rinkeby.infura.io/v3/66c31b146d424cf8a9cb1fba4a6eb32e';
   const ethNodeUrl = 'https://eth-rinkeby.alchemyapi.io/v2/vs-rRAMOinzrHY634csL75yqxfCUvg0U';
   const ckbNodeUrl = 'http://47.56.233.149:3017/rpc';
@@ -145,6 +150,7 @@ function testnetConfig(): StressConfig {
     ethPrivateKey,
     ckbPrivateKey,
     ethOriginUsedCkbPrivateKey,
+    ckbOriginUsedEthPrivateKey,
     ethNodeUrl,
     ckbNodeUrl,
     ckbIndexerUrl,
@@ -170,6 +176,7 @@ interface StressConfig {
   ethPrivateKey: string;
   ckbPrivateKey: string;
   ethOriginUsedCkbPrivateKey: string;
+  ckbOriginUsedEthPrivateKey: string;
   ethNodeUrl: string;
   ckbNodeUrl: string;
   ckbIndexerUrl: string;
@@ -191,7 +198,7 @@ interface StressConfig {
 }
 
 async function stressTest() {
-  initLog({ level: 'debug', identity: 'stress-ckb-test', logFile: './data/stress-schedule.log' });
+  initLog({ level: 'debug', identity: 'stress-schedule-test', logFile: './data/stress-schedule.log' });
   const bridgeDirection = nonNullable(process.argv[2]);
   const batchNumber = Number(process.argv[3] ?? 100);
   const roundNumber = Number(process.argv[4] ?? 2);
@@ -200,6 +207,7 @@ async function stressTest() {
     ethPrivateKey,
     ckbPrivateKey,
     ethOriginUsedCkbPrivateKey,
+    ckbOriginUsedEthPrivateKey,
     ethNodeUrl,
     ckbNodeUrl,
     ckbIndexerUrl,
@@ -268,7 +276,7 @@ async function stressTest() {
       ckbIndexer,
       client,
       provider,
-      ethPrivateKey,
+      ethPrivateKey: ckbOriginUsedEthPrivateKey,
       ckbPrivateKey,
       xchainCkbTokenAddress,
       lockCkbAmount,
@@ -281,6 +289,7 @@ async function stressTest() {
       burnErc20SudtAmount,
     }),
   ]);
+  logger.info(`stress schedule succeed!`);
 }
 
 if (require.main === module) {
@@ -296,6 +305,7 @@ if (require.main === module) {
       .send()
       .then(() => {
         logger.info('sent stress schedule error to discord');
+        process.exit(1);
       });
   });
 }

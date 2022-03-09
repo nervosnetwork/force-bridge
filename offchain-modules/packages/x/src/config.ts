@@ -71,7 +71,6 @@ export interface EthConfig {
   lockNervosAssetFee: string; // bridge fee paid by CKB, unit: shannon
   burnNervosAssetFee: string; // bridge fee paid by ETH, unit: wei
   assetManagerContractAddress: string;
-  networks?: ContractNetworksConfig;
 }
 
 export interface EosConfig {

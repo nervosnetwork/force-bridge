@@ -148,6 +148,10 @@ export async function ckbOriginStressTest({
     `start stress ckb test with bridgeDirection=${bridgeDirection}, batchNumber=${batchNumber}, roundNumber=${roundNumber}`,
   );
 
+  const ethWallets = await prepareEthWallets(provider, ethPrivateKey, batchNumber, '10000000000000000');
+  const recipients = ethWallets.map((ethWallet) => ethWallet.address);
+  logger.info(`ethPrivateKeys ${ethWallets.map((ethWallet) => ethWallet.privateKey)} recipients: ${recipients}`);
+
   const ckbPrivateKeys = prepareCkbPrivateKeys(batchNumber);
   logger.info(`ckbPrivateKeys ${ckbPrivateKeys}`);
   const ckbAddresses = await prepareCkbAddresses(
@@ -163,12 +167,10 @@ export async function ckbOriginStressTest({
   );
   logger.info(`prepared ckb addresses ${ckbAddresses}`);
 
-  const ethWallets = await prepareEthWallets(provider, ethPrivateKey, batchNumber, '10000000000000000');
-  const recipients = ethWallets.map((ethWallet) => ethWallet.address);
-  logger.info(`ethPrivateKeys ${ethWallets.map((ethWallet) => ethWallet.privateKey)} recipients: ${recipients}`);
   logger.info('start stress lock test');
   await stressLock(
     1,
+    batchNumber,
     rpc,
     client,
     ckbPrivateKeys,
@@ -183,6 +185,7 @@ export async function ckbOriginStressTest({
   const stressPromise: PromiseLike<void>[] = [];
   const lockPromise = stressLock(
     roundNumber,
+    batchNumber,
     rpc,
     client,
     ckbPrivateKeys,
@@ -213,6 +216,7 @@ export async function ckbOriginStressTest({
 
 async function stressLock(
   roundNumber: number,
+  batchNumber: number,
   rpc: RPC,
   client: JSONRPCClient,
   ckbPrivateKeys: Array<string>,
@@ -224,6 +228,7 @@ async function stressLock(
   multiple = 1,
 ) {
   for (let i = 0; i < roundNumber; i++) {
+    logger.info('start stress ckb lock test');
     const ckbAddresses = ckbPrivateKeys.map((ckbPk) => privateKeyToAddress(ckbPk, { prefix: AddressPrefix.Testnet }));
     logger.info(`start ${i + 1} round stress ckb lock test`);
     const lockCkbTxs = await lock(
@@ -236,8 +241,8 @@ async function stressLock(
       (BigInt(lockCkbAmount) * BigInt(multiple)).toString(10),
       intervalMs,
     );
-    await check(client, 1, 'Nervos', CKB_TYPESCRIPT_HASH, 'Ethereum', recipients, lockCkbTxs);
-    const lockErc20Txs = await lock(
+    await check(client, batchNumber, 'Nervos', CKB_TYPESCRIPT_HASH, 'Ethereum', recipients, lockCkbTxs);
+    const lockSudtTxs = await lock(
       client,
       rpc,
       ckbPrivateKeys,
@@ -247,7 +252,7 @@ async function stressLock(
       (BigInt(lockCkbSudtAmount) * BigInt(multiple)).toString(10),
       intervalMs,
     );
-    await check(client, 1, 'Nervos', sudtTypescriptHash, 'Ethereum', recipients, lockErc20Txs);
+    await check(client, batchNumber, 'Nervos', sudtTypescriptHash, 'Ethereum', recipients, lockSudtTxs);
     logger.info(`${i + 1} round stress ckb lock test succeed`);
   }
   logger.info(`stress ckb lock test succeed!`);
@@ -266,43 +271,47 @@ async function stressBurn(
   burnErc20SudtAmount: string,
   intervalMs = 0,
 ) {
-  logger.info(`start stress burn test`);
-  const burnCkbSudtTxs = await burn(
-    client,
-    provider,
-    ethWallets,
-    recipients,
-    xchainCkbTokenAddress,
-    burnCkbSudtAmount,
-    intervalMs,
-  );
-  await check(
-    client,
-    batchNumber,
-    'Nervos',
-    xchainCkbTokenAddress,
-    'Ethereum',
-    ethWallets.map((ethWallet) => ethWallet.address),
-    burnCkbSudtTxs,
-  );
-  const burnXchainSudtTxs = await burn(
-    client,
-    provider,
-    ethWallets,
-    recipients,
-    xchainSudtTokenAddress,
-    burnErc20SudtAmount,
-    intervalMs,
-  );
-  await check(
-    client,
-    batchNumber,
-    'Nervos',
-    xchainSudtTokenAddress,
-    'Ethereum',
-    ethWallets.map((ethWallet) => ethWallet.address),
-    burnXchainSudtTxs,
-  );
+  logger.info(`start stress ckb burn test`);
+  for (let i = 0; i < roundNumber; i++) {
+    logger.info(`start ${i + 1} round stress ckb burn test`);
+    const burnCkbSudtTxs = await burn(
+      client,
+      provider,
+      ethWallets,
+      recipients,
+      xchainCkbTokenAddress,
+      burnCkbSudtAmount,
+      intervalMs,
+    );
+    await check(
+      client,
+      batchNumber,
+      'Nervos',
+      xchainCkbTokenAddress,
+      'Ethereum',
+      ethWallets.map((ethWallet) => ethWallet.address),
+      burnCkbSudtTxs,
+    );
+    const burnXchainSudtTxs = await burn(
+      client,
+      provider,
+      ethWallets,
+      recipients,
+      xchainSudtTokenAddress,
+      burnErc20SudtAmount,
+      intervalMs,
+    );
+    await check(
+      client,
+      batchNumber,
+      'Nervos',
+      xchainSudtTokenAddress,
+      'Ethereum',
+      ethWallets.map((ethWallet) => ethWallet.address),
+      burnXchainSudtTxs,
+    );
+    logger.info(`${i + 1} round stress ckb burn test succeed`);
+  }
   logger.info('stress ckb burn test succeed!');
 }
 

@@ -109,6 +109,29 @@ export class ForceBridgeCore {
     // init log
     initLog(config.common.log);
 
+    // init lumos config
+    initLumosConfig(config.common.lumosConfigType);
+
+    if (config.eth && config.eth.nervosAssetWhiteList) {
+      const sudtTypescript = config.ckb.deps.sudtType.script;
+      config.eth.nervosAssetWhiteList
+        .filter((asset) => asset.typescriptHash !== CKB_TYPESCRIPT_HASH && asset.sudtArgs)
+        .map((asset) => {
+          const typescriptHash = utils.computeScriptHash({
+            code_hash: sudtTypescript.codeHash,
+            hash_type: sudtTypescript.hashType,
+            args: asset.sudtArgs!,
+          });
+          if (!asset.typescriptHash || asset.typescriptHash !== typescriptHash) {
+            throw new Error(
+              `invalid nervos asset white list typescriptHash, asset: ${JSON.stringify(
+                asset,
+              )} typescriptHash: ${typescriptHash}`,
+            );
+          }
+        });
+    }
+
     // set server port
     if (config.common.port) {
       ServerSingleton.getInstance().start(config.common.port);
@@ -123,24 +146,6 @@ export class ForceBridgeCore {
       if (config.eth && config.eth.privateKey) {
         config.eth.privateKey = keystore.getDecryptedByKeyID(config.eth.privateKey);
       }
-    }
-
-    // init lumos config
-    initLumosConfig(config.common.lumosConfigType);
-
-    if (config.eth && config.eth.nervosAssetWhiteList) {
-      const typescript = config.ckb.deps.sudtType.script;
-      config.eth.nervosAssetWhiteList
-        .filter((asset) => asset.typescriptHash !== CKB_TYPESCRIPT_HASH && asset.sudtArgs)
-        .map((asset) => {
-          if (!asset.typescriptHash) {
-            asset.typescriptHash = utils.computeScriptHash({
-              code_hash: typescript.codeHash,
-              hash_type: typescript.hashType,
-              args: asset.sudtArgs!,
-            });
-          }
-        });
     }
 
     if (config.common.role === 'collector') {
