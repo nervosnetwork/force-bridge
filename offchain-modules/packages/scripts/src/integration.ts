@@ -541,6 +541,10 @@ async function nervosIntegration(
     1,
     nervosAssetWhiteList,
   );
+  const asset = nervosAssetWhiteList.find((v) => {
+    return v.typescriptHash == CKB_TYPESCRIPT_HASH;
+  })!;
+
   await ckbRpcTest(
     FORCE_BRIDGE_URL,
     CKB_RPC_URL,
@@ -548,10 +552,9 @@ async function nervosIntegration(
     CKB_TEST_PRIVKEY,
     ETH_TEST_PRIVKEY,
     bridgeEthAddress,
-    nervosAssetWhiteList.find((v) => {
-      return v.typescriptHash == CKB_TYPESCRIPT_HASH;
-    })?.xchainTokenAddress,
+    asset.xchainTokenAddress,
     CKB_TYPESCRIPT_HASH,
+    Number.parseInt(asset.minimalBridgeAmount),
   );
 }
 

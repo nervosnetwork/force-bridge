@@ -13,13 +13,11 @@ import fetch from 'node-fetch/index';
 function generateCases(
   CKB_TEST_ADDRESS: string,
   ETH_TEST_ADDRESS: string,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   ETH_TOKEN_ADDRESS: string,
   CKB_TOKEN_ADDRESS: string,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   assetManagerAddress: string,
+  minimalBridgeAmount: number,
 ) {
-  const minimalBridgeAmount = 100000000;
   const lockCases = [
     {
       description: 'lock CKB should be successful when amount greater than minimalBridgeAmount',
@@ -41,7 +39,7 @@ function generateCases(
         assetIdent: CKB_TOKEN_ADDRESS,
         amount: minimalBridgeAmount.toString(),
       },
-      error: 'Error: lock amount should be greater than minimal bridge amount 100000000',
+      error: `Error: lock amount should be greater than minimal bridge amount ${minimalBridgeAmount}`,
     },
     {
       description: 'lock CKB should return error when amount less than minimalBridgeAmount',
@@ -52,7 +50,7 @@ function generateCases(
         assetIdent: CKB_TOKEN_ADDRESS,
         amount: (minimalBridgeAmount - 1).toString(),
       },
-      error: 'Error: lock amount should be greater than minimal bridge amount 100000000',
+      error: `Error: lock amount should be greater than minimal bridge amount ${minimalBridgeAmount}`,
     },
     {
       description: 'lock CKB should return error when miss sender',
@@ -221,7 +219,7 @@ function generateCases(
         recipient: CKB_TEST_ADDRESS,
         sender: ETH_TEST_ADDRESS,
       },
-      send: true,
+      error: `Error: minimal bridge amount is ${minimalBridgeAmount} CKB`,
     },
     {
       description: 'burn CKB should return error when amount less than minimalBridgeAmount',
@@ -509,7 +507,7 @@ async function burn(
       const lockTxHash = (await provider.sendTransaction(signedTx)).hash;
       logger.info('lockTxHash', lockTxHash);
 
-      await checkTx(client, testcase.payload.asset.ident, lockTxHash, CKB_TEST_ADDRESS, ETH_TEST_ADDRESS);
+      await checkTx(client, testcase.payload.asset, lockTxHash, CKB_TEST_ADDRESS, ETH_TEST_ADDRESS);
 
       for (let j = 0; j < 3; j++) {
         const afterBalance = await getBalance(
@@ -521,7 +519,7 @@ async function burn(
         );
 
         const beforeSUDTBalance = new Amount(beforeBalance[0].amount, 0);
-        const expectedSUDTBalance = beforeSUDTBalance.add(new Amount(testcase.payload.asset.amount, 0));
+        const expectedSUDTBalance = beforeSUDTBalance.add(new Amount(testcase.payload.amount, 0));
         const afterSUDTBalance = new Amount(afterBalance[0].amount, 0);
         logger.info('amount ', beforeSUDTBalance, afterSUDTBalance, expectedSUDTBalance);
         if (expectedSUDTBalance.toString() != afterSUDTBalance.toString() && j < 2) {
@@ -672,6 +670,7 @@ export async function rpcTest(
   bridgeEthAddress: string,
   ETH_TOKEN_ADDRESS = '0x0000000000000000000000000000000000000000',
   CKB_TOKEN_ADDRESS = CKB_TYPESCRIPT_HASH,
+  minimalBridgeAmount: number,
   CKB_TEST_ADDRESS: string = privateKeyToCkbAddress(CKB_PRI_KEY),
   ETH_TEST_ADDRESS: string = privateKeyToEthAddress(ETH_PRI_KEY),
 ): Promise<void> {
@@ -702,6 +701,7 @@ export async function rpcTest(
     ETH_TOKEN_ADDRESS,
     CKB_TOKEN_ADDRESS,
     bridgeEthAddress,
+    minimalBridgeAmount,
   );
 
   await lock(rpc, client, ETH_NODE_URL, CKB_PRI_KEY, CKB_TEST_ADDRESS, ETH_TEST_ADDRESS, lockCases);
