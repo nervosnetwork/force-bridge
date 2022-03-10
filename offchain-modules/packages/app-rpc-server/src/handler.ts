@@ -457,7 +457,6 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
       }
 
       case 'Nervos': {
-        checkCKBAddress(value.assetIdent);
         checkCKBAddress(value.userIdent);
         const collector = new IndexerCollector(ForceBridgeCore.ckbIndexer);
         const userScript = parseAddress(value.userIdent);

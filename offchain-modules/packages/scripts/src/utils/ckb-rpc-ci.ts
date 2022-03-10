@@ -514,27 +514,6 @@ function generateCases(
       ],
       error: `Error: invalid ckb address`,
     },
-    {
-      description: 'getBalance should return error when miss assetIdent',
-      payload: [
-        {
-          network: 'Nervos',
-          userIdent: CKB_TEST_ADDRESS,
-        },
-      ],
-      error: `Error: invalid ckb address`,
-    },
-    {
-      description: 'getBalance should return error when assetIdent is invalid',
-      payload: [
-        {
-          network: 'Nervos',
-          assetIdent: CKB_TOKEN_ADDRESS + '00',
-          userIdent: CKB_TEST_ADDRESS,
-        },
-      ],
-      error: 'Error: invalid ckb address',
-    },
   ];
 
   const feeCases = [
