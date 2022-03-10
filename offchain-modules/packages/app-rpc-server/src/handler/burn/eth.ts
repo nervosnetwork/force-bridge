@@ -15,6 +15,7 @@ class Eth extends Burn {
     logger.info(`generateBridgeOutEtherumTransaction, payload: ${JSON.stringify(payload)}`);
 
     this.checkCKBAddress(payload.recipient);
+    this.checkETHAddress(payload.sender);
 
     try {
       checkBurn(payload.asset, payload.amount, payload.recipient, '0x');

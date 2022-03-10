@@ -3,10 +3,17 @@ import path from 'path';
 import { ValInfos } from '@force-bridge/cli/src/changeVal';
 import { KeyStore } from '@force-bridge/keystore/dist';
 import { OmniLockCellConfig, OwnerCellConfig } from '@force-bridge/x/dist/ckb/tx-helper/deploy';
-import { Config, WhiteListEthAsset, WhiteListNervosAsset, CkbDeps } from '@force-bridge/x/dist/config';
+import {
+  Config,
+  WhiteListEthAsset,
+  WhiteListNervosAsset,
+  CkbDeps,
+  CKB_TYPESCRIPT_HASH,
+} from '@force-bridge/x/dist/config';
 import { asyncSleep, privateKeyToCkbPubkeyHash, writeJsonToFile } from '@force-bridge/x/dist/utils';
 import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
 import { ContractNetworksConfig } from '@gnosis.pm/safe-core-sdk';
+import { ethers } from 'ethers';
 import * as lodash from 'lodash';
 import * as shelljs from 'shelljs';
 import { execShellCmd, pathFromProjectRoot } from './utils';
@@ -514,7 +521,23 @@ async function nervosIntegration(
     3,
     nervosAssetWhiteList,
   );
-  await ckbRpcTest(FORCE_BRIDGE_URL, CKB_RPC_URL, ETH_RPC_URL, CKB_TEST_PRIVKEY, ETH_TEST_PRIVKEY, bridgeEthAddress);
+
+  const asset = nervosAssetWhiteList.find((v) => {
+    return v.typescriptHash == CKB_TYPESCRIPT_HASH;
+  })!;
+
+  await ckbRpcTest(
+    FORCE_BRIDGE_URL,
+    CKB_RPC_URL,
+    ETH_RPC_URL,
+    CKB_TEST_PRIVKEY,
+    ETH_TEST_PRIVKEY,
+    bridgeEthAddress,
+    asset.xchainTokenAddress,
+    CKB_TYPESCRIPT_HASH,
+    ethers.BigNumber.from(asset.minimalBridgeAmount),
+    asset.decimal,
+  );
 }
 
 main()
