@@ -542,6 +542,7 @@ async function nervosIntegration(
     1,
     nervosAssetWhiteList,
   );
+
   const asset = nervosAssetWhiteList.find((v) => {
     return v.typescriptHash == CKB_TYPESCRIPT_HASH;
   })!;
@@ -556,7 +557,7 @@ async function nervosIntegration(
     asset.xchainTokenAddress,
     CKB_TYPESCRIPT_HASH,
     ethers.BigNumber.from(asset.minimalBridgeAmount),
-    // Number.parseInt(asset.minimalBridgeAmount),
+    asset.decimal,
   );
 }
 

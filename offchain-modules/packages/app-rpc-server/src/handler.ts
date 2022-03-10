@@ -457,6 +457,8 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
       }
 
       case 'Nervos': {
+        checkCKBAddress(value.assetIdent);
+        checkCKBAddress(value.userIdent);
         const collector = new IndexerCollector(ForceBridgeCore.ckbIndexer);
         const userScript = parseAddress(value.userIdent);
         if (value.assetIdent === CKB_TYPESCRIPT_HASH) {
@@ -641,9 +643,10 @@ function checkCKBAmount(typescriptHash, amount) {
     (asset) => asset.typescriptHash === typescriptHash,
   );
   if (!assetInfo) throw new Error('invalid asset');
-  const humanizeMinimalAmount = new BigNumber(minimalAmount)
-    .times(new BigNumber(10).pow(-assetInfo.decimal))
-    .toString();
   if (new Amount(amount, 0).lt(new Amount(minimalAmount, 0)))
-    throw new Error(`minimal bridge amount is ${humanizeMinimalAmount} ${assetInfo.symbol}`);
+    throw new Error(
+      `minimal bridge amount is ${ethers.utils.formatUnits(ethers.BigNumber.from(minimalAmount), assetInfo.decimal)} ${
+        assetInfo.symbol
+      }`,
+    );
 }

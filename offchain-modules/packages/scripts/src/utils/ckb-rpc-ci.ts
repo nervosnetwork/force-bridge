@@ -17,6 +17,7 @@ function generateCases(
   CKB_TOKEN_ADDRESS: string,
   assetManagerAddress: string,
   minimalBridgeAmount: ethers.BigNumber,
+  decimal: number,
 ) {
   const lockCases = [
     {
@@ -361,9 +362,241 @@ function generateCases(
     },
   ];
 
+  const txSummaryCases = [
+    {
+      description: 'get tx summaries should return error when miss network',
+      payload: {
+        xchainAssetIdent: CKB_TOKEN_ADDRESS,
+        user: {
+          network: 'Nervos',
+          ident: CKB_TEST_ADDRESS,
+        },
+      },
+      error: 'Error: invalid bridge chain type',
+    },
+    {
+      description: 'get tx summaries should return null when miss xchainAssetIdent',
+      payload: {
+        network: 'Nervos',
+        user: {
+          network: 'Nervos',
+          ident: CKB_TEST_ADDRESS,
+        },
+      },
+      result: [],
+    },
+    {
+      description: 'get tx summaries should return error when miss user.network',
+      payload: {
+        network: 'Nervos',
+        xchainAssetIdent: CKB_TOKEN_ADDRESS,
+        user: {
+          ident: CKB_TEST_ADDRESS,
+        },
+      },
+      error: 'Error: invalid address chain type',
+    },
+    {
+      description: 'get tx summaries should return null when miss user.ident',
+      payload: {
+        network: 'Nervos',
+        xchainAssetIdent: CKB_TOKEN_ADDRESS,
+        user: {
+          network: 'Nervos',
+        },
+      },
+      result: [],
+    },
+    {
+      description: 'get tx summaries should return error when network is invalid',
+      payload: {
+        network: 'Invalid',
+        xchainAssetIdent: CKB_TOKEN_ADDRESS,
+        user: {
+          network: 'Nervos',
+          ident: CKB_TEST_ADDRESS,
+        },
+      },
+      error: 'Error: invalid bridge chain type',
+    },
+    {
+      description: 'get tx summaries should return null when xchainAssetIdent not exist',
+      payload: {
+        network: 'Nervos',
+        xchainAssetIdent: (() => {
+          let outString = '';
+          const inOptions = 'abcdefghijklmnopqrstuvwxyz0123456789';
+
+          for (let i = 0; i < 42; i++) {
+            outString += inOptions.charAt(Math.floor(Math.random() * inOptions.length));
+          }
+
+          return outString;
+        })(),
+        user: {
+          network: 'Nervos',
+          ident: CKB_TEST_ADDRESS,
+        },
+      },
+      result: [],
+    },
+    {
+      description: 'get tx summaries should return error when user.network is invalid',
+      payload: {
+        network: 'Nervos',
+        xchainAssetIdent: (() => {
+          let outString = '';
+          const inOptions = 'abcdefghijklmnopqrstuvwxyz0123456789';
+
+          for (let i = 0; i < 42; i++) {
+            outString += inOptions.charAt(Math.floor(Math.random() * inOptions.length));
+          }
+
+          return outString;
+        })(),
+        user: {
+          network: 'Invalid',
+          ident: CKB_TEST_ADDRESS,
+        },
+      },
+      error: 'Error: invalid address chain type',
+    },
+    {
+      description: 'get tx summaries should return null when user.ident not exist',
+      payload: {
+        network: 'Nervos',
+        xchainAssetIdent: (() => {
+          let outString = '';
+          const inOptions = 'abcdefghijklmnopqrstuvwxyz0123456789';
+
+          for (let i = 0; i < 42; i++) {
+            outString += inOptions.charAt(Math.floor(Math.random() * inOptions.length));
+          }
+
+          return outString;
+        })(),
+        user: {
+          network: 'Nervos',
+          ident: (() => {
+            let outString = '';
+            const inOptions = 'abcdefghijklmnopqrstuvwxyz0123456789';
+
+            for (let i = 0; i < 42; i++) {
+              outString += inOptions.charAt(Math.floor(Math.random() * inOptions.length));
+            }
+
+            return outString;
+          })(),
+        },
+      },
+      result: [],
+    },
+  ];
+
+  const balanceCases = [
+    {
+      description: 'getBalance should return error when miss network',
+      payload: [
+        {
+          userIdent: CKB_TEST_ADDRESS,
+          assetIdent: CKB_TOKEN_ADDRESS,
+        },
+      ],
+      error: 'Error: invalid chain type',
+    },
+    {
+      description: 'getBalance should return error when miss userIdent',
+      payload: [
+        {
+          network: 'Nervos',
+          assetIdent: CKB_TOKEN_ADDRESS,
+        },
+      ],
+      error: `Error: invalid ckb address`,
+    },
+    {
+      description: 'getBalance should return error when miss assetIdent',
+      payload: [
+        {
+          network: 'Nervos',
+          userIdent: CKB_TEST_ADDRESS,
+        },
+      ],
+      error: `Error: invalid ckb address`,
+    },
+    {
+      description: 'getBalance should return error when assetIdent is invalid',
+      payload: [
+        {
+          network: 'Nervos',
+          assetIdent: CKB_TOKEN_ADDRESS + '00',
+          userIdent: CKB_TEST_ADDRESS,
+        },
+      ],
+      error: 'Error: invalid ckb address',
+    },
+  ];
+
+  const feeCases = [
+    {
+      description: 'should return error when amount less than minimalBridgeAmount ',
+      payload: {
+        xchain: 'Ethereum',
+        typescriptHash: CKB_TOKEN_ADDRESS,
+        amount: minimalBridgeAmount.sub(1).toString(),
+      },
+      error: `Error: minimal bridge amount is ${ethers.utils.formatUnits(minimalBridgeAmount, decimal)} CKB`,
+    },
+    {
+      description: 'should return error when miss xchain',
+      payload: {
+        typescriptHash: CKB_TOKEN_ADDRESS,
+        amount: minimalBridgeAmount.add(1).toString(),
+      },
+      error: 'Error: invalid bridge chain type',
+    },
+    {
+      description: 'should return error when miss typescriptHash',
+      payload: {
+        xchain: 'Ethereum',
+        amount: minimalBridgeAmount.add(1).toString(),
+      },
+      error: `Error: invalid ckb address`,
+    },
+    {
+      description: 'should return error when miss amount',
+      payload: {
+        xchain: 'Ethereum',
+        typescriptHash: CKB_TOKEN_ADDRESS,
+      },
+      error: 'Error: Cannot convert undefined to a BigInt',
+    },
+    {
+      description: 'should return error when network is invalid',
+      payload: {
+        xchain: 'Invalid',
+        typescriptHash: CKB_TOKEN_ADDRESS,
+        amount: minimalBridgeAmount.add(1).toString(),
+      },
+      error: 'Error: invalid bridge chain type',
+    },
+    {
+      description: 'should return error when amount is invalid',
+      payload: {
+        xchain: 'Ethereum',
+        typescriptHash: CKB_TOKEN_ADDRESS,
+        amount: 'abc',
+      },
+      error: 'Error: Cannot convert abc to a BigInt',
+    },
+  ];
+
   return {
     lockCases,
     burnCases,
+    txSummaryCases,
+    balanceCases,
+    feeCases,
   };
 }
 
@@ -627,6 +860,83 @@ async function checkTx(client: JSONRPCClient, token_address, txId, ckbAddress, e
   }
 }
 
+async function txSummaries(client: JSONRPCClient, testcases) {
+  const casesLength = testcases.length;
+  for (let i = 0; i < casesLength; i++) {
+    const testcase = testcases[i];
+    let txSummariesResult;
+    try {
+      txSummariesResult = await client.request('getBridgeTransactionSummaries', testcase.payload);
+    } catch (e) {
+      if (testcase.error) {
+        logger.info(`error for testcase ${i} ${testcase.description}, error: ${e}`);
+        assert(e.toString() == testcase.error);
+        continue;
+      }
+      if (testcase.error == undefined) {
+        throw new Error(`should catch error for testcase ${i} ${testcase.description}, error: ${e}`);
+      }
+    }
+    if (testcase.error) {
+      logger.error(`should not catch error for testcase ${i}: ${testcase.description}`);
+      process.exit(1);
+    }
+    if (testcase.result) {
+      assert(txSummariesResult.length == 0);
+    }
+  }
+}
+
+async function balance(client: JSONRPCClient, testcases) {
+  const casesLength = testcases.length;
+  for (let i = 0; i < casesLength; i++) {
+    const testcase = testcases[i];
+    let balanceResult;
+    try {
+      balanceResult = await client.request('getBalance', testcase.payload);
+    } catch (e) {
+      if (testcase.error) {
+        logger.info(`error for testcase ${i} ${testcase.description}, error: ${e}`);
+        assert(e.toString() == testcase.error);
+        continue;
+      }
+      if (testcase.error == undefined) {
+        throw new Error(`should catch error for testcase ${i} ${testcase.description}, error: ${e}`);
+      }
+    }
+    if (testcase.error) {
+      logger.error(`should not catch error for testcase ${i}: ${testcase.description}`);
+      process.exit(1);
+    }
+    if (testcase.result) {
+      assert(balanceResult == testcase.result);
+    }
+  }
+}
+
+async function fee(client: JSONRPCClient, method, testcases) {
+  const casesLength = testcases.length;
+  for (let i = 0; i < casesLength; i++) {
+    const testcase = testcases[i];
+    try {
+      await client.request(method, testcase.payload);
+    } catch (e) {
+      if (testcase.error) {
+        logger.info(`error for testcase ${i} ${testcase.description}, error: ${e}`);
+        assert(e.toString() == testcase.error);
+        continue;
+      }
+      if (testcase.error == undefined) {
+        throw new Error(`should catch error for testcase ${i} ${testcase.description}, error: ${e}`);
+      }
+    }
+    if (testcase.error) {
+      logger.error(`should not catch error for testcase ${i}: ${testcase.description}`);
+      process.exit(1);
+    }
+  }
+}
+
 // const FORCE_BRIDGE_URL = 'http://127.0.0.1:8080/force-bridge/api/v1';
 // const ETH_NODE_URL = 'http://127.0.0.1:8545';
 //
@@ -671,6 +981,7 @@ export async function rpcTest(
   ETH_TOKEN_ADDRESS = '0x0000000000000000000000000000000000000000',
   CKB_TOKEN_ADDRESS = CKB_TYPESCRIPT_HASH,
   minimalBridgeAmount: ethers.BigNumber,
+  decimal: number,
   CKB_TEST_ADDRESS: string = privateKeyToCkbAddress(CKB_PRI_KEY),
   ETH_TEST_ADDRESS: string = privateKeyToEthAddress(ETH_PRI_KEY),
 ): Promise<void> {
@@ -695,16 +1006,21 @@ export async function rpcTest(
     }),
   );
 
-  const { lockCases, burnCases } = generateCases(
+  const { lockCases, burnCases, txSummaryCases, balanceCases, feeCases } = generateCases(
     CKB_TEST_ADDRESS,
     ETH_TEST_ADDRESS,
     ETH_TOKEN_ADDRESS,
     CKB_TOKEN_ADDRESS,
     bridgeEthAddress,
     minimalBridgeAmount,
+    decimal,
   );
 
   await lock(rpc, client, ETH_NODE_URL, CKB_PRI_KEY, CKB_TEST_ADDRESS, ETH_TEST_ADDRESS, lockCases);
   await burn(client, ETH_NODE_URL, ETH_PRI_KEY, CKB_TEST_ADDRESS, ETH_TEST_ADDRESS, burnCases);
+  await txSummaries(client, txSummaryCases);
+  await balance(client, balanceCases);
+  await fee(client, 'getBridgeNervosToXchainLockBridgeFee', feeCases);
+  await fee(client, 'getBridgeNervosToXchainBurnBridgeFee', feeCases);
   logger.info('ckb-rpc-ci test pass!');
 }
