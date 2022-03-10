@@ -531,7 +531,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         await checkLockEthAddr(recipient, 'lock');
         const nervosAssetInfo = new NervosAsset(assetIdent).getAssetInfo(ChainType.ETH);
         if (!nervosAssetInfo) throw new Error('lock asset not in white list');
-        if (BigInt(amount) <= BigInt(nervosAssetInfo.minimalBridgeAmount))
+        if (BigInt(amount) < BigInt(nervosAssetInfo.minimalBridgeAmount))
           throw new Error(
             `lock amount should be greater than minimal bridge amount ${nervosAssetInfo.minimalBridgeAmount}`,
           );

@@ -82,7 +82,7 @@ export function checkBurn(token: string, amount: string, recipient: string, sudt
     throw new Error(`eth mirror asset is not in whitelist. ${token}`);
   }
 
-  if (ethers.BigNumber.from(amount).lte(assetInfo.minimalBridgeAmount)) {
+  if (ethers.BigNumber.from(amount).lt(assetInfo.minimalBridgeAmount)) {
     throw new Error(`minimal bridge amount is ${assetInfo.minimalBridgeAmount} ${assetInfo.symbol}`);
   }
 

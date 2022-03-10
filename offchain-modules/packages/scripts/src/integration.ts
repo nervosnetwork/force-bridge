@@ -13,6 +13,7 @@ import {
 import { asyncSleep, privateKeyToCkbPubkeyHash, writeJsonToFile } from '@force-bridge/x/dist/utils';
 import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
 import { ContractNetworksConfig } from '@gnosis.pm/safe-core-sdk';
+import { ethers } from 'ethers';
 import * as lodash from 'lodash';
 import * as shelljs from 'shelljs';
 import { execShellCmd, pathFromProjectRoot } from './utils';
@@ -554,7 +555,8 @@ async function nervosIntegration(
     bridgeEthAddress,
     asset.xchainTokenAddress,
     CKB_TYPESCRIPT_HASH,
-    Number.parseInt(asset.minimalBridgeAmount),
+    ethers.BigNumber.from(asset.minimalBridgeAmount),
+    // Number.parseInt(asset.minimalBridgeAmount),
   );
 }
 
