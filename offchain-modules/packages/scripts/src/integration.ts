@@ -76,7 +76,7 @@ async function generateConfig(
   password: string,
   assetManagerContractAddress: string,
   safeAddress: string,
-  contractNetworks: ContractNetworksConfig,
+  safeContractNetworks: ContractNetworksConfig,
   sudtSize = 200,
 ) {
   const baseConfig: Config = lodash.cloneDeep(initConfig);
@@ -89,9 +89,9 @@ async function generateConfig(
   baseConfig.ckb.startBlockHeight = ckbStartHeight;
   baseConfig.eth.startBlockHeight = ethStartHeight;
   baseConfig.eth.safeMultisignContractAddress = safeAddress;
-  baseConfig.eth.safeMultisignContractNetworks = contractNetworks;
-  baseConfig.eth.lockNervosAssetFee = '1000000000000';
-  baseConfig.eth.burnNervosAssetFee = '100000000';
+  baseConfig.eth.safeMultisignContractNetworks = safeContractNetworks;
+  baseConfig.eth.lockNervosAssetFee = '20000000000';
+  baseConfig.eth.burnNervosAssetFee = '20000000000';
   // collector
   const collectorConfig: Config = lodash.cloneDeep(baseConfig);
   collectorConfig.common.role = 'collector';
@@ -369,7 +369,7 @@ async function main() {
     ethStartHeight,
     assetManagerContractAddress,
     safeAddress,
-    contractNetworks,
+    safeContractNetworks,
   } = await deployDev(
     ETH_RPC_URL,
     CKB_RPC_URL,
@@ -405,7 +405,7 @@ async function main() {
     FORCE_BRIDGE_KEYSTORE_PASSWORD,
     assetManagerContractAddress,
     safeAddress,
-    contractNetworks,
+    safeContractNetworks,
   );
   await handleDb('drop', MULTISIG_NUMBER + EXTRA_MULTISIG_NUMBER);
   await handleDb('create', MULTISIG_NUMBER + EXTRA_MULTISIG_NUMBER);

@@ -35,12 +35,12 @@ export async function deployAssetManager(
   safeAddress: string,
   nervosAssetWhiteList: WhiteListNervosAsset[],
 ): Promise<Contract> {
-  const contract = await new ethers.ContractFactory(
+  const assetManagerContract = await new ethers.ContractFactory(
     asabi,
     asbytecode,
     new Wallet(privateKey, new ethers.providers.JsonRpcProvider(url)),
   ).deploy();
-  const receipt = await contract.deployTransaction.wait();
+  const receipt = await assetManagerContract.deployTransaction.wait();
   logger.info(`deploy eth asset manager tx receipt is ${JSON.stringify(receipt)}`);
   if (receipt.status !== 1) {
     logger.info(`failed to deploy asset manager contract.`);
@@ -51,16 +51,16 @@ export async function deployAssetManager(
     const ckbEthMirror = await deployEthMirror(url, privateKey, v.name, v.symbol, v.decimal);
     logger.info(`ckb mirror address: ${ckbEthMirror.address} asset id:${v.typescriptHash}`);
 
-    await (await ckbEthMirror.transferOwnership(contract.address)).wait();
-    await (await contract.addAsset(ckbEthMirror.address, v.typescriptHash)).wait();
+    await (await ckbEthMirror.transferOwnership(assetManagerContract.address)).wait();
+    await (await assetManagerContract.addAsset(ckbEthMirror.address, v.typescriptHash)).wait();
     v.xchainTokenAddress = ckbEthMirror.address;
     logger.info(`ckb mirror added to asset manager. address: ${ckbEthMirror.address} asset id:${v.typescriptHash}`);
   }
 
-  await contract.transferOwnership(safeAddress);
+  await assetManagerContract.transferOwnership(safeAddress);
   logger.info(`Asset Manager Contract has been transfered to safe address: ${safeAddress}`);
 
-  return contract;
+  return assetManagerContract;
 }
 
 export async function deployEthMirror(

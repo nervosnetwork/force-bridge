@@ -402,7 +402,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     const nervosAssetList = nervosWhiteListAssets.map((asset) => {
       return {
         network: 'Nervos',
-        ident: asset.typescript ? asset.typescript.args : CKB_TYPESCRIPT_HASH,
+        ident: asset.sudtArgs ? asset.sudtArgs : CKB_TYPESCRIPT_HASH,
         info: {
           decimals: asset.decimal,
           name: asset.name,

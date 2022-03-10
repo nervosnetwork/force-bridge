@@ -81,7 +81,7 @@ abstract class Mint {
         {
           ckbTxHash: ckbRecord.ckbTxHash,
           amount: record.amount,
-          bridgeFee,
+          bridgeFee: `0x${BigInt(bridgeFee).toString(16)}`,
         },
       ]);
     }

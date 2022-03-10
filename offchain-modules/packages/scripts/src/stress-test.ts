@@ -1,4 +1,7 @@
+import { RPC } from '@ckb-lumos/rpc';
 import { nonNullable } from '@force-bridge/x';
+import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
+import { ETH_TOKEN_ADDRESS } from '@force-bridge/x/dist/config';
 import { initLog, logger } from '@force-bridge/x/dist/utils/logger';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import { AddressPrefix } from '@nervosnetwork/ckb-sdk-utils';
@@ -7,36 +10,34 @@ import { JSONRPCClient } from 'json-rpc-2.0';
 import fetch from 'node-fetch/index';
 import { burn, lock, prepareCkbAddresses, prepareCkbPrivateKeys, check } from './utils/eth_batch_test';
 
-// your send lock tx account privkey
-const ethPrivateKey = '';
-// your transfer ckb to recipients account privkey
-const ckbPrivateKey = '';
-const ethNodeUrl = 'http://127.0.0.1:3000';
-const ckbNodeUrl = 'http://127.0.0.1:3001';
-const ckbIndexerUrl = 'http://127.0.0.1:3002';
-const forceBridgeUrl = 'http://127.0.0.1:3199/force-bridge/api/v1';
-const ethTokenAddress = '0x0000000000000000000000000000000000000000';
-// Dai token
-const erc20TokenAddress = '0x7Af456bf0065aADAB2E6BEc6DaD3731899550b84';
-const lockEthAmount = '30000000000000';
-const burnEthSudtAmount = '10000000000000';
-const lockErc20Amount = '3000000000000000';
-const burnErc20SudtAmount = '1000000000000000';
-
 // ts-node stress-test.ts [bridgeDirection] [batchNumber] [roundNumber]
 // bridgeDirection: in = only test bridge in, both = test bridge in and out
 // batchNumber: the number of lock/burn eth/erc20 txes sent one time
 // roundNumber: the number of batch round
 async function main() {
   initLog({ level: 'debug', identity: 'stress-test' });
+
+  // your send lock tx account privkey
+  const ethPrivateKey = '';
+  // your transfer ckb to recipients account privkey
+  const ckbPrivateKey = '';
+  const ethNodeUrl = 'http://127.0.0.1:3000';
+  const ckbNodeUrl = 'http://127.0.0.1:3001';
+  const ckbIndexerUrl = 'http://127.0.0.1:3002';
+  const forceBridgeUrl = 'http://127.0.0.1:3199/force-bridge/api/v1';
+  // Dai token
+  const erc20TokenAddress = '0x7Af456bf0065aADAB2E6BEc6DaD3731899550b84';
+  const lockEthAmount = '30000000000000';
+  const burnEthSudtAmount = '10000000000000';
+  const lockErc20Amount = '3000000000000000';
+  const burnCkbErc20SudtAmount = '1000000000000000';
+
   const bridgeDirection = nonNullable(process.argv[2]);
   const batchNumber = Number(process.argv[3] ?? 100);
   const roundNumber = Number(process.argv[4] ?? 2);
-
-  logger.info(
-    `start stress test with bridgeDirection=${bridgeDirection}, batchNumber=${batchNumber}, roundNumber=${roundNumber}`,
-  );
   const ckb = new CKB(ckbNodeUrl);
+  const rpc = new RPC(ckbNodeUrl);
+  const ckbIndexer = new CkbIndexer(ckbNodeUrl, ckbIndexerUrl);
   const client = new JSONRPCClient((jsonRPCRequest) =>
     fetch(forceBridgeUrl, {
       method: 'POST',
@@ -56,6 +57,59 @@ async function main() {
   );
 
   const provider = new ethers.providers.JsonRpcProvider(ethNodeUrl);
+  await ethOriginStressTest({
+    bridgeDirection,
+    batchNumber,
+    roundNumber,
+    ckb,
+    ckbIndexer,
+    client,
+    provider,
+    ethPrivateKey,
+    ckbPrivateKey,
+    lockEthAmount,
+    erc20TokenAddress,
+    lockErc20Amount,
+    burnEthSudtAmount,
+    burnCkbErc20SudtAmount,
+  });
+}
+
+export async function ethOriginStressTest({
+  bridgeDirection,
+  batchNumber,
+  roundNumber,
+  ckb,
+  ckbIndexer,
+  client,
+  provider,
+  ethPrivateKey,
+  ckbPrivateKey,
+  lockEthAmount,
+  erc20TokenAddress,
+  lockErc20Amount,
+  burnEthSudtAmount,
+  burnCkbErc20SudtAmount,
+}: {
+  bridgeDirection: string;
+  batchNumber: number;
+  roundNumber: number;
+  ckb: CKB;
+  ckbIndexer: CkbIndexer;
+  client: JSONRPCClient;
+  provider: ethers.providers.JsonRpcProvider;
+  ethPrivateKey: string;
+  ckbPrivateKey: string;
+  lockEthAmount: string;
+  erc20TokenAddress: string;
+  lockErc20Amount: string;
+  burnEthSudtAmount: string;
+  burnCkbErc20SudtAmount: string;
+}) {
+  logger.info(
+    `start stress test with bridgeDirection=${bridgeDirection}, batchNumber=${batchNumber}, roundNumber=${roundNumber}`,
+  );
+
   const ethWallet = new ethers.Wallet(ethPrivateKey, provider);
   const ethAddress = ethWallet.address;
 
@@ -66,18 +120,49 @@ async function main() {
         ckb.utils.pubkeyToAddress(ckb.utils.privateKeyToPublicKey(key), { prefix: AddressPrefix.Testnet }),
       );
     }
-    return prepareCkbAddresses(ckb, ckbPrivs, ckbPrivateKey, ckbNodeUrl, ckbIndexerUrl);
+    return prepareCkbAddresses(ckb, ckbIndexer, ckbPrivs, ckbPrivateKey);
   })();
 
   logger.info('start initial round of stress lock test');
-  await stressLock(1, batchNumber, client, provider, ethWallet, ckbAddresses, ethNodeUrl);
+  await stressLock(
+    1,
+    batchNumber,
+    client,
+    provider,
+    ethWallet,
+    ckbAddresses,
+    lockEthAmount,
+    erc20TokenAddress,
+    lockErc20Amount,
+  );
   logger.info('initial round of stress lock test succeed');
 
   const stressPromise: PromiseLike<void>[] = [];
-  const lockPromise = stressLock(roundNumber - 1, batchNumber, client, provider, ethWallet, ckbAddresses, ethNodeUrl);
+  const lockPromise = stressLock(
+    roundNumber - 1,
+    batchNumber,
+    client,
+    provider,
+    ethWallet,
+    ckbAddresses,
+    lockEthAmount,
+    erc20TokenAddress,
+    lockErc20Amount,
+  );
   stressPromise.push(lockPromise);
   if (bridgeDirection === 'both') {
-    const burnPromise = stressBurn(roundNumber, batchNumber, ckb, client, ckbPrivs, ckbAddresses, ethAddress);
+    const burnPromise = stressBurn(
+      roundNumber,
+      batchNumber,
+      ckb,
+      client,
+      ckbPrivs,
+      ckbAddresses,
+      ethAddress,
+      burnEthSudtAmount,
+      erc20TokenAddress,
+      burnCkbErc20SudtAmount,
+    );
     stressPromise.push(burnPromise);
   }
   await Promise.all(stressPromise);
@@ -91,8 +176,10 @@ async function stressLock(
   provider: ethers.providers.JsonRpcProvider,
   ethWallet: ethers.Wallet,
   recipients: Array<string>,
-  ethNodeUrl: string,
-  intervalMs = 0,
+  lockEthAmount: string,
+  erc20TokenAddress: string,
+  lockErc20Amount: string,
+  intervalMs = 5000,
 ) {
   for (let i = 0; i < roundNumber; i++) {
     logger.info(`start ${i + 1} round stress lock test`);
@@ -101,12 +188,11 @@ async function stressLock(
       provider,
       ethWallet,
       recipients,
-      ethTokenAddress,
+      ETH_TOKEN_ADDRESS,
       lockEthAmount,
-      ethNodeUrl,
       intervalMs,
     );
-    await check(client, lockEthTxs, recipients, batchNumber, ethTokenAddress);
+    await check(client, lockEthTxs, recipients, batchNumber, ETH_TOKEN_ADDRESS);
     const lockErc20Txs = await lock(
       client,
       provider,
@@ -114,7 +200,6 @@ async function stressLock(
       recipients,
       erc20TokenAddress,
       lockErc20Amount,
-      ethNodeUrl,
       intervalMs,
     );
     await check(client, lockErc20Txs, recipients, batchNumber, erc20TokenAddress);
@@ -131,7 +216,10 @@ async function stressBurn(
   ckbPrivs: Array<string>,
   senders: Array<string>,
   recipient: string,
-  intervalMs = 0,
+  burnEthSudtAmount: string,
+  erc20TokenAddress: string,
+  burnCkbErc20SudtAmount: string,
+  intervalMs = 5000,
 ) {
   for (let i = 0; i < roundNumber; i++) {
     logger.info(`start ${i + 1} round stress burn test`);
@@ -141,11 +229,11 @@ async function stressBurn(
       ckbPrivs,
       senders,
       recipient,
-      ethTokenAddress,
+      ETH_TOKEN_ADDRESS,
       burnEthSudtAmount,
       intervalMs,
     );
-    await check(client, burnEthSudtTxs, senders, batchNumber, ethTokenAddress);
+    await check(client, burnEthSudtTxs, senders, batchNumber, ETH_TOKEN_ADDRESS);
     const burnErc20SudtTxs = await burn(
       ckb,
       client,
@@ -153,7 +241,7 @@ async function stressBurn(
       senders,
       recipient,
       erc20TokenAddress,
-      burnErc20SudtAmount,
+      burnCkbErc20SudtAmount,
       intervalMs,
     );
     await check(client, burnErc20SudtTxs, senders, batchNumber, erc20TokenAddress);
@@ -162,9 +250,11 @@ async function stressBurn(
   logger.info('stress burn test succeed!');
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    logger.error(`stress test failed, error: ${error.stack}`);
-    process.exit(1);
-  });
+if (require.main === module) {
+  main()
+    .then(() => process.exit(0))
+    .catch((error) => {
+      logger.error(`stress test failed, error: ${error.stack}`);
+      process.exit(1);
+    });
+}

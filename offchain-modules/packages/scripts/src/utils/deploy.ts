@@ -1,12 +1,29 @@
 import fs from 'fs';
+import { Cell, CellDep, Script, utils } from '@ckb-lumos/base';
+import { SerializeWitnessArgs } from '@ckb-lumos/base/lib/core';
+import { common } from '@ckb-lumos/common-scripts';
+import { SECP_SIGNATURE_PLACEHOLDER } from '@ckb-lumos/common-scripts/lib/helper';
+import { getConfig } from '@ckb-lumos/config-manager';
+import { parseAddress, TransactionSkeleton } from '@ckb-lumos/helpers';
+import { nonNullable } from '@force-bridge/x';
 import { CkbDeployManager, OwnerCellConfig, OmniLockCellConfig } from '@force-bridge/x/dist/ckb/tx-helper/deploy';
+import { txSkeletonToRawTransactionToSign } from '@force-bridge/x/dist/ckb/tx-helper/generator';
+import { CkbIndexer, ScriptType } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
 import { initLumosConfig } from '@force-bridge/x/dist/ckb/tx-helper/init_lumos_config';
-import { CkbDeps, WhiteListEthAsset, WhiteListNervosAsset } from '@force-bridge/x/dist/config';
-import { writeJsonToFile } from '@force-bridge/x/dist/utils';
+import { calculateFee, getTransactionSize } from '@force-bridge/x/dist/ckb/tx-helper/utils';
+import {
+  CKB_TYPESCRIPT_HASH,
+  CkbDeps,
+  ConfigItem,
+  WhiteListEthAsset,
+  WhiteListNervosAsset,
+} from '@force-bridge/x/dist/config';
+import { asyncSleep, privateKeyToCkbAddress, writeJsonToFile } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
 import { deployEthContract, deployAssetManager, deploySafe } from '@force-bridge/x/dist/xchain/eth';
 import { ContractNetworksConfig } from '@gnosis.pm/safe-core-sdk';
 import CKB from '@nervosnetwork/ckb-sdk-core';
+import { normalizers, Reader } from 'ckb-js-toolkit';
 import { ethers } from 'ethers';
 import * as lodash from 'lodash';
 import { genRandomVerifierConfig, VerifierConfig } from './generate';
@@ -29,7 +46,118 @@ export interface DeployDevResult {
   ethPrivateKey: string;
   assetManagerContractAddress: string;
   safeAddress: string;
-  contractNetworks: ContractNetworksConfig;
+  safeContractNetworks: ContractNetworksConfig;
+}
+
+export async function mintDevToken(
+  CKB_RPC_URL: string,
+  CKB_INDEXER_URL: string,
+  sudtType: ConfigItem,
+  ownerPrivateKey: string,
+  recipientAddress: string,
+  amount: bigint,
+): Promise<string> {
+  const ckb = new CKB(CKB_RPC_URL);
+  const lumosConfig = getConfig();
+  const ckbIndexer = new CkbIndexer(CKB_RPC_URL, CKB_INDEXER_URL);
+  await ckbIndexer.waitForSync();
+  const sudtDep: CellDep = {
+    out_point: {
+      tx_hash: sudtType.cellDep.outPoint.txHash,
+      index: sudtType.cellDep.outPoint.index,
+    },
+    dep_type: sudtType.cellDep.depType,
+  };
+  let txSkeleton = TransactionSkeleton({ cellProvider: ckbIndexer });
+  txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
+    const found = nonNullable(lumosConfig.SCRIPTS.SECP256K1_BLAKE160);
+    return cellDeps
+      .push({
+        dep_type: found.DEP_TYPE,
+        out_point: { tx_hash: found.TX_HASH, index: found.INDEX },
+      })
+      .push(sudtDep);
+  });
+
+  const ownerAddress = privateKeyToCkbAddress(ownerPrivateKey);
+  logger.info(`owner address: ${ownerAddress}`);
+
+  const ownerLockscript = parseAddress(ownerAddress);
+  logger.info(`owner lockScript: ${ownerLockscript}`);
+
+  const args = utils.computeScriptHash(ownerLockscript);
+  const sudtTypescript: Script = {
+    code_hash: sudtType.script.codeHash,
+    args,
+    hash_type: sudtType.script.hashType,
+  };
+
+  const ckbCells = await ckbIndexer.getCells(
+    {
+      script: ownerLockscript,
+      script_type: ScriptType.lock,
+    },
+    undefined,
+  );
+  const ckbLockCells = ckbCells.filter((cell) => !cell.cell_output.type);
+  const inputCell = ckbLockCells[ckbLockCells.length - 1];
+  const inputCapacity = BigInt(inputCell.cell_output.capacity);
+  const sudtCapacity = BigInt(200 * 10 ** 8);
+
+  const recipientScript = parseAddress(recipientAddress);
+  const recipientCell: Cell = {
+    cell_output: {
+      capacity: `0x${sudtCapacity.toString(16)}`,
+      lock: recipientScript,
+      type: sudtTypescript,
+    },
+    data: utils.toBigUInt128LE(amount),
+  };
+  txSkeleton = txSkeleton.update('inputs', (outputs) => {
+    return outputs.push(inputCell);
+  });
+  txSkeleton = txSkeleton.update('outputs', (outputs) => {
+    return outputs.push(recipientCell);
+  });
+  txSkeleton = txSkeleton.update('outputs', (outputs) => {
+    return outputs.push(inputCell);
+  });
+
+  const witness = new Reader(
+    SerializeWitnessArgs(
+      normalizers.NormalizeWitnessArgs({
+        lock: SECP_SIGNATURE_PLACEHOLDER,
+      }),
+    ),
+  ).serializeJson();
+  txSkeleton = txSkeleton.update('witnesses', (w) => {
+    return w.push(witness);
+  });
+  const txFee = calculateFee(getTransactionSize(txSkeleton));
+  txSkeleton = txSkeleton.update('outputs', (outputs) => {
+    outputs.get(1)!.cell_output.capacity = `0x${BigInt(inputCapacity - sudtCapacity - txFee).toString(16)}`;
+    return outputs;
+  });
+  txSkeleton = common.prepareSigningEntries(txSkeleton);
+  const rawTx = txSkeletonToRawTransactionToSign(txSkeleton);
+  const signedTx = ckb.signTransaction(ownerPrivateKey)(rawTx);
+  try {
+    const realTxHash = await ckb.rpc.sendTransaction(signedTx, 'passthrough');
+    logger.info(`realTxHash: ${JSON.stringify(realTxHash, null, 2)}`);
+    for (let i = 0; i < 600; i++) {
+      const tx = await ckb.rpc.getTransaction(realTxHash);
+      logger.info('mint dev_token tx', tx);
+      if (tx.txStatus.status === 'committed') {
+        break;
+      }
+      await asyncSleep(6000);
+    }
+    logger.info('mint dev_token tx success ', realTxHash);
+    return args;
+  } catch (e) {
+    logger.error(e.stack);
+    return '';
+  }
 }
 
 export async function deployDev(
@@ -60,13 +188,13 @@ export async function deployDev(
   );
   logger.info(`bridge address: ${bridgeEthAddress}`);
 
-  const { safeAddress, contractNetworks } = await deploySafe(
+  const { safeAddress, contractNetworks: safeContractNetworks } = await deploySafe(
     ETH_RPC_URL,
     ethPrivateKey,
     MULTISIG_THRESHOLD,
     ethMultiSignAddresses,
   );
-  logger.info(`safe address: ${safeAddress}, contractNetworks: ${contractNetworks}`);
+  logger.info(`safeAddress: ${safeAddress}, safeContractNetworks: ${safeContractNetworks}`);
 
   const ckbDeployGenerator = new CkbDeployManager(CKB_RPC_URL, CKB_INDEXER_URL);
   if (!ckbDeps) {
@@ -152,19 +280,51 @@ export async function deployDev(
   logger.info('omniLockConfig', omniLockConfig);
 
   // generate_configs
-  let assetWhiteListPath: string;
-  let nervosAssetWhiteListPath: string;
+  let assetWhiteList: WhiteListEthAsset[];
+  let nervosAssetWhiteList: WhiteListNervosAsset[];
   if (env === 'DEV') {
-    assetWhiteListPath = pathFromProjectRoot('/configs/devnet-asset-white-list.json');
-    nervosAssetWhiteListPath = pathFromProjectRoot('/configs/devnet-nervos-asset-white-list.json');
+    const assetWhiteListPath = pathFromProjectRoot('/configs/devnet-asset-white-list.json');
+    const nervosAssetWhiteListPath = pathFromProjectRoot('/configs/devnet-nervos-asset-white-list.json');
+    assetWhiteList = JSON.parse(fs.readFileSync(assetWhiteListPath, 'utf8'));
+    nervosAssetWhiteList = JSON.parse(fs.readFileSync(nervosAssetWhiteListPath, 'utf8'));
+    const devSudtArgs = await mintDevToken(
+      CKB_RPC_URL,
+      CKB_INDEXER_URL,
+      ckbDeps.sudtType,
+      ckbPrivateKey,
+      privateKeyToCkbAddress(ckbPrivateKey),
+      BigInt('10000000000000000'),
+    );
+    nervosAssetWhiteList.push({
+      typescriptHash: '',
+      sudtArgs: devSudtArgs,
+      xchainTokenAddress: '',
+      name: 'DEV_TOKEN',
+      symbol: 'DEV_TOKEN',
+      decimal: 8,
+      logoURI: '',
+      minimalBridgeAmount: '100000000',
+    });
   } else if (env === 'AGGRON4') {
-    assetWhiteListPath = pathFromProjectRoot('/configs/testnet-asset-white-list.json');
-    nervosAssetWhiteListPath = pathFromProjectRoot('/configs/testnet-nervos-asset-white-list.json');
+    const assetWhiteListPath = pathFromProjectRoot('/configs/testnet-asset-white-list.json');
+    const nervosAssetWhiteListPath = pathFromProjectRoot('/configs/testnet-nervos-asset-white-list.json');
+    assetWhiteList = JSON.parse(fs.readFileSync(assetWhiteListPath, 'utf8'));
+    nervosAssetWhiteList = JSON.parse(fs.readFileSync(nervosAssetWhiteListPath, 'utf8'));
   } else {
     throw new Error(`wrong env: ${env}`);
   }
-  const assetWhiteList: WhiteListEthAsset[] = JSON.parse(fs.readFileSync(assetWhiteListPath, 'utf8'));
-  const nervosAssetWhiteList: WhiteListNervosAsset[] = JSON.parse(fs.readFileSync(nervosAssetWhiteListPath, 'utf8'));
+  const typescript = ckbDeps.sudtType.script;
+  nervosAssetWhiteList
+    .filter((asset) => asset.typescriptHash !== CKB_TYPESCRIPT_HASH && asset.sudtArgs)
+    .map((asset) => {
+      if (!asset.typescriptHash) {
+        asset.typescriptHash = utils.computeScriptHash({
+          code_hash: typescript.codeHash,
+          hash_type: typescript.hashType,
+          args: asset.sudtArgs!,
+        });
+      }
+    });
   const multisigConfig = {
     threshold: MULTISIG_THRESHOLD,
     verifiers: verifierConfigs,
@@ -194,7 +354,7 @@ export async function deployDev(
     ckbPrivateKey,
     assetManagerContractAddress: assetManagerContract.address,
     safeAddress,
-    contractNetworks,
+    safeContractNetworks,
   };
   if (cachePath) {
     writeJsonToFile(data, cachePath);

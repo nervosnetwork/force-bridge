@@ -3,9 +3,10 @@ import path from 'path';
 import { KeyStore } from '@force-bridge/keystore/dist';
 import { nonNullable } from '@force-bridge/x';
 import { OwnerCellConfig } from '@force-bridge/x/dist/ckb/tx-helper/deploy';
-import { Config, WhiteListEthAsset, CkbDeps } from '@force-bridge/x/dist/config';
+import { Config, WhiteListEthAsset, CkbDeps, WhiteListNervosAsset } from '@force-bridge/x/dist/config';
 import { privateKeyToCkbPubkeyHash, writeJsonToFile } from '@force-bridge/x/dist/utils';
 import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
+import { ContractNetworksConfig } from '@gnosis.pm/safe-core-sdk';
 import * as lodash from 'lodash';
 import * as Mustache from 'mustache';
 import { pathFromProjectRoot } from './utils';
@@ -26,6 +27,7 @@ export interface MultisigConfig {
 async function generateConfig(
   initConfig: Config,
   assetWhiteList: WhiteListEthAsset[],
+  nervosAssetWhiteList: WhiteListNervosAsset[],
   ckbDeps: CkbDeps,
   ownerCellConfig: OwnerCellConfig,
   ethContractAddress: string,
@@ -38,6 +40,7 @@ async function generateConfig(
   password,
   assetManagerContractAddress: string,
   safeAddress: string,
+  safeContractNetworks: ContractNetworksConfig,
 ) {
   const baseConfig: Config = lodash.cloneDeep(initConfig);
   logger.debug(`baseConfig: ${JSON.stringify(baseConfig, null, 2)}`);
@@ -48,7 +51,10 @@ async function generateConfig(
   baseConfig.ckb.deps = ckbDeps;
   baseConfig.ckb.startBlockHeight = ckbStartHeight;
   baseConfig.eth.startBlockHeight = ethStartHeight;
+  baseConfig.eth.nervosAssetWhiteList = nervosAssetWhiteList;
   baseConfig.ckb.ownerCellTypescript = ownerCellConfig.ownerCellTypescript;
+  baseConfig.eth.lockNervosAssetFee = '20000000000';
+  baseConfig.eth.burnNervosAssetFee = '20000000000';
   // collector
   const collectorConfig: Config = lodash.cloneDeep(baseConfig);
   collectorConfig.common.role = 'collector';
@@ -56,6 +62,7 @@ async function generateConfig(
   collectorConfig.common.orm!.host = 'collector_db';
   collectorConfig.common.collectorPubKeyHash.push(privateKeyToCkbPubkeyHash(CKB_PRIVATE_KEY));
   collectorConfig.eth.privateKey = 'eth';
+  collectorConfig.eth.safeMultisignContractNetworks = safeContractNetworks;
   collectorConfig.ckb.privateKey = 'ckb';
   collectorConfig.eth.multiSignThreshold = multisigConfig.threshold;
   collectorConfig.eth.multiSignAddresses = multisigConfig.verifiers.map((v) => v.ethAddress);
@@ -313,6 +320,7 @@ async function main() {
   };
   const {
     assetWhiteList,
+    nervosAssetWhiteList,
     ckbDeps,
     ownerConfig,
     bridgeEthAddress,
@@ -321,6 +329,7 @@ async function main() {
     ethStartHeight,
     assetManagerContractAddress,
     safeAddress,
+    safeContractNetworks,
   } = await deployDev(
     ETH_RPC_URL,
     CKB_RPC_URL,
@@ -335,6 +344,7 @@ async function main() {
   await generateConfig(
     initConfig as unknown as Config,
     assetWhiteList,
+    nervosAssetWhiteList,
     ckbDeps,
     ownerConfig,
     bridgeEthAddress,
@@ -347,6 +357,7 @@ async function main() {
     FORCE_BRIDGE_KEYSTORE_PASSWORD,
     assetManagerContractAddress,
     safeAddress,
+    safeContractNetworks,
   );
 
   const verifiers = lodash.range(MULTISIG_NUMBER).map((i) => {

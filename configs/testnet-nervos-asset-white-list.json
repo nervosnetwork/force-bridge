@@ -6,6 +6,16 @@
     "symbol": "CKB",
     "decimal": 8,
     "logoURI": "",
-    "minimalBridgeAmount": "0"
+    "minimalBridgeAmount": "10000"
+  },
+  {
+    "typescriptHash": "",
+    "sudtArgs": "0xc247211ab6cc6597506c0aa06bd8a21884678f08fdd3a97f81e43fb24ab48663",
+    "xchainTokenAddress": "",
+    "name": "DEV_TOKEN",
+    "symbol": "DEV_TOKEN",
+    "decimal": 8,
+    "logoURI": "",
+    "minimalBridgeAmount": "10000"
   }
 ]

@@ -1518,7 +1518,7 @@ export function checkLock(
     }
   } else {
     //lock sudt
-    if (bridgeFeeSaved <= bridgeFeeFromConfig || BigInt(ckbLock.amount) < BigInt(minimalAmount)) {
+    if (bridgeFeeSaved < bridgeFeeFromConfig || BigInt(ckbLock.amount) < BigInt(minimalAmount)) {
       const humanizeMinimalAmount = new BigNumber(minimalAmount)
         .times(new BigNumber(10).pow(-nervosAssetInfo!.decimal))
         .toString();
