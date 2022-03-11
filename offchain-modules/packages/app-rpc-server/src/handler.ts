@@ -62,10 +62,19 @@ const minERC20ABI = [
 export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
   connection: Connection;
   web3: Web3;
+  provider: ethers.providers.JsonRpcProvider;
+  bridge: ethers.Contract;
 
   constructor(conn: Connection) {
     this.connection = conn;
     this.web3 = new Web3(ForceBridgeCore.config.eth.rpcUrl);
+    const connectionInfo = {
+      url: ForceBridgeCore.config.eth.rpcUrl,
+      timeout: 3000,
+    };
+    this.provider = new ethers.providers.JsonRpcProvider(connectionInfo);
+    const bridgeContractAddr = ForceBridgeCore.config.eth.contractAddress;
+    this.bridge = new ethers.Contract(bridgeContractAddr, abi, this.provider);
   }
 
   async generateBridgeInNervosTransaction<T extends NetworkTypes>(
@@ -85,21 +94,23 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         if (checkRes !== '') {
           throw new Error(checkRes);
         }
-        const provider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
-        const bridgeContractAddr = ForceBridgeCore.config.eth.contractAddress;
-        const bridge = new ethers.Contract(bridgeContractAddr, abi, provider);
         const ethAmount = ethers.utils.parseUnits(payload.asset.amount, 0);
         const recipient = stringToUint8Array(payload.recipient);
 
         switch (payload.asset.ident) {
           // TODO: use EthereumModel.isNativeAsset to identify token
           case '0x0000000000000000000000000000000000000000':
-            tx = await bridge.populateTransaction.lockETH(recipient, sudtExtraData, {
+            tx = await this.bridge.populateTransaction.lockETH(recipient, sudtExtraData, {
               value: ethAmount,
             });
             break;
           default:
-            tx = await bridge.populateTransaction.lockToken(payload.asset.ident, ethAmount, recipient, sudtExtraData);
+            tx = await this.bridge.populateTransaction.lockToken(
+              payload.asset.ident,
+              ethAmount,
+              recipient,
+              sudtExtraData,
+            );
             break;
         }
         break;
