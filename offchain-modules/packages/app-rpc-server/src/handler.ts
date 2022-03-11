@@ -19,8 +19,6 @@ import bitcore from 'bitcore-lib';
 import { ethers } from 'ethers';
 import { RPCClient } from 'rpc-bitcoin';
 import { Connection } from 'typeorm';
-import Web3 from 'web3';
-import { AbiItem } from 'web3-utils';
 import { API, AssetType, NetworkTypes, RequiredAsset } from './types';
 import {
   BalancePayload,
@@ -61,13 +59,11 @@ const minERC20ABI = [
 
 export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
   connection: Connection;
-  web3: Web3;
   provider: ethers.providers.JsonRpcProvider;
   bridge: ethers.Contract;
 
   constructor(conn: Connection) {
     this.connection = conn;
-    this.web3 = new Web3(ForceBridgeCore.config.eth.rpcUrl);
     const connectionInfo = {
       url: ForceBridgeCore.config.eth.rpcUrl,
       timeout: 3000,
@@ -400,11 +396,11 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         checkETHAddress(tokenAddress);
         checkETHAddress(userAddress);
         if (tokenAddress === '0x0000000000000000000000000000000000000000') {
-          const eth_amount = await this.web3.eth.getBalance(userAddress);
+          const eth_amount = await this.provider.getBalance(userAddress);
           balance = eth_amount.toString();
         } else {
-          const TokenContract = new this.web3.eth.Contract(minERC20ABI as AbiItem[], tokenAddress);
-          const erc20_amount = await TokenContract.methods.balanceOf(userAddress).call();
+          const TokenContract = new ethers.Contract(tokenAddress, minERC20ABI, this.provider);
+          const erc20_amount = await TokenContract.balanceOf(userAddress);
           balance = erc20_amount.toString();
         }
         logger.debug(`balance of address: ${userAddress} on ETH is ${balance}`);
