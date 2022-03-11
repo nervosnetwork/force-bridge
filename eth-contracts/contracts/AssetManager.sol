@@ -44,6 +44,8 @@ contract AssetManager is Ownable, ReentrancyGuard {
 
   /// @dev Add a new asset to the asset manager.
   function addAsset(address token, bytes32 assetId) public onlyOwner {
+    require(token != address(0));
+    require(assetId != 0);
     require(tokenToAssetIdMap[token] == 0x0);
     require(assetIdToTokenMap[assetId] == address(0));
     tokenToAssetIdMap[token] = assetId;
