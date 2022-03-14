@@ -45,7 +45,11 @@ export class EthChain {
     const url = config.rpcUrl;
     this.role = role;
     this.config = config;
-    this.provider = new ethers.providers.JsonRpcProvider(url);
+    const connectionInfo = {
+      url,
+      timeout: 3000,
+    };
+    this.provider = new ethers.providers.JsonRpcProvider(connectionInfo);
     this.bridgeContractAddr = config.contractAddress;
     this.iface = new ethers.utils.Interface(abi);
     if (role === 'collector') {
