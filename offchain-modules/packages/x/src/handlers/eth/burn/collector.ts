@@ -16,7 +16,7 @@ class Collector extends Burn {
   async handle(parsedLog: ParsedLog, log: Log, currentHeight: number): Promise<void> {
     await super.handle(parsedLog, log, currentHeight);
 
-    if (!this.confirmStatus(log, currentHeight)) {
+    if (this.confirmStatus(log, currentHeight) !== 'confirmed') {
       return;
     }
 
