@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { KeyStore } from '@force-bridge/keystore/dist';
 import { nonNullable } from '@force-bridge/x';
-import { OwnerCellConfig } from '@force-bridge/x/dist/ckb/tx-helper/deploy';
+import { OmniLockCellConfig, OwnerCellConfig } from '@force-bridge/x/dist/ckb/tx-helper/deploy';
 import { Config, WhiteListEthAsset, CkbDeps, WhiteListNervosAsset } from '@force-bridge/x/dist/config';
 import { privateKeyToCkbPubkeyHash, writeJsonToFile } from '@force-bridge/x/dist/utils';
 import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
@@ -30,6 +30,7 @@ async function generateConfig(
   nervosAssetWhiteList: WhiteListNervosAsset[],
   ckbDeps: CkbDeps,
   ownerCellConfig: OwnerCellConfig,
+  omniLockCellConfig: OmniLockCellConfig,
   ethContractAddress: string,
   multisigConfig: MultisigConfig,
   ckbStartHeight: number,
@@ -53,6 +54,7 @@ async function generateConfig(
   baseConfig.eth.startBlockHeight = ethStartHeight;
   baseConfig.eth.nervosAssetWhiteList = nervosAssetWhiteList;
   baseConfig.ckb.ownerCellTypescript = ownerCellConfig.ownerCellTypescript;
+  baseConfig.ckb.omniLockAdminCellTypescript = omniLockCellConfig.adminCellTypescript;
   baseConfig.eth.lockNervosAssetFee = '20000000000';
   baseConfig.eth.burnNervosAssetFee = '20000000000';
   // collector
@@ -321,6 +323,7 @@ async function main() {
   const {
     assetWhiteList,
     nervosAssetWhiteList,
+    omniLockConfig,
     ckbDeps,
     ownerConfig,
     bridgeEthAddress,
@@ -347,6 +350,7 @@ async function main() {
     nervosAssetWhiteList,
     ckbDeps,
     ownerConfig,
+    omniLockConfig,
     bridgeEthAddress,
     multisigConfig,
     ckbStartHeight,
