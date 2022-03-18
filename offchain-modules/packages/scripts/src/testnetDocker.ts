@@ -120,6 +120,7 @@ async function generateConfig(
     discordWebHook: monitorDiscordWebHook,
     expiredTime: 1800000, //30 minutes
     expiredCheckInterval: 900000, //15 minutes
+    overmintCheckInterval: 3600000, //60 minutes
     scanStep: 100,
     env: 'testnet-docker',
   };

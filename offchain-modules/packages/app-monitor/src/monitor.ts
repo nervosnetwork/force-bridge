@@ -1,8 +1,18 @@
 import { parseAddress } from '@ckb-lumos/helpers';
-import { CkbBurnRecord, CkbMintRecord, EthLockRecord, EthUnlockRecord } from '@force-bridge/reconc/dist';
+import {
+  CkbLockRecord,
+  CkbUnlockRecord,
+  CkbBurnRecord,
+  CkbMintRecord,
+  EthLockRecord,
+  EthUnlockRecord,
+  EthMintRecord,
+  EthBurnRecord,
+} from '@force-bridge/reconc/dist';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
-import { verifierEndpoint, feeAccounts } from '@force-bridge/x/dist/config';
+import { getOmniLockMultisigAddress } from '@force-bridge/x/dist/ckb/tx-helper/multisig/omni-lock';
+import { CKB_TYPESCRIPT_HASH, verifierEndpoint, feeAccounts, ETH_TOKEN_ADDRESS } from '@force-bridge/x/dist/config';
 import { bootstrap, ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { CKBRecordObservable } from '@force-bridge/x/dist/reconc';
 import { asyncSleep, foreverPromise } from '@force-bridge/x/dist/utils';
@@ -13,8 +23,10 @@ import {
   EthRecordObservable,
 } from '@force-bridge/xchain-eth/dist/reconc';
 import axios from 'axios';
+import { BigNumber } from 'bignumber.js';
 import { ethers } from 'ethers';
 import { assetListPriceChange } from './assetPrice';
+import { BalanceProvider } from './balanceProvider';
 import { WebHook } from './discord';
 import { Duration, EventItem, monitorEvent, NewDurationCfg, readMonitorConfig, writeMonitorConfig } from './duration';
 
@@ -54,6 +66,7 @@ export class Monitor {
   private ethProvider: ethers.providers.JsonRpcProvider;
   private ownerTypeHash: string;
   private durationConfig: Duration;
+  private balanceProvider: BalanceProvider;
   webHookInfoUrl: string;
   webHookErrorUrl: string;
 
@@ -62,6 +75,11 @@ export class Monitor {
     this.webHookErrorUrl = ForceBridgeCore.config.monitor!.discordWebHookError || this.webHookInfoUrl;
     this.ethProvider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
     this.ownerTypeHash = getOwnerTypeHash();
+    this.balanceProvider = new BalanceProvider(
+      ForceBridgeCore.config.eth.rpcUrl,
+      ForceBridgeCore.config.ckb.ckbRpcUrl,
+      ForceBridgeCore.config.ckb.ckbIndexerUrl,
+    );
   }
 
   async onEthLockRecord(lock: EthLockRecord): Promise<void> {
@@ -74,6 +92,16 @@ export class Monitor {
     this.durationConfig.eth.pending.unlocks.set(unlock.fromTxId!, newEvent(unlock));
   }
 
+  async onEthMintRecord(mint: EthMintRecord): Promise<void> {
+    logger.info(`Receive ethMint:${JSON.stringify(mint)}`);
+    this.durationConfig.eth.pending.mints.set(mint.fromTxId!, newEvent(mint));
+  }
+
+  async onEthBurnRecord(burn: EthBurnRecord): Promise<void> {
+    logger.info(`Receive ethBurn:${JSON.stringify(burn)}`);
+    this.durationConfig.eth.pending.burns.set(burn.uniqueId, newEvent(burn));
+  }
+
   async onCkbMintRecord(mint: CkbMintRecord): Promise<void> {
     logger.info(`Receive ckbMint:${JSON.stringify(mint)}`);
     this.durationConfig.ckb.pending.mints.set(mint.fromTxId!, newEvent(mint));
@@ -82,6 +110,16 @@ export class Monitor {
   async onCkbBurnRecord(burn: CkbBurnRecord): Promise<void> {
     logger.info(`Receive ckbBurn:${JSON.stringify(burn)}`);
     this.durationConfig.ckb.pending.burns.set(burn.txId, newEvent(burn));
+  }
+
+  async onCkbLockRecord(lock: CkbLockRecord): Promise<void> {
+    logger.info(`Receive ckbLock:${JSON.stringify(lock)}`);
+    this.durationConfig.ckb.pending.locks.set(lock.txId!, newEvent(lock));
+  }
+
+  async onCkbUnlockRecord(unlock: CkbUnlockRecord): Promise<void> {
+    logger.info(`Receive ckbUnlock:${JSON.stringify(unlock)}`);
+    this.durationConfig.ckb.pending.unlocks.set(unlock.fromTxId!, newEvent(unlock));
   }
 
   async compareEthLockAndCkbMint(lock: EthLockRecord, mint: CkbMintRecord): Promise<boolean> {
@@ -99,6 +137,9 @@ export class Monitor {
       // if (!new BigNumber(lock.amount).eq(new BigNumber(fee).plus(new BigNumber(mint.amount)))) {
       //   return `mint.amount:${mint.amount} + fee:${fee} != lock.amount:${lock.amount}`;
       // }
+      if (new BigNumber(mint.amount).gt(new BigNumber(lock.amount))) {
+        return `mint.amount:${mint.amount} > lock.amount:${lock.amount}`;
+      }
       return '';
     };
 
@@ -124,6 +165,9 @@ export class Monitor {
       // if (!new BigNumber(burn.amount).eq(new BigNumber(unlock.fee!).plus(new BigNumber(unlock.amount)))) {
       //   return `burn.amount:${burn.amount} != unlock.amount:${unlock.amount} + fee:${unlock.fee}`;
       // }
+      if (new BigNumber(unlock.amount).gt(new BigNumber(burn.amount))) {
+        return `unlock.amount:${unlock.amount} > burn.amount:${burn.amount}`;
+      }
       return '';
     };
     const res = checker(burn, unlock);
@@ -132,6 +176,61 @@ export class Monitor {
     }
     await new WebHook(this.webHookErrorUrl)
       .setTitle('compareCkbBurnAndEthUnlock error' + ` - ${ForceBridgeCore.config.monitor!.env}`)
+      .setDescription(res)
+      .addTimeStamp()
+      .error()
+      .send();
+    logger.error(`burn:${JSON.stringify(burn)} unlock:${JSON.stringify(unlock)} error:${res}`);
+    return false;
+  }
+
+  async compareCkbLockAndEthMint(lock: CkbLockRecord, mint: EthMintRecord): Promise<boolean> {
+    const checker = (lock: CkbLockRecord, mint: EthMintRecord): string => {
+      if (lock.recipient.toLowerCase() !== mint.recipient.toLowerCase()) {
+        return `lock.recipient:${lock.recipient} !== mint.recipient:${mint.recipient}`;
+      }
+      if (new BigNumber(mint.amount).gt(new BigNumber(lock.amount))) {
+        return `mint.amount:${mint.amount} > lock.amount:${lock.amount}`;
+      }
+      return '';
+    };
+    const res = checker(lock, mint);
+    if (res === '') {
+      return true;
+    }
+    await new WebHook(this.webHookErrorUrl)
+      .setTitle('compareCkbLockAndEthMint error' + ` - ${ForceBridgeCore.config.monitor!.env}`)
+      .setDescription(res)
+      .addTimeStamp()
+      .error()
+      .send();
+    logger.error(`lock:${JSON.stringify(lock)} mint:${JSON.stringify(mint)} error:${res}`);
+    return false;
+  }
+
+  async compareEthBurnAndCkbUnlock(burn: EthBurnRecord, unlock: CkbUnlockRecord): Promise<boolean> {
+    const checker = (burn: EthBurnRecord, unlock: CkbUnlockRecord): string => {
+      const lockRecipientLockscript = parseAddress(burn.recipient);
+      const mintRecipientLockscript = parseAddress(unlock.recipient);
+      if (
+        lockRecipientLockscript.args !== mintRecipientLockscript.args ||
+        lockRecipientLockscript.hash_type !== mintRecipientLockscript.hash_type ||
+        lockRecipientLockscript.code_hash !== mintRecipientLockscript.code_hash
+      ) {
+        return `burn.recipient:${burn.recipient} != unlock.recipient:${unlock.recipient}`;
+      }
+      if (new BigNumber(unlock.amount).gt(new BigNumber(burn.amount))) {
+        return `unlock.amount:${unlock.amount} > burn.amount:${burn.amount}`;
+      }
+      return '';
+    };
+
+    const res = checker(burn, unlock);
+    if (res === '') {
+      return true;
+    }
+    await new WebHook(this.webHookErrorUrl)
+      .setTitle('compareEthBurnAndCkbUnlock error' + ` - ${ForceBridgeCore.config.monitor!.env}`)
       .setDescription(res)
       .addTimeStamp()
       .error()
@@ -154,6 +253,10 @@ export class Monitor {
     setTimeout(() => {
       this.checkExpiredEvent();
     }, ForceBridgeCore.config.monitor!.expiredCheckInterval);
+
+    setTimeout(() => {
+      this.checkOvermintEvent();
+    }, ForceBridgeCore.config.monitor!.overmintCheckInterval);
   }
 
   async init(): Promise<void> {
@@ -208,6 +311,36 @@ export class Monitor {
           }
         }
 
+        for (const [id, lock] of this.durationConfig.ckb.pending.locks) {
+          const mint = this.durationConfig.eth.pending.mints.get(id);
+          if (!mint) {
+            continue;
+          }
+          const compare = await this.compareCkbLockAndEthMint(lock.event as CkbLockRecord, mint.event as EthMintRecord);
+          if (compare) {
+            this.durationConfig.eth.pending.mints.delete(id);
+            this.durationConfig.ckb.pending.locks.delete(id);
+            this.durationConfig.eth.matchCount.mint += 1;
+            this.durationConfig.ckb.matchCount.lock += 1;
+          }
+        }
+        for (const [id, burn] of this.durationConfig.eth.pending.burns) {
+          const unlock = this.durationConfig.ckb.pending.unlocks.get(id);
+          if (!unlock) {
+            continue;
+          }
+          const compare = await this.compareEthBurnAndCkbUnlock(
+            burn.event as EthBurnRecord,
+            unlock.event as CkbUnlockRecord,
+          );
+          if (compare) {
+            this.durationConfig.ckb.pending.unlocks.delete(id);
+            this.durationConfig.eth.pending.burns.delete(id);
+            this.durationConfig.ckb.matchCount.unlock += 1;
+            this.durationConfig.eth.matchCount.burn += 1;
+          }
+        }
+
         const expiredCheck = async (events: Map<string, EventItem>, msg: string): Promise<void> => {
           for (const event of Array.from(events.values())) {
             if (!isExpired(event)) {
@@ -229,6 +362,11 @@ export class Monitor {
         await expiredCheck(this.durationConfig.ckb.pending.mints, 'CKB mint timeout');
         await expiredCheck(this.durationConfig.ckb.pending.burns, 'CKB burn timeout');
 
+        await expiredCheck(this.durationConfig.ckb.pending.locks, 'CKB lock timeout');
+        await expiredCheck(this.durationConfig.ckb.pending.unlocks, 'CKB unlock timeout');
+        await expiredCheck(this.durationConfig.eth.pending.mints, 'ETH mint timeout');
+        await expiredCheck(this.durationConfig.eth.pending.burns, 'ETH burn timeout');
+
         writeMonitorConfig(this.durationConfig);
         await this.sendSummary();
       },
@@ -236,7 +374,7 @@ export class Monitor {
         onRejectedInterval: expiredCheckInterval,
         onResolvedInterval: expiredCheckInterval,
         onRejected: (e: Error) => {
-          logger.error(`Monitor observeEthLock error:${e.stack}`);
+          logger.error(`Monitor checkExpiredEvent error:${e.stack}`);
         },
       },
     );
@@ -248,6 +386,10 @@ export class Monitor {
       ethUnlockNum: this.durationConfig.eth.pending.unlocks.size,
       ckbMintNum: this.durationConfig.ckb.pending.mints.size,
       ckbBurnNum: this.durationConfig.ckb.pending.burns.size,
+      ckbLockNum: this.durationConfig.ckb.pending.locks.size,
+      ckbUnlockNum: this.durationConfig.ckb.pending.unlocks.size,
+      ethMintNum: this.durationConfig.eth.pending.mints.size,
+      ethBurnNum: this.durationConfig.eth.pending.burns.size,
     };
 
     const lastHandledBlock = {
@@ -265,6 +407,10 @@ export class Monitor {
       ckbBurn: this.durationConfig.ckb.matchCount.burn,
       ckbMint: this.durationConfig.ckb.matchCount.mint,
       ethLock: this.durationConfig.eth.matchCount.lock,
+      ckbUnlock: this.durationConfig.ckb.matchCount.unlock,
+      ethBurn: this.durationConfig.eth.matchCount.burn,
+      ethMint: this.durationConfig.eth.matchCount.mint,
+      ckbLock: this.durationConfig.ckb.matchCount.lock,
     };
 
     // check verifiers status
@@ -326,6 +472,70 @@ export class Monitor {
       .send();
   }
 
+  checkOvermintEvent(): void {
+    foreverPromise(
+      async () => {
+        logger.info('start overmint check');
+        const contractAddress = ForceBridgeCore.config.eth.contractAddress;
+        const omniLockMultisigAddress = getOmniLockMultisigAddress();
+        const balances = await Promise.all([
+          ...ForceBridgeCore.config.eth.assetWhiteList.map(async (asset) => ({
+            name: asset.name,
+            lockedBalance:
+              asset.address === ETH_TOKEN_ADDRESS
+                ? await this.balanceProvider.ethBalance(contractAddress)
+                : await this.balanceProvider.ethErc20Balance(contractAddress, asset.address, asset.name),
+            mintedBalance: await this.balanceProvider.ckbSudtTotalSupply(asset.address, asset.name),
+            origin: 'Ethereum',
+          })),
+          ...ForceBridgeCore.config.eth.nervosAssetWhiteList.map(async (asset) => ({
+            name: asset.name,
+            lockedBalance:
+              asset.typescriptHash === CKB_TYPESCRIPT_HASH
+                ? await this.balanceProvider.ckbBalance(omniLockMultisigAddress)
+                : await this.balanceProvider.ckbSudtBalance(
+                    omniLockMultisigAddress,
+                    asset.typescriptHash,
+                    asset.sudtArgs!,
+                    asset.name,
+                  ),
+            mintedBalance: await this.balanceProvider.ethErc20TotalSupply(asset.xchainTokenAddress, asset.name),
+            origin: 'Nervos',
+          })),
+        ]);
+        logger.info(
+          `overmint check balances: ${JSON.stringify(
+            balances.map((balance) => ({
+              name: balance.name,
+              ethereum: balance.lockedBalance.toString(),
+              nervos: balance.mintedBalance.toString(),
+            })),
+          )}`,
+        );
+        const overmintAssets = balances.filter((balance) => balance.mintedBalance > balance.lockedBalance);
+        if (overmintAssets.length > 0) {
+          const errorMsg = `overmint check error: minted balance from nervos is greater than locked balance on ethereum ${overmintAssets.map(
+            (asset) => `${asset.name}: on${asset.origin}: ${asset.mintedBalance} > ${asset.lockedBalance}`,
+          )}`;
+          await new WebHook(this.webHookErrorUrl)
+            .setTitle('overmint check error' + ` - ${ForceBridgeCore.config.monitor!.env}`)
+            .setDescription(errorMsg)
+            .addTimeStamp()
+            .error()
+            .send();
+          logger.error(errorMsg);
+        }
+      },
+      {
+        onRejectedInterval: ForceBridgeCore.config.monitor!.overmintCheckInterval,
+        onResolvedInterval: ForceBridgeCore.config.monitor!.overmintCheckInterval,
+        onRejected: (e: Error) => {
+          logger.error(`Monitor checkOvermintEvent error:${e.stack}`);
+        },
+      },
+    );
+  }
+
   async observeCkbEvent(): Promise<void> {
     foreverPromise(
       async () => {
@@ -363,13 +573,21 @@ export class Monitor {
           })
           .subscribe((record) => this.onCkbBurnRecord(record));
 
+        await this.ckbRecordObservable
+          .observeLockRecord({ fromBlock, toBlock })
+          .subscribe((record) => this.onCkbLockRecord(record));
+
+        await this.ckbRecordObservable
+          .observeUnlockRecord({ fromBlock, toBlock })
+          .subscribe((record) => this.onCkbUnlockRecord(record));
+
         this.durationConfig.ckb.lastHandledBlock = toBlockNum;
       },
       {
         onRejectedInterval: 15000,
         onResolvedInterval: 0,
         onRejected: (e: Error) => {
-          logger.error(`Monitor observeCkbLock error:${e.stack}`);
+          logger.error(`Monitor observeCkbEvent error:${e.stack}`);
         },
       },
     );
@@ -400,13 +618,21 @@ export class Monitor {
           .observeUnlockRecord({}, { fromBlock: fromBlock, toBlock: toBlock })
           .subscribe((record) => this.onEthUnlockRecord(record));
 
+        await this.ethRecordObservable
+          .observeMintRecord({}, { fromBlock: fromBlock, toBlock: toBlock })
+          .subscribe((record) => this.onEthMintRecord(record));
+
+        await this.ethRecordObservable
+          .observeBurnRecord({}, { fromBlock: fromBlock, toBlock: toBlock })
+          .subscribe((record) => this.onEthBurnRecord(record));
+
         this.durationConfig.eth.lastHandledBlock = toBlock;
       },
       {
         onRejectedInterval: 15000,
         onResolvedInterval: 0,
         onRejected: (e: Error) => {
-          logger.error(`Monitor observeEthLock error:${e.stack}`);
+          logger.error(`Monitor observeEthEvent error:${e.stack}`);
         },
       },
     );

@@ -42,7 +42,8 @@ export function createCKBRecordObservable(): CKBRecordObservable {
 
 export function createETHRecordObservable(): EthRecordObservable {
   return new EthRecordObservable({
-    contract: ForceBridgeCore.config.eth.contractAddress,
+    forceBridgeContract: ForceBridgeCore.config.eth.contractAddress,
+    assetManagerContract: ForceBridgeCore.config.eth.assetManagerContractAddress,
     provider: createProvider(),
   });
 }

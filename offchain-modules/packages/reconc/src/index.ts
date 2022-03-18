@@ -58,6 +58,37 @@ export type CkbMintRecord = ToRecord & {
   blockHash?: string;
 };
 
+export type CkbLockRecord = FromRecord & {
+  sender: string;
+  token: string;
+  recipient: string;
+  blockNumber: number;
+  blockHash: string;
+};
+
+export type EthBurnRecord = FromRecord & {
+  uniqueId: string;
+  sender: string;
+  recipient: string;
+  udtExtraData: string;
+  assetId: string;
+  token: string;
+  blockNumber?: number;
+  blockHash?: string;
+};
+
+export type EthMintRecord = ToRecord & {
+  assetId: string;
+  token: string;
+  blockNumber?: number;
+  blockHash?: string;
+};
+
+export type CkbUnlockRecord = ToRecord & {
+  xchain: number;
+  assetIdent: string;
+};
+
 export class Reconciliation {
   constructor(public from: FromRecord[], public to: ToRecord[]) {}
 
