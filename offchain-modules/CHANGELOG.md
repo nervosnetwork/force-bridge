@@ -1,3 +1,9 @@
+## v0.0.26 (2022-3-23)
+
+### Features
+
+- [adjust eth rpc timeout](https://github.com/nervosnetwork/force-bridge/pull/331)
+
 ## v0.0.25 (2022-2-25)
 
 ### Features
