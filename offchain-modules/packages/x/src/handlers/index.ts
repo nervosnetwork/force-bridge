@@ -1,5 +1,5 @@
 import { Connection } from 'typeorm';
-import { Audit } from '../audit';
+import { startAuditHandler } from '../audit/process';
 import { ForceBridgeCore } from '../core';
 import { BridgeFeeDB, CkbDb, EthDb, KVDb, TronDb } from '../db';
 import { BtcDb } from '../db/btc';
@@ -64,9 +64,6 @@ export function startHandlers(conn: Connection): void {
 
   // start audit bot
   if (ForceBridgeCore.config.audit !== undefined) {
-    const auditConfig = ForceBridgeCore.config.audit;
-    const statDb = new StatDb(conn);
-    const auditHandler = new Audit(statDb, ForceBridgeCore.config.eth.assetWhiteList, auditConfig);
-    auditHandler.start();
+    startAuditHandler(new StatDb(conn));
   }
 }

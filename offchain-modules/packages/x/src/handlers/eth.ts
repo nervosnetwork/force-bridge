@@ -450,7 +450,7 @@ export class EthHandler {
   // watch the eth_unlock table and handle the new unlock events
   // send tx according to the data
   async handleTodoUnlockRecords(): Promise<void> {
-    if (!TransferOutSwitch.getInstance().getStatus()) {
+    if (!TransferOutSwitch.getInstance().getStatus('eth2nervos')) {
       logger.info(`TransferOutSwitch is off, skip handleTodoUnlockRecords`);
       return;
     }
