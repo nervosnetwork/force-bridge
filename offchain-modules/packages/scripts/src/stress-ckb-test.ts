@@ -80,80 +80,76 @@ async function main() {
     }),
   );
   const provider = new ethers.providers.JsonRpcProvider(ethNodeUrl);
+  const { ethWallets, ckbPrivateKeys } = await ckbOriginStressTestPrepare({
+    batchNumber,
+    roundNumber,
+    ckb,
+    ckbIndexer,
+    provider,
+    ethPrivateKey,
+    ckbPrivateKey,
+    lockCkbAmount,
+    sudtTypescript,
+    sudtArgs,
+    lockCkbSudtAmount,
+  });
   await ckbOriginStressTest({
     bridgeDirection,
     batchNumber,
     roundNumber,
     ckb,
     rpc,
-    ckbIndexer,
     client,
     provider,
-    ethPrivateKey,
-    ckbPrivateKey,
+    ethWallets,
+    ckbPrivateKeys,
     xchainCkbTokenAddress,
     lockCkbAmount,
     burnCkbSudtAmount,
-    sudtTypescript,
     sudtTypescriptHash,
-    sudtArgs,
     xchainSudtTokenAddress,
     lockCkbSudtAmount,
     burnErc20SudtAmount,
   });
 }
 
-export async function ckbOriginStressTest({
-  bridgeDirection,
+export async function ckbOriginStressTestPrepare({
   batchNumber,
   roundNumber,
   ckb,
-  rpc,
   ckbIndexer,
-  client,
   provider,
   ethPrivateKey,
   ckbPrivateKey,
-  xchainCkbTokenAddress,
   lockCkbAmount,
-  burnCkbSudtAmount,
   sudtTypescript,
-  sudtTypescriptHash,
   sudtArgs,
-  xchainSudtTokenAddress,
   lockCkbSudtAmount,
-  burnErc20SudtAmount,
 }: {
-  bridgeDirection: string;
   batchNumber: number;
   roundNumber: number;
   ckb: CKB;
-  rpc: RPC;
   ckbIndexer: CkbIndexer;
-  client: JSONRPCClient;
   provider: ethers.providers.JsonRpcProvider;
   ethPrivateKey: string;
   ckbPrivateKey: string;
-  xchainCkbTokenAddress: string;
   lockCkbAmount: string;
-  burnCkbSudtAmount: string;
   sudtTypescript: ConfigItem;
-  sudtTypescriptHash: string;
   sudtArgs: string;
-  xchainSudtTokenAddress: string;
   lockCkbSudtAmount: string;
-  burnErc20SudtAmount: string;
-}) {
+}): Promise<{ ethWallets: ethers.Wallet[]; ckbPrivateKeys: string[] }> {
+  logger.info(`start stress ckb test prepare`);
+
+  const ethWallets = await prepareEthWallets(provider, ethPrivateKey, batchNumber, '12500000000000000');
+  const recipients = ethWallets.map((ethWallet) => ethWallet.address);
   logger.info(
-    `start stress ckb test with bridgeDirection=${bridgeDirection}, batchNumber=${batchNumber}, roundNumber=${roundNumber}`,
+    `ckb origin stress ckb test prepared ethPrivateKeys ${ethWallets.map(
+      (ethWallet) => ethWallet.privateKey,
+    )} recipients: ${recipients}`,
   );
 
-  const ethWallets = await prepareEthWallets(provider, ethPrivateKey, batchNumber, '10000000000000000');
-  const recipients = ethWallets.map((ethWallet) => ethWallet.address);
-  logger.info(`ethPrivateKeys ${ethWallets.map((ethWallet) => ethWallet.privateKey)} recipients: ${recipients}`);
-
   const ckbPrivateKeys = prepareCkbPrivateKeys(batchNumber);
-  logger.info(`ckbPrivateKeys ${ckbPrivateKeys}`);
+  logger.info(`ckb origin stress ckb test prepared ckbPrivateKeys ${ckbPrivateKeys}`);
   const ckbAddresses = await prepareCkbAddresses(
     ckb,
     ckbIndexer,
@@ -165,9 +161,54 @@ export async function ckbOriginStressTest({
     sudtArgs,
     lockCkbSudtAmount,
   );
-  logger.info(`prepared ckb addresses ${ckbAddresses}`);
+  logger.info(`ckb origin stress ckb test prepared ckb addresses ${ckbAddresses}`);
+  return { ethWallets, ckbPrivateKeys };
+}
 
-  logger.info('start stress lock test');
+export async function ckbOriginStressTest({
+  bridgeDirection,
+  batchNumber,
+  roundNumber,
+  ckb,
+  rpc,
+  client,
+  provider,
+  ethWallets,
+  ckbPrivateKeys,
+  xchainCkbTokenAddress,
+  lockCkbAmount,
+  burnCkbSudtAmount,
+  sudtTypescriptHash,
+  xchainSudtTokenAddress,
+  lockCkbSudtAmount,
+  burnErc20SudtAmount,
+}: {
+  bridgeDirection: string;
+  batchNumber: number;
+  roundNumber: number;
+  ckb: CKB;
+  rpc: RPC;
+  client: JSONRPCClient;
+  provider: ethers.providers.JsonRpcProvider;
+  ethWallets: ethers.Wallet[];
+  ckbPrivateKeys: string[];
+  xchainCkbTokenAddress: string;
+  lockCkbAmount: string;
+  burnCkbSudtAmount: string;
+  sudtTypescriptHash: string;
+  xchainSudtTokenAddress: string;
+  lockCkbSudtAmount: string;
+  burnErc20SudtAmount: string;
+}) {
+  logger.info(
+    `start stress ckb test with bridgeDirection=${bridgeDirection}, batchNumber=${batchNumber}, roundNumber=${roundNumber}`,
+  );
+  const recipients = ethWallets.map((ethWallet) => ethWallet.address);
+  const ckbAddresses = ckbPrivateKeys.map((pk) =>
+    ckb.utils.pubkeyToAddress(ckb.utils.privateKeyToPublicKey(pk), { prefix: AddressPrefix.Testnet }),
+  );
+
+  logger.info('start stress ckb lock test');
   await stressLock(
     1,
     batchNumber,
@@ -181,7 +222,7 @@ export async function ckbOriginStressTest({
     0,
     roundNumber,
   );
-  logger.info('initial round of stress lock test succeed');
+  logger.info('initial round of stress ckb lock test succeed');
   const stressPromise: PromiseLike<void>[] = [];
   const lockPromise = stressLock(
     roundNumber,
@@ -211,7 +252,12 @@ export async function ckbOriginStressTest({
     stressPromise.push(burnPromise);
   }
   await Promise.all(stressPromise);
-  logger.info(`stress test succeed!`);
+  logger.info(`stress ckb test succeed!`);
+}
+
+export async function ckbOriginStressTestAfter() {
+  logger.info(`start stress ckb test after`);
+  // TODO transfer and bridge
 }
 
 async function stressLock(

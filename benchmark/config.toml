@@ -1,0 +1,8 @@
+[ckb]
+ckb_typescript_hash = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+lockscript = "ckt1qyqg8rnemnhee0upnge80ryvlnyphvj424ssk7yy24"
+
+[eth]
+address = "0xf7185B3B967fAEB46Ac9F15BDa82EC61E49F7795"
+ckb_mirror_address = "0xe9B447cA594cB87B8d912040c8981B9696541B82"
+eth_token_address = "0x0000000000000000000000000000000000000000"

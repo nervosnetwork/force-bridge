@@ -1,25 +1,34 @@
+import fs from 'fs';
 import { RPC } from '@ckb-lumos/rpc';
 import { WebHook } from '@force-bridge/app-monitor/src/discord';
-import { nonNullable } from '@force-bridge/x';
 import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
 import { ConfigItem } from '@force-bridge/x/dist/config';
 import { initLog, logger } from '@force-bridge/x/dist/utils/logger';
 import CKB from '@nervosnetwork/ckb-sdk-core';
+import dayjs from 'dayjs';
 import { ethers } from 'ethers';
 import { JSONRPCClient } from 'json-rpc-2.0';
 import fetch from 'node-fetch/index';
-import { ckbOriginStressTest } from './stress-ckb-test';
-import { ethOriginStressTest } from './stress-test';
+import * as schedule from 'node-schedule';
+import { ckbOriginStressTest, ckbOriginStressTestAfter, ckbOriginStressTestPrepare } from './stress-ckb-test';
+import { ethOriginStressTest, ethOriginStressTestAfter, ethOriginStressTestPrepare } from './stress-test';
+
+type StressKey = {
+  privateKey: string;
+};
+
+type StressKeystore = {
+  ethKeystore: StressKey[];
+  ckbKeystore: StressKey[];
+};
+
+const stressKeystoreConfigPath = './stress-keystore.json';
 
 function devConfig(): StressConfig {
   // your send lock tx account privkey; * 1. eth needs, 2. ethDai token needs *
   const ethPrivateKey = '';
   // your transfer ckb to recipients account privkey, * 1. ckb needs, 2. dev_token of sudtTypescriptHash needs *
   const ckbPrivateKey = '';
-  // for ethOrigin distribute test ckbPrivKeys, * 1. ckb needs *
-  const ethOriginUsedCkbPrivateKey = '';
-  // for ckbOrigin distribute test ethPrivKeys, * 1. eth needs *
-  const ckbOriginUsedEthPrivateKey = '';
   const ethNodeUrl = 'http://127.0.0.1:8545';
   const ckbNodeUrl = 'http://127.0.0.1:8114';
   const ckbIndexerUrl = 'http://127.0.0.1:8116';
@@ -68,8 +77,6 @@ function devConfig(): StressConfig {
   return {
     ethPrivateKey,
     ckbPrivateKey,
-    ethOriginUsedCkbPrivateKey,
-    ckbOriginUsedEthPrivateKey,
     ethNodeUrl,
     ckbNodeUrl,
     ckbIndexerUrl,
@@ -96,12 +103,8 @@ function testnetConfig(): StressConfig {
   const ethPrivateKey = '';
   // your transfer ckb to recipients account privkey, * 1. ckb needs, 2. dev_token of sudtTypescriptHash needs *
   const ckbPrivateKey = '';
-  // for ethOrigin distribute test ckbPrivKeys, * 1. ckb needs *
-  const ethOriginUsedCkbPrivateKey = '';
-  // for ckbOrigin distribute test ethPrivKeys, * 1. eth needs *
-  const ckbOriginUsedEthPrivateKey = '';
   // const ethNodeUrl = 'https://rinkeby.infura.io/v3/66c31b146d424cf8a9cb1fba4a6eb32e';
-  const ethNodeUrl = 'https://eth-rinkeby.alchemyapi.io/v2/vs-rRAMOinzrHY634csL75yqxfCUvg0U';
+  const ethNodeUrl = 'https://rinkeby.infura.io/v3/4d1ad95151954090b9ea1b0b27ad65e6';
   const ckbNodeUrl = 'http://47.56.233.149:3017/rpc';
   const ckbIndexerUrl = 'http://47.56.233.149:3017/indexer';
   const forceBridgeUrl = 'http://8.210.97.124:3060/force-bridge/api/v1';
@@ -109,13 +112,13 @@ function testnetConfig(): StressConfig {
   /* ======================== Eth Origin Config Start ======================== */
   /* ------------ Eth Config ------------ */
   const lockEthAmount = '30000000000000';
-  const burnEthSudtAmount = '10000000000000';
+  const burnEthSudtAmount = '25000000000000';
   /* ------------ Erc20 Config ------------ */
   // erc20 config
   // Dai token
   const erc20TokenAddress = '0x7Af456bf0065aADAB2E6BEc6DaD3731899550b84';
   const lockErc20Amount = '3000000000000000';
-  const burnCkbErc20SudtAmount = '1000000000000000';
+  const burnCkbErc20SudtAmount = '2500000000000000';
   /* ======================== Eth Origin Config End ======================== */
 
   /* ======================== Ckb Origin Config Start ======================== */
@@ -123,14 +126,14 @@ function testnetConfig(): StressConfig {
   // ethCKB token
   const xchainCkbTokenAddress = '0x9C8CCf938883a427b90aEf5155284cFbcAceECC6';
   const lockCkbAmount = '30000000000';
-  const burnCkbSudtAmount = '10000000000';
+  const burnCkbSudtAmount = '25000000000';
   /* ------------ Sudt Config ------------ */
   // DEV_TOKEN in ckb
   const sudtTypescriptHash = '0x33ccf0d1d3ff3c58c1afacf3d1a5ae8d68a06b27b8dbfd86625cef1fcbfbaf67';
   const sudtArgs = '0xc247211ab6cc6597506c0aa06bd8a21884678f08fdd3a97f81e43fb24ab48663';
   const xchainSudtTokenAddress = '0xE4a64e37eD454a9e89A04686A8E8759A573Dc91e';
   const lockCkbSudtAmount = '30000000000';
-  const burnErc20SudtAmount = '10000000000';
+  const burnErc20SudtAmount = '25000000000';
   // cellDep of DEV_TOKEN
   const sudtTypescript: ConfigItem = {
     cellDep: {
@@ -149,8 +152,6 @@ function testnetConfig(): StressConfig {
   return {
     ethPrivateKey,
     ckbPrivateKey,
-    ethOriginUsedCkbPrivateKey,
-    ckbOriginUsedEthPrivateKey,
     ethNodeUrl,
     ckbNodeUrl,
     ckbIndexerUrl,
@@ -175,8 +176,6 @@ function testnetConfig(): StressConfig {
 interface StressConfig {
   ethPrivateKey: string;
   ckbPrivateKey: string;
-  ethOriginUsedCkbPrivateKey: string;
-  ckbOriginUsedEthPrivateKey: string;
   ethNodeUrl: string;
   ckbNodeUrl: string;
   ckbIndexerUrl: string;
@@ -197,17 +196,49 @@ interface StressConfig {
   sudtTypescript: ConfigItem;
 }
 
-async function stressTest() {
-  initLog({ level: 'debug', identity: 'stress-schedule-test', logFile: './data/stress-schedule.log' });
-  const bridgeDirection = nonNullable(process.argv[2]);
-  const batchNumber = Number(process.argv[3] ?? 100);
-  const roundNumber = Number(process.argv[4] ?? 2);
+async function overAllPrepare(
+  stressKeystore: StressKeystore,
+  batchNumber: number,
+  provider: ethers.providers.JsonRpcProvider,
+): Promise<{
+  ethOriginEthWallet: ethers.Wallet;
+  ethOriginCkbPrivateKeys: string[];
+  ckbOriginEthWallets: ethers.Wallet[];
+  ckbOriginPrivateKeys: string[];
+}> {
+  return {
+    ethOriginEthWallet: new ethers.Wallet(stressKeystore.ethKeystore[0].privateKey, provider),
+    ethOriginCkbPrivateKeys: stressKeystore.ckbKeystore.slice(0, batchNumber).map((k) => k.privateKey),
+    ckbOriginEthWallets: stressKeystore.ethKeystore
+      .slice(1, 1 + batchNumber)
+      .map((k) => k.privateKey)
+      .map((pk) => new ethers.Wallet(pk, provider)),
+    ckbOriginPrivateKeys: stressKeystore.ckbKeystore
+      .slice(batchNumber, batchNumber + batchNumber)
+      .map((k) => k.privateKey),
+  };
+}
+
+async function allPrepareToKeystore(
+  ethOriginEthWallet: ethers.Wallet,
+  ethOriginCkbPrivateKeys: string[],
+  ckbOriginEthWallets: ethers.Wallet[],
+  ckbOriginPrivateKeys: string[],
+): Promise<StressKeystore> {
+  return {
+    ethKeystore: [ethOriginEthWallet.privateKey, ...ckbOriginEthWallets.map((w) => w.privateKey)].map((k) => ({
+      privateKey: k,
+    })),
+    ckbKeystore: [...ethOriginCkbPrivateKeys, ...ckbOriginPrivateKeys].map((k) => ({ privateKey: k })),
+  };
+}
+
+async function stressTest(bridgeDirection: 'in' | 'both', batchNumber: number, roundNumber: number) {
+  const ESTIMATE_MAX_BATCH_NUMBER = 20;
 
   const {
     ethPrivateKey,
     ckbPrivateKey,
-    ethOriginUsedCkbPrivateKey,
-    ckbOriginUsedEthPrivateKey,
     ethNodeUrl,
     ckbNodeUrl,
     ckbIndexerUrl,
@@ -228,6 +259,11 @@ async function stressTest() {
     sudtTypescript,
   } = testnetConfig();
   // } = devConfig();
+
+  if (batchNumber > ESTIMATE_MAX_BATCH_NUMBER) {
+    logger.error(`batchNumber should be less than ${ESTIMATE_MAX_BATCH_NUMBER}`);
+    process.exit(1);
+  }
 
   const ckb = new CKB(ckbNodeUrl);
   const rpc = new RPC(ckbNodeUrl);
@@ -250,62 +286,188 @@ async function stressTest() {
     }),
   );
   const provider = new ethers.providers.JsonRpcProvider(ethNodeUrl);
-  await Promise.all([
+
+  const configPath = process.env.STRESS_KEYSTORE_CONFIG_PATH || stressKeystoreConfigPath;
+
+  if (!fs.existsSync(configPath)) {
+    const { ethWallet: ethOriginEthWallet, ckbPrivateKeys: ethOriginCkbPrivateKeys } = await ethOriginStressTestPrepare(
+      {
+        bridgeDirection,
+        batchNumber: ESTIMATE_MAX_BATCH_NUMBER,
+        ckb,
+        ckbIndexer,
+        provider,
+        ethPrivateKey,
+        ckbPrivateKey,
+      },
+    );
+    const { ethWallets: ckbOriginEthWallets, ckbPrivateKeys: ckbOriginPrivateKeys } = await ckbOriginStressTestPrepare({
+      batchNumber: ESTIMATE_MAX_BATCH_NUMBER,
+      roundNumber,
+      ckb,
+      ckbIndexer,
+      provider,
+      ethPrivateKey,
+      ckbPrivateKey,
+      lockCkbAmount,
+      sudtTypescript,
+      sudtArgs,
+      lockCkbSudtAmount,
+    });
+    const stressKeystore: StressKeystore = await allPrepareToKeystore(
+      ethOriginEthWallet,
+      ethOriginCkbPrivateKeys,
+      ckbOriginEthWallets,
+      ckbOriginPrivateKeys,
+    );
+    fs.writeFileSync(configPath, JSON.stringify(stressKeystore, null, 2));
+  }
+  logger.info(`load config file: ${configPath}`);
+  const data = fs.readFileSync(configPath);
+  const stressKeystore: StressKeystore = JSON.parse(data.toString()) as StressKeystore;
+  const { ethOriginEthWallet, ethOriginCkbPrivateKeys, ckbOriginEthWallets, ckbOriginPrivateKeys } =
+    await overAllPrepare(stressKeystore, batchNumber, provider);
+
+  const stressTestPromises: PromiseLike<unknown>[] = [];
+  stressTestPromises.push(
     ethOriginStressTest({
       bridgeDirection,
       batchNumber,
       roundNumber,
       ckb,
-      ckbIndexer,
       client,
       provider,
-      ethPrivateKey,
-      ckbPrivateKey: ethOriginUsedCkbPrivateKey,
+      ethWallet: ethOriginEthWallet,
+      ckbPrivateKeys: ethOriginCkbPrivateKeys,
       lockEthAmount,
       erc20TokenAddress,
       lockErc20Amount,
       burnEthSudtAmount,
       burnCkbErc20SudtAmount,
     }),
+  );
+  stressTestPromises.push(
     ckbOriginStressTest({
       bridgeDirection,
       batchNumber,
       roundNumber,
       ckb,
       rpc,
-      ckbIndexer,
       client,
       provider,
-      ethPrivateKey: ckbOriginUsedEthPrivateKey,
-      ckbPrivateKey,
+      ethWallets: ckbOriginEthWallets,
+      ckbPrivateKeys: ckbOriginPrivateKeys,
       xchainCkbTokenAddress,
       lockCkbAmount,
       burnCkbSudtAmount,
-      sudtTypescript,
       sudtTypescriptHash,
-      sudtArgs,
       xchainSudtTokenAddress,
       lockCkbSudtAmount,
       burnErc20SudtAmount,
     }),
-  ]);
+  );
+  await Promise.all(stressTestPromises);
   logger.info(`stress schedule succeed!`);
+  await ethOriginStressTestAfter();
+  await ckbOriginStressTestAfter();
+}
+
+function logToDiscord(log: string) {
+  logger.info(log);
+  const webHookUrl =
+    'https://discord.com/api/webhooks/945223969496240138/BsvWvYBEttKWeO-din1fMh4lffk9juP_BkIKhMLho-Z7wC1_H-lJbFWe7j-iMqkh7iWv';
+  new WebHook(webHookUrl)
+    .setTitle('stress-schedule job log')
+    .setDescription(log)
+    .addTimeStamp()
+    .info()
+    .send()
+    .then(() => {
+      logger.info(`sent schedule job log ${log} to discord`);
+    });
+}
+
+function main() {
+  initLog({ level: 'debug', identity: 'stress-schedule-test', logFile: './stress-schedule-logs/stress-schedule.log' });
+
+  let running = false;
+  let benchReady = false;
+  const usualJob = schedule.scheduleJob('0 0/5 * * * ?', () => {
+    if (running || benchReady) {
+      logToDiscord(`usualJob conflict running: ${running} benchReady: ${benchReady}`);
+      return;
+    }
+    logToDiscord(`usualJob start at ${dayjs().toISOString()}`);
+    running = true;
+    stressTest('both', 3, 2)
+      .then(() => {
+        logToDiscord(`usualJob end at ${dayjs().toISOString()}`);
+        running = false;
+      })
+      .catch((error) => {
+        logToDiscord(`usualJob error at ${dayjs().toISOString()}`);
+        running = false;
+        logger.error(`stress schedule test failed, error: ${error.stack}`);
+        const webHookErrorUrl =
+          'https://discord.com/api/webhooks/946301786938015755/gW2CEtVgXkG6ehyYsbcPbbdM1jeyXes3hKtz0Klk5yJDjWd-8R0Q6eOFvwKmd9XbRWIT';
+        new WebHook(webHookErrorUrl)
+          .setTitle('stress-schedule test error')
+          .setDescription(error.stack)
+          .addTimeStamp()
+          .error()
+          .send()
+          .then(() => {
+            logger.info('sent stress schedule error to discord');
+            process.exit(1);
+          });
+      });
+  });
+
+  const benchReadyJob = schedule.scheduleJob('0 30 0 * * ?', () => {
+    logToDiscord(`bench job ready, set benchReady = true`);
+    benchReady = true;
+  });
+
+  const benchJob = schedule.scheduleJob('0 0 1 * * ?', () => {
+    const jobContent = () => {
+      if (running || !benchReady) {
+        logToDiscord(`benchJob conflict running: ${running} benchReady: ${benchReady}`);
+        benchReady = true;
+        setTimeout(jobContent, 5 * 60 * 1000);
+        return;
+      }
+      logToDiscord(`benchJob start at ${dayjs().toISOString()}`);
+      running = true;
+      stressTest('both', 8, 3)
+        .then(() => {
+          logToDiscord(`benchJob end at ${dayjs().toISOString()}`);
+          running = false;
+          benchReady = false;
+        })
+        .catch((error) => {
+          logToDiscord(`benchJob error at ${dayjs().toISOString()}`);
+          running = false;
+          benchReady = false;
+          logger.error(`stress schedule test failed, error: ${error.stack}`);
+          const webHookErrorUrl =
+            'https://discord.com/api/webhooks/946301786938015755/gW2CEtVgXkG6ehyYsbcPbbdM1jeyXes3hKtz0Klk5yJDjWd-8R0Q6eOFvwKmd9XbRWIT';
+          new WebHook(webHookErrorUrl)
+            .setTitle('stress-schedule test error')
+            .setDescription(error.stack)
+            .addTimeStamp()
+            .error()
+            .send()
+            .then(() => {
+              logger.info('sent stress schedule error to discord');
+              process.exit(1);
+            });
+        });
+    };
+    jobContent();
+  });
+  logger.info(`start usualJob ${usualJob.name} benchReadyJob ${benchReadyJob.name} benchJob ${benchJob.name}`);
 }
 
 if (require.main === module) {
-  stressTest().catch((error) => {
-    logger.error(`stress schedule test failed, error: ${error.stack}`);
-    const webHookErrorUrl =
-      'https://discord.com/api/webhooks/872779655579586621/YOz4mEuGyLjF97vpQn37PD6Z9N_mtdUyuZpr_uedbB3SCXwLAW77DY5qeqlB7hbQxuYS';
-    new WebHook(webHookErrorUrl)
-      .setTitle('stress-schedule test error')
-      .setDescription(error.stack)
-      .addTimeStamp()
-      .error()
-      .send()
-      .then(() => {
-        logger.info('sent stress schedule error to discord');
-        process.exit(1);
-      });
-  });
+  main();
 }

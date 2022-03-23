@@ -57,16 +57,24 @@ async function main() {
   );
 
   const provider = new ethers.providers.JsonRpcProvider(ethNodeUrl);
+  const { ethWallet: ethOriginEthWallet, ckbPrivateKeys: ethOriginCkbPrivateKeys } = await ethOriginStressTestPrepare({
+    bridgeDirection,
+    batchNumber,
+    ckb,
+    ckbIndexer,
+    provider,
+    ethPrivateKey,
+    ckbPrivateKey,
+  });
   await ethOriginStressTest({
     bridgeDirection,
     batchNumber,
     roundNumber,
     ckb,
-    ckbIndexer,
     client,
     provider,
-    ethPrivateKey,
-    ckbPrivateKey,
+    ethWallet: ethOriginEthWallet,
+    ckbPrivateKeys: ethOriginCkbPrivateKeys,
     lockEthAmount,
     erc20TokenAddress,
     lockErc20Amount,
@@ -75,16 +83,44 @@ async function main() {
   });
 }
 
+export async function ethOriginStressTestPrepare({
+  bridgeDirection,
+  batchNumber,
+  ckb,
+  ckbIndexer,
+  provider,
+  ethPrivateKey,
+  ckbPrivateKey,
+}: {
+  bridgeDirection: string;
+  batchNumber: number;
+  ckb: CKB;
+  ckbIndexer: CkbIndexer;
+  provider: ethers.providers.JsonRpcProvider;
+  ethPrivateKey: string;
+  ckbPrivateKey: string;
+}): Promise<{ ethWallet: ethers.Wallet; ckbPrivateKeys: string[] }> {
+  logger.info(`start stress eth test prepare`);
+
+  const ethWallet = new ethers.Wallet(ethPrivateKey, provider);
+  const ckbPrivateKeys = prepareCkbPrivateKeys(batchNumber);
+  logger.info(`eth origin stress eth test prepared ckbPrivateKeys ${ckbPrivateKeys}`);
+  if (bridgeDirection !== 'in') {
+    await prepareCkbAddresses(ckb, ckbIndexer, ckbPrivateKeys, ckbPrivateKey);
+  }
+  logger.info(`start stress eth test prepare finished`);
+  return { ethWallet, ckbPrivateKeys };
+}
+
 export async function ethOriginStressTest({
   bridgeDirection,
   batchNumber,
   roundNumber,
   ckb,
-  ckbIndexer,
   client,
   provider,
-  ethPrivateKey,
-  ckbPrivateKey,
+  ethWallet,
+  ckbPrivateKeys,
   lockEthAmount,
   erc20TokenAddress,
   lockErc20Amount,
@@ -95,11 +131,10 @@ export async function ethOriginStressTest({
   batchNumber: number;
   roundNumber: number;
   ckb: CKB;
-  ckbIndexer: CkbIndexer;
   client: JSONRPCClient;
   provider: ethers.providers.JsonRpcProvider;
-  ethPrivateKey: string;
-  ckbPrivateKey: string;
+  ethWallet: ethers.Wallet;
+  ckbPrivateKeys: string[];
   lockEthAmount: string;
   erc20TokenAddress: string;
   lockErc20Amount: string;
@@ -107,23 +142,14 @@ export async function ethOriginStressTest({
   burnCkbErc20SudtAmount: string;
 }) {
   logger.info(
-    `start stress test with bridgeDirection=${bridgeDirection}, batchNumber=${batchNumber}, roundNumber=${roundNumber}`,
+    `start stress eth test with bridgeDirection=${bridgeDirection}, batchNumber=${batchNumber}, roundNumber=${roundNumber}`,
+  );
+  const ethAddress = ethWallet.address;
+  const ckbAddresses = ckbPrivateKeys.map((pk) =>
+    ckb.utils.pubkeyToAddress(ckb.utils.privateKeyToPublicKey(pk), { prefix: AddressPrefix.Testnet }),
   );
 
-  const ethWallet = new ethers.Wallet(ethPrivateKey, provider);
-  const ethAddress = ethWallet.address;
-
-  const ckbPrivs = prepareCkbPrivateKeys(batchNumber);
-  const ckbAddresses = await (async () => {
-    if (bridgeDirection === 'in') {
-      return ckbPrivs.map((key) =>
-        ckb.utils.pubkeyToAddress(ckb.utils.privateKeyToPublicKey(key), { prefix: AddressPrefix.Testnet }),
-      );
-    }
-    return prepareCkbAddresses(ckb, ckbIndexer, ckbPrivs, ckbPrivateKey);
-  })();
-
-  logger.info('start initial round of stress lock test');
+  logger.info('start initial round of stress eth lock test');
   await stressLock(
     1,
     batchNumber,
@@ -135,7 +161,7 @@ export async function ethOriginStressTest({
     erc20TokenAddress,
     lockErc20Amount,
   );
-  logger.info('initial round of stress lock test succeed');
+  logger.info('initial round of stress eth lock test succeed');
 
   const stressPromise: PromiseLike<void>[] = [];
   const lockPromise = stressLock(
@@ -156,7 +182,7 @@ export async function ethOriginStressTest({
       batchNumber,
       ckb,
       client,
-      ckbPrivs,
+      ckbPrivateKeys,
       ckbAddresses,
       ethAddress,
       burnEthSudtAmount,
@@ -166,7 +192,12 @@ export async function ethOriginStressTest({
     stressPromise.push(burnPromise);
   }
   await Promise.all(stressPromise);
-  logger.info(`stress test succeed!`);
+  logger.info(`stress eth test succeed!`);
+}
+
+export async function ethOriginStressTestAfter() {
+  logger.info(`start stress eth test after`);
+  // TODO transfer and bridge
 }
 
 async function stressLock(
@@ -182,7 +213,7 @@ async function stressLock(
   intervalMs = 5000,
 ) {
   for (let i = 0; i < roundNumber; i++) {
-    logger.info(`start ${i + 1} round stress lock test`);
+    logger.info(`start ${i + 1} round stress eth lock test`);
     const lockEthTxs = await lock(
       client,
       provider,
@@ -203,9 +234,9 @@ async function stressLock(
       intervalMs,
     );
     await check(client, lockErc20Txs, recipients, batchNumber, erc20TokenAddress);
-    logger.info(`${i + 1} round stress lock test succeed`);
+    logger.info(`${i + 1} round stress eth lock test succeed`);
   }
-  logger.info(`stress lock test succeed!`);
+  logger.info(`stress eth lock test succeed!`);
 }
 
 async function stressBurn(
@@ -254,7 +285,7 @@ if (require.main === module) {
   main()
     .then(() => process.exit(0))
     .catch((error) => {
-      logger.error(`stress test failed, error: ${error.stack}`);
+      logger.error(`stress eth test failed, error: ${error.stack}`);
       process.exit(1);
     });
 }

@@ -36,7 +36,7 @@ export async function generateLockTx(
   const unsignedTx = unsignedLockTx.rawTransaction;
   unsignedTx.value = unsignedTx.value ? ethers.BigNumber.from(unsignedTx.value.hex) : ethers.BigNumber.from(0);
   unsignedTx.nonce = nonce;
-  unsignedTx.gasLimit = ethers.BigNumber.from(1000000);
+  unsignedTx.gasLimit = ethers.BigNumber.from(2000000);
   unsignedTx.gasPrice = await provider.getGasPrice();
 
   logger.info('unsignedTx', unsignedTx);
@@ -103,6 +103,7 @@ async function getTransaction(client: JSONRPCClient, assetIdent: string, userIde
 async function checkTx(client: JSONRPCClient, assetIdent: string, txId: string, userIdent: string) {
   let find = false;
   let pending = false;
+  logger.info(`check eth tx start assetIdent: ${assetIdent} txId: ${txId} userIdent: ${userIdent}`);
   for (let i = 0; i < 600; i++) {
     const txs = await getTransaction(client, assetIdent, userIdent);
     for (const tx of txs) {
@@ -126,6 +127,9 @@ async function checkTx(client: JSONRPCClient, assetIdent: string, txId: string, 
     }
     await asyncSleep(3000);
   }
+  logger.info(
+    `check eth tx end assetIdent: ${assetIdent} txId: ${txId} userIdent: ${userIdent} pending: ${pending} find: ${find}`,
+  );
   if (pending) {
     throw new Error(`rpc test failed, pending for 3000s ${txId}`);
   }
@@ -162,9 +166,14 @@ export async function lock(
   }
 
   for (let i = 0; i < batchNum; i++) {
-    const lockTxHash = (await provider.sendTransaction(signedLockTxs[i])).hash;
-    await asyncSleep(intervalMs);
-    lockTxHashes.push(lockTxHash);
+    try {
+      const lockTxHash = (await provider.sendTransaction(signedLockTxs[i])).hash;
+      await asyncSleep(intervalMs);
+      lockTxHashes.push(lockTxHash);
+    } catch (e) {
+      logger.error(e.stack);
+      throw e;
+    }
   }
   logger.info('lock txs', lockTxHashes);
   return lockTxHashes;
