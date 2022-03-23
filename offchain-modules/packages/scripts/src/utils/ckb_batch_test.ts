@@ -1,7 +1,6 @@
 import { Cell, utils } from '@ckb-lumos/base';
 import { key } from '@ckb-lumos/hd';
-import { objectToTransactionSkeleton, sealTransaction } from '@ckb-lumos/helpers';
-import { minimalCellCapacity } from '@ckb-lumos/helpers';
+import { objectToTransactionSkeleton, sealTransaction, minimalCellCapacity } from '@ckb-lumos/helpers';
 import { RPC } from '@ckb-lumos/rpc';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbIndexer, ScriptType } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
@@ -82,7 +81,7 @@ export async function generateBurnTx(
   const unsignedTx = unsignedBurnTx.rawTransaction;
   unsignedTx.value = unsignedTx.value ? ethers.BigNumber.from(unsignedTx.value.hex) : ethers.BigNumber.from(0);
   unsignedTx.nonce = nonce;
-  unsignedTx.gasLimit = ethers.BigNumber.from(1000000);
+  unsignedTx.gasLimit = ethers.BigNumber.from(2000000);
   unsignedTx.gasPrice = await provider.getGasPrice();
 
   logger.info('unsignedTx', unsignedTx);
@@ -127,6 +126,9 @@ async function checkTx(
 ) {
   let find = false;
   let pending = false;
+  logger.info(
+    `check ckb tx start assetNetwork: ${assetNetwork} assetIdent: ${assetIdent} userNetwork: ${userNetwork} userIdent: ${userIdent} txId: ${txId}`,
+  );
   for (let i = 0; i < 600; i++) {
     const txs = await getTransaction(client, assetNetwork, assetIdent, userNetwork, userIdent);
     for (const tx of txs) {
@@ -150,6 +152,9 @@ async function checkTx(
     }
     await asyncSleep(3000);
   }
+  logger.info(
+    `check eth tx start assetNetwork: ${assetNetwork} assetIdent: ${assetIdent} userNetwork: ${userNetwork} userIdent: ${userIdent} txId: ${txId} pending: ${pending} find: ${find}`,
+  );
   if (pending) {
     throw new Error(`rpc test failed, pending for 3000s ${txId}`);
   }
@@ -267,6 +272,7 @@ export async function prepareEthWallets(
   const testWallet = new ethers.Wallet(ethPrivateKey, provider);
   let nonce = await testWallet.getTransactionCount();
   const wallets = new Array<ethers.Wallet>();
+  const txHashes: string[] = [];
   for (let i = 0; i < batchNum; i++) {
     const wallet = ethers.Wallet.createRandom();
 
@@ -281,9 +287,25 @@ export async function prepareEthWallets(
     };
     const signTx = await testWallet.signTransaction(tx);
     const resp = await provider.sendTransaction(signTx);
-    logger.info(`prepare send eth ${wallet.address} wallet ${value} eth, resp: ${resp}`);
+    logger.info(`prepare send eth ${wallet.address} wallet ${value} eth, resp: ${JSON.stringify(resp)}`);
+    txHashes.push(resp.hash);
     wallets.push(wallet);
   }
+  const statuses = await Promise.all(
+    txHashes.map(async (txHash) => {
+      for (let i = 0; i < 600; i++) {
+        const transactionReceipet = await provider.getTransactionReceipt(txHash);
+        if (transactionReceipet != null) {
+          return transactionReceipet.status;
+        }
+        await asyncSleep(3000);
+      }
+    }),
+  );
+  if (statuses.some((status) => status !== 1)) {
+    throw new Error(`prepare send eth wallet not all success`);
+  }
+  logger.info(`prepare send eth finish statuses ${statuses}`);
   return wallets;
 }
 
