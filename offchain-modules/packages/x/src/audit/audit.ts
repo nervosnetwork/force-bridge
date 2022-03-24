@@ -16,6 +16,7 @@ abstract class Audit {
 
   constructor(eventManager: EventManager) {
     this._eventManager = eventManager;
+    this._status = 'on';
   }
 
   start(db: StatDb, assetWhiteList: AssetWhiteList[], auditConfig: AuditConfig): void {

@@ -26,6 +26,9 @@ export function startHandlers(conn: Connection): void {
 
   BridgeMetricSingleton.getInstance(role).init(ForceBridgeCore.config.common.openMetric);
 
+  // start audit bot
+  startAuditHandler(new StatDb(conn), ForceBridgeCore.config.audit);
+
   // init db and start handlers
   const ckbDb = new CkbDb(conn);
   const kvDb = new KVDb(conn);
@@ -60,10 +63,5 @@ export function startHandlers(conn: Connection): void {
     const btcChain = new BTCChain();
     const btcHandler = new BtcHandler(btcDb, btcChain, role);
     btcHandler.start();
-  }
-
-  // start audit bot
-  if (ForceBridgeCore.config.audit !== undefined) {
-    startAuditHandler(new StatDb(conn));
   }
 }
