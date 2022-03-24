@@ -20,7 +20,7 @@ import { signEthTx } from './ethSigner';
 import { getPendingTx, getPendingTxResult } from './pendingTx';
 import { serverStatus, serverStatusResult } from './status';
 
-const version = '0.0.26';
+const version = '0.0.27';
 const apiPath = '/force-bridge/sign-server/api/v1';
 
 const ethPendingTxKey = 'ethPendingTx';
