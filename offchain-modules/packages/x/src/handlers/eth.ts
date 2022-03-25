@@ -182,7 +182,7 @@ export class EthHandler {
         }, confirmedNumber: ${confirmedNumber}, confirmed: ${confirmed}`,
       );
       logger.debug('EthHandler watchLockEvents eth lockEvtLog:', { log, parsedLog });
-      if (sudtExtraData.length >= 10240 || recipient.length >= 10240) {
+      if (sudtExtraData.length >= 1024 || recipient.length >= 10240) {
         logger.warn(
           `skip createEthLock for record ${JSON.stringify(
             parsedLog,
