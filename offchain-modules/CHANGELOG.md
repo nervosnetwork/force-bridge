@@ -1,3 +1,7 @@
+## v0.0.29 (2022-3-25)
+
+- [fix eth lock table row too long](https://github.com/nervosnetwork/force-bridge/pull/339)
+
 ## v0.0.28 (2022-3-24)
 
 ## v0.0.27 (2022-3-24)
