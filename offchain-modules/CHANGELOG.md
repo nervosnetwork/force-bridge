@@ -1,3 +1,7 @@
+## v0.0.30 (2022-3-26)
+
+- [fix get logs from bsc node exceed 5000](https://github.com/nervosnetwork/force-bridge/pull/340)
+
 ## v0.0.29 (2022-3-25)
 
 - [fix eth lock table row too long](https://github.com/nervosnetwork/force-bridge/pull/339)
