@@ -104,7 +104,8 @@ export class EthHandler {
     // set lastHandledBlock
     await this.init();
     await this.setStartTipBlockHeight();
-    const maxBatchSize = 5000;
+    // TODO read value from config
+    const maxBatchSize = 5000 - 20;
     let currentHeight: number | null = null;
     foreverPromise(
       async () => {
