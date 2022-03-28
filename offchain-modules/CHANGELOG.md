@@ -1,3 +1,9 @@
+## v0.0.32 (2022-3-28)
+
+### Bugs
+
+- [fix change validators should handle multisig-cell-data](https://github.com/nervosnetwork/force-bridge/pull/343)
+
 ## v0.0.31 (2022-3-28)
 
 ### Features
