@@ -1,3 +1,9 @@
+## v0.0.31 (2022-3-28)
+
+### Features
+
+- [support decrypt keystore](https://github.com/nervosnetwork/force-bridge/pull/342)
+
 ## v0.0.30 (2022-3-26)
 
 - [fix get logs from bsc node exceed 5000](https://github.com/nervosnetwork/force-bridge/pull/340)
