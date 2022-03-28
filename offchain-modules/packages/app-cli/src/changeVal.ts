@@ -26,6 +26,8 @@ import { ecsign, toRpcSig } from 'ethereumjs-util';
 import { BigNumber, ethers } from 'ethers';
 import { JSONRPCResponse } from 'json-rpc-2.0';
 
+type XchainType = 'ETH' | 'BSC';
+
 const txWithSignatureDir = './';
 
 const validitorInfos = './validitorInfos.json';
@@ -48,6 +50,7 @@ changeValCmd
   .option('--ckbIndexerUrl <ckbIndexerRpcUrl>', 'Url of ckb indexer url', CkbIndexerRpc)
   .option('--ethRpcUrl <ethRpcUrl>', 'Url of eth rpc', EthNodeRpc)
   .option('--chain <chain>', "'LINA' | 'AGGRON4' | 'DEV'", 'DEV')
+  .option('--xchain <xchain>', "'ETH' | 'BSC'", 'ETH')
   .action(doMakeTx)
   .description('generate raw transaction for change validator');
 
@@ -85,6 +88,7 @@ async function doMakeTx(opts: Record<string, string>): Promise<void> {
     const ckbPrivateKey = nonNullable(opts.ckbPrivateKey) as string;
     const ckbIndexerRPC = nonNullable(opts.ckbIndexerUrl || CkbIndexerRpc) as string;
     const chain = nonNullable(opts.chain || 'DEV') as 'LINA' | 'AGGRON4' | 'DEV';
+    const xchain = nonNullable(opts.xchain) as XchainType;
     initLumosConfig(chain);
     const valInfos: ValInfos = JSON.parse(fs.readFileSync(validatorInfoPath, 'utf8').toString());
 
@@ -135,6 +139,7 @@ async function doMakeTx(opts: Record<string, string>): Promise<void> {
         ckbPrivateKey,
         ckbRpcURL,
         ckbIndexerRPC,
+        xchain,
       );
       txInfo.ckb = {
         newMultisigScript: newMultisigItem,
@@ -161,6 +166,7 @@ async function doMakeTx(opts: Record<string, string>): Promise<void> {
     console.error(`failed to generate tx by `, e);
   }
 }
+
 async function doSignTx(opts: Record<string, string>): Promise<void> {
   try {
     const changeValidatorTxPath = nonNullable(opts.input || changeValidatorRawTx);
@@ -229,6 +235,7 @@ async function generateCkbChangeValTx(
   privateKey: string,
   ckbRpcURL: string,
   ckbIndexerURL: string,
+  xchain: XchainType,
 ): Promise<TransactionSkeletonType> {
   const ckbClient = new CkbChangeValClient(ckbRpcURL, ckbIndexerURL);
   await ckbClient.indexer.waitForSync();
@@ -238,8 +245,8 @@ async function generateCkbChangeValTx(
   const fromAddress = generateSecp256k1Blake160Address(key.privateKeyToBlake160(privateKey));
   let txSkeleton = TransactionSkeleton({ cellProvider: ckbClient.indexer });
 
-  const oldOwnerCell = await ckbClient.fetchCellWithMultisig(oldMultisigLockscript, 'owner');
-  const oldMultisigCell = await ckbClient.fetchCellWithMultisig(oldMultisigLockscript, 'multisig');
+  const oldOwnerCell = await ckbClient.fetchCellWithMultisig(oldMultisigLockscript, 'owner', xchain);
+  const oldMultisigCell = await ckbClient.fetchCellWithMultisig(oldMultisigLockscript, 'multisig', xchain);
 
   const newOwnerCell: Cell = {
     cell_output: {
@@ -255,7 +262,7 @@ async function generateCkbChangeValTx(
       capacity: '0x0',
       lock: newMultisigLockscript,
     },
-    data: '0x',
+    data: xchain === 'ETH' ? '0x01' : '0x02',
   };
   newMultiCell.cell_output.capacity = `0x${minimalCellCapacity(newMultiCell).toString(16)}`;
 
@@ -357,6 +364,7 @@ async function signEthChangeValTx(ethMsgInfo: EthParams, ethPrivKey: string): Pr
   const sigHex = toRpcSig(v, r, s);
   return sigHex.slice(2);
 }
+
 async function sendEthChangeValTx(
   ethMsgInfo: EthMsg,
   privKey: string,
@@ -385,6 +393,7 @@ export class EthChangeValClient {
   protected readonly provider: ethers.providers.JsonRpcProvider;
   public readonly bridge: ethers.Contract;
   protected readonly wallet: ethers.Wallet;
+
   constructor(url: string, contractAddress: string, privateKey: string) {
     this.provider = new ethers.providers.JsonRpcProvider(url);
     this.wallet = new ethers.Wallet(privateKey, this.provider);
@@ -397,12 +406,13 @@ export class CkbChangeValClient extends CkbTxHelper {
     super(ckbRpcUrl, ckbIndexerUrl);
   }
 
-  async fetchCellWithMultisig(lockScript: Script, type: cell_type): Promise<Cell | undefined> {
+  async fetchCellWithMultisig(lockScript: Script, type: cell_type, xchain: XchainType): Promise<Cell | undefined> {
     const cellCollector = this.indexer.collector({
       lock: lockScript,
     });
     for await (const cell of cellCollector.collect()) {
-      if (type === 'multisig' && cell.cell_output.type === null) {
+      const cellData = xchain === 'ETH' ? '0x01' : '0x02';
+      if (type === 'multisig' && cell.cell_output.type === null && cell.data === cellData) {
         return cell;
       }
       if (type === 'owner' && cell.cell_output.type) {
@@ -411,6 +421,7 @@ export class CkbChangeValClient extends CkbTxHelper {
     }
   }
 }
+
 type cell_type = 'owner' | 'multisig';
 
 export interface ValInfos {
@@ -438,12 +449,14 @@ export interface EthParams {
   msg: EthMsg;
   signature?: string[];
 }
+
 export interface CkbParams {
   oldMultisigItem: MultisigItem;
   txSkeleton: TransactionSkeletonObject;
   newMultisigScript: MultisigItem;
   signature?: string[];
 }
+
 export interface EthMsg {
   domainSeparator: string;
   typeHash: string;
@@ -451,6 +464,7 @@ export interface EthMsg {
   validators: string[];
   nonce: number;
 }
+
 type statusResponse = {
   addressConfig: addressConfig;
   latestChainStatus?: {
