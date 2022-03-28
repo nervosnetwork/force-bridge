@@ -6,12 +6,12 @@ import { OmniLockCellConfig, OwnerCellConfig } from '@force-bridge/x/dist/ckb/tx
 import { Config, WhiteListEthAsset, CkbDeps, WhiteListNervosAsset } from '@force-bridge/x/dist/config';
 import { getFromEnv, privateKeyToCkbPubkeyHash, writeJsonToFile } from '@force-bridge/x/dist/utils';
 import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
+import { ContractNetworksConfig } from '@gnosis.pm/safe-core-sdk';
 import * as dotenv from 'dotenv';
 import * as lodash from 'lodash';
 import * as Mustache from 'mustache';
 import { execShellCmd, pathFromProjectRoot } from './utils';
 import { deployDev } from './utils/deploy';
-import { ContractNetworksConfig } from '@gnosis.pm/safe-core-sdk';
 dotenv.config({ path: process.env.DOTENV_PATH || '.env' });
 
 export interface VerifierConfig {
@@ -43,8 +43,8 @@ async function generateConfig(
   monitorDiscordWebHook: string,
   assetManagerContractAddress: string,
   safeAddress: string,
-  safeContractNetworks: ContractNetworksConfig,
   nervosAssetWhiteList: WhiteListNervosAsset[],
+  safeContractNetworks?: ContractNetworksConfig,
 ) {
   const baseConfig: Config = lodash.cloneDeep(initConfig);
   logger.debug(`baseConfig: ${JSON.stringify(baseConfig, null, 2)}`);
@@ -374,8 +374,8 @@ async function main() {
     MONITOR_DISCORD_WEBHOOK,
     assetManagerContractAddress,
     safeAddress,
-    safeContractNetworks,
     nervosAssetWhiteList,
+    safeContractNetworks,
   );
 
   const verifiers = lodash.range(MULTISIG_NUMBER).map((i) => {
