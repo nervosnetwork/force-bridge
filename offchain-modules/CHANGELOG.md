@@ -1,3 +1,9 @@
+## v0.0.33 (2022-3-28)
+
+### Bugs
+
+- [fix ckb indexer collect multisig-cell with data](https://github.com/nervosnetwork/force-bridge/pull/345)
+
 ## v0.0.32 (2022-3-28)
 
 ### Bugs
