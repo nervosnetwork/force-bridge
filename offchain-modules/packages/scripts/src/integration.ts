@@ -405,7 +405,7 @@ async function main() {
     FORCE_BRIDGE_KEYSTORE_PASSWORD,
     assetManagerContractAddress,
     safeAddress,
-    safeContractNetworks,
+    safeContractNetworks!,
   );
   await handleDb('drop', MULTISIG_NUMBER + EXTRA_MULTISIG_NUMBER);
   await handleDb('create', MULTISIG_NUMBER + EXTRA_MULTISIG_NUMBER);

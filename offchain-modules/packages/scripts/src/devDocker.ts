@@ -361,7 +361,7 @@ async function main() {
     FORCE_BRIDGE_KEYSTORE_PASSWORD,
     assetManagerContractAddress,
     safeAddress,
-    safeContractNetworks,
+    safeContractNetworks!,
   );
 
   const verifiers = lodash.range(MULTISIG_NUMBER).map((i) => {
