@@ -215,7 +215,7 @@
     "@babel/helper-validator-identifier" "^7.14.5"
     to-fast-properties "^2.0.0"
 
-"@ckb-lumos/base@^0.18.0-rc2":
+"@ckb-lumos/base@0.18.0-rc2", "@ckb-lumos/base@^0.18.0-rc2":
   version "0.18.0-rc2"
   resolved "https://registry.yarnpkg.com/@ckb-lumos/base/-/base-0.18.0-rc2.tgz#810a6bc84ce8699aeefb39e4c9e89db44df2de0b"
   integrity sha512-bX7X03zZR7ge3y+KMY84OCqHhwMDwEfpTj0fL1yOlhhHx7jQmQ8eMQqzMpOgxzfEo0MXddfBGxU0/ThoxS3ZRA==
@@ -225,7 +225,7 @@
     immutable "^4.0.0-rc.12"
     js-xxhash "^1.0.4"
 
-"@ckb-lumos/common-scripts@^0.18.0-rc2":
+"@ckb-lumos/common-scripts@0.18.0-rc2":
   version "0.18.0-rc2"
   resolved "https://registry.yarnpkg.com/@ckb-lumos/common-scripts/-/common-scripts-0.18.0-rc2.tgz#f82ac6fbd6e72fb3e9230902d81cadc57a7561de"
   integrity sha512-L7EzRghvVAjoQDnLjjKB2E44Ibo8mUQq6bFCzWfKuvi8SrZkbJVPot+mTzcCQGjt4co7TMCOegHo2FooDO5oqA==
@@ -246,7 +246,7 @@
     "@types/deep-freeze-strict" "^1.1.0"
     deep-freeze-strict "^1.1.1"
 
-"@ckb-lumos/hd@^0.18.0-rc2":
+"@ckb-lumos/hd@0.18.0-rc2":
   version "0.18.0-rc2"
   resolved "https://registry.yarnpkg.com/@ckb-lumos/hd/-/hd-0.18.0-rc2.tgz#c5de52b026276c6d1fda3b7eaecdd53b56eea99d"
   integrity sha512-82mhP3sKHOHDkuei2ot2SqhxMbA6PgdBjhIbnS9kmrjxno5oHHUXxIAHr+qPExTP30OjzkFoRL2bCs0/xSerGw==
@@ -257,7 +257,7 @@
     sha3 "^2.1.3"
     uuid "^8.3.0"
 
-"@ckb-lumos/helpers@^0.18.0-rc2":
+"@ckb-lumos/helpers@0.18.0-rc2", "@ckb-lumos/helpers@^0.18.0-rc2":
   version "0.18.0-rc2"
   resolved "https://registry.yarnpkg.com/@ckb-lumos/helpers/-/helpers-0.18.0-rc2.tgz#c31b95da6ce3bf43878bb92ae721943ecdc1f63a"
   integrity sha512-b/unjZQc9Z1B/8v8TUqMdcsroxgW4BQwUvmxuKnWqXXkepg2CChHYCgJPZLcOr781dN8eMDT7Ryhd97bwWtU5g==
@@ -281,7 +281,7 @@
     request "^2.88.2"
     xxhash "^0.3.0"
 
-"@ckb-lumos/rpc@^0.18.0-rc2":
+"@ckb-lumos/rpc@0.18.0-rc2", "@ckb-lumos/rpc@^0.18.0-rc2":
   version "0.18.0-rc2"
   resolved "https://registry.yarnpkg.com/@ckb-lumos/rpc/-/rpc-0.18.0-rc2.tgz#f7360d7e89d76c97188711eba5faedc4e23b2d40"
   integrity sha512-ZuJW5NA4GOO6repwZGD8OqTT6sRmKvLPrut0s2xK7uIiGh5bdL9NThk7Nlnbyvtp8LVxIe4LHFgxFzWbZ+NXMA==
@@ -289,7 +289,7 @@
     "@ckb-lumos/base" "^0.18.0-rc2"
     ckb-js-toolkit "^0.100.0-rc1"
 
-"@ckb-lumos/transaction-manager@^0.18.0-rc2":
+"@ckb-lumos/transaction-manager@0.18.0-rc2":
   version "0.18.0-rc2"
   resolved "https://registry.yarnpkg.com/@ckb-lumos/transaction-manager/-/transaction-manager-0.18.0-rc2.tgz#f6d5eb022cf6d86bc55f7492bd1d9bb7c4beba54"
   integrity sha512-y73we/iOuCY1INhexSMdFSNIf0sG1+8MYFbvlfjSj3VHZzBUlPL/J5XSrmsBhoH/3UHht6JK2yxfvnLzeWt0LA==

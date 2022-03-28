@@ -14,11 +14,37 @@ keystoreCmd
   .option('-d, --dist <dist>', 'path of the output file', './keystore.json')
   .action(convert);
 
+keystoreCmd
+  .command('decrypt')
+  .description('decrypt a keystore file into a raw keys file')
+  .requiredOption('-p, --password <password>', 'password of the keystore')
+  .option('-s, --store <store>', 'path of the keystore file', './keystore.json')
+  .option('-d, --dist <dist>', 'path of the output rawKeys file', './rawKeys.json')
+  .action(decrypt);
+
 function asserts(condition: unknown, message: string): asserts condition {
   if (condition) return;
   // eslint-disable-next-line no-console
   console.error(message);
   process.exit(1);
+}
+
+async function decrypt(opts: Record<string, string>): Promise<void> {
+  const password = nonNullable(opts.password);
+  const store = nonNullable(opts.store);
+  const dist = nonNullable(opts.dist);
+  _decrypt(store, password, dist);
+}
+
+function _decrypt(keystorePath = 'keystore.json', password, dist): void {
+  const encrypted = JSON.parse(fs.readFileSync(keystorePath, 'utf8').toString());
+  const store = new KeyStore(encrypted);
+  store.decrypt(password);
+  const rawKeys = {};
+  for (const key of store.listKeyIDs()) {
+    rawKeys[key] = store.getDecryptedByKeyID(key);
+  }
+  fs.writeFileSync(dist, JSON.stringify(rawKeys));
 }
 
 async function convert(opts: Record<string, string>): Promise<void> {
