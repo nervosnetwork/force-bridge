@@ -415,8 +415,10 @@ export class CkbChangeValClient extends CkbTxHelper {
   }
 
   async fetchCellWithMultisig(lockScript: Script, type: cell_type, xchainCellData: string): Promise<Cell | undefined> {
+    const queryData = type === 'multisig' ? xchainCellData : '0x';
     const cellCollector = this.indexer.collector({
       lock: lockScript,
+      data: queryData,
     });
     for await (const cell of cellCollector.collect()) {
       if (type === 'multisig' && cell.cell_output.type === null && cell.data === xchainCellData) {
