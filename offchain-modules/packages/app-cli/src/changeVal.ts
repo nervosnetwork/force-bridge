@@ -28,6 +28,11 @@ import { JSONRPCResponse } from 'json-rpc-2.0';
 
 type XchainType = 'ETH' | 'BSC';
 
+const XCHAIN_CELL_DATA = {
+  ETH: '0x01',
+  BSC: '0x02',
+};
+
 const txWithSignatureDir = './';
 
 const validitorInfos = './validitorInfos.json';
@@ -50,7 +55,7 @@ changeValCmd
   .option('--ckbIndexerUrl <ckbIndexerRpcUrl>', 'Url of ckb indexer url', CkbIndexerRpc)
   .option('--ethRpcUrl <ethRpcUrl>', 'Url of eth rpc', EthNodeRpc)
   .option('--chain <chain>', "'LINA' | 'AGGRON4' | 'DEV'", 'DEV')
-  .option('--xchain <xchain>', "'ETH' | 'BSC'", 'ETH')
+  .requiredOption('--xchain <xchain>', "'ETH' | 'BSC'")
   .action(doMakeTx)
   .description('generate raw transaction for change validator');
 
@@ -89,6 +94,9 @@ async function doMakeTx(opts: Record<string, string>): Promise<void> {
     const ckbIndexerRPC = nonNullable(opts.ckbIndexerUrl || CkbIndexerRpc) as string;
     const chain = nonNullable(opts.chain || 'DEV') as 'LINA' | 'AGGRON4' | 'DEV';
     const xchain = nonNullable(opts.xchain) as XchainType;
+    const xchainCellData = XCHAIN_CELL_DATA[xchain];
+    if (!xchainCellData) throw new Error('invalid xchain param');
+
     initLumosConfig(chain);
     const valInfos: ValInfos = JSON.parse(fs.readFileSync(validatorInfoPath, 'utf8').toString());
 
@@ -139,7 +147,7 @@ async function doMakeTx(opts: Record<string, string>): Promise<void> {
         ckbPrivateKey,
         ckbRpcURL,
         ckbIndexerRPC,
-        xchain,
+        xchainCellData,
       );
       txInfo.ckb = {
         newMultisigScript: newMultisigItem,
@@ -235,7 +243,7 @@ async function generateCkbChangeValTx(
   privateKey: string,
   ckbRpcURL: string,
   ckbIndexerURL: string,
-  xchain: XchainType,
+  xchainCellData: string,
 ): Promise<TransactionSkeletonType> {
   const ckbClient = new CkbChangeValClient(ckbRpcURL, ckbIndexerURL);
   await ckbClient.indexer.waitForSync();
@@ -245,8 +253,8 @@ async function generateCkbChangeValTx(
   const fromAddress = generateSecp256k1Blake160Address(key.privateKeyToBlake160(privateKey));
   let txSkeleton = TransactionSkeleton({ cellProvider: ckbClient.indexer });
 
-  const oldOwnerCell = await ckbClient.fetchCellWithMultisig(oldMultisigLockscript, 'owner', xchain);
-  const oldMultisigCell = await ckbClient.fetchCellWithMultisig(oldMultisigLockscript, 'multisig', xchain);
+  const oldOwnerCell = await ckbClient.fetchCellWithMultisig(oldMultisigLockscript, 'owner', xchainCellData);
+  const oldMultisigCell = await ckbClient.fetchCellWithMultisig(oldMultisigLockscript, 'multisig', xchainCellData);
 
   const newOwnerCell: Cell = {
     cell_output: {
@@ -262,7 +270,7 @@ async function generateCkbChangeValTx(
       capacity: '0x0',
       lock: newMultisigLockscript,
     },
-    data: xchain === 'ETH' ? '0x01' : '0x02',
+    data: xchainCellData,
   };
   newMultiCell.cell_output.capacity = `0x${minimalCellCapacity(newMultiCell).toString(16)}`;
 
@@ -406,13 +414,12 @@ export class CkbChangeValClient extends CkbTxHelper {
     super(ckbRpcUrl, ckbIndexerUrl);
   }
 
-  async fetchCellWithMultisig(lockScript: Script, type: cell_type, xchain: XchainType): Promise<Cell | undefined> {
+  async fetchCellWithMultisig(lockScript: Script, type: cell_type, xchainCellData: string): Promise<Cell | undefined> {
     const cellCollector = this.indexer.collector({
       lock: lockScript,
     });
     for await (const cell of cellCollector.collect()) {
-      const cellData = xchain === 'ETH' ? '0x01' : '0x02';
-      if (type === 'multisig' && cell.cell_output.type === null && cell.data === cellData) {
+      if (type === 'multisig' && cell.cell_output.type === null && cell.data === xchainCellData) {
         return cell;
       }
       if (type === 'owner' && cell.cell_output.type) {
