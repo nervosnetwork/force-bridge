@@ -46,7 +46,7 @@ export interface DeployDevResult {
   ethPrivateKey: string;
   assetManagerContractAddress: string;
   safeAddress: string;
-  safeContractNetworks: ContractNetworksConfig;
+  safeContractNetworks?: ContractNetworksConfig;
 }
 
 export async function mintDevToken(

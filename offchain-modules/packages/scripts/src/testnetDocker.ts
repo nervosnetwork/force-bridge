@@ -43,8 +43,8 @@ async function generateConfig(
   monitorDiscordWebHook: string,
   assetManagerContractAddress: string,
   safeAddress: string,
-  safeContractNetworks: ContractNetworksConfig,
   nervosAssetWhiteList: WhiteListNervosAsset[],
+  safeContractNetworks?: ContractNetworksConfig,
 ) {
   const baseConfig: Config = lodash.cloneDeep(initConfig);
   logger.debug(`baseConfig: ${JSON.stringify(baseConfig, null, 2)}`);
@@ -374,8 +374,8 @@ async function main() {
     MONITOR_DISCORD_WEBHOOK,
     assetManagerContractAddress,
     safeAddress,
-    safeContractNetworks,
     nervosAssetWhiteList,
+    safeContractNetworks,
   );
 
   const verifiers = lodash.range(MULTISIG_NUMBER).map((i) => {
