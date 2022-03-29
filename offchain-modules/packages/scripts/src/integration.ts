@@ -211,11 +211,11 @@ async function startChangeVal(
   configPath: string,
   bridgeEthAddress: string,
   safeAddress: string,
-  contractNetworks: ContractNetworksConfig,
   CKB_PRIVKEY: string,
   ETH_PRIVKEY: string,
   oldMultiSigner: MultisigConfig,
   extraMultiSigConfig: MultisigConfig,
+  contractNetworks?: ContractNetworksConfig,
 ) {
   const newThreshold = extraMultiSigConfig.threshold;
   const newMultiSigConfig: VerifierConfig[] = [oldMultiSigner.verifiers[1]].concat(extraMultiSigConfig.verifiers);
@@ -475,11 +475,11 @@ async function main() {
     configPath,
     bridgeEthAddress,
     safeAddress,
-    safeContractNetworks,
     CKB_TEST_PRIVKEY,
     ETH_TEST_PRIVKEY,
     multisigConfig,
     extraMultiSigConfig,
+    safeContractNetworks,
   );
   await asyncSleep(60000);
   await startCollectorService(FORCE_BRIDGE_KEYSTORE_PASSWORD, forcecli, configPath);

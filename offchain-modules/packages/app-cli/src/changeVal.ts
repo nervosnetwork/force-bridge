@@ -168,8 +168,8 @@ async function doMakeTx(opts: Record<string, string>): Promise<void> {
         newValsEthAddrs,
         valInfos.ethGnosisSafe.threshold,
         valInfos.ethGnosisSafe.safeAddress,
-        valInfos.ethGnosisSafe.contractNetworks,
         ethRpc,
+        valInfos.ethGnosisSafe.contractNetworks,
       );
     }
 
@@ -383,8 +383,8 @@ async function generatEthGnosisSafeChangeValidatorTx(
   newValidators: string[],
   threshold: number,
   safeAddress: string,
-  contractNetworks: ContractNetworksConfig,
   ethRpcURL: string,
+  contractNetworks?: ContractNetworksConfig,
 ): Promise<EthGnosisSafeChangeValidatorTx> {
   const provider = new ethers.providers.JsonRpcProvider(ethRpcURL);
   const safe = await Safe.create({
@@ -577,7 +577,7 @@ export interface ValInfos {
   };
   ethGnosisSafe?: {
     safeAddress: string;
-    contractNetworks: ContractNetworksConfig;
+    contractNetworks?: ContractNetworksConfig;
     threshold: number;
   };
   newValRpcURLs: string[];
