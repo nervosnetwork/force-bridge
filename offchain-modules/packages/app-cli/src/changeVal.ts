@@ -21,6 +21,9 @@ import { httpRequest } from '@force-bridge/x/dist/multisig/client';
 import { privateKeyToCkbPubkeyHash, transactionSkeletonToJSON, writeJsonToFile } from '@force-bridge/x/dist/utils';
 import { buildChangeValidatorsSigRawData } from '@force-bridge/x/dist/xchain/eth';
 import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
+import Safe, { EthersAdapter, ContractNetworksConfig } from '@gnosis.pm/safe-core-sdk';
+import { SafeTransaction, SafeSignature } from '@gnosis.pm/safe-core-sdk-types';
+import EthSignSignature from '@gnosis.pm/safe-core-sdk/dist/src/utils/signatures/SafeSignature';
 import commander from 'commander';
 import { ecsign, toRpcSig } from 'ethereumjs-util';
 import { BigNumber, ethers } from 'ethers';
@@ -156,6 +159,20 @@ async function doMakeTx(opts: Record<string, string>): Promise<void> {
         ethRpc,
       );
     }
+
+    if (valInfos.ethGnosisSafe) {
+      const newValsEthAddrs = valAddresses.map((val) => {
+        return val.ethAddress;
+      });
+      txInfo.ethGonosisSafe = await generatEthGnosisSafeChangeValidatorTx(
+        newValsEthAddrs,
+        valInfos.ethGnosisSafe.threshold,
+        valInfos.ethGnosisSafe.safeAddress,
+        valInfos.ethGnosisSafe.contractNetworks,
+        ethRpc,
+      );
+    }
+
     writeJsonToFile(txInfo, `${changeValRawTxPath}`);
   } catch (e) {
     console.error(`failed to generate tx by `, e);
@@ -177,6 +194,9 @@ async function doSignTx(opts: Record<string, string>): Promise<void> {
       const sig = await signEthChangeValTx(valInfos.eth, ethPrivateKey);
       valInfos.eth.signature!.push(sig);
     }
+    if (valInfos.ethGonosisSafe) {
+      valInfos.ethGonosisSafe = await signEthGnosisSafeValidatorTx(valInfos.ethGonosisSafe, ethPrivateKey);
+    }
     writeJsonToFile(valInfos, `${txWithSigPath}`);
   } catch (e) {
     console.error(`failed to sign tx by `, e);
@@ -195,6 +215,7 @@ async function doSendTx(opts: Record<string, string>): Promise<void> {
     const files = fs.readdirSync(changeValidatorTxSigDir);
     const ckbSignatures: string[] = [];
     const ethSignatures: string[] = [];
+    const ethSafeSignatures: Map<string, SafeSignature[]> = new Map();
     const rawTx: ChangeVal = JSON.parse(fs.readFileSync(changeValidatorTxPath, 'utf8').toString());
 
     for (const file of files) {
@@ -202,6 +223,19 @@ async function doSendTx(opts: Record<string, string>): Promise<void> {
       if (valInfos.eth && valInfos.eth!.signature && valInfos.eth!.signature.length !== 0) {
         ethSignatures.push(valInfos.eth.signature[0]);
       }
+
+      if (valInfos.ethGonosisSafe) {
+        for (const hash in valInfos.ethGonosisSafe.signatures) {
+          let signatures = ethSafeSignatures.get(hash);
+          if (!signatures) {
+            signatures = [];
+          }
+
+          signatures.push(valInfos.ethGonosisSafe.signatures[hash]);
+          ethSafeSignatures.set(hash, signatures);
+        }
+      }
+
       if (
         valInfos.ckb &&
         ckbSignatures.length < rawTx.ckb!.oldMultisigItem.M &&
@@ -217,6 +251,10 @@ async function doSendTx(opts: Record<string, string>): Promise<void> {
 
     if (rawTx.eth) {
       await sendEthChangeValTx(rawTx.eth.msg, ethPrivateKey, ethRpc, rawTx.eth.contractAddr, ethSignatures);
+    }
+
+    if (rawTx.ethGonosisSafe) {
+      await sendEthGnosisSafeValidatorTx(rawTx.ethGonosisSafe, ethPrivateKey, ethSafeSignatures);
     }
   } catch (e) {
     console.error(`failed to send tx by `, e);
@@ -338,6 +376,120 @@ async function generateEthChangeValTx(
   };
 }
 
+// The command will be executed twice while both adding and removing owners.
+// Adding owners will be executed at the first time.
+// Removing owners will be executed at last time.
+async function generatEthGnosisSafeChangeValidatorTx(
+  newValidators: string[],
+  threshold: number,
+  safeAddress: string,
+  contractNetworks: ContractNetworksConfig,
+  ethRpcURL: string,
+): Promise<EthGnosisSafeChangeValidatorTx> {
+  const provider = new ethers.providers.JsonRpcProvider(ethRpcURL);
+  const safe = await Safe.create({
+    ethAdapter: new EthersAdapter({ ethers, signer: new ethers.Wallet(fakePrivKey, provider) }),
+    safeAddress: safeAddress,
+    contractNetworks: contractNetworks,
+  });
+
+  const currentThreshold = await safe.getThreshold();
+  if (newValidators.length == 0 && currentThreshold == threshold) {
+    throw new Error('nothing changed.');
+  }
+
+  if (threshold <= 0 && threshold > newValidators.length) {
+    threshold = currentThreshold;
+  }
+
+  const oldValidators = await safe.getOwners();
+
+  const validatorsToAdd = newValidators.filter((v) => {
+    return oldValidators.indexOf(v) < 0;
+  });
+
+  const validatorsToRemove = oldValidators.filter((v) => {
+    return newValidators.indexOf(v) < 0;
+  });
+
+  const txes: SafeTransaction[] = [];
+
+  for (let i = 0; i < validatorsToAdd.length; i++) {
+    txes.push(
+      await safe.getAddOwnerTx({
+        ownerAddress: validatorsToAdd[i],
+        threshold: i == validatorsToAdd.length - 1 ? threshold : undefined,
+      }),
+    );
+  }
+
+  if (validatorsToAdd.length == 0) {
+    for (const validator of validatorsToRemove) {
+      txes.push(await safe.getRemoveOwnerTx({ ownerAddress: validator, threshold }));
+    }
+  }
+
+  if (validatorsToAdd.length == 0 && validatorsToRemove.length == 0 && currentThreshold != threshold) {
+    txes.push(await safe.getChangeThresholdTx(threshold));
+  }
+
+  return {
+    contractNetworks,
+    safeAddress,
+    txes,
+    url: ethRpcURL,
+  };
+}
+
+async function signEthGnosisSafeValidatorTx(
+  tx: EthGnosisSafeChangeValidatorTx,
+  ethPrivateKey: string,
+): Promise<EthGnosisSafeChangeValidatorTx> {
+  const provider = new ethers.providers.JsonRpcProvider(tx.url);
+  const safe = await Safe.create({
+    ethAdapter: new EthersAdapter({ ethers, signer: new ethers.Wallet(ethPrivateKey, provider) }),
+    safeAddress: tx.safeAddress,
+    contractNetworks: tx.contractNetworks,
+  });
+
+  tx.signatures = new Map();
+
+  for (let i = 0; i < tx.txes.length; i++) {
+    const hash = await safe.getTransactionHash(tx.txes[i]);
+    tx.signatures[hash] = await safe.signTransactionHash(await safe.getTransactionHash(tx.txes[i]));
+  }
+
+  return tx;
+}
+
+async function sendEthGnosisSafeValidatorTx(
+  tx: EthGnosisSafeChangeValidatorTx,
+  ethPrivateKey: string,
+  signatures: Map<string, SafeSignature[]>,
+): Promise<void> {
+  const provider = new ethers.providers.JsonRpcProvider(tx.url);
+  const safe = await Safe.create({
+    ethAdapter: new EthersAdapter({ ethers, signer: new ethers.Wallet(ethPrivateKey, provider) }),
+    safeAddress: tx.safeAddress,
+    contractNetworks: tx.contractNetworks,
+  });
+
+  for (const safeTransaction of tx.txes) {
+    const tx = await safe.createTransaction(safeTransaction.data);
+    const hash = await safe.getTransactionHash(safeTransaction);
+    const signature = signatures.get(hash);
+    if (signature == undefined) {
+      continue;
+    }
+
+    for (const v of signature) {
+      tx.addSignature(new EthSignSignature(v.signer, v.data));
+    }
+
+    await safe.executeTransaction(tx);
+  }
+}
+
 async function signEthChangeValTx(ethMsgInfo: EthParams, ethPrivKey: string): Promise<string> {
   const signerAddr = new ethers.Wallet(ethPrivKey).address;
   if (ethMsgInfo.oldValidators.indexOf(signerAddr) === -1) {
@@ -423,12 +575,26 @@ export interface ValInfos {
     contractAddr: string;
     newThreshold: number;
   };
+  ethGnosisSafe?: {
+    safeAddress: string;
+    contractNetworks: ContractNetworksConfig;
+    threshold: number;
+  };
   newValRpcURLs: string[];
 }
 
 export interface ChangeVal {
   ckb?: CkbParams;
   eth?: EthParams;
+  ethGonosisSafe?: EthGnosisSafeChangeValidatorTx;
+}
+
+export interface EthGnosisSafeChangeValidatorTx {
+  safeAddress: string;
+  contractNetworks?: ContractNetworksConfig;
+  signatures?: Map<string, SafeSignature>;
+  txes: SafeTransaction[];
+  url: string;
 }
 
 export interface EthParams {

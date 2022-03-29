@@ -1,4 +1,5 @@
 import fs from 'fs';
+import { utils } from '@ckb-lumos/base';
 import { KeyStore } from '@force-bridge/keystore';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import nconf from 'nconf';
@@ -9,7 +10,6 @@ import { CKB_TYPESCRIPT_HASH, Config } from './config';
 import { asserts } from './errors';
 import { ServerSingleton } from './server/serverSingleton';
 import { initLog } from './utils/logger';
-import { utils } from '@ckb-lumos/base';
 
 export function bootstrapKeyStore(
   keystorePath = 'keystore.json',
