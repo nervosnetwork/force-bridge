@@ -141,6 +141,7 @@ async function doMakeTx(opts: Record<string, string>): Promise<void> {
         M: valInfos.ckb.newThreshold,
         publicKeyHashes: newValsPubKeyHashes,
       };
+      const ownerCellTypescriptArgs = valInfos.ckb.ownerCellTypescriptArgs;
       const txSkeleton = await generateCkbChangeValTx(
         valInfos.ckb.oldValInfos,
         newMultisigItem,
@@ -148,6 +149,7 @@ async function doMakeTx(opts: Record<string, string>): Promise<void> {
         ckbRpcURL,
         ckbIndexerRPC,
         xchainCellData,
+        ownerCellTypescriptArgs,
       );
       txInfo.ckb = {
         newMultisigScript: newMultisigItem,
@@ -244,6 +246,7 @@ async function generateCkbChangeValTx(
   ckbRpcURL: string,
   ckbIndexerURL: string,
   xchainCellData: string,
+  ownerCellTypescriptArgs: string,
 ): Promise<TransactionSkeletonType> {
   const ckbClient = new CkbChangeValClient(ckbRpcURL, ckbIndexerURL);
   await ckbClient.indexer.waitForSync();
@@ -253,8 +256,8 @@ async function generateCkbChangeValTx(
   const fromAddress = generateSecp256k1Blake160Address(key.privateKeyToBlake160(privateKey));
   let txSkeleton = TransactionSkeleton({ cellProvider: ckbClient.indexer });
 
-  const oldOwnerCell = await ckbClient.fetchCellWithMultisig(oldMultisigLockscript, 'owner', xchainCellData);
-  const oldMultisigCell = await ckbClient.fetchCellWithMultisig(oldMultisigLockscript, 'multisig', xchainCellData);
+  const oldOwnerCell = await ckbClient.fetchOwnerCell(oldMultisigLockscript, ownerCellTypescriptArgs);
+  const oldMultisigCell = await ckbClient.fetchMultisigCell(oldMultisigLockscript, xchainCellData);
 
   const newOwnerCell: Cell = {
     cell_output: {
@@ -414,29 +417,36 @@ export class CkbChangeValClient extends CkbTxHelper {
     super(ckbRpcUrl, ckbIndexerUrl);
   }
 
-  async fetchCellWithMultisig(lockScript: Script, type: cell_type, xchainCellData: string): Promise<Cell | undefined> {
-    const queryData = type === 'multisig' ? xchainCellData : '0x';
+  async fetchOwnerCell(lockScript: Script, ownerCellTypescriptArgs: string): Promise<Cell | undefined> {
     const cellCollector = this.indexer.collector({
       lock: lockScript,
-      data: queryData,
+      data: '0x',
     });
     for await (const cell of cellCollector.collect()) {
-      if (type === 'multisig' && cell.cell_output.type === null && cell.data === xchainCellData) {
+      if (cell.cell_output.type && cell.cell_output.type.args === ownerCellTypescriptArgs) {
         return cell;
       }
-      if (type === 'owner' && cell.cell_output.type) {
+    }
+  }
+
+  async fetchMultisigCell(lockScript: Script, xchainCellData: string): Promise<Cell | undefined> {
+    const cellCollector = this.indexer.collector({
+      lock: lockScript,
+      data: xchainCellData,
+    });
+    for await (const cell of cellCollector.collect()) {
+      if (cell.cell_output.type === null && cell.data === xchainCellData) {
         return cell;
       }
     }
   }
 }
 
-type cell_type = 'owner' | 'multisig';
-
 export interface ValInfos {
   ckb?: {
     oldValInfos: MultisigItem;
     newThreshold: number;
+    ownerCellTypescriptArgs: string;
   };
   eth?: {
     oldValidators: string[];

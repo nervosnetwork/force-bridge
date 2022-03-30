@@ -192,6 +192,7 @@ async function startChangeVal(
   ETH_PRIVKEY: string,
   oldMultiSigner: MultisigConfig,
   extraMultiSigConfig: MultisigConfig,
+  ownerCellTypescriptArgs: string,
 ) {
   const newThreshold = extraMultiSigConfig.threshold;
   const newMultiSigConfig: VerifierConfig[] = [oldMultiSigner.verifiers[1]].concat(extraMultiSigConfig.verifiers);
@@ -217,6 +218,7 @@ async function startChangeVal(
         M: oldMultiSigner.threshold,
         publicKeyHashes: oldMultiSigner.verifiers.map((v) => v.ckbPubkeyHash),
       },
+      ownerCellTypescriptArgs,
     },
     eth: {
       contractAddr: bridgeEthAddress,
@@ -401,6 +403,7 @@ async function main() {
     ETH_TEST_PRIVKEY,
     multisigConfig,
     extraMultiSigConfig,
+    ownerConfig.ownerCellTypescript.args,
   );
   await asyncSleep(60000);
   await startCollectorService(FORCE_BRIDGE_KEYSTORE_PASSWORD, forcecli, configPath);
