@@ -36,6 +36,10 @@ module.exports = {
 
   networks: {
     hardhat: {},
+    bsc_testnet: {
+      network_id: 97,
+      url: `https://data-seed-prebsc-1-s1.binance.org:8545`,
+    },
     geth: {
       url: `http://127.0.0.1:8545`,
       // address [`0x17c4b5CE0605F63732bfd175feCe7aC6b4620FD2`, `0x46beaC96B726a51C5703f99eC787ce12793Dae11`]
