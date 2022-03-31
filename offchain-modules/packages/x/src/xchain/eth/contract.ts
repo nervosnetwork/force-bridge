@@ -253,7 +253,10 @@ export class EthChain {
     return false;
   }
 
-  async sendMintTxs(records: IEthMint[]): Promise<ethers.providers.TransactionResponse | undefined | boolean> {
+  async sendMintTxs(
+    records: IEthMint[],
+    gasPrice: ethers.BigNumber,
+  ): Promise<ethers.providers.TransactionResponse | undefined | boolean> {
     try {
       const safe = await Safe.create({
         ethAdapter: new EthersAdapter({ ethers, signer: this.wallet }),
@@ -263,6 +266,7 @@ export class EthChain {
       const partialTx = {
         to: this.assetManager.address,
         value: '0',
+        gasPrice: ForceBridgeCore.config.collector!.disableEIP1559Style ? gasPrice.toNumber() : undefined,
         data: this.assetManager.interface.encodeFunctionData('mint', [
           records.map((r) => {
             return {
@@ -274,6 +278,7 @@ export class EthChain {
           }),
         ]),
       };
+
       const tx = await safe.createTransaction(partialTx);
       const signatures = await this.signMintTx(tx, safe, records);
       if (typeof signatures == 'boolean') {

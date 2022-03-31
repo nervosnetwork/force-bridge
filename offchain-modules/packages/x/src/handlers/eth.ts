@@ -371,7 +371,6 @@ export class EthHandler {
     if (!(await this.checkGas())) {
       return;
     }
-
     records = await this.ethDb.makeMintPending(records);
     const mintTxHashes = records.map((r) => r.ckbTxHash);
 
@@ -380,7 +379,8 @@ export class EthHandler {
     }
 
     try {
-      const txRes = await this.ethChain.sendMintTxs(records);
+      const gasPrice = await this.ethChain.getGasPrice();
+      const txRes = await this.ethChain.sendMintTxs(records, gasPrice);
 
       if (typeof txRes == 'boolean') {
         records.map((r) => {
