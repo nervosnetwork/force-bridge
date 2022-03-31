@@ -13,6 +13,7 @@ import { RPC } from '@ckb-lumos/rpc';
 import { BigNumber } from 'bignumber.js';
 import { normalizers, Reader } from 'ckb-js-toolkit';
 import * as lodash from 'lodash';
+import { TransferOutSwitch } from '../audit/switch';
 import { BtcAsset, ChainType, EosAsset, EthAsset, getAsset, TronAsset } from '../ckb/model/asset';
 import { NervosAsset } from '../ckb/model/nervos-asset';
 import { RecipientCellData } from '../ckb/tx-helper/generated/eth_recipient_cell';
@@ -973,6 +974,11 @@ export class CkbHandler {
   // watch the ckb_unlock table and handle the new unlock events
   // send tx according to the data
   async todoUnlockRecordsHandler(ownerTypeHash: string, generator: CkbTxGenerator): Promise<void> {
+    if (!TransferOutSwitch.getInstance().getStatus('nervos2eth')) {
+      logger.info(`TransferOutSwitch is off, skip todoUnlockRecordsHandler`);
+      return;
+    }
+
     if (!this.syncedToStartTipBlockHeight()) {
       logger.info(
         `wait until syncing to startBlockHeight, lastHandledBlockHeight: ${this.lastHandledBlockHeight}, startTipBlockHeight: ${this.startTipBlockHeight}`,

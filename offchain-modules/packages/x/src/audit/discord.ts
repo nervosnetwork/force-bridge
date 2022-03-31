@@ -1,5 +1,6 @@
 import * as Discord from 'discord.js';
 import { logger } from '../utils/logger';
+import { Listener } from './event';
 import { TransferOutSwitch } from './switch';
 
 export interface Command {
@@ -25,7 +26,16 @@ commands.set('status', {
   name: 'status',
   description: 'show TransferOutSwitch status',
   async execute(message, _args) {
-    await message.channel.send(`TransferOutSwitch is ${TransferOutSwitch.getInstance().getStatus() ? 'ON' : 'OFF'}`);
+    await message.channel.send(
+      `Ethereum -> Nervos TransferOutSwitch is ${
+        TransferOutSwitch.getInstance().getStatus('nervos2eth') ? 'ON' : 'OFF'
+      }`,
+    );
+    await message.channel.send(
+      `Nervos -> Ethereum TransferOutSwitch is ${
+        TransferOutSwitch.getInstance().getStatus('eth2nervos') ? 'ON' : 'OFF'
+      }`,
+    );
   },
 });
 
@@ -47,7 +57,7 @@ commands.set('turn-off', {
   },
 });
 
-export class Bot {
+export class Bot implements Listener {
   client: Discord.Client;
 
   constructor(private token: string, private channelId: string) {
@@ -55,7 +65,15 @@ export class Bot {
     this.client.once('ready', () => {
       logger.info('Discord bot ready');
       void this.sendMessage(
-        `Discord bot started!\nTransferOutSwitch is ${TransferOutSwitch.getInstance().getStatus() ? 'ON' : 'OFF'}`,
+        `Discord bot started!\nEthereum -> Nervos TransferOutSwitch is ${
+          TransferOutSwitch.getInstance().getStatus('nervos2eth') ? 'ON' : 'OFF'
+        }`,
+      );
+
+      void this.sendMessage(
+        `Discord bot started!\nNervos -> Ethereum TransferOutSwitch is ${
+          TransferOutSwitch.getInstance().getStatus('eth2nervos') ? 'ON' : 'OFF'
+        }`,
       );
     });
     this.client.on('message', async (message) => {
@@ -71,6 +89,10 @@ export class Bot {
 
   start(): void {
     void this.client.login(this.token);
+  }
+
+  async update(msg: string): Promise<void> {
+    await this.sendMessage(msg);
   }
 
   async sendMessage(msg: string): Promise<void> {
