@@ -1,7 +1,7 @@
 import { core, utils } from '@ckb-lumos/base';
 import { serializeMultisigScript } from '@ckb-lumos/common-scripts/lib/secp256k1_blake160_multisig';
 import { key } from '@ckb-lumos/hd';
-import { generateAddress, sealTransaction, TransactionSkeletonType } from '@ckb-lumos/helpers';
+import { encodeToAddress, sealTransaction, TransactionSkeletonType } from '@ckb-lumos/helpers';
 import { RPC } from '@ckb-lumos/rpc';
 import { Reader } from 'ckb-js-toolkit';
 import * as lodash from 'lodash';
@@ -302,7 +302,7 @@ export class CkbHandler {
       const previousOutput = nonNullable(tx.inputs[0].previousOutput);
       const burnPreviousTx: TransactionWithStatus = await this.ckb.rpc.getTransaction(previousOutput.txHash);
       const senderLockscript = burnPreviousTx.transaction.outputs[Number(previousOutput.index)].lock;
-      const senderAddress = generateAddress({
+      const senderAddress = encodeToAddress({
         code_hash: senderLockscript.codeHash,
         hash_type: senderLockscript.hashType,
         args: senderLockscript.args,

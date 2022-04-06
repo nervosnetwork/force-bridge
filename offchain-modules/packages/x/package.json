@@ -15,12 +15,12 @@
     "@types/log4js": "^2.3.5"
   },
   "dependencies": {
-    "@ckb-lumos/base": "0.18.0-rc2",
-    "@ckb-lumos/common-scripts": "0.18.0-rc2",
-    "@ckb-lumos/hd": "0.18.0-rc2",
-    "@ckb-lumos/helpers": "0.18.0-rc2",
-    "@ckb-lumos/rpc": "0.18.0-rc2",
-    "@ckb-lumos/transaction-manager": "0.18.0-rc2",
+    "@ckb-lumos/base": "0.18.0-rc3",
+    "@ckb-lumos/common-scripts": "0.18.0-rc3",
+    "@ckb-lumos/hd": "0.18.0-rc3",
+    "@ckb-lumos/helpers": "0.18.0-rc3",
+    "@ckb-lumos/rpc": "0.18.0-rc3",
+    "@ckb-lumos/transaction-manager": "0.18.0-rc3",
     "@force-bridge/ckb-indexer-client": "^0.0.33",
     "@force-bridge/internal": "^0.0.33",
     "@force-bridge/keystore": "^0.0.33",

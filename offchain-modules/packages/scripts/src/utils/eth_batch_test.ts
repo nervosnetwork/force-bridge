@@ -1,4 +1,4 @@
-import { objectToTransactionSkeleton } from '@ckb-lumos/helpers';
+import { encodeToAddress, objectToTransactionSkeleton, parseAddress } from '@ckb-lumos/helpers';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { txSkeletonToRawTransactionToSign } from '@force-bridge/x/dist/ckb/tx-helper/generator';
 import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
@@ -95,7 +95,7 @@ async function getTransaction(client: JSONRPCClient, assetIdent: string, userIde
     xchainAssetIdent: assetIdent,
     user: {
       network: 'Nervos',
-      ident: userIdent,
+      ident: encodeToAddress(parseAddress(userIdent)),
     },
   };
 
