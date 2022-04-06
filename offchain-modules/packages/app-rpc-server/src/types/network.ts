@@ -32,6 +32,7 @@ export type FungibleBaseInfo = {
 export type AssetType = {
   network: string;
   ident: string;
+  sudtArgs?: string;
   amount?: AmountWithoutDecimals;
   info?: FungibleBaseInfo;
 };

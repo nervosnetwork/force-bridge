@@ -286,7 +286,6 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
   ): Promise<GetBridgeNervosToXchainLockBridgeFeeResponse> {
     switch (payload.xchain) {
       case 'Ethereum': {
-        checkCKBAddress(payload.typescriptHash);
         checkCKBAmount(payload.typescriptHash, payload.amount);
 
         const asset = new NervosAsset(payload.typescriptHash);
@@ -402,7 +401,8 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
     const nervosAssetList = nervosWhiteListAssets.map((asset) => {
       return {
         network: 'Nervos',
-        ident: asset.sudtArgs ? asset.sudtArgs : CKB_TYPESCRIPT_HASH,
+        ident: asset.typescriptHash ? asset.typescriptHash : CKB_TYPESCRIPT_HASH,
+        sudtArgs: asset.sudtArgs,
         info: {
           decimals: asset.decimal,
           name: asset.name,
@@ -637,11 +637,11 @@ function checkETHAmount(assetIdent, amount) {
 
 function checkCKBAmount(typescriptHash, amount) {
   const asset = new NervosAsset(typescriptHash);
-  const minimalAmount = asset.getMinimalAmount(ChainType.ETH);
   const assetInfo = ForceBridgeCore.config.eth.nervosAssetWhiteList.find(
     (asset) => asset.typescriptHash === typescriptHash,
   );
   if (!assetInfo) throw new Error('invalid asset');
+  const minimalAmount = asset.getMinimalAmount(ChainType.ETH);
   if (new Amount(amount, 0).lt(new Amount(minimalAmount, 0)))
     throw new Error(
       `minimal bridge amount is ${ethers.utils.formatUnits(ethers.BigNumber.from(minimalAmount), assetInfo.decimal)} ${
