@@ -540,7 +540,7 @@ function generateCases(
         xchain: 'Ethereum',
         amount: minimalBridgeAmount.add(1).toString(),
       },
-      error: `Error: invalid ckb address`,
+      error: `Error: invalid asset`,
     },
     {
       description: 'should return error when miss amount',
