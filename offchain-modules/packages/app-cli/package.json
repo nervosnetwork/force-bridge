@@ -13,10 +13,10 @@
     "test": "yarn run build"
   },
   "dependencies": {
-    "@ckb-lumos/base": "0.18.0-rc2",
-    "@ckb-lumos/common-scripts": "0.18.0-rc2",
-    "@ckb-lumos/hd": "0.18.0-rc2",
-    "@ckb-lumos/helpers": "0.18.0-rc2",
+    "@ckb-lumos/base": "0.18.0-rc3",
+    "@ckb-lumos/common-scripts": "0.18.0-rc3",
+    "@ckb-lumos/hd": "0.18.0-rc3",
+    "@ckb-lumos/helpers": "0.18.0-rc3",
     "@force-bridge/app-monitor": "^0.0.33",
     "@force-bridge/app-multisign-server": "^0.0.33",
     "@force-bridge/app-relayer": "^0.0.33",
