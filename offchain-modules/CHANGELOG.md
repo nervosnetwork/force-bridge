@@ -1,3 +1,13 @@
+## v0.0.34 (2022-4-6)
+
+### Bugs
+
+- [fix lumos version to support new ckb address](https://github.com/nervosnetwork/force-bridge/pull/350)
+
+### Features
+
+- [add transfer CKB script](https://github.com/nervosnetwork/force-bridge/pull/347)
+
 ## v0.0.33 (2022-3-28)
 
 ### Bugs
