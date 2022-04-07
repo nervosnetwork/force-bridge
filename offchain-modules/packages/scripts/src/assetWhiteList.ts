@@ -33,8 +33,9 @@ export interface WhiteListPublic {
 }
 
 const BRIDGE_IN_CKB_FEE = 400; // 400CKB
-const BRIDGE_OUT_ETH_FEE = 0.0225; // 150000 gas * 150 Gwei (*10^9/10^18)
+const BRIDGE_OUT_ETH_FEE = 0.012; // 150000 gas * 80 Gwei (*10^9/10^18)
 const TOKEN_PRICE_MAPPING = {
+  WBTC: 'BTC',
   BTCB: 'BTC',
   WBNB: 'BNB',
 };

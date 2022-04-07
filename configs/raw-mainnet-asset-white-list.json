@@ -28,6 +28,13 @@
     "decimal": 18
   },
   {
+    "address": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+    "name": "WBTC",
+    "symbol": "WBTC",
+    "logoURI": "https://cryptologos.cc/logos/wrapped-bitcoin-wbtc-logo.svg?v=002",
+    "decimal": 8
+  },
+  {
     "address": "0xBA11D00c5f74255f56a5E366F4F77f5A186d7f55",
     "name": "BAND",
     "symbol": "BAND",

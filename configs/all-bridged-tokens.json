@@ -48,6 +48,18 @@
     "ckbL2ContractAddress": ""
   },
   {
+    "address": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+    "symbol": "WBTC|eth",
+    "name": "Wrapped WBTC (ForceBridge from Ethereum)",
+    "decimal": 8,
+    "logoURI": "https://cryptologos.cc/logos/wrapped-bitcoin-wbtc-logo.svg?v=002",
+    "sudtArgs": "0x0a2117bce7a84cac80e7c5971919d12987e4da58f79e010c6c2f58c7d6e687e1",
+    "source": "Ethereum",
+    "bridge": "ForceBridge",
+    "ckbExplorerUrl": "https://explorer.nervos.org/sudt/0x3d077c897d2a6903acb2ee2d7f92c0175f93d033d89fcb53a32e39a6954dc018",
+    "ckbL2ContractAddress": ""
+  },
+  {
     "address": "0xBA11D00c5f74255f56a5E366F4F77f5A186d7f55",
     "symbol": "BAND|eth",
     "name": "Wrapped BAND (ForceBridge from Ethereum)",
