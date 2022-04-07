@@ -5,10 +5,10 @@
     "symbol": "ETH",
     "logoURI": "https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=002",
     "decimal": 18,
-    "minimalBridgeAmount": "45000000000000000",
+    "minimalBridgeAmount": "24000000000000000",
     "bridgeFee": {
-      "in": "2530000000000000",
-      "out": "22500000000000000"
+      "in": "1490000000000000",
+      "out": "12000000000000000"
     }
   },
   {
@@ -17,10 +17,10 @@
     "symbol": "USDT",
     "logoURI": "https://cryptologos.cc/logos/tether-usdt-logo.svg?v=002",
     "decimal": 6,
-    "minimalBridgeAmount": "140000000",
+    "minimalBridgeAmount": "77500000",
     "bridgeFee": {
-      "in": "7910000",
-      "out": "70300000"
+      "in": "4820000",
+      "out": "38700000"
     }
   },
   {
@@ -29,10 +29,10 @@
     "symbol": "DAI",
     "logoURI": "https://cryptologos.cc/logos/multi-collateral-dai-dai-logo.svg?v=002",
     "decimal": 18,
-    "minimalBridgeAmount": "140000000000000000000",
+    "minimalBridgeAmount": "77500000000000000000",
     "bridgeFee": {
-      "in": "7910000000000000000",
-      "out": "70300000000000000000"
+      "in": "4820000000000000000",
+      "out": "38700000000000000000"
     }
   },
   {
@@ -41,10 +41,22 @@
     "symbol": "LINK",
     "logoURI": "https://cryptologos.cc/logos/chainlink-link-logo.svg?v=002",
     "decimal": 18,
-    "minimalBridgeAmount": "6400000000000000000",
+    "minimalBridgeAmount": "4950000000000000000",
     "bridgeFee": {
-      "in": "360000000000000000",
-      "out": "3200000000000000000"
+      "in": "307000000000000000",
+      "out": "2470000000000000000"
+    }
+  },
+  {
+    "address": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+    "name": "WBTC",
+    "symbol": "WBTC",
+    "logoURI": "https://cryptologos.cc/logos/wrapped-bitcoin-wbtc-logo.svg?v=002",
+    "decimal": 8,
+    "minimalBridgeAmount": "176000",
+    "bridgeFee": {
+      "in": "10900",
+      "out": "88300"
     }
   },
   {
@@ -53,10 +65,10 @@
     "symbol": "BAND",
     "logoURI": "https://cryptologos.cc/logos/band-protocol-band-logo.svg?v=013",
     "decimal": 18,
-    "minimalBridgeAmount": "28200000000000000000",
+    "minimalBridgeAmount": "17100000000000000000",
     "bridgeFee": {
-      "in": "1590000000000000000",
-      "out": "14100000000000000000"
+      "in": "1060000000000000000",
+      "out": "8580000000000000000"
     }
   },
   {
@@ -65,10 +77,10 @@
     "symbol": "BAT",
     "logoURI": "https://cryptologos.cc/logos/basic-attention-token-bat-logo.svg?v=002",
     "decimal": 18,
-    "minimalBridgeAmount": "144000000000000000000",
+    "minimalBridgeAmount": "99900000000000000000",
     "bridgeFee": {
-      "in": "8140000000000000000",
-      "out": "72300000000000000000"
+      "in": "6210000000000000000",
+      "out": "49900000000000000000"
     }
   },
   {
@@ -77,10 +89,10 @@
     "symbol": "SNX",
     "logoURI": "https://cryptologos.cc/logos/synthetix-network-token-snx-logo.svg?v=002",
     "decimal": 18,
-    "minimalBridgeAmount": "28300000000000000000",
+    "minimalBridgeAmount": "13700000000000000000",
     "bridgeFee": {
-      "in": "1590000000000000000",
-      "out": "14100000000000000000"
+      "in": "854000000000000000",
+      "out": "6860000000000000000"
     }
   },
   {
@@ -89,10 +101,10 @@
     "symbol": "UNI",
     "logoURI": "https://cryptologos.cc/logos/uniswap-uni-logo.svg?v=013",
     "decimal": 18,
-    "minimalBridgeAmount": "9080000000000000000",
+    "minimalBridgeAmount": "7500000000000000000",
     "bridgeFee": {
-      "in": "511000000000000000",
-      "out": "4540000000000000000"
+      "in": "466000000000000000",
+      "out": "3750000000000000000"
     }
   },
   {
@@ -101,10 +113,10 @@
     "symbol": "YFI",
     "logoURI": "https://cryptologos.cc/logos/yearn-finance-yfi-logo.svg?v=013",
     "decimal": 18,
-    "minimalBridgeAmount": "4300000000000000",
+    "minimalBridgeAmount": "3510000000000000",
     "bridgeFee": {
-      "in": "242000000000000",
-      "out": "2150000000000000"
+      "in": "218000000000000",
+      "out": "1750000000000000"
     }
   },
   {
@@ -113,10 +125,10 @@
     "symbol": "BUSD",
     "logoURI": "https://cryptologos.cc/logos/binance-usd-busd-logo.svg?v=002",
     "decimal": 18,
-    "minimalBridgeAmount": "140000000000000000000",
+    "minimalBridgeAmount": "77600000000000000000",
     "bridgeFee": {
-      "in": "7910000000000000000",
-      "out": "70300000000000000000"
+      "in": "4820000000000000000",
+      "out": "38800000000000000000"
     }
   },
   {
@@ -125,10 +137,10 @@
     "symbol": "COMP",
     "logoURI": "https://cryptologos.cc/logos/compound-comp-logo.svg?v=013",
     "decimal": 18,
-    "minimalBridgeAmount": "821000000000000000",
+    "minimalBridgeAmount": "555000000000000000",
     "bridgeFee": {
-      "in": "46200000000000000",
-      "out": "410000000000000000"
+      "in": "34500000000000000",
+      "out": "277000000000000000"
     }
   },
   {
@@ -137,10 +149,10 @@
     "symbol": "MKR",
     "logoURI": "https://cryptologos.cc/logos/maker-mkr-logo.svg?v=002",
     "decimal": 18,
-    "minimalBridgeAmount": "69600000000000000",
+    "minimalBridgeAmount": "36700000000000000",
     "bridgeFee": {
-      "in": "3920000000000000",
-      "out": "34800000000000000"
+      "in": "2280000000000000",
+      "out": "18300000000000000"
     }
   },
   {
@@ -149,10 +161,10 @@
     "symbol": "IOTX",
     "logoURI": "https://cryptologos.cc/logos/iotex-iotx-logo.svg?v=002",
     "decimal": 18,
-    "minimalBridgeAmount": "1290000000000000000000",
+    "minimalBridgeAmount": "938000000000000000000",
     "bridgeFee": {
-      "in": "72900000000000000000",
-      "out": "647000000000000000000"
+      "in": "58300000000000000000",
+      "out": "469000000000000000000"
     }
   },
   {
@@ -161,10 +173,10 @@
     "symbol": "BEL",
     "logoURI": "https://cryptologos.cc/logos/belacoin-bela-logo.svg?v=013",
     "decimal": 18,
-    "minimalBridgeAmount": "112000000000000000000",
+    "minimalBridgeAmount": "78700000000000000000",
     "bridgeFee": {
-      "in": "6350000000000000000",
-      "out": "56400000000000000000"
+      "in": "4890000000000000000",
+      "out": "39300000000000000000"
     }
   },
   {
@@ -173,10 +185,10 @@
     "symbol": "USDP",
     "logoURI": "https://cryptologos.cc/logos/paxos-standard-pax-logo.svg?v=002",
     "decimal": 18,
-    "minimalBridgeAmount": "140000000000000000000",
+    "minimalBridgeAmount": "77500000000000000000",
     "bridgeFee": {
-      "in": "7910000000000000000",
-      "out": "70300000000000000000"
+      "in": "4820000000000000000",
+      "out": "38700000000000000000"
     }
   },
   {
@@ -185,10 +197,10 @@
     "symbol": "USDC",
     "logoURI": "https://cryptologos.cc/logos/usd-coin-usdc-logo.svg?v=002",
     "decimal": 6,
-    "minimalBridgeAmount": "140000000",
+    "minimalBridgeAmount": "77600000",
     "bridgeFee": {
-      "in": "7910000",
-      "out": "70300000"
+      "in": "4820000",
+      "out": "38800000"
     }
   },
   {
@@ -197,10 +209,10 @@
     "symbol": "SXP",
     "logoURI": "https://cryptologos.cc/logos/swipe-sxp-logo.svg?v=002",
     "decimal": 18,
-    "minimalBridgeAmount": "86900000000000000000",
+    "minimalBridgeAmount": "56900000000000000000",
     "bridgeFee": {
-      "in": "4890000000000000000",
-      "out": "43400000000000000000"
+      "in": "3540000000000000000",
+      "out": "28400000000000000000"
     }
   },
   {
@@ -209,10 +221,10 @@
     "symbol": "SUSHI",
     "logoURI": "https://cryptologos.cc/logos/sushiswap-sushi-logo.svg?v=013",
     "decimal": 18,
-    "minimalBridgeAmount": "22800000000000000000",
+    "minimalBridgeAmount": "21100000000000000000",
     "bridgeFee": {
-      "in": "1280000000000000000",
-      "out": "11400000000000000000"
+      "in": "1310000000000000000",
+      "out": "10500000000000000000"
     }
   },
   {
@@ -221,10 +233,10 @@
     "symbol": "AAVE",
     "logoURI": "https://cryptologos.cc/logos/aave-aave-logo.svg?v=013",
     "decimal": 18,
-    "minimalBridgeAmount": "652000000000000000",
+    "minimalBridgeAmount": "388000000000000000",
     "bridgeFee": {
-      "in": "36700000000000000",
-      "out": "326000000000000000"
+      "in": "24100000000000000",
+      "out": "194000000000000000"
     }
   },
   {
@@ -233,10 +245,10 @@
     "symbol": "1INCH",
     "logoURI": "https://cryptologos.cc/logos/1inch-1inch-logo.svg?v=013",
     "decimal": 18,
-    "minimalBridgeAmount": "66200000000000000000",
+    "minimalBridgeAmount": "46600000000000000000",
     "bridgeFee": {
-      "in": "3720000000000000000",
-      "out": "33100000000000000000"
+      "in": "2900000000000000000",
+      "out": "23300000000000000000"
     }
   },
   {
@@ -245,10 +257,10 @@
     "symbol": "LTO",
     "logoURI": "https://cryptologos.cc/logos/lto-network-lto-logo.svg?v=002",
     "decimal": 8,
-    "minimalBridgeAmount": "46300000000",
+    "minimalBridgeAmount": "30100000000",
     "bridgeFee": {
-      "in": "2600000000",
-      "out": "23100000000"
+      "in": "1870000000",
+      "out": "15000000000"
     }
   },
   {
@@ -257,10 +269,10 @@
     "symbol": "MATIC",
     "logoURI": "https://cryptologos.cc/logos/matic-network-matic-logo.svg?v=002",
     "decimal": 18,
-    "minimalBridgeAmount": "67700000000000000000",
+    "minimalBridgeAmount": "51900000000000000000",
     "bridgeFee": {
-      "in": "3810000000000000000",
-      "out": "33800000000000000000"
+      "in": "3220000000000000000",
+      "out": "25900000000000000000"
     }
   },
   {
@@ -269,10 +281,10 @@
     "symbol": "BNT",
     "logoURI": "https://cryptologos.cc/logos/bancor-bnt-logo.svg?v=002",
     "decimal": 18,
-    "minimalBridgeAmount": "47700000000000000000",
+    "minimalBridgeAmount": "30300000000000000000",
     "bridgeFee": {
-      "in": "2690000000000000000",
-      "out": "23800000000000000000"
+      "in": "1880000000000000000",
+      "out": "15100000000000000000"
     }
   },
   {
@@ -281,10 +293,10 @@
     "symbol": "BZRX",
     "logoURI": "https://cryptologos.cc/logos/bzx-protocol-bzrx-logo.svg?v=013",
     "decimal": 18,
-    "minimalBridgeAmount": "584000000000000000000",
+    "minimalBridgeAmount": "332000000000000000000",
     "bridgeFee": {
-      "in": "33300000000000000000",
-      "out": "292000000000000000000"
+      "in": "20600000000000000000",
+      "out": "166000000000000000000"
     }
   },
   {
@@ -293,10 +305,10 @@
     "symbol": "MDT",
     "logoURI": "https://cryptologos.cc/logos/measurable-data-token-mdt-logo.svg?v=013",
     "decimal": 18,
-    "minimalBridgeAmount": "1730000000000000000000",
+    "minimalBridgeAmount": "1370000000000000000000",
     "bridgeFee": {
-      "in": "97500000000000000000",
-      "out": "866000000000000000000"
+      "in": "85300000000000000000",
+      "out": "686000000000000000000"
     }
   },
   {
@@ -305,10 +317,10 @@
     "symbol": "PNT",
     "logoURI": "https://cryptologos.cc/logos/pnetwork-pnt-logo.svg?v=013",
     "decimal": 18,
-    "minimalBridgeAmount": "171000000000000000000",
+    "minimalBridgeAmount": "125000000000000000000",
     "bridgeFee": {
-      "in": "9650000000000000000",
-      "out": "85700000000000000000"
+      "in": "7770000000000000000",
+      "out": "62500000000000000000"
     }
   },
   {
@@ -317,10 +329,10 @@
     "symbol": "PERL",
     "logoURI": "https://cryptologos.cc/logos/perlin-perl-logo.svg?v=002",
     "decimal": 18,
-    "minimalBridgeAmount": "2080000000000000000000",
+    "minimalBridgeAmount": "1480000000000000000000",
     "bridgeFee": {
-      "in": "117000000000000000000",
-      "out": "1040000000000000000000"
+      "in": "92500000000000000000",
+      "out": "743000000000000000000"
     }
   },
   {
@@ -329,10 +341,10 @@
     "symbol": "BAL",
     "logoURI": "https://cryptologos.cc/logos/balancer-bal-logo.svg?v=013",
     "decimal": 18,
-    "minimalBridgeAmount": "9040000000000000000",
+    "minimalBridgeAmount": "4240000000000000000",
     "bridgeFee": {
-      "in": "509000000000000000",
-      "out": "4520000000000000000"
+      "in": "263000000000000000",
+      "out": "2120000000000000000"
     }
   },
   {
@@ -341,10 +353,10 @@
     "symbol": "BLZ",
     "logoURI": "https://cryptologos.cc/logos/bluzelle-blz-logo.svg?v=002",
     "decimal": 18,
-    "minimalBridgeAmount": "821000000000000000000",
+    "minimalBridgeAmount": "422000000000000000000",
     "bridgeFee": {
-      "in": "46200000000000000000",
-      "out": "410000000000000000000"
+      "in": "26200000000000000000",
+      "out": "211000000000000000000"
     }
   },
   {
@@ -353,10 +365,10 @@
     "symbol": "COTI",
     "logoURI": "https://cryptologos.cc/logos/coti-coti-logo.svg?v=013",
     "decimal": 18,
-    "minimalBridgeAmount": "374000000000000000000",
+    "minimalBridgeAmount": "274000000000000000000",
     "bridgeFee": {
-      "in": "21100000000000000000",
-      "out": "187000000000000000000"
+      "in": "17000000000000000000",
+      "out": "137000000000000000000"
     }
   },
   {
@@ -365,10 +377,10 @@
     "symbol": "TRX",
     "logoURI": "https://cryptologos.cc/logos/tron-trx-logo.svg?v=002",
     "decimal": 6,
-    "minimalBridgeAmount": "2030000000",
+    "minimalBridgeAmount": "1190000000",
     "bridgeFee": {
-      "in": "114000000",
-      "out": "1010000000"
+      "in": "74500000",
+      "out": "599000000"
     }
   },
   {
@@ -377,10 +389,10 @@
     "symbol": "TUSD",
     "logoURI": "https://cryptologos.cc/logos/trueusd-tusd-logo.svg?v=002",
     "decimal": 18,
-    "minimalBridgeAmount": "140000000000000000000",
+    "minimalBridgeAmount": "77600000000000000000",
     "bridgeFee": {
-      "in": "7910000000000000000",
-      "out": "70300000000000000000"
+      "in": "4820000000000000000",
+      "out": "38800000000000000000"
     }
   }
 ]
