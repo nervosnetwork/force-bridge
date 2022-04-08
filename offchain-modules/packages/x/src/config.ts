@@ -180,6 +180,7 @@ export interface collectorConfig {
   gasLimit: number;
   batchGasLimit: number;
   gasPriceGweiLimit: number;
+  disableEIP1559Style?: boolean;
   maxPriorityFeePerGasGwei?: string;
 }
 

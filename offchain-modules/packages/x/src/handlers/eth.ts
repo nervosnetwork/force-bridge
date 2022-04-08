@@ -371,7 +371,6 @@ export class EthHandler {
     if (!(await this.checkGas())) {
       return;
     }
-
     records = await this.ethDb.makeMintPending(records);
     const mintTxHashes = records.map((r) => r.ckbTxHash);
 
@@ -380,7 +379,8 @@ export class EthHandler {
     }
 
     try {
-      const txRes = await this.ethChain.sendMintTxs(records);
+      const gasPrice = await this.ethChain.getGasPrice();
+      const txRes = await this.ethChain.sendMintTxs(records, gasPrice);
 
       if (typeof txRes == 'boolean') {
         records.map((r) => {
@@ -503,7 +503,7 @@ export class EthHandler {
           r.status = 'pending';
         });
         await this.ethDb.saveCollectorEthUnlock(records);
-        const txRes = await this.ethChain.sendUnlockTxs(records);
+        const txRes = await this.ethChain.sendUnlockTxs(records, gasPrice);
         if (typeof txRes === 'boolean') {
           records.map((r) => {
             r.status = 'success';
