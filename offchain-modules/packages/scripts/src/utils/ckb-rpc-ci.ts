@@ -719,7 +719,7 @@ async function burn(
       const lockTxHash = (await provider.sendTransaction(signedTx)).hash;
       logger.info('lockTxHash', lockTxHash);
 
-      await checkTx(client, testcase.payload.asset, lockTxHash, CKB_TEST_ADDRESS, ETH_TEST_ADDRESS);
+      await checkTx(client, shadowAsset.ident, lockTxHash, CKB_TEST_ADDRESS, ETH_TEST_ADDRESS);
 
       for (let j = 0; j < 3; j++) {
         const afterBalance = await getBalance(
