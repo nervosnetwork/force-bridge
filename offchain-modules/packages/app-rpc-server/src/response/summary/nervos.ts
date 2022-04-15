@@ -61,14 +61,14 @@ class Nervos extends SummaryResponse {
     const summary: TransactionSummary = {
       txSummary: {
         fromAsset: {
-          network: 'Nervos',
+          network: 'Ethereum',
           // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          ident: record.unlock_asset!,
+          ident: record.asset,
           amount: record.burn_amount,
         },
         toAsset: {
-          network: 'Ethereum',
-          ident: record.asset,
+          network: 'Nervos',
+          ident: record.unlock_asset!,
           amount: unlockAmount,
         },
         sender: record.sender,

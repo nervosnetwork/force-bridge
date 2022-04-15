@@ -590,6 +590,6 @@ export async function ckbBatchTest(
     burnTxs.push(burnTx);
   }
   logger.info(`burnTxs: ${burnTxs}`);
-  await check(client, batchNum, 'Nervos', xchainTokenAddress, 'Ethereum', ethAddresses, burnTxs);
+  await check(client, batchNum, 'Nervos', ckbTypescriptHash, 'Ethereum', ethAddresses, burnTxs);
   logger.info('ckbBatchTest pass!');
 }
