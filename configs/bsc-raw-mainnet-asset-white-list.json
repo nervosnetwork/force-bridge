@@ -28,6 +28,13 @@
     "decimal": 18
   },
   {
+    "address": "0x3EE2200Efb3400fAbB9AacF31297cBdD1d435D47",
+    "name": "ADA",
+    "symbol": "ADA",
+    "logoURI": "https://cryptologos.cc/logos/cardano-ada-logo.svg?v=002",
+    "decimal": 18
+  },
+  {
     "address": "0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c",
     "name": "BTCB",
     "symbol": "BTCB",
