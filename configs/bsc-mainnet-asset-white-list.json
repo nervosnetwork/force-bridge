@@ -52,6 +52,19 @@
     "sudtArgs": "0xd61ddc3184767d677be0d741883779aa9513293c4eaa4e0687b5b1caf845edfe"
   },
   {
+    "address": "0x3EE2200Efb3400fAbB9AacF31297cBdD1d435D47",
+    "name": "ADA",
+    "symbol": "ADA",
+    "logoURI": "https://cryptologos.cc/logos/cardano-ada-logo.svg?v=002",
+    "decimal": 18,
+    "minimalBridgeAmount": "18040000000000000000",
+    "bridgeFee": {
+      "in": "9020000000000000000",
+      "out": "9020000000000000000"
+    },
+    "sudtArgs": "0x0353c4ffdcbda18f934a95341575781f3aaf7b68d35151997ff0967cfa0b9866"
+  },
+  {
     "address": "0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c",
     "name": "BTCB",
     "symbol": "BTCB",

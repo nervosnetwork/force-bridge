@@ -444,6 +444,18 @@
     "ckbL2ContractAddress": ""
   },
   {
+    "address": "0x3EE2200Efb3400fAbB9AacF31297cBdD1d435D47",
+    "symbol": "ADA|bsc",
+    "name": "Wrapped ADA (ForceBridge from BSC)",
+    "decimal": 18,
+    "logoURI": "https://cryptologos.cc/logos/cardano-ada-logo.svg?v=002",
+    "sudtArgs": "0x0353c4ffdcbda18f934a95341575781f3aaf7b68d35151997ff0967cfa0b9866",
+    "source": "BSC",
+    "bridge": "ForceBridge",
+    "ckbExplorerUrl": "https://explorer.nervos.org/sudt/0xd34b83fcd8508318f9ea98003fa685e42ef7130bae51bba31916f25c80afad21",
+    "ckbL2ContractAddress": ""
+  },
+  {
     "address": "0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c",
     "symbol": "BTCB|bsc",
     "name": "Wrapped BTCB (ForceBridge from BSC)",
