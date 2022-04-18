@@ -1,6 +1,12 @@
 import { Cell, utils } from '@ckb-lumos/base';
 import { key } from '@ckb-lumos/hd';
-import { objectToTransactionSkeleton, sealTransaction, minimalCellCapacity } from '@ckb-lumos/helpers';
+import {
+  objectToTransactionSkeleton,
+  sealTransaction,
+  minimalCellCapacity,
+  encodeToAddress,
+  parseAddress,
+} from '@ckb-lumos/helpers';
 import { RPC } from '@ckb-lumos/rpc';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbIndexer, ScriptType } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
@@ -330,7 +336,7 @@ export async function prepareCkbAddresses(
     },
     {
       outPoint: sudtTypescript.cellDep.outPoint,
-      depType: 'code' as CKBComponents.DepType,
+      depType: sudtTypescript.cellDep.depType as CKBComponents.DepType,
     },
   ];
 
@@ -387,6 +393,7 @@ export async function prepareCkbAddresses(
       args: toArgs,
       hash_type: secp256k1Dep.hashType,
     };
+
     const outputSudtCell: Cell = {
       cell_output: {
         capacity: '0x0',

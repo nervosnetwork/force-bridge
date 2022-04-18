@@ -27,10 +27,10 @@ async function main() {
   const forceBridgeUrl = 'http://127.0.0.1:3199/force-bridge/api/v1';
   // Dai token
   const erc20TokenAddress = '0x7Af456bf0065aADAB2E6BEc6DaD3731899550b84';
-  const lockEthAmount = '30000000000000';
-  const burnEthSudtAmount = '10000000000000';
-  const lockErc20Amount = '3000000000000000';
-  const burnCkbErc20SudtAmount = '1000000000000000';
+  const lockEthAmount = '20000000000000';
+  const burnEthSudtAmount = '16000000000000';
+  const lockErc20Amount = '2000000000000000';
+  const burnCkbErc20SudtAmount = '1600000000000000';
 
   const bridgeDirection = nonNullable(process.argv[2]);
   const batchNumber = Number(process.argv[3] ?? 100);

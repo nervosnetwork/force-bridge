@@ -439,10 +439,12 @@ export class Monitor {
       let hook = new WebHook(this.webHookErrorUrl).setTitle(`Fee Alarm - ${ForceBridgeCore.config.monitor!.env}`);
       if (accountsFee.ckb < accountsFee.ckbThreshold) {
         hook = hook.addField('ckb fee account', `addr: ${accounts.ckbAddr}, balance: ${accountsFee.ckb}`);
+        logger.error(`${ForceBridgeCore.config.monitor!.env} ckb fee account balance is low: ${accountsFee.ckb}`);
         send = true;
       }
       if (accountsFee.eth < accountsFee.ethThreshold) {
         hook = hook.addField('eth fee account', `addr: ${accounts.ethAddr}, balance: ${accountsFee.eth}`);
+        logger.error(`${ForceBridgeCore.config.monitor!.env} eth fee account balance is low: ${accountsFee.eth}`);
         send = true;
       }
       if (send) {
@@ -594,6 +596,7 @@ export class Monitor {
   }
 
   async observeEthEvent(): Promise<void> {
+    let continuousErrorCount = 0;
     foreverPromise(
       async () => {
         const fromBlock = this.durationConfig.eth.lastHandledBlock + 1;
@@ -627,12 +630,22 @@ export class Monitor {
           .subscribe((record) => this.onEthBurnRecord(record));
 
         this.durationConfig.eth.lastHandledBlock = toBlock;
+        continuousErrorCount = 0;
       },
       {
         onRejectedInterval: 15000,
-        onResolvedInterval: 0,
+        onResolvedInterval: 1000,
         onRejected: (e: Error) => {
-          logger.error(`Monitor observeEthEvent error:${e.stack}`);
+          continuousErrorCount++;
+          if (continuousErrorCount > 10) {
+            logger.error(
+              `Monitor observeEthEvent error, continuousErrorCount: ${continuousErrorCount}, stack: ${e.stack}`,
+            );
+          } else {
+            logger.warn(
+              `Monitor observeEthEvent error, continuousErrorCount: ${continuousErrorCount}, stack: ${e.stack}`,
+            );
+          }
         },
       },
     );

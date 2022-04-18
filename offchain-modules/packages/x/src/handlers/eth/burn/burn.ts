@@ -1,3 +1,4 @@
+import { encodeToAddress, parseAddress } from '@ckb-lumos/helpers';
 import { ethers } from 'ethers';
 import { forceBridgeRole as ForceBridgeRole } from '../../../config';
 import { ForceBridgeCore } from '../../../core';
@@ -58,7 +59,7 @@ abstract class Burn {
     if (record == undefined) {
       await this.initBolck(log.blockHash);
 
-      const recipient = uint8ArrayToString(fromHexString(parsedLog.args.recipient));
+      const recipient = this.toCKBAddress2021(uint8ArrayToString(fromHexString(parsedLog.args.recipient)));
 
       record = new EthBurn();
       record.burnTxHash = log.transactionHash;
@@ -112,6 +113,15 @@ abstract class Burn {
     }
 
     return 'unconfirmed';
+  }
+  toCKBAddress2021(address: string): string {
+    try {
+      const newAddress = encodeToAddress(parseAddress(address));
+      return newAddress;
+    } catch (e) {
+      logger.warn(`parse recipient address from ethereum log failed, recipient address ${address}, error ${e}`);
+      return address;
+    }
   }
 }
 

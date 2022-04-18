@@ -1,4 +1,4 @@
-import { generateAddress, parseAddress } from '@ckb-lumos/helpers';
+import { encodeToAddress, parseAddress } from '@ckb-lumos/helpers';
 import { ethers } from 'ethers';
 import { ChainType } from '../../../ckb/model/asset';
 import { forceBridgeRole as ForceBridgeRole } from '../../../config';
@@ -49,7 +49,7 @@ class Collector extends Burn {
     }
 
     try {
-      recipient = generateAddress(parseAddress(recipient));
+      recipient = encodeToAddress(parseAddress(recipient));
     } catch (e) {
       logger.warn(
         `illegal ckb address in burn tx. tx:${log.transactionHash} address:${parsedLog.args.recipient} error:${e.message}`,
