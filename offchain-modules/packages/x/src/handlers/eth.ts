@@ -371,7 +371,6 @@ export class EthHandler {
     if (!(await this.checkGas())) {
       return;
     }
-
     records = await this.ethDb.makeMintPending(records);
     const mintTxHashes = records.map((r) => r.ckbTxHash);
 
@@ -380,7 +379,8 @@ export class EthHandler {
     }
 
     try {
-      const txRes = await this.ethChain.sendMintTxs(records);
+      const gasPrice = await this.ethChain.getGasPrice();
+      const txRes = await this.ethChain.sendMintTxs(records, gasPrice);
 
       if (typeof txRes == 'boolean') {
         records.map((r) => {
@@ -450,7 +450,7 @@ export class EthHandler {
   // watch the eth_unlock table and handle the new unlock events
   // send tx according to the data
   async handleTodoUnlockRecords(): Promise<void> {
-    if (!TransferOutSwitch.getInstance().getStatus()) {
+    if (!TransferOutSwitch.getInstance().getStatus('eth2nervos')) {
       logger.info(`TransferOutSwitch is off, skip handleTodoUnlockRecords`);
       return;
     }
@@ -503,7 +503,7 @@ export class EthHandler {
           r.status = 'pending';
         });
         await this.ethDb.saveCollectorEthUnlock(records);
-        const txRes = await this.ethChain.sendUnlockTxs(records);
+        const txRes = await this.ethChain.sendUnlockTxs(records, gasPrice);
         if (typeof txRes === 'boolean') {
           records.map((r) => {
             r.status = 'success';

@@ -92,8 +92,9 @@ export async function deploySafe(
   const signer = new Wallet(privateKey, new ethers.providers.JsonRpcProvider(url));
   const chainId = (await provider.getNetwork()).chainId;
 
-  // this chain id is based on the config of Dockerfile.
-  if (chainId == 1234) {
+  // 1234 chain id is based on the config of Dockerfile.
+  // 97 is for bsc testnet.
+  if (chainId == 1234 || chainId == 97) {
     const safeProxyFactoryContract = await new ethers.ContractFactory(pfabi, pfbytecode, signer).deploy();
     let receipt = await safeProxyFactoryContract.deployTransaction.wait();
     logger.info(`deploy eth safe proxy factory tx receipt is ${JSON.stringify(receipt)}`);

@@ -153,6 +153,8 @@ export interface promConfig {
   metricPort: number;
 }
 
+export type AssetWhiteList = WhiteListEthAsset | WhiteListNervosAsset;
+
 export interface WhiteListEthAsset {
   address: string;
   name: string;
@@ -178,6 +180,7 @@ export interface collectorConfig {
   gasLimit: number;
   batchGasLimit: number;
   gasPriceGweiLimit: number;
+  disableEIP1559Style?: boolean;
   maxPriorityFeePerGasGwei?: string;
 }
 

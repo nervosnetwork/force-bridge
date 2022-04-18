@@ -253,7 +253,10 @@ export class EthChain {
     return false;
   }
 
-  async sendMintTxs(records: IEthMint[]): Promise<ethers.providers.TransactionResponse | undefined | boolean> {
+  async sendMintTxs(
+    records: IEthMint[],
+    gasPrice: ethers.BigNumber,
+  ): Promise<ethers.providers.TransactionResponse | undefined | boolean> {
     try {
       const safe = await Safe.create({
         ethAdapter: new EthersAdapter({ ethers, signer: this.wallet }),
@@ -263,6 +266,7 @@ export class EthChain {
       const partialTx = {
         to: this.assetManager.address,
         value: '0',
+        gasPrice: ForceBridgeCore.config.collector!.disableEIP1559Style ? gasPrice.toNumber() : undefined,
         data: this.assetManager.interface.encodeFunctionData('mint', [
           records.map((r) => {
             return {
@@ -274,6 +278,7 @@ export class EthChain {
           }),
         ]),
       };
+
       const tx = await safe.createTransaction(partialTx);
       const signatures = await this.signMintTx(tx, safe, records);
       if (typeof signatures == 'boolean') {
@@ -323,7 +328,10 @@ export class EthChain {
     });
   }
 
-  async sendUnlockTxs(records: IEthUnlock[]): Promise<ethers.providers.TransactionResponse | boolean | Error> {
+  async sendUnlockTxs(
+    records: IEthUnlock[],
+    gasPrice: ethers.BigNumber,
+  ): Promise<ethers.providers.TransactionResponse | boolean | Error> {
     const maxTryTimes = 30;
     for (let tryTime = 0; ; tryTime++) {
       logger.debug('contract balance', await this.provider.getBalance(this.bridgeContractAddr));
@@ -353,13 +361,22 @@ export class EthChain {
         const collectorConfig = nonNullable(ForceBridgeCore.config.collector);
         const gasLimit =
           records.length === 1 ? collectorConfig.gasLimit : records.length * collectorConfig.batchGasLimit;
-        const maxPriorityFeePerGasGwei =
-          nonNullable(ForceBridgeCore.config.collector).maxPriorityFeePerGasGwei || '1.5';
-        const options = {
-          gasLimit,
-          maxFeePerGas: BigNumber.from(nonNullable(ForceBridgeCore.config.collector).gasPriceGweiLimit * 10 ** 9),
-          maxPriorityFeePerGas: ethers.utils.parseUnits(maxPriorityFeePerGasGwei, 'gwei'),
-        };
+        let options;
+        if (!ForceBridgeCore.config.collector!.disableEIP1559Style) {
+          options = {
+            gasLimit,
+            maxFeePerGas: BigNumber.from(nonNullable(ForceBridgeCore.config.collector).gasPriceGweiLimit * 10 ** 9),
+            maxPriorityFeePerGas: ethers.utils.parseUnits(
+              nonNullable(ForceBridgeCore.config.collector).maxPriorityFeePerGasGwei || '1.5',
+              'gwei',
+            ),
+          };
+        } else {
+          options = {
+            gasLimit,
+            gasPrice,
+          };
+        }
         logger.debug(`send unlock options: ${JSON.stringify(options)}`);
         const dryRunRes = await this.bridge.callStatic.unlock(params, nonce, signature, options);
         logger.debug(`dryRunRes: ${JSON.stringify(dryRunRes, null, 2)}`);
