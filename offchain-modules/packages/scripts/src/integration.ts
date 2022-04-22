@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { Script } from '@ckb-lumos/lumos';
 import { ValInfos } from '@force-bridge/cli/src/changeVal';
 import { KeyStore } from '@force-bridge/keystore/dist';
 import { OmniLockCellConfig, OwnerCellConfig } from '@force-bridge/x/dist/ckb/tx-helper/deploy';
@@ -210,6 +211,9 @@ async function startChangeVal(
   forcecli: string,
   configPath: string,
   bridgeEthAddress: string,
+  omnilockLockscript: Script,
+  omnilockAdminCellTypescript: Script,
+  ckbDeps: CkbDeps,
   safeAddress: string,
   CKB_PRIVKEY: string,
   ETH_PRIVKEY: string,
@@ -241,6 +245,9 @@ async function startChangeVal(
         M: oldMultiSigner.threshold,
         publicKeyHashes: oldMultiSigner.verifiers.map((v) => v.ckbPubkeyHash),
       },
+      omnilockLockscript: omnilockLockscript,
+      omnilockAdminCellTypescript: omnilockAdminCellTypescript,
+      deps: ckbDeps,
     },
     eth: {
       contractAddr: bridgeEthAddress,
@@ -474,6 +481,9 @@ async function main() {
     forcecli,
     configPath,
     bridgeEthAddress,
+    omniLockConfig.omniMultisigLockscript,
+    omniLockConfig.adminCellTypescript,
+    ckbDeps,
     safeAddress,
     CKB_TEST_PRIVKEY,
     ETH_TEST_PRIVKEY,

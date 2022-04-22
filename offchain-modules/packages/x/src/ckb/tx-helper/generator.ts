@@ -1402,18 +1402,22 @@ export function txSkeletonToRawTransactionToSign(
 export function prepareSigningEntries(
   txSkeleton: TransactionSkeletonType,
   senderLockscript: Script,
+  deps?: CkbDeps,
 ): TransactionSkeletonType {
-  switch (lockType(senderLockscript, ForceBridgeCore.config.ckb.deps)) {
+  if (!deps) {
+    deps = ForceBridgeCore.config.ckb.deps;
+  }
+  switch (lockType(senderLockscript, deps)) {
     case 'OmniLock': {
       const trickyLumosConfig = {
         PREFIX: getConfig().PREFIX,
         SCRIPTS: {
           SECP256K1_BLAKE160_MULTISIG: {
-            CODE_HASH: nonNullable(ForceBridgeCore.config.ckb.deps.omniLock?.script.codeHash),
-            HASH_TYPE: nonNullable(ForceBridgeCore.config.ckb.deps.omniLock?.script.hashType) as 'type' | 'data',
-            TX_HASH: nonNullable(ForceBridgeCore.config.ckb.deps.omniLock?.cellDep.outPoint.txHash),
-            INDEX: nonNullable(ForceBridgeCore.config.ckb.deps.omniLock?.cellDep.outPoint.index),
-            DEP_TYPE: nonNullable(ForceBridgeCore.config.ckb.deps.omniLock?.cellDep.depType),
+            CODE_HASH: nonNullable(deps.omniLock?.script.codeHash),
+            HASH_TYPE: nonNullable(deps.omniLock?.script.hashType) as 'type' | 'data',
+            TX_HASH: nonNullable(deps.omniLock?.cellDep.outPoint.txHash),
+            INDEX: nonNullable(deps.omniLock?.cellDep.outPoint.index),
+            DEP_TYPE: nonNullable(deps.omniLock?.cellDep.depType),
           },
           SECP256K1_BLAKE160: getConfig().SCRIPTS.SECP256K1_BLAKE160,
         },
@@ -1443,8 +1447,12 @@ export function lockType(lockscript: Script, config: CkbDeps): 'OmniLock' | 'SEC
   }
 }
 
-export function placeholderWitness(senderLockscript: Script): ArrayBuffer {
-  switch (lockType(senderLockscript, ForceBridgeCore.config.ckb.deps)) {
+export function placeholderWitness(senderLockscript: Script, deps?: CkbDeps): ArrayBuffer {
+  if (!deps) {
+    deps = ForceBridgeCore.config.ckb.deps;
+  }
+
+  switch (lockType(senderLockscript, deps)) {
     case 'OmniLock':
       return core.SerializeWitnessArgs({
         lock: new Reader(

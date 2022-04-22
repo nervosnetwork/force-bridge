@@ -1,9 +1,14 @@
 import fs from 'fs';
-import { Cell, Script } from '@ckb-lumos/base';
+import { Cell, Script, utils } from '@ckb-lumos/base';
+import { SerializeWitnessArgs } from '@ckb-lumos/base/lib/core';
+import { Indexer } from '@ckb-lumos/ckb-indexer';
 import { common } from '@ckb-lumos/common-scripts';
+import { payFeeByFeeRate } from '@ckb-lumos/common-scripts/lib/common';
+import { SECP_SIGNATURE_PLACEHOLDER } from '@ckb-lumos/common-scripts/lib/helper';
 import { serializeMultisigScript } from '@ckb-lumos/common-scripts/lib/secp256k1_blake160_multisig';
 import { key } from '@ckb-lumos/hd';
 import {
+  createTransactionFromSkeleton,
   generateSecp256k1Blake160Address,
   minimalCellCapacity,
   objectToTransactionSkeleton,
@@ -12,11 +17,16 @@ import {
   TransactionSkeletonObject,
   TransactionSkeletonType,
 } from '@ckb-lumos/helpers';
+import { toolkit } from '@ckb-lumos/lumos';
+import { Reader } from '@ckb-lumos/toolkit';
 import { nonNullable } from '@force-bridge/x';
 import { CkbTxHelper } from '@force-bridge/x/dist/ckb/tx-helper/base_generator';
+import { SerializeRCData, SerializeRcLockWitnessLock } from '@force-bridge/x/dist/ckb/tx-helper/generated/omni_lock';
+import { prepareSigningEntries } from '@force-bridge/x/dist/ckb/tx-helper/generator';
 import { initLumosConfig } from '@force-bridge/x/dist/ckb/tx-helper/init_lumos_config';
 import { getMultisigLock } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
-import { MultisigItem } from '@force-bridge/x/dist/config';
+import { getSmtRootAndProof } from '@force-bridge/x/dist/ckb/tx-helper/omni-smt';
+import { CkbDeps, MultisigItem } from '@force-bridge/x/dist/config';
 import { httpRequest } from '@force-bridge/x/dist/multisig/client';
 import { privateKeyToCkbPubkeyHash, transactionSkeletonToJSON, writeJsonToFile } from '@force-bridge/x/dist/utils';
 import { buildChangeValidatorsSigRawData } from '@force-bridge/x/dist/xchain/eth';
@@ -132,7 +142,7 @@ async function doMakeTx(opts: Record<string, string>): Promise<void> {
         M: valInfos.ckb.newThreshold,
         publicKeyHashes: newValsPubKeyHashes,
       };
-      const txSkeleton = await generateCkbChangeValTx(
+      let txSkeleton = await generateCkbChangeValTx(
         valInfos.ckb.oldValInfos,
         newMultisigItem,
         ckbPrivateKey,
@@ -140,6 +150,23 @@ async function doMakeTx(opts: Record<string, string>): Promise<void> {
         ckbIndexerRPC,
       );
       txInfo.ckb = {
+        newMultisigScript: newMultisigItem,
+        oldMultisigItem: valInfos.ckb.oldValInfos,
+        signature: [],
+        txSkeleton: txSkeleton.toJS(),
+      };
+
+      txSkeleton = await generateCkbOmnilockChangeValTx(
+        ckbRpcURL,
+        ckbIndexerRPC,
+        ckbPrivateKey,
+        valInfos.ckb.oldValInfos,
+        newMultisigItem,
+        valInfos.ckb.omnilockLockscript,
+        valInfos.ckb.omnilockAdminCellTypescript,
+        valInfos.ckb.deps,
+      );
+      txInfo.ckbOmnilock = {
         newMultisigScript: newMultisigItem,
         oldMultisigItem: valInfos.ckb.oldValInfos,
         signature: [],
@@ -190,6 +217,11 @@ async function doSignTx(opts: Record<string, string>): Promise<void> {
       const sig = await signCkbChangeValTx(valInfos.ckb, ckbPrivateKey);
       valInfos.ckb.signature!.push(sig);
     }
+
+    if (valInfos.ckbOmnilock) {
+      valInfos.ckbOmnilock.signature!.push(await signCkbOmnilockChangeValTx(valInfos.ckbOmnilock, ckbPrivateKey));
+    }
+
     if (valInfos.eth) {
       const sig = await signEthChangeValTx(valInfos.eth, ethPrivateKey);
       valInfos.eth.signature!.push(sig);
@@ -215,6 +247,7 @@ async function doSendTx(opts: Record<string, string>): Promise<void> {
     const files = fs.readdirSync(changeValidatorTxSigDir);
     const ckbSignatures: string[] = [];
     const ethSignatures: string[] = [];
+    const ckbOmnilockSignatures: string[] = [];
     const ethSafeSignatures: Map<string, SafeSignature[]> = new Map();
     const rawTx: ChangeVal = JSON.parse(fs.readFileSync(changeValidatorTxPath, 'utf8').toString());
 
@@ -244,9 +277,28 @@ async function doSendTx(opts: Record<string, string>): Promise<void> {
       ) {
         ckbSignatures.push(valInfos.ckb.signature[0]);
       }
+
+      if (
+        valInfos.ckbOmnilock &&
+        ckbOmnilockSignatures.length < rawTx.ckbOmnilock!.oldMultisigItem.M &&
+        valInfos.ckbOmnilock!.signature &&
+        valInfos.ckbOmnilock!.signature.length !== 0
+      ) {
+        ckbOmnilockSignatures.push(valInfos.ckbOmnilock.signature[0]);
+      }
     }
     if (rawTx.ckb) {
       await sendCkbChangeValTx(rawTx.ckb, ckbPrivateKey, ckbRpcURL, ckbIndexerRPC, ckbSignatures);
+    }
+
+    if (rawTx.ckbOmnilock) {
+      await sendCkbOmnilockChangeValTx(
+        rawTx.ckbOmnilock,
+        ckbPrivateKey,
+        ckbRpcURL,
+        ckbIndexerRPC,
+        ckbOmnilockSignatures,
+      );
     }
 
     if (rawTx.eth) {
@@ -259,6 +311,128 @@ async function doSendTx(opts: Record<string, string>): Promise<void> {
   } catch (e) {
     console.error(`failed to send tx by `, e);
   }
+}
+
+async function getOmnilockOldCells(
+  omniLockScript: Script,
+  omniLockAdminCellTypescript: Script,
+  cli: CkbTxHelper,
+): Promise<Cell> {
+  const indexer = new Indexer(cli.ckbIndexerUrl, cli.ckbRpcUrl);
+  const oldCells = await indexer.getCells({
+    script: omniLockScript,
+    script_type: 'lock',
+    filter: {
+      script: omniLockAdminCellTypescript,
+    },
+  });
+
+  return oldCells.objects[0];
+}
+
+function generateAdminCell(
+  multiSigItem: MultisigItem,
+  omniLockScript: Script,
+  omniLockAdminCellTypescript: Script,
+): Cell {
+  const { root } = getSmtRootAndProof(multiSigItem);
+  const serializedRcData = SerializeRCData({
+    type: 'RCRule',
+    value: {
+      smt_root: new Reader(root).toArrayBuffer(),
+      flags: 2,
+    },
+  });
+
+  const adminCell = {
+    cell_output: {
+      capacity: '0x0',
+      lock: omniLockScript,
+      type: omniLockAdminCellTypescript,
+    },
+    data: new Reader(serializedRcData).serializeJson(),
+  };
+  adminCell.cell_output.capacity = `0x${minimalCellCapacity(adminCell).toString(16)}`;
+
+  return adminCell;
+}
+
+async function generateCkbOmnilockChangeValTx(
+  ckbRpcURL: string,
+  ckbIndexerURL: string,
+  privateKey: string,
+  oldMultisigCell: MultisigItem,
+  newMultisigItem: MultisigItem,
+  omnilockLockscript: Script,
+  omniLockAdminCellTypescript: Script,
+  ckbDeps: CkbDeps,
+): Promise<TransactionSkeletonType> {
+  const cli = new CkbTxHelper(ckbRpcURL, ckbIndexerURL);
+  await cli.indexer.waitForSync();
+
+  let txSkeleton = TransactionSkeleton({ cellProvider: cli.indexer });
+
+  const oldAdminCell = await getOmnilockOldCells(omnilockLockscript, omniLockAdminCellTypescript, cli);
+
+  txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
+    return cellDeps
+      .push({
+        dep_type: cli.lumosConfig.SCRIPTS.SECP256K1_BLAKE160!.DEP_TYPE,
+        out_point: {
+          tx_hash: cli.lumosConfig.SCRIPTS.SECP256K1_BLAKE160!.TX_HASH,
+          index: cli.lumosConfig.SCRIPTS.SECP256K1_BLAKE160!.INDEX,
+        },
+      })
+      .push({
+        dep_type: ckbDeps.omniLock!.cellDep.depType,
+        out_point: {
+          tx_hash: ckbDeps.omniLock!.cellDep.outPoint.txHash,
+          index: ckbDeps.omniLock!.cellDep.outPoint.index,
+        },
+      });
+  });
+
+  txSkeleton = txSkeleton.update('inputs', (inputs) => {
+    return inputs.push(oldAdminCell);
+  });
+
+  txSkeleton = txSkeleton.update('outputs', (outputs) => {
+    const newAdminCell = generateAdminCell(newMultisigItem, omnilockLockscript, omniLockAdminCellTypescript);
+    return outputs.push(newAdminCell);
+  });
+
+  txSkeleton = txSkeleton.update('witnesses', (witnesses) => {
+    return witnesses.push(
+      new Reader(
+        SerializeWitnessArgs(
+          toolkit.normalizers.NormalizeWitnessArgs({
+            lock: `0x${'0'.repeat(
+              getOmnilockWitness([SECP_SIGNATURE_PLACEHOLDER.slice(2).repeat(oldMultisigCell.M)], oldMultisigCell)
+                .length - 2,
+            )}`,
+          }),
+        ),
+      ).serializeJson(),
+    );
+  });
+
+  const fromAddress = generateSecp256k1Blake160Address(key.privateKeyToBlake160(privateKey));
+  txSkeleton = await payFeeByFeeRate(txSkeleton, [fromAddress], 1000n);
+
+  txSkeleton = txSkeleton.update('witnesses', (witnesses) => {
+    return witnesses.set(
+      1,
+      new Reader(
+        SerializeWitnessArgs(
+          toolkit.normalizers.NormalizeWitnessArgs({
+            lock: SECP_SIGNATURE_PLACEHOLDER,
+          }),
+        ),
+      ).serializeJson(),
+    );
+  });
+
+  return prepareSigningEntries(txSkeleton, omnilockLockscript, ckbDeps);
 }
 
 async function generateCkbChangeValTx(
@@ -312,6 +486,16 @@ async function generateCkbChangeValTx(
   return txSkeleton;
 }
 
+async function signCkbOmnilockChangeValTx(ckbMsgInfo: CkbParams, ckbPrivKey: string): Promise<string> {
+  const signerPubKeyHash = privateKeyToCkbPubkeyHash(ckbPrivKey);
+  if (ckbMsgInfo.oldMultisigItem.publicKeyHashes.indexOf(signerPubKeyHash) === -1) {
+    return Promise.reject('failed to sign the tx by wrong private key');
+  }
+  const txSkeleton = objectToTransactionSkeleton(ckbMsgInfo.txSkeleton);
+  const message = txSkeleton.signingEntries.get(0)!.message;
+  return key.signRecoverable(message, ckbPrivKey).slice(2);
+}
+
 async function signCkbChangeValTx(ckbMsgInfo: CkbParams, ckbPrivKey: string): Promise<string> {
   const signerPubKeyHash = privateKeyToCkbPubkeyHash(ckbPrivKey);
   if (ckbMsgInfo.oldMultisigItem.publicKeyHashes.indexOf(signerPubKeyHash) === -1) {
@@ -320,6 +504,66 @@ async function signCkbChangeValTx(ckbMsgInfo: CkbParams, ckbPrivKey: string): Pr
   const txSkeleton = objectToTransactionSkeleton(ckbMsgInfo.txSkeleton);
   const message = txSkeleton.signingEntries.get(1)!.message;
   return key.signRecoverable(message, ckbPrivKey).slice(2);
+}
+
+function getOmnilockWitness(signatures: string[], multisigScript: MultisigItem): string {
+  const serializedMultisigScript = serializeMultisigScript(multisigScript);
+  const signature = signatures.join('');
+  const { proof } = getSmtRootAndProof(multisigScript);
+  const witness = {
+    signature: new Reader(serializedMultisigScript + signature),
+    rc_identity: {
+      identity: new Reader(
+        `0x06${new utils.CKBHasher().update(serializedMultisigScript).digestHex().slice(0, 42).slice(2)}`,
+      ),
+      proofs: [{ mask: 3, proof: new Reader(proof) }],
+    },
+  };
+
+  return new Reader(SerializeRcLockWitnessLock(witness)).serializeJson();
+}
+
+async function sendCkbOmnilockChangeValTx(
+  ckbMsgInfo: CkbParams,
+  ckbPrivKey: string,
+  ckbRpcURL: string,
+  indexerURL: string,
+  signatures: string[],
+): Promise<void> {
+  const cli = new CkbTxHelper(ckbRpcURL, indexerURL);
+  let txSkeleton = objectToTransactionSkeleton(ckbMsgInfo.txSkeleton);
+
+  txSkeleton = txSkeleton.update('witnesses', (witnesses) => {
+    return witnesses.set(
+      0,
+      new Reader(
+        SerializeWitnessArgs(
+          toolkit.normalizers.NormalizeWitnessArgs({
+            lock: getOmnilockWitness(signatures, ckbMsgInfo.oldMultisigItem),
+          }),
+        ),
+      ).serializeJson(),
+    );
+  });
+
+  txSkeleton = txSkeleton.update('witnesses', (witnesses) => {
+    const sign = key.signRecoverable(txSkeleton.signingEntries.get(1)!.message, ckbPrivKey);
+    return witnesses.set(
+      1,
+      new Reader(
+        SerializeWitnessArgs(
+          toolkit.normalizers.NormalizeWitnessArgs({
+            lock: sign,
+          }),
+        ),
+      ).serializeJson(),
+    );
+  });
+
+  const tx = createTransactionFromSkeleton(txSkeleton);
+  const hash = await cli.ckb.send_transaction(tx, 'passthrough');
+  await cli.waitUntilCommitted(hash);
+  return;
 }
 
 async function sendCkbChangeValTx(
@@ -569,6 +813,9 @@ export interface ValInfos {
   ckb?: {
     oldValInfos: MultisigItem;
     newThreshold: number;
+    omnilockLockscript: Script;
+    omnilockAdminCellTypescript: Script;
+    deps: CkbDeps;
   };
   eth?: {
     oldValidators: string[];
@@ -585,6 +832,7 @@ export interface ValInfos {
 
 export interface ChangeVal {
   ckb?: CkbParams;
+  ckbOmnilock?: CkbParams;
   eth?: EthParams;
   ethGonosisSafe?: EthGnosisSafeChangeValidatorTx;
 }
