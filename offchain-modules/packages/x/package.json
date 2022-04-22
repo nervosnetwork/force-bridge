@@ -19,6 +19,8 @@
     "@ckb-lumos/common-scripts": "^0.18.0-rc2",
     "@ckb-lumos/hd": "^0.18.0-rc2",
     "@ckb-lumos/helpers": "^0.18.0-rc2",
+    "@ckb-lumos/lumos": "^0.18.0-rc2",
+    "@ckb-lumos/toolkit": "^0.18.0-rc2",
     "@ckb-lumos/rpc": "^0.18.0-rc2",
     "@ckb-lumos/transaction-manager": "^0.18.0-rc2",
     "@force-bridge/ckb-indexer-client": "^0.0.15",

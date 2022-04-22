@@ -1,7 +1,6 @@
 import fs from 'fs';
 import { Cell, Script, utils } from '@ckb-lumos/base';
 import { SerializeWitnessArgs } from '@ckb-lumos/base/lib/core';
-import { Indexer } from '@ckb-lumos/ckb-indexer';
 import { common } from '@ckb-lumos/common-scripts';
 import { payFeeByFeeRate } from '@ckb-lumos/common-scripts/lib/common';
 import { SECP_SIGNATURE_PLACEHOLDER } from '@ckb-lumos/common-scripts/lib/helper';
@@ -23,6 +22,7 @@ import { nonNullable } from '@force-bridge/x';
 import { CkbTxHelper } from '@force-bridge/x/dist/ckb/tx-helper/base_generator';
 import { SerializeRCData, SerializeRcLockWitnessLock } from '@force-bridge/x/dist/ckb/tx-helper/generated/omni_lock';
 import { prepareSigningEntries } from '@force-bridge/x/dist/ckb/tx-helper/generator';
+import { ScriptType } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
 import { initLumosConfig } from '@force-bridge/x/dist/ckb/tx-helper/init_lumos_config';
 import { getMultisigLock } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { getSmtRootAndProof } from '@force-bridge/x/dist/ckb/tx-helper/omni-smt';
@@ -318,16 +318,15 @@ async function getOmnilockOldCells(
   omniLockAdminCellTypescript: Script,
   cli: CkbTxHelper,
 ): Promise<Cell> {
-  const indexer = new Indexer(cli.ckbIndexerUrl, cli.ckbRpcUrl);
-  const oldCells = await indexer.getCells({
+  const oldCells = await cli.indexer.getCells({
     script: omniLockScript,
-    script_type: 'lock',
+    script_type: ScriptType.lock,
     filter: {
       script: omniLockAdminCellTypescript,
     },
   });
 
-  return oldCells.objects[0];
+  return oldCells[0];
 }
 
 function generateAdminCell(
