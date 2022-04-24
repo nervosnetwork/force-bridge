@@ -2,7 +2,6 @@ import fs from 'fs';
 import { Cell, Script, utils } from '@ckb-lumos/base';
 import { SerializeWitnessArgs } from '@ckb-lumos/base/lib/core';
 import { common } from '@ckb-lumos/common-scripts';
-import { payFeeByFeeRate } from '@ckb-lumos/common-scripts/lib/common';
 import { SECP_SIGNATURE_PLACEHOLDER } from '@ckb-lumos/common-scripts/lib/helper';
 import { serializeMultisigScript } from '@ckb-lumos/common-scripts/lib/secp256k1_blake160_multisig';
 import { key } from '@ckb-lumos/hd';
@@ -16,8 +15,6 @@ import {
   TransactionSkeletonObject,
   TransactionSkeletonType,
 } from '@ckb-lumos/helpers';
-import { toolkit } from '@ckb-lumos/lumos';
-import { Reader } from '@ckb-lumos/toolkit';
 import { nonNullable } from '@force-bridge/x';
 import { CkbTxHelper } from '@force-bridge/x/dist/ckb/tx-helper/base_generator';
 import { SerializeRCData, SerializeRcLockWitnessLock } from '@force-bridge/x/dist/ckb/tx-helper/generated/omni_lock';
@@ -34,6 +31,7 @@ import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
 import Safe, { EthersAdapter, ContractNetworksConfig } from '@gnosis.pm/safe-core-sdk';
 import { SafeTransaction, SafeSignature } from '@gnosis.pm/safe-core-sdk-types';
 import EthSignSignature from '@gnosis.pm/safe-core-sdk/dist/src/utils/signatures/SafeSignature';
+import { Reader, normalizers } from 'ckb-js-toolkit';
 import commander from 'commander';
 import { ecsign, toRpcSig } from 'ethereumjs-util';
 import { BigNumber, ethers } from 'ethers';
@@ -404,7 +402,7 @@ async function generateCkbOmnilockChangeValTx(
     return witnesses.push(
       new Reader(
         SerializeWitnessArgs(
-          toolkit.normalizers.NormalizeWitnessArgs({
+          normalizers.NormalizeWitnessArgs({
             lock: `0x${'0'.repeat(
               getOmnilockWitness([SECP_SIGNATURE_PLACEHOLDER.slice(2).repeat(oldMultisigCell.M)], oldMultisigCell)
                 .length - 2,
@@ -416,14 +414,14 @@ async function generateCkbOmnilockChangeValTx(
   });
 
   const fromAddress = generateSecp256k1Blake160Address(key.privateKeyToBlake160(privateKey));
-  txSkeleton = await payFeeByFeeRate(txSkeleton, [fromAddress], 1000n);
+  txSkeleton = await common.payFeeByFeeRate(txSkeleton, [fromAddress], 1000n);
 
   txSkeleton = txSkeleton.update('witnesses', (witnesses) => {
     return witnesses.set(
       1,
       new Reader(
         SerializeWitnessArgs(
-          toolkit.normalizers.NormalizeWitnessArgs({
+          normalizers.NormalizeWitnessArgs({
             lock: SECP_SIGNATURE_PLACEHOLDER,
           }),
         ),
@@ -537,7 +535,7 @@ async function sendCkbOmnilockChangeValTx(
       0,
       new Reader(
         SerializeWitnessArgs(
-          toolkit.normalizers.NormalizeWitnessArgs({
+          normalizers.NormalizeWitnessArgs({
             lock: getOmnilockWitness(signatures, ckbMsgInfo.oldMultisigItem),
           }),
         ),
@@ -551,7 +549,7 @@ async function sendCkbOmnilockChangeValTx(
       1,
       new Reader(
         SerializeWitnessArgs(
-          toolkit.normalizers.NormalizeWitnessArgs({
+          normalizers.NormalizeWitnessArgs({
             lock: sign,
           }),
         ),
