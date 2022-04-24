@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { Script } from '@ckb-lumos/lumos';
+import { Script } from '@ckb-lumos/base';
 import { ValInfos } from '@force-bridge/cli/src/changeVal';
 import { KeyStore } from '@force-bridge/keystore/dist';
 import { OmniLockCellConfig, OwnerCellConfig } from '@force-bridge/x/dist/ckb/tx-helper/deploy';
