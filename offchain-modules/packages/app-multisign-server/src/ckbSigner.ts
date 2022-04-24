@@ -465,25 +465,25 @@ async function verifyEthForUnlockTx(unlockRecord: unlockRecord, output: Cell): P
     if (typescriptHash !== unlockRecord.assetIdent) {
       return new SigError(
         SigErrorCode.InvalidRecord,
-        `typescript hash_type:${typeScript.hash_type} doesn't match with:${sudtTypescript.hashType}`,
+        `typescript typescriptHash:${typeScript.hash_type} doesn't match with:${sudtTypescript.hashType}`,
       );
     }
     const data = utils.toBigUInt128LE(BigInt(unlockRecord.amount));
     if (data !== output.data) {
-      return new SigError(SigErrorCode.InvalidRecord, `data:${output.data} doesn't with ${data}`);
+      return new SigError(SigErrorCode.InvalidRecord, `data:${output.data} doesn't match with ${data}`);
     }
   } else {
     // verify ckb typescriptHash
     if (CKB_TYPESCRIPT_HASH !== unlockRecord.assetIdent) {
       return new SigError(
         SigErrorCode.InvalidRecord,
-        `typescript hash_type: 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff doesn't match with:${sudtTypescript.hashType}`,
+        `typescript typescriptHash: ${unlockRecord.assetIdent} doesn't match with:${CKB_TYPESCRIPT_HASH}`,
       );
     }
     if (BigInt(unlockRecord.amount) !== BigInt(output.cell_output.capacity)) {
       return new SigError(
         SigErrorCode.InvalidRecord,
-        `capacity: ${unlockRecord.amount} doesn't with ${output.cell_output.capacity}`,
+        `capacity: ${unlockRecord.amount} doesn't match with ${output.cell_output.capacity}`,
       );
     }
   }

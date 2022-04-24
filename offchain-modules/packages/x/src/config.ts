@@ -179,9 +179,10 @@ export interface WhiteListNervosAsset {
 export interface collectorConfig {
   gasLimit: number;
   batchGasLimit: number;
+  disableEIP1559Style?: boolean; // disable EIP1559 gas price style, default to be false
   gasPriceGweiLimit: number;
-  disableEIP1559Style?: boolean;
   maxPriorityFeePerGasGwei?: string;
+  multiCellXchainType: string; // insulate multi cell when generate mint tx, Ethereum='0x01', Bsc='0x02'
 }
 
 export interface verifierEndpoint {

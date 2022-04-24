@@ -2,7 +2,7 @@ import { Script, utils } from '@ckb-lumos/base';
 import { SerializeWitnessArgs } from '@ckb-lumos/base/lib/core';
 import { serializeMultisigScript } from '@ckb-lumos/common-scripts/lib/from_info';
 import { SECP_SIGNATURE_PLACEHOLDER } from '@ckb-lumos/common-scripts/lib/helper';
-import { generateAddress } from '@ckb-lumos/helpers';
+import { encodeToAddress } from '@ckb-lumos/helpers';
 import { normalizers, Reader } from 'ckb-js-toolkit';
 import { ForceBridgeCore } from '../../../core';
 import { SerializeRcLockWitnessLock } from '../generated/omni_lock';
@@ -15,7 +15,7 @@ export function getOmniLockMultisigAddress(): string {
     hash_type: ForceBridgeCore.config.ckb.deps.omniLock!.script.hashType,
     args: omniLockArgs,
   };
-  return generateAddress(omniLockscript);
+  return encodeToAddress(omniLockscript);
 }
 
 export function getOmniLockMultisigWitnessPlaceholder(): string {

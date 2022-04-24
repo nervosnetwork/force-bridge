@@ -12,6 +12,7 @@ import * as lodash from 'lodash';
 import * as Mustache from 'mustache';
 import { execShellCmd, pathFromProjectRoot } from './utils';
 import { deployDev } from './utils/deploy';
+
 dotenv.config({ path: process.env.DOTENV_PATH || '.env' });
 
 export interface VerifierConfig {
@@ -79,6 +80,7 @@ async function generateConfig(
     gasLimit: 250000,
     batchGasLimit: 120000,
     gasPriceGweiLimit: 100,
+    multiCellXchainType: '0x01',
   };
   collectorConfig.common.collectorPubKeyHash.push(privateKeyToCkbPubkeyHash(CKB_PRIVATE_KEY));
   collectorConfig.eth.multiSignHosts = multisigConfig.verifiers.map((v, i) => {
@@ -354,6 +356,7 @@ async function main() {
     ETH_PRIVATE_KEY,
     CKB_PRIVATE_KEY,
     'AGGRON4',
+    '0x01',
     path.join(configPath, 'deployConfig.json'),
     ckbDepsFromFile,
   );

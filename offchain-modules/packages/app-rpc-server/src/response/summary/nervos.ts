@@ -22,6 +22,12 @@ class Nervos extends SummaryResponse {
       record.mint_amount === null
         ? new Amount(record.lock_amount, 0).sub(new Amount(bridgeFee, 0)).toString(0)
         : record.mint_amount;
+    if (!record.mint_asset) {
+      const asset = ForceBridgeCore.config.eth.nervosAssetWhiteList.find((a) => a.typescriptHash === record.asset);
+      if (asset) {
+        record.mint_asset = asset.xchainTokenAddress;
+      }
+    }
     const summary: TransactionSummary = {
       txSummary: {
         fromAsset: {
@@ -58,6 +64,12 @@ class Nervos extends SummaryResponse {
       record.unlock_amount === null
         ? new Amount(record.burn_amount, 0).sub(new Amount(bridgeFee, 0)).toString(0)
         : record.unlock_amount;
+    if (!record.unlock_asset) {
+      const asset = ForceBridgeCore.config.eth.nervosAssetWhiteList.find((a) => a.xchainTokenAddress === record.asset);
+      if (asset) {
+        record.unlock_asset = asset.typescriptHash;
+      }
+    }
     const summary: TransactionSummary = {
       txSummary: {
         fromAsset: {

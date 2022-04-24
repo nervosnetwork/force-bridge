@@ -1,6 +1,6 @@
 {
   "name": "@force-bridge/ckb-indexer-client",
-  "version": "0.0.15",
+  "version": "0.0.34",
   "main": "dist",
   "scripts": {
     "build": "yarn run clean && yarn run compile",

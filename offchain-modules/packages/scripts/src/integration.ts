@@ -114,6 +114,7 @@ async function generateConfig(
     gasLimit: 250000,
     batchGasLimit: 100000,
     gasPriceGweiLimit: 2,
+    multiCellXchainType: '0x01',
   };
   collectorConfig.eth.multiSignHosts = multisigConfig.verifiers.map((v, i) => {
     return {
@@ -214,6 +215,7 @@ async function startChangeVal(
   ETH_PRIVKEY: string,
   oldMultiSigner: MultisigConfig,
   extraMultiSigConfig: MultisigConfig,
+  ownerCellTypescriptArgs: string,
 ) {
   const newThreshold = extraMultiSigConfig.threshold;
   const newMultiSigConfig: VerifierConfig[] = [oldMultiSigner.verifiers[1]].concat(extraMultiSigConfig.verifiers);
@@ -239,6 +241,7 @@ async function startChangeVal(
         M: oldMultiSigner.threshold,
         publicKeyHashes: oldMultiSigner.verifiers.map((v) => v.ckbPubkeyHash),
       },
+      ownerCellTypescriptArgs,
     },
     eth: {
       contractAddr: bridgeEthAddress,
@@ -379,6 +382,7 @@ async function main() {
     ETH_PRIVATE_KEY,
     CKB_PRIVATE_KEY,
     'DEV',
+    '0x01',
     path.join(configPath, 'deployConfig.json'),
   );
 
@@ -453,6 +457,7 @@ async function main() {
     ETH_TEST_PRIVKEY,
     multisigConfig,
     extraMultiSigConfig,
+    ownerConfig.ownerCellTypescript.args,
   );
   await asyncSleep(60000);
   await startCollectorService(FORCE_BRIDGE_KEYSTORE_PASSWORD, forcecli, configPath);
@@ -538,6 +543,7 @@ async function nervosIntegration(
     ethers.BigNumber.from(asset.minimalBridgeAmount),
     asset.decimal,
   );
+  logger.info('change validator test pass!');
 }
 
 main()

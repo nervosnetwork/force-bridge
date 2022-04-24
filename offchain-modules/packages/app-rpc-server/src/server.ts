@@ -7,9 +7,14 @@ import { logger } from '@force-bridge/x/dist/utils/logger';
 import bodyParser from 'body-parser';
 import { JSONRPCServer } from 'json-rpc-2.0';
 import { ForceBridgeAPIV1Handler } from './handler';
-import { GetBalancePayload, GetBridgeTransactionSummariesPayload, BlockChainNetWork } from './types/apiv1';
+import {
+  GenerateBridgeInTransactionPayload,
+  GetBalancePayload,
+  GetBridgeTransactionSummariesPayload,
+  BlockChainNetWork,
+} from './types/apiv1';
 
-const version = '0.0.15';
+const version = '0.0.34';
 const forceBridgePath = '/force-bridge/api/v1';
 
 export async function startRpcServer(configPath: string): Promise<void> {
@@ -54,11 +59,13 @@ export async function startRpcServer(configPath: string): Promise<void> {
   server.addMethod('generateBridgeNervosToXchainLockTx', forceBridgeRpc.generateBridgeNervosToXchainLockTx);
   server.addMethod('generateBridgeNervosToXchainBurnTx', forceBridgeRpc.generateBridgeNervosToXchainBurnTx);
   server.addMethod('generateBridgeOutNervosTransaction', forceBridgeRpc.generateBridgeOutNervosTransaction);
-  server.addMethod('generateBridgeInNervosTransaction', forceBridgeRpc.generateBridgeInNervosTransaction);
   server.addMethod('sendSignedTransaction', forceBridgeRpc.sendSignedTransaction);
   server.addMethod('getMinimalBridgeAmount', forceBridgeRpc.getMinimalBridgeAmount);
   server.addMethod('getBridgeInNervosBridgeFee', forceBridgeRpc.getBridgeInNervosBridgeFee);
   server.addMethod('getBridgeOutNervosBridgeFee', forceBridgeRpc.getBridgeOutNervosBridgeFee);
+  server.addMethod('generateBridgeInNervosTransaction', async (payload: GenerateBridgeInTransactionPayload) => {
+    return await forceBridgeRpc.generateBridgeInNervosTransaction(payload);
+  });
   server.addMethod('getBridgeNervosToXchainLockBridgeFee', forceBridgeRpc.getBridgeNervosToXchainLockBridgeFee);
   server.addMethod('getBridgeNervosToXchainBurnBridgeFee', forceBridgeRpc.getBridgeNervosToXchainBurnBridgeFee);
   server.addMethod(

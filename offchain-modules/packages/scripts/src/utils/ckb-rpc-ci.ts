@@ -1,6 +1,6 @@
 import assert from 'assert';
 import { key } from '@ckb-lumos/hd';
-import { objectToTransactionSkeleton, sealTransaction } from '@ckb-lumos/helpers';
+import { encodeToAddress, objectToTransactionSkeleton, parseAddress, sealTransaction } from '@ckb-lumos/helpers';
 import { RPC } from '@ckb-lumos/rpc';
 import { CKB_TYPESCRIPT_HASH } from '@force-bridge/x/dist/config';
 import { asyncSleep, privateKeyToCkbAddress, privateKeyToEthAddress } from '@force-bridge/x/dist/utils';
@@ -701,7 +701,7 @@ async function burn(
       const unsignedTx = lockResult.rawTransaction;
       unsignedTx.value = unsignedTx.value ? ethers.BigNumber.from(unsignedTx.value.hex) : ethers.BigNumber.from(0);
       unsignedTx.nonce = nonce;
-      unsignedTx.gasLimit = ethers.BigNumber.from(1000000);
+      unsignedTx.gasLimit = ethers.BigNumber.from(2000000);
       unsignedTx.gasPrice = gasPrice;
       nonce++;
 
@@ -716,10 +716,10 @@ async function burn(
       );
 
       const signedTx = await wallet.signTransaction(unsignedTx);
-      const lockTxHash = (await provider.sendTransaction(signedTx)).hash;
-      logger.info('lockTxHash', lockTxHash);
+      const burnTxHash = (await provider.sendTransaction(signedTx)).hash;
+      logger.info('burnTxHash', burnTxHash);
 
-      await checkTx(client, shadowAsset.ident, lockTxHash, CKB_TEST_ADDRESS, ETH_TEST_ADDRESS);
+      await checkTx(client, shadowAsset.ident, burnTxHash, CKB_TEST_ADDRESS, ETH_TEST_ADDRESS);
 
       for (let j = 0; j < 3; j++) {
         const afterBalance = await getBalance(
@@ -791,7 +791,7 @@ async function checkTx(client: JSONRPCClient, token_address, txId, ckbAddress, e
   let find = false;
   let pending = false;
   for (let i = 0; i < 2000; i++) {
-    const txs = await getTransaction(client, token_address, 'Nervos', ckbAddress);
+    const txs = await getTransaction(client, token_address, 'Nervos', encodeToAddress(parseAddress(ckbAddress)));
     for (const tx of txs) {
       if (tx.txSummary.fromTransaction.txId == txId) {
         logger.info('tx', tx);

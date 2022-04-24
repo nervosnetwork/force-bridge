@@ -2,7 +2,7 @@ import { HexString, Script } from '@ckb-lumos/base';
 import { multisigArgs, serializeMultisigScript } from '@ckb-lumos/common-scripts/lib/from_info';
 import { getConfig } from '@ckb-lumos/config-manager';
 import { key } from '@ckb-lumos/hd';
-import { generateAddress } from '@ckb-lumos/helpers';
+import { encodeToAddress } from '@ckb-lumos/helpers';
 import { MultisigItem } from '../../../config';
 import { ForceBridgeCore } from '../../../core';
 import { nonNullable } from '../../../errors';
@@ -48,7 +48,7 @@ export function getOwnerTypeHash(): string {
 
 export function getMultisigAddr(multisigScript: MultisigItem): string {
   const multisigLockscript = getMultisigLock(multisigScript);
-  return generateAddress(multisigLockscript);
+  return encodeToAddress(multisigLockscript);
 }
 
 export function privateKeyToAddress(privateKey: string): string {
@@ -58,7 +58,7 @@ export function privateKeyToAddress(privateKey: string): string {
     hash_type: secpTemplate.HASH_TYPE,
     args: fromBlake160,
   };
-  return generateAddress(fromLockScript);
+  return encodeToAddress(fromLockScript);
 }
 
 export function getFromAddr(): string {

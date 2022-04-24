@@ -1,4 +1,4 @@
-import { generateAddress, parseAddress } from '@ckb-lumos/helpers';
+import { encodeToAddress, parseAddress } from '@ckb-lumos/helpers';
 import { BigNumber } from 'ethers';
 import { TransferOutSwitch } from '../audit/switch';
 import { ChainType, EthAsset } from '../ckb/model/asset';
@@ -112,7 +112,8 @@ export class EthHandler {
     // set lastHandledBlock
     await this.init();
     await this.setStartTipBlockHeight();
-    const maxBatchSize = 5000;
+    // TODO read value from config
+    const maxBatchSize = 5000 - 20;
     let currentHeight: number | null = null;
     foreverPromise(
       async () => {
@@ -206,7 +207,7 @@ export class EthHandler {
         }, confirmedNumber: ${confirmedNumber}, confirmed: ${confirmed}`,
       );
       logger.debug('EthHandler watchLockEvents eth lockEvtLog:', { log, parsedLog });
-      if (sudtExtraData.length >= 10240 || recipient.length >= 10240) {
+      if (sudtExtraData.length >= 1024 || recipient.length >= 10240) {
         logger.warn(
           `skip createEthLock for record ${JSON.stringify(
             parsedLog,
@@ -379,8 +380,7 @@ export class EthHandler {
     }
 
     try {
-      const gasPrice = await this.ethChain.getGasPrice();
-      const txRes = await this.ethChain.sendMintTxs(records, gasPrice);
+      const txRes = await this.ethChain.sendMintTxs(records);
 
       if (typeof txRes == 'boolean') {
         records.map((r) => {
@@ -419,7 +419,7 @@ export class EthHandler {
       } catch (e) {
         records.map((r) => {
           r.status = 'error';
-          r.message = e.message();
+          r.message = e.message;
         });
         BridgeMetricSingleton.getInstance(this.role).addBridgeTxMetrics('eth_mint', 'failed');
 
@@ -488,21 +488,12 @@ export class EthHandler {
 
     for (;;) {
       try {
-        // check gas price
-        const gasPrice = await this.ethChain.getGasPrice();
-        const gasPriceLimit = BigNumber.from(nonNullable(ForceBridgeCore.config.collector).gasPriceGweiLimit * 10 ** 9);
-        logger.debug(`gasPrice ${gasPrice}, gasPriceLimit ${gasPriceLimit}`);
-        if (gasPrice.gt(gasPriceLimit)) {
-          const waitSeconds = 30;
-          logger.warn(`gasPrice ${gasPrice} exceeds limit ${gasPriceLimit}, waiting for ${waitSeconds}s`);
-          await asyncSleep(waitSeconds * 1000);
-          continue;
-        }
         // write db first, avoid send tx success and fail to write db
         records.map((r) => {
           r.status = 'pending';
         });
         await this.ethDb.saveCollectorEthUnlock(records);
+        const gasPrice = await this.ethChain.getGasPrice();
         const txRes = await this.ethChain.sendUnlockTxs(records, gasPrice);
         if (typeof txRes === 'boolean') {
           records.map((r) => {
@@ -632,7 +623,7 @@ export function parseLockLog(log: Log, parsedLog: ParsedLog): ParsedLockLog {
 
 function toCKBAddress2021(address: string): string {
   try {
-    const newAddress = generateAddress(parseAddress(address));
+    const newAddress = encodeToAddress(parseAddress(address));
     return newAddress;
   } catch (e) {
     logger.warn(`parse recipient address from ethereum log failed, recipient address ${address}, error ${e}`);

@@ -1,4 +1,4 @@
-import { parseAddress, transactionSkeletonToObject } from '@ckb-lumos/helpers';
+import { encodeToAddress, parseAddress, transactionSkeletonToObject } from '@ckb-lumos/helpers';
 import { Asset, BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { NervosAsset } from '@force-bridge/x/dist/ckb/model/nervos-asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
@@ -21,8 +21,6 @@ import bitcore from 'bitcore-lib';
 import { ethers } from 'ethers';
 import { RPCClient } from 'rpc-bitcoin';
 import { Connection } from 'typeorm';
-import Web3 from 'web3';
-import { AbiItem } from 'web3-utils';
 import { Factory as BurnHandlerFactory } from './handler/burn/factory';
 import { Factory as SummaryResponseFactory } from './response/summary/factory';
 import { API, AssetType, NetworkTypes, RequiredAsset } from './types';
@@ -71,11 +69,18 @@ const minERC20ABI = [
 
 export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
   connection: Connection;
-  web3: Web3;
+  provider: ethers.providers.JsonRpcProvider;
+  bridge: ethers.Contract;
 
   constructor(conn: Connection) {
     this.connection = conn;
-    this.web3 = new Web3(ForceBridgeCore.config.eth.rpcUrl);
+    const connectionInfo = {
+      url: ForceBridgeCore.config.eth.rpcUrl,
+      timeout: 3000,
+    };
+    this.provider = new ethers.providers.JsonRpcProvider(connectionInfo);
+    const bridgeContractAddr = ForceBridgeCore.config.eth.contractAddress;
+    this.bridge = new ethers.Contract(bridgeContractAddr, abi, this.provider);
   }
 
   async generateBridgeInNervosTransaction<T extends NetworkTypes>(
@@ -95,21 +100,23 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         if (checkRes !== '') {
           throw new Error(checkRes);
         }
-        const provider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
-        const bridgeContractAddr = ForceBridgeCore.config.eth.contractAddress;
-        const bridge = new ethers.Contract(bridgeContractAddr, abi, provider);
         const ethAmount = ethers.utils.parseUnits(payload.asset.amount, 0);
         const recipient = stringToUint8Array(payload.recipient);
 
         switch (payload.asset.ident) {
           // TODO: use EthereumModel.isNativeAsset to identify token
           case '0x0000000000000000000000000000000000000000':
-            tx = await bridge.populateTransaction.lockETH(recipient, sudtExtraData, {
+            tx = await this.bridge.populateTransaction.lockETH(recipient, sudtExtraData, {
               value: ethAmount,
             });
             break;
           default:
-            tx = await bridge.populateTransaction.lockToken(payload.asset.ident, ethAmount, recipient, sudtExtraData);
+            tx = await this.bridge.populateTransaction.lockToken(
+              payload.asset.ident,
+              ethAmount,
+              recipient,
+              sudtExtraData,
+            );
             break;
         }
         break;
@@ -195,10 +202,11 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
       ForceBridgeCore.config.ckb.ckbRpcUrl,
       ForceBridgeCore.config.ckb.ckbIndexerUrl,
     );
-    const burnTx = await ckbTxGenerator.burn(fromLockscript, payload.recipient, asset, BigInt(amount));
+    const burnTxSkeleton = await ckbTxGenerator.burn(fromLockscript, payload.recipient, asset, BigInt(amount));
+
     return {
       network: 'Nervos',
-      rawTransaction: transactionSkeletonToObject(burnTx),
+      rawTransaction: transactionSkeletonToObject(burnTxSkeleton),
     };
   }
 
@@ -345,7 +353,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         throw new Error('invalid bridge chain type');
     }
     logger.info(
-      `XChainNetwork :  ${network}, token Asset ${assetName} address type ${addressType} , userAddress:  ${userAddress}`,
+      `BlockChainNetWork :  ${network}, token Asset ${assetName} address type ${addressType} , userAddress:  ${userAddress}`,
     );
     let lockRecords: LockRecord[];
     let unlockRecords: UnlockRecord[];
@@ -359,8 +367,14 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         break;
       case 'Nervos':
         {
-          lockRecords = await dbHandler.getLockRecordsByCkbAddress(userAddress, assetName);
-          unlockRecords = await dbHandler.getUnlockRecordsByCkbAddress(userAddress, assetName);
+          let ckbUserAddress;
+          try {
+            ckbUserAddress = userAddress ? encodeToAddress(parseAddress(userAddress)) : userAddress;
+          } catch (e) {
+            ckbUserAddress = userAddress;
+          }
+          lockRecords = await dbHandler.getLockRecordsByCkbAddress(ckbUserAddress, assetName);
+          unlockRecords = await dbHandler.getUnlockRecordsByCkbAddress(ckbUserAddress, assetName);
         }
         break;
       default:
@@ -430,11 +444,11 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
         checkETHAddress(tokenAddress);
         checkETHAddress(userAddress);
         if (tokenAddress === '0x0000000000000000000000000000000000000000') {
-          const eth_amount = await this.web3.eth.getBalance(userAddress);
+          const eth_amount = await this.provider.getBalance(userAddress);
           balance = eth_amount.toString();
         } else {
-          const TokenContract = new this.web3.eth.Contract(minERC20ABI as AbiItem[], tokenAddress);
-          const erc20_amount = await TokenContract.methods.balanceOf(userAddress).call();
+          const TokenContract = new ethers.Contract(tokenAddress, minERC20ABI, this.provider);
+          const erc20_amount = await TokenContract.balanceOf(userAddress);
           balance = erc20_amount.toString();
         }
         logger.debug(`balance of address: ${userAddress} on ETH is ${balance}`);
@@ -496,9 +510,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
 
   async getBridgeConfig(): Promise<API.GetBridgeConfigResponse> {
     const ethConfig = ForceBridgeCore.config.eth;
-
     if (!ForceBridgeCore.config.ckb.deps.omniLock) throw new Error('omniLock not configed');
-
     return {
       nervos: {
         network: ForceBridgeCore.config.common.network,
@@ -568,10 +580,10 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
   }
 }
 
-function getTokenShadowIdent(XChainNetwork: BlockChainNetWork, XChainToken: string): string | undefined {
+function getTokenShadowIdent(blockChainNetWork: BlockChainNetWork, XChainToken: string): string | undefined {
   const ownerTypeHash = getOwnerTypeHash();
   let asset: Asset;
-  switch (XChainNetwork) {
+  switch (blockChainNetWork) {
     case 'Bitcoin':
       asset = new BtcAsset('btc', ownerTypeHash);
       break;
@@ -585,7 +597,7 @@ function getTokenShadowIdent(XChainNetwork: BlockChainNetWork, XChainToken: stri
       asset = new TronAsset(XChainToken, ownerTypeHash);
       break;
     default:
-      logger.warn(`chain type is ${XChainNetwork} which not support yet.`);
+      logger.warn(`chain type is ${blockChainNetWork} which not support yet.`);
       return;
   }
   const bridgeCellLockscript = {
