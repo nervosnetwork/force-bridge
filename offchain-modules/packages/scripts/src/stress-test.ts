@@ -1,4 +1,3 @@
-import { RPC } from '@ckb-lumos/rpc';
 import { nonNullable } from '@force-bridge/x';
 import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
 import { ETH_TOKEN_ADDRESS } from '@force-bridge/x/dist/config';
@@ -27,16 +26,15 @@ async function main() {
   const forceBridgeUrl = 'http://127.0.0.1:3199/force-bridge/api/v1';
   // Dai token
   const erc20TokenAddress = '0x7Af456bf0065aADAB2E6BEc6DaD3731899550b84';
-  const lockEthAmount = '30000000000000';
-  const burnEthSudtAmount = '10000000000000';
-  const lockErc20Amount = '3000000000000000';
-  const burnCkbErc20SudtAmount = '1000000000000000';
+  const lockEthAmount = '20000000000000';
+  const burnEthSudtAmount = '16000000000000';
+  const lockErc20Amount = '2000000000000000';
+  const burnCkbErc20SudtAmount = '1600000000000000';
 
   const bridgeDirection = nonNullable(process.argv[2]);
   const batchNumber = Number(process.argv[3] ?? 100);
   const roundNumber = Number(process.argv[4] ?? 2);
   const ckb = new CKB(ckbNodeUrl);
-  const rpc = new RPC(ckbNodeUrl);
   const ckbIndexer = new CkbIndexer(ckbNodeUrl, ckbIndexerUrl);
   const client = new JSONRPCClient((jsonRPCRequest) =>
     fetch(forceBridgeUrl, {
@@ -140,7 +138,7 @@ export async function ethOriginStressTest({
   lockErc20Amount: string;
   burnEthSudtAmount: string;
   burnCkbErc20SudtAmount: string;
-}) {
+}): Promise<void> {
   logger.info(
     `start stress eth test with bridgeDirection=${bridgeDirection}, batchNumber=${batchNumber}, roundNumber=${roundNumber}`,
   );
@@ -195,7 +193,7 @@ export async function ethOriginStressTest({
   logger.info(`stress eth test succeed!`);
 }
 
-export async function ethOriginStressTestAfter() {
+export async function ethOriginStressTestAfter(): Promise<void> {
   logger.info(`start stress eth test after`);
   // TODO transfer and bridge
 }

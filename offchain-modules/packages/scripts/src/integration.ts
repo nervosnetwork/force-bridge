@@ -115,6 +115,7 @@ async function generateConfig(
     gasLimit: 250000,
     batchGasLimit: 100000,
     gasPriceGweiLimit: 2,
+    multiCellXchainType: '0x01',
   };
   collectorConfig.eth.multiSignHosts = multisigConfig.verifiers.map((v, i) => {
     return {
@@ -219,6 +220,7 @@ async function startChangeVal(
   ETH_PRIVKEY: string,
   oldMultiSigner: MultisigConfig,
   extraMultiSigConfig: MultisigConfig,
+  ownerCellTypescriptArgs: string,
   contractNetworks?: ContractNetworksConfig,
 ) {
   const newThreshold = extraMultiSigConfig.threshold;
@@ -248,6 +250,7 @@ async function startChangeVal(
       omnilockLockscript: omnilockLockscript,
       omnilockAdminCellTypescript: omnilockAdminCellTypescript,
       deps: ckbDeps,
+      ownerCellTypescriptArgs,
     },
     eth: {
       contractAddr: bridgeEthAddress,
@@ -411,6 +414,7 @@ async function main() {
     ETH_PRIVATE_KEY,
     CKB_PRIVATE_KEY,
     'DEV',
+    '0x01',
     path.join(configPath, 'deployConfig.json'),
   );
 
@@ -489,6 +493,7 @@ async function main() {
     ETH_TEST_PRIVKEY,
     multisigConfig,
     extraMultiSigConfig,
+    ownerConfig.ownerCellTypescript.args,
     safeContractNetworks,
   );
   await asyncSleep(60000);
@@ -575,6 +580,7 @@ async function nervosIntegration(
     ethers.BigNumber.from(asset.minimalBridgeAmount),
     asset.decimal,
   );
+  logger.info('change validator test pass!');
 }
 
 main()

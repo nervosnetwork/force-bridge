@@ -2,6 +2,7 @@ import fs from 'fs';
 import { RPC } from '@ckb-lumos/rpc';
 import { WebHook } from '@force-bridge/app-monitor/src/discord';
 import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
+import { initLumosConfig } from '@force-bridge/x/dist/ckb/tx-helper/init_lumos_config';
 import { ConfigItem } from '@force-bridge/x/dist/config';
 import { initLog, logger } from '@force-bridge/x/dist/utils/logger';
 import CKB from '@nervosnetwork/ckb-sdk-core';
@@ -12,6 +13,9 @@ import fetch from 'node-fetch/index';
 import * as schedule from 'node-schedule';
 import { ckbOriginStressTest, ckbOriginStressTestAfter, ckbOriginStressTestPrepare } from './stress-ckb-test';
 import { ethOriginStressTest, ethOriginStressTestAfter, ethOriginStressTestPrepare } from './stress-test';
+
+initLog({ level: 'debug', identity: 'stress-schedule-test', logFile: './stress-schedule-logs/stress-schedule.log' });
+initLumosConfig('AGGRON4');
 
 type StressKey = {
   privateKey: string;
@@ -24,6 +28,7 @@ type StressKeystore = {
 
 const stressKeystoreConfigPath = './stress-keystore.json';
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function devConfig(): StressConfig {
   // your send lock tx account privkey; * 1. eth needs, 2. ethDai token needs *
   const ethPrivateKey = '';
@@ -36,29 +41,29 @@ function devConfig(): StressConfig {
 
   /* ======================== Eth Origin Config Start ======================== */
   /* ------------ Eth Config ------------ */
-  const lockEthAmount = '30000000000000';
-  const burnEthSudtAmount = '10000000000000';
+  const lockEthAmount = '20000000000000';
+  const burnEthSudtAmount = '16000000000000';
   /* ------------ Erc20 Config ------------ */
   // erc20 config
   // Dai token
   const erc20TokenAddress = '0x7Af456bf0065aADAB2E6BEc6DaD3731899550b84';
-  const lockErc20Amount = '3000000000000000';
-  const burnCkbErc20SudtAmount = '1000000000000000';
+  const lockErc20Amount = '2000000000000000';
+  const burnCkbErc20SudtAmount = '1600000000000000';
   /* ======================== Eth Origin Config End ======================== */
 
   /* ======================== Ckb Origin Config Start ======================== */
   /* ------------ Ckb Config ------------ */
   // ethCKB token
   const xchainCkbTokenAddress = '0xe9B447cA594cB87B8d912040c8981B9696541B82';
-  const lockCkbAmount = '30000000000';
-  const burnCkbSudtAmount = '10000000000';
+  const lockCkbAmount = '20000000000';
+  const burnCkbSudtAmount = '16000000000';
   /* ------------ Sudt Config ------------ */
   // DEV_TOKEN in ckb
   const sudtTypescriptHash = '0xdbe7f5b6d2abd5434f9c9e432f678c85b4969a02e1a5db1302387087f7954d45';
   const sudtArgs = '0x49beb8c4c29d06e05452b5d9ea8e86ffd4ea2b614498ba1a0c47890a0ad4f550';
   const xchainSudtTokenAddress = '0xca25Ef1dCA0CB7E352F9651caA409b1056DE124e';
-  const lockCkbSudtAmount = '30000000000';
-  const burnErc20SudtAmount = '10000000000';
+  const lockCkbSudtAmount = '20000000000';
+  const burnErc20SudtAmount = '16000000000';
   // cellDep of DEV_TOKEN
   const sudtTypescript: ConfigItem = {
     cellDep: {
@@ -104,36 +109,36 @@ function testnetConfig(): StressConfig {
   // your transfer ckb to recipients account privkey, * 1. ckb needs, 2. dev_token of sudtTypescriptHash needs *
   const ckbPrivateKey = '';
   // const ethNodeUrl = 'https://rinkeby.infura.io/v3/66c31b146d424cf8a9cb1fba4a6eb32e';
-  const ethNodeUrl = 'https://rinkeby.infura.io/v3/4d1ad95151954090b9ea1b0b27ad65e6';
+  const ethNodeUrl = 'https://data-seed-prebsc-1-s1.binance.org:8545/';
   const ckbNodeUrl = 'http://47.56.233.149:3017/rpc';
   const ckbIndexerUrl = 'http://47.56.233.149:3017/indexer';
   const forceBridgeUrl = 'http://8.210.97.124:3060/force-bridge/api/v1';
 
   /* ======================== Eth Origin Config Start ======================== */
   /* ------------ Eth Config ------------ */
-  const lockEthAmount = '30000000000000';
-  const burnEthSudtAmount = '25000000000000';
+  const lockEthAmount = '20000000000000';
+  const burnEthSudtAmount = '16000000000000';
   /* ------------ Erc20 Config ------------ */
   // erc20 config
-  // Dai token
-  const erc20TokenAddress = '0x7Af456bf0065aADAB2E6BEc6DaD3731899550b84';
-  const lockErc20Amount = '3000000000000000';
-  const burnCkbErc20SudtAmount = '2500000000000000';
+  // USDT token
+  const erc20TokenAddress = '0x337610d27c682E347C9cD60BD4b3b107C9d34dDd';
+  const lockErc20Amount = '2000000000000000';
+  const burnCkbErc20SudtAmount = '1600000000000000';
   /* ======================== Eth Origin Config End ======================== */
 
   /* ======================== Ckb Origin Config Start ======================== */
   /* ------------ Ckb Config ------------ */
   // ethCKB token
-  const xchainCkbTokenAddress = '0x9C8CCf938883a427b90aEf5155284cFbcAceECC6';
-  const lockCkbAmount = '30000000000';
-  const burnCkbSudtAmount = '25000000000';
+  const xchainCkbTokenAddress = '0xA2F86b2B02Cc615b979Df30736b97B6fE4BBAd1A';
+  const lockCkbAmount = '20000000000';
+  const burnCkbSudtAmount = '16000000000';
   /* ------------ Sudt Config ------------ */
   // DEV_TOKEN in ckb
   const sudtTypescriptHash = '0x33ccf0d1d3ff3c58c1afacf3d1a5ae8d68a06b27b8dbfd86625cef1fcbfbaf67';
   const sudtArgs = '0xc247211ab6cc6597506c0aa06bd8a21884678f08fdd3a97f81e43fb24ab48663';
-  const xchainSudtTokenAddress = '0xE4a64e37eD454a9e89A04686A8E8759A573Dc91e';
-  const lockCkbSudtAmount = '30000000000';
-  const burnErc20SudtAmount = '25000000000';
+  const xchainSudtTokenAddress = '0x8a4911a27714C4424671B3E47EbDD747796DA8dB';
+  const lockCkbSudtAmount = '20000000000';
+  const burnErc20SudtAmount = '16000000000';
   // cellDep of DEV_TOKEN
   const sudtTypescript: ConfigItem = {
     cellDep: {
@@ -204,7 +209,7 @@ async function overAllPrepare(
   ethOriginEthWallet: ethers.Wallet;
   ethOriginCkbPrivateKeys: string[];
   ckbOriginEthWallets: ethers.Wallet[];
-  ckbOriginPrivateKeys: string[];
+  ckbOriginCkbPrivateKeys: string[];
 }> {
   return {
     ethOriginEthWallet: new ethers.Wallet(stressKeystore.ethKeystore[0].privateKey, provider),
@@ -213,7 +218,7 @@ async function overAllPrepare(
       .slice(1, 1 + batchNumber)
       .map((k) => k.privateKey)
       .map((pk) => new ethers.Wallet(pk, provider)),
-    ckbOriginPrivateKeys: stressKeystore.ckbKeystore
+    ckbOriginCkbPrivateKeys: stressKeystore.ckbKeystore
       .slice(batchNumber, batchNumber + batchNumber)
       .map((k) => k.privateKey),
   };
@@ -234,7 +239,7 @@ async function allPrepareToKeystore(
 }
 
 async function stressTest(bridgeDirection: 'in' | 'both', batchNumber: number, roundNumber: number) {
-  const ESTIMATE_MAX_BATCH_NUMBER = 20;
+  const ESTIMATE_MAX_BATCH_NUMBER = 200;
 
   const {
     ethPrivateKey,
@@ -325,7 +330,7 @@ async function stressTest(bridgeDirection: 'in' | 'both', batchNumber: number, r
   logger.info(`load config file: ${configPath}`);
   const data = fs.readFileSync(configPath);
   const stressKeystore: StressKeystore = JSON.parse(data.toString()) as StressKeystore;
-  const { ethOriginEthWallet, ethOriginCkbPrivateKeys, ckbOriginEthWallets, ckbOriginPrivateKeys } =
+  const { ethOriginEthWallet, ethOriginCkbPrivateKeys, ckbOriginEthWallets, ckbOriginCkbPrivateKeys } =
     await overAllPrepare(stressKeystore, batchNumber, provider);
 
   const stressTestPromises: PromiseLike<unknown>[] = [];
@@ -356,7 +361,7 @@ async function stressTest(bridgeDirection: 'in' | 'both', batchNumber: number, r
       client,
       provider,
       ethWallets: ckbOriginEthWallets,
-      ckbPrivateKeys: ckbOriginPrivateKeys,
+      ckbPrivateKeys: ckbOriginCkbPrivateKeys,
       xchainCkbTokenAddress,
       lockCkbAmount,
       burnCkbSudtAmount,
@@ -376,7 +381,7 @@ function logToDiscord(log: string) {
   logger.info(log);
   const webHookUrl =
     'https://discord.com/api/webhooks/945223969496240138/BsvWvYBEttKWeO-din1fMh4lffk9juP_BkIKhMLho-Z7wC1_H-lJbFWe7j-iMqkh7iWv';
-  new WebHook(webHookUrl)
+  void new WebHook(webHookUrl)
     .setTitle('stress-schedule job log')
     .setDescription(log)
     .addTimeStamp()
@@ -388,11 +393,9 @@ function logToDiscord(log: string) {
 }
 
 function main() {
-  initLog({ level: 'debug', identity: 'stress-schedule-test', logFile: './stress-schedule-logs/stress-schedule.log' });
-
   let running = false;
   let benchReady = false;
-  const usualJob = schedule.scheduleJob('0 0/5 * * * ?', () => {
+  const usualJob = schedule.scheduleJob('0 0 0/1 * * ?', () => {
     if (running || benchReady) {
       logToDiscord(`usualJob conflict running: ${running} benchReady: ${benchReady}`);
       return;
@@ -410,7 +413,7 @@ function main() {
         logger.error(`stress schedule test failed, error: ${error.stack}`);
         const webHookErrorUrl =
           'https://discord.com/api/webhooks/946301786938015755/gW2CEtVgXkG6ehyYsbcPbbdM1jeyXes3hKtz0Klk5yJDjWd-8R0Q6eOFvwKmd9XbRWIT';
-        new WebHook(webHookErrorUrl)
+        void new WebHook(webHookErrorUrl)
           .setTitle('stress-schedule test error')
           .setDescription(error.stack)
           .addTimeStamp()
@@ -438,7 +441,7 @@ function main() {
       }
       logToDiscord(`benchJob start at ${dayjs().toISOString()}`);
       running = true;
-      stressTest('both', 8, 3)
+      stressTest('both', 100, 1)
         .then(() => {
           logToDiscord(`benchJob end at ${dayjs().toISOString()}`);
           running = false;
@@ -451,7 +454,7 @@ function main() {
           logger.error(`stress schedule test failed, error: ${error.stack}`);
           const webHookErrorUrl =
             'https://discord.com/api/webhooks/946301786938015755/gW2CEtVgXkG6ehyYsbcPbbdM1jeyXes3hKtz0Klk5yJDjWd-8R0Q6eOFvwKmd9XbRWIT';
-          new WebHook(webHookErrorUrl)
+          void new WebHook(webHookErrorUrl)
             .setTitle('stress-schedule test error')
             .setDescription(error.stack)
             .addTimeStamp()
@@ -470,4 +473,26 @@ function main() {
 
 if (require.main === module) {
   main();
+  /*
+  stressTest('both', 1, 1)
+    .then(() => {
+      logToDiscord(`benchJob end at ${dayjs().toISOString()}`);
+    })
+    .catch((error) => {
+      logToDiscord(`benchJob error at ${dayjs().toISOString()}`);
+      logger.error(`stress schedule test failed, error: ${error.stack}`);
+      const webHookErrorUrl =
+        'https://discord.com/api/webhooks/946301786938015755/gW2CEtVgXkG6ehyYsbcPbbdM1jeyXes3hKtz0Klk5yJDjWd-8R0Q6eOFvwKmd9XbRWIT';
+      new WebHook(webHookErrorUrl)
+        .setTitle('stress-schedule test error')
+        .setDescription(error.stack)
+        .addTimeStamp()
+        .error()
+        .send()
+        .then(() => {
+          logger.info('sent stress schedule error to discord');
+          process.exit(1);
+        });
+    });
+   */
 }

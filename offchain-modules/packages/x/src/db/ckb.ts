@@ -67,14 +67,14 @@ export class CkbDb implements IQuery {
       .getRawMany();
   }
 
-  async getUnlockRecordsByCkbAddress(ckbRecipientAddress: string, xchainToken: string): Promise<UnlockRecord[]> {
+  async getUnlockRecordsByCkbAddress(ckbRecipientAddress: string, ckbAsset: string): Promise<UnlockRecord[]> {
     return await this.connection
       .getRepository(EthBurn)
       .createQueryBuilder('eth')
       .leftJoinAndSelect('ckb_unlock', 'ckb', 'ckb.id = eth.unique_id')
-      .where('eth.recipient = :recipient AND eth.xchain_token_id = :token', {
+      .where('eth.recipient = :recipient AND eth.nervos_asset_id = :asset', {
         recipient: ckbRecipientAddress,
-        token: xchainToken,
+        asset: ckbAsset,
       })
       .select(
         `
@@ -130,14 +130,14 @@ export class CkbDb implements IQuery {
       .getRawMany();
   }
 
-  async getUnlockRecordsByXChainAddress(xchainSenderAddress: string, xchainToken: string): Promise<UnlockRecord[]> {
+  async getUnlockRecordsByXChainAddress(xchainSenderAddress: string, ckbAsset: string): Promise<UnlockRecord[]> {
     return await this.connection
       .getRepository(EthBurn)
       .createQueryBuilder('eth')
       .leftJoinAndSelect('ckb_unlock', 'ckb', 'ckb.id=eth.unique_id')
-      .where('eth.sender=:sender AND eth.xchain_token_id=:token', {
+      .where('eth.sender=:sender AND eth.nervos_asset_id=:asset', {
         sender: xchainSenderAddress,
-        token: xchainToken,
+        asset: ckbAsset,
       })
       .select(
         `

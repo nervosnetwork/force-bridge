@@ -1,4 +1,4 @@
-import { generateAddress } from '@ckb-lumos/helpers';
+import { encodeToAddress } from '@ckb-lumos/helpers';
 import { CKBIndexerClient, Script as IndexerScript } from '@force-bridge/ckb-indexer-client';
 import { ScriptLike } from '@force-bridge/x/dist/ckb/model/script';
 import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
@@ -36,7 +36,7 @@ export function createCKBRecordObservable(): CKBRecordObservable {
     ownerCellTypeHash: getOwnerTypeHash(),
     recipientType: ScriptLike.from(getRecipientTypeScript()),
     bridgeLock: ScriptLike.from(getBridgeLockscript()),
-    scriptToAddress: (script) => generateAddress(script.toIndexerScript()),
+    scriptToAddress: (script) => encodeToAddress(script.toIndexerScript()),
   });
 }
 

@@ -169,6 +169,7 @@ export async function deployDev(
   ethPrivateKey: string,
   ckbPrivateKey: string,
   env: 'LINA' | 'AGGRON4' | 'DEV' = 'DEV',
+  multiCellXchainType: string,
   cachePath?: string,
   ckbDeps?: CkbDeps,
 ): Promise<DeployDevResult> {
@@ -270,7 +271,11 @@ export async function deployDev(
     M: MULTISIG_THRESHOLD,
     publicKeyHashes: verifierConfigs.map((vc) => vc.ckbPubkeyHash),
   };
-  const ownerConfig: OwnerCellConfig = await ckbDeployGenerator.createOwnerCell(multisigItem, ckbPrivateKey);
+  const ownerConfig: OwnerCellConfig = await ckbDeployGenerator.createOwnerCell(
+    multisigItem,
+    ckbPrivateKey,
+    multiCellXchainType,
+  );
   logger.info('ownerConfig', ownerConfig);
   const omniLockConfig: OmniLockCellConfig = await ckbDeployGenerator.createOmniLockAdminCell(
     multisigItem,

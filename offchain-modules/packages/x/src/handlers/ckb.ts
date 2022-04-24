@@ -4,7 +4,7 @@ import { serializeMultisigScript } from '@ckb-lumos/common-scripts/lib/secp256k1
 import { key } from '@ckb-lumos/hd';
 import {
   createTransactionFromSkeleton,
-  generateAddress,
+  encodeToAddress,
   parseAddress,
   sealTransaction,
   TransactionSkeletonType,
@@ -362,7 +362,7 @@ export class CkbHandler {
       const previousOutput = nonNullable(tx.inputs[0].previousOutput);
       const burnPreviousTx: TransactionWithStatus = await this.ckb.rpc.getTransaction(previousOutput.txHash);
       const senderLockscript = burnPreviousTx.transaction.outputs[Number(previousOutput.index)].lock;
-      const senderAddress = generateAddress({
+      const senderAddress = encodeToAddress({
         code_hash: senderLockscript.codeHash,
         hash_type: senderLockscript.hashType,
         args: senderLockscript.args,
@@ -1316,7 +1316,7 @@ export async function parseLockTx(tx: Transaction): Promise<NervosLockAssetTxMet
     logger.warn(`parse recipient data error: ${e.message} ${e.stack}`);
     return null;
   }
-  const senderAddress = generateAddress({
+  const senderAddress = encodeToAddress({
     code_hash: senderLockscript.codeHash,
     hash_type: senderLockscript.hashType,
     args: senderLockscript.args,
@@ -1435,7 +1435,7 @@ export async function parseUnlockTx(
       }
       amount = `0x${utils.readBigUInt128LE(tx.outputsData[i]).toString(16)}`;
     }
-    const recipientAddress = generateAddress({
+    const recipientAddress = encodeToAddress({
       code_hash: output.lock.codeHash,
       hash_type: output.lock.hashType,
       args: output.lock.args,

@@ -59,7 +59,11 @@ export class EthChain {
     const url = config.rpcUrl;
     this.role = role;
     this.config = config;
-    this.provider = new ethers.providers.JsonRpcProvider(url);
+    const connectionInfo = {
+      url,
+      timeout: 3000,
+    };
+    this.provider = new ethers.providers.JsonRpcProvider(connectionInfo);
     this.bridgeContractAddr = config.contractAddress;
     this.iface = new ethers.utils.Interface(abi);
     this.asIface = new ethers.utils.Interface(asAbi);
@@ -253,10 +257,7 @@ export class EthChain {
     return false;
   }
 
-  async sendMintTxs(
-    records: IEthMint[],
-    gasPrice: ethers.BigNumber,
-  ): Promise<ethers.providers.TransactionResponse | undefined | boolean> {
+  async sendMintTxs(records: IEthMint[]): Promise<ethers.providers.TransactionResponse | undefined | boolean> {
     try {
       const safe = await Safe.create({
         ethAdapter: new EthersAdapter({ ethers, signer: this.wallet }),
@@ -266,7 +267,7 @@ export class EthChain {
       const partialTx = {
         to: this.assetManager.address,
         value: '0',
-        gasPrice: ForceBridgeCore.config.collector!.disableEIP1559Style ? gasPrice.toNumber() : undefined,
+        gasPrice: undefined,
         data: this.assetManager.interface.encodeFunctionData('mint', [
           records.map((r) => {
             return {
@@ -330,10 +331,10 @@ export class EthChain {
 
   async sendUnlockTxs(
     records: IEthUnlock[],
-    gasPrice: ethers.BigNumber,
+    gasPrice: BigNumber,
   ): Promise<ethers.providers.TransactionResponse | boolean | Error> {
     const maxTryTimes = 30;
-    for (let tryTime = 0; ; tryTime++) {
+    for (let tryTime = 0; ; ) {
       logger.debug('contract balance', await this.provider.getBalance(this.bridgeContractAddr));
       const params: EthUnlockRecord[] = records.map((r) => {
         return {
@@ -383,7 +384,18 @@ export class EthChain {
         logger.info(`send unlockTx: ${JSON.stringify({ params, nonce, signature, options })}`);
         return await this.bridge.unlock(params, nonce, signature, options);
       } catch (e) {
-        logger.error(`sendUnlockTxs error, params: ${params}, tryTime: ${tryTime}, error: ${e.stack}`);
+        if (
+          e.message &&
+          e.message.includes(`-32000`) &&
+          e.message.includes(`err: max fee per gas less than block base fee`)
+        ) {
+          logger.warn(
+            `sendUnlockTxs error of low gas price, will wait and retry, params: ${params}, error: ${e.stack}`,
+          );
+        } else {
+          logger.error(`sendUnlockTxs error, params: ${params}, tryTime: ${tryTime}, error: ${e.stack}`);
+          tryTime++;
+        }
         if (tryTime >= maxTryTimes) {
           return e;
         }

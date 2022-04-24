@@ -37,6 +37,13 @@ import { ecsign, toRpcSig } from 'ethereumjs-util';
 import { BigNumber, ethers } from 'ethers';
 import { JSONRPCResponse } from 'json-rpc-2.0';
 
+type XchainType = 'ETH' | 'BSC';
+
+const XCHAIN_CELL_DATA = {
+  ETH: '0x01',
+  BSC: '0x02',
+};
+
 const txWithSignatureDir = './';
 
 const validitorInfos = './validitorInfos.json';
@@ -59,6 +66,7 @@ changeValCmd
   .option('--ckbIndexerUrl <ckbIndexerRpcUrl>', 'Url of ckb indexer url', CkbIndexerRpc)
   .option('--ethRpcUrl <ethRpcUrl>', 'Url of eth rpc', EthNodeRpc)
   .option('--chain <chain>', "'LINA' | 'AGGRON4' | 'DEV'", 'DEV')
+  .requiredOption('--xchain <xchain>', "'ETH' | 'BSC'")
   .action(doMakeTx)
   .description('generate raw transaction for change validator');
 
@@ -96,6 +104,10 @@ async function doMakeTx(opts: Record<string, string>): Promise<void> {
     const ckbPrivateKey = nonNullable(opts.ckbPrivateKey) as string;
     const ckbIndexerRPC = nonNullable(opts.ckbIndexerUrl || CkbIndexerRpc) as string;
     const chain = nonNullable(opts.chain || 'DEV') as 'LINA' | 'AGGRON4' | 'DEV';
+    const xchain = nonNullable(opts.xchain) as XchainType;
+    const xchainCellData = XCHAIN_CELL_DATA[xchain];
+    if (!xchainCellData) throw new Error('invalid xchain param');
+
     initLumosConfig(chain);
     const valInfos: ValInfos = JSON.parse(fs.readFileSync(validatorInfoPath, 'utf8').toString());
 
@@ -140,12 +152,15 @@ async function doMakeTx(opts: Record<string, string>): Promise<void> {
         M: valInfos.ckb.newThreshold,
         publicKeyHashes: newValsPubKeyHashes,
       };
+      const ownerCellTypescriptArgs = valInfos.ckb.ownerCellTypescriptArgs;
       let txSkeleton = await generateCkbChangeValTx(
         valInfos.ckb.oldValInfos,
         newMultisigItem,
         ckbPrivateKey,
         ckbRpcURL,
         ckbIndexerRPC,
+        xchainCellData,
+        ownerCellTypescriptArgs,
       );
       txInfo.ckb = {
         newMultisigScript: newMultisigItem,
@@ -203,6 +218,7 @@ async function doMakeTx(opts: Record<string, string>): Promise<void> {
     console.error(`failed to generate tx by `, e);
   }
 }
+
 async function doSignTx(opts: Record<string, string>): Promise<void> {
   try {
     const changeValidatorTxPath = nonNullable(opts.input || changeValidatorRawTx);
@@ -438,6 +454,8 @@ async function generateCkbChangeValTx(
   privateKey: string,
   ckbRpcURL: string,
   ckbIndexerURL: string,
+  xchainCellData: string,
+  ownerCellTypescriptArgs: string,
 ): Promise<TransactionSkeletonType> {
   const ckbClient = new CkbChangeValClient(ckbRpcURL, ckbIndexerURL);
   await ckbClient.indexer.waitForSync();
@@ -447,8 +465,8 @@ async function generateCkbChangeValTx(
   const fromAddress = generateSecp256k1Blake160Address(key.privateKeyToBlake160(privateKey));
   let txSkeleton = TransactionSkeleton({ cellProvider: ckbClient.indexer });
 
-  const oldOwnerCell = await ckbClient.fetchCellWithMultisig(oldMultisigLockscript, 'owner');
-  const oldMultisigCell = await ckbClient.fetchCellWithMultisig(oldMultisigLockscript, 'multisig');
+  const oldOwnerCell = await ckbClient.fetchOwnerCell(oldMultisigLockscript, ownerCellTypescriptArgs);
+  const oldMultisigCell = await ckbClient.fetchMultisigCell(oldMultisigLockscript, xchainCellData);
 
   const newOwnerCell: Cell = {
     cell_output: {
@@ -464,7 +482,7 @@ async function generateCkbChangeValTx(
       capacity: '0x0',
       lock: newMultisigLockscript,
     },
-    data: '0x',
+    data: xchainCellData,
   };
   newMultiCell.cell_output.capacity = `0x${minimalCellCapacity(newMultiCell).toString(16)}`;
 
@@ -750,6 +768,7 @@ async function signEthChangeValTx(ethMsgInfo: EthParams, ethPrivKey: string): Pr
   const sigHex = toRpcSig(v, r, s);
   return sigHex.slice(2);
 }
+
 async function sendEthChangeValTx(
   ethMsgInfo: EthMsg,
   privKey: string,
@@ -778,6 +797,7 @@ export class EthChangeValClient {
   protected readonly provider: ethers.providers.JsonRpcProvider;
   public readonly bridge: ethers.Contract;
   protected readonly wallet: ethers.Wallet;
+
   constructor(url: string, contractAddress: string, privateKey: string) {
     this.provider = new ethers.providers.JsonRpcProvider(url);
     this.wallet = new ethers.Wallet(privateKey, this.provider);
@@ -790,21 +810,30 @@ export class CkbChangeValClient extends CkbTxHelper {
     super(ckbRpcUrl, ckbIndexerUrl);
   }
 
-  async fetchCellWithMultisig(lockScript: Script, type: cell_type): Promise<Cell | undefined> {
+  async fetchOwnerCell(lockScript: Script, ownerCellTypescriptArgs: string): Promise<Cell | undefined> {
     const cellCollector = this.indexer.collector({
       lock: lockScript,
+      data: '0x',
     });
     for await (const cell of cellCollector.collect()) {
-      if (type === 'multisig' && cell.cell_output.type === null) {
+      if (cell.cell_output.type && cell.cell_output.type.args === ownerCellTypescriptArgs) {
         return cell;
       }
-      if (type === 'owner' && cell.cell_output.type) {
+    }
+  }
+
+  async fetchMultisigCell(lockScript: Script, xchainCellData: string): Promise<Cell | undefined> {
+    const cellCollector = this.indexer.collector({
+      lock: lockScript,
+      data: xchainCellData,
+    });
+    for await (const cell of cellCollector.collect()) {
+      if (cell.cell_output.type === null && cell.data === xchainCellData) {
         return cell;
       }
     }
   }
 }
-type cell_type = 'owner' | 'multisig';
 
 export interface ValInfos {
   ckb?: {
@@ -813,6 +842,7 @@ export interface ValInfos {
     omnilockLockscript: Script;
     omnilockAdminCellTypescript: Script;
     deps: CkbDeps;
+    ownerCellTypescriptArgs: string;
   };
   eth?: {
     oldValidators: string[];
@@ -849,12 +879,14 @@ export interface EthParams {
   msg: EthMsg;
   signature?: string[];
 }
+
 export interface CkbParams {
   oldMultisigItem: MultisigItem;
   txSkeleton: TransactionSkeletonObject;
   newMultisigScript: MultisigItem;
   signature?: string[];
 }
+
 export interface EthMsg {
   domainSeparator: string;
   typeHash: string;
@@ -862,6 +894,7 @@ export interface EthMsg {
   validators: string[];
   nonce: number;
 }
+
 type statusResponse = {
   addressConfig: addressConfig;
   latestChainStatus?: {

@@ -9,11 +9,18 @@ export class NervosAsset {
     this.typescriptHash = typescriptHash;
   }
 
+  public static fromSudtArgs(sudtArgs?: string): NervosAsset {
+    const whiteAssetList = ForceBridgeCore.config.eth.nervosAssetWhiteList;
+    const nervosAsset = whiteAssetList.find((asset) => (sudtArgs ? asset.sudtArgs === sudtArgs : !asset.sudtArgs));
+    if (!nervosAsset) throw new Error('asset not in nervos white list');
+    return new NervosAsset(nervosAsset.typescriptHash);
+  }
+
   public static fromErc20Token(token: string): NervosAsset {
     const whiteAssetList = ForceBridgeCore.config.eth.nervosAssetWhiteList;
     const nervosAsset = whiteAssetList.find((asset) => asset.xchainTokenAddress === token);
     if (!nervosAsset) throw new Error('asset not in nervos white list');
-    return new NervosAsset(nervosAsset.xchainTokenAddress);
+    return new NervosAsset(nervosAsset.typescriptHash);
   }
 
   public getAssetInfo(xchain: ChainType): WhiteListNervosAsset | undefined {

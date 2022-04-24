@@ -253,7 +253,11 @@ export class CkbDeployManager extends CkbTxHelper {
     return hash;
   }
 
-  async createOwnerCell(multisigItem: MultisigItem, privateKey: string): Promise<OwnerCellConfig> {
+  async createOwnerCell(
+    multisigItem: MultisigItem,
+    privateKey: string,
+    multiCellXchainType: string,
+  ): Promise<OwnerCellConfig> {
     await this.indexer.waitForSync();
     const multisigLockscript = getMultisigLock(multisigItem);
     const fromAddress = generateSecp256k1Blake160Address(key.privateKeyToBlake160(privateKey));
@@ -290,7 +294,7 @@ export class CkbDeployManager extends CkbTxHelper {
         capacity: '0x0',
         lock: multisigLockscript,
       },
-      data: '0x',
+      data: multiCellXchainType,
     };
     multiCell.cell_output.capacity = `0x${minimalCellCapacity(multiCell).toString(16)}`;
     txSkeleton = txSkeleton.update('outputs', (outputs) => {

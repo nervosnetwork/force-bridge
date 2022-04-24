@@ -1,4 +1,4 @@
-import { objectToTransactionSkeleton } from '@ckb-lumos/helpers';
+import { encodeToAddress, objectToTransactionSkeleton, parseAddress } from '@ckb-lumos/helpers';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { txSkeletonToRawTransactionToSign } from '@force-bridge/x/dist/ckb/tx-helper/generator';
 import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
@@ -68,8 +68,10 @@ export async function generateBurnTx(
 
   for (let i = 0; i < 5; i++) {
     try {
-      const burnSkeleton = await client.request('generateBridgeOutNervosTransaction', burnPayload);
-      const unsignedBurnTx = txSkeletonToRawTransactionToSign(objectToTransactionSkeleton(burnSkeleton.rawTransaction));
+      const burnTxSkeleton = await client.request('generateBridgeOutNervosTransaction', burnPayload);
+      const unsignedBurnTx = txSkeletonToRawTransactionToSign(
+        objectToTransactionSkeleton(burnTxSkeleton.rawTransaction),
+      );
       logger.info('unsignedBurnTx ', unsignedBurnTx);
 
       const signedTx = ckb.signTransaction(ckbPriv)(unsignedBurnTx);
@@ -91,7 +93,7 @@ async function getTransaction(client: JSONRPCClient, assetIdent: string, userIde
     xchainAssetIdent: assetIdent,
     user: {
       network: 'Nervos',
-      ident: userIdent,
+      ident: encodeToAddress(parseAddress(userIdent)),
     },
   };
 

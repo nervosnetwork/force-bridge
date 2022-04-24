@@ -199,7 +199,7 @@ export async function ckbOriginStressTest({
   xchainSudtTokenAddress: string;
   lockCkbSudtAmount: string;
   burnErc20SudtAmount: string;
-}) {
+}): Promise<void> {
   logger.info(
     `start stress ckb test with bridgeDirection=${bridgeDirection}, batchNumber=${batchNumber}, roundNumber=${roundNumber}`,
   );
@@ -246,6 +246,7 @@ export async function ckbOriginStressTest({
       ckbAddresses,
       xchainCkbTokenAddress,
       burnCkbSudtAmount,
+      sudtTypescriptHash,
       xchainSudtTokenAddress,
       burnErc20SudtAmount,
     );
@@ -255,7 +256,7 @@ export async function ckbOriginStressTest({
   logger.info(`stress ckb test succeed!`);
 }
 
-export async function ckbOriginStressTestAfter() {
+export async function ckbOriginStressTestAfter(): Promise<void> {
   logger.info(`start stress ckb test after`);
   // TODO transfer and bridge
 }
@@ -313,6 +314,7 @@ async function stressBurn(
   recipients: Array<string>,
   xchainCkbTokenAddress: string,
   burnCkbSudtAmount: string,
+  sudtTypescriptHash: string,
   xchainSudtTokenAddress: string,
   burnErc20SudtAmount: string,
   intervalMs = 0,
@@ -333,7 +335,7 @@ async function stressBurn(
       client,
       batchNumber,
       'Nervos',
-      xchainCkbTokenAddress,
+      CKB_TYPESCRIPT_HASH,
       'Ethereum',
       ethWallets.map((ethWallet) => ethWallet.address),
       burnCkbSudtTxs,
@@ -351,7 +353,7 @@ async function stressBurn(
       client,
       batchNumber,
       'Nervos',
-      xchainSudtTokenAddress,
+      sudtTypescriptHash,
       'Ethereum',
       ethWallets.map((ethWallet) => ethWallet.address),
       burnXchainSudtTxs,

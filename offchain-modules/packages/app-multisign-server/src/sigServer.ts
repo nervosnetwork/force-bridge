@@ -22,7 +22,7 @@ import { signEthTx } from './ethSigner';
 import { getPendingTx, getPendingTxResult } from './pendingTx';
 import { serverStatus, serverStatusResult } from './status';
 
-const version = '0.0.15';
+const version = '0.0.34';
 const apiPath = '/force-bridge/sign-server/api/v1';
 
 const ethPendingTxKey = 'ethPendingTx';
@@ -63,7 +63,11 @@ export class SigServer {
   static metrics: SigserverMetric;
 
   constructor(conn: Connection) {
-    SigServer.ethProvider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
+    const connectionInfo = {
+      url: ForceBridgeCore.config.eth.rpcUrl,
+      timeout: 3000,
+    };
+    SigServer.ethProvider = new ethers.providers.JsonRpcProvider(connectionInfo);
     SigServer.ethInterface = new ethers.utils.Interface(abi);
     SigServer.ethBridgeContract = new ethers.Contract(
       ForceBridgeCore.config.eth.contractAddress,

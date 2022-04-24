@@ -330,7 +330,7 @@ export async function prepareCkbAddresses(
     },
     {
       outPoint: sudtTypescript.cellDep.outPoint,
-      depType: 'code' as CKBComponents.DepType,
+      depType: sudtTypescript.cellDep.depType as CKBComponents.DepType,
     },
   ];
 
@@ -387,6 +387,7 @@ export async function prepareCkbAddresses(
       args: toArgs,
       hash_type: secp256k1Dep.hashType,
     };
+
     const outputSudtCell: Cell = {
       cell_output: {
         capacity: '0x0',
@@ -590,6 +591,6 @@ export async function ckbBatchTest(
     burnTxs.push(burnTx);
   }
   logger.info(`burnTxs: ${burnTxs}`);
-  await check(client, batchNum, 'Nervos', xchainTokenAddress, 'Ethereum', ethAddresses, burnTxs);
+  await check(client, batchNum, 'Nervos', ckbTypescriptHash, 'Ethereum', ethAddresses, burnTxs);
   logger.info('ckbBatchTest pass!');
 }
