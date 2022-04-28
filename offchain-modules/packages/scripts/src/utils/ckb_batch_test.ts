@@ -1,12 +1,6 @@
 import { Cell, utils } from '@ckb-lumos/base';
 import { key } from '@ckb-lumos/hd';
-import {
-  objectToTransactionSkeleton,
-  sealTransaction,
-  minimalCellCapacity,
-  encodeToAddress,
-  parseAddress,
-} from '@ckb-lumos/helpers';
+import { objectToTransactionSkeleton, sealTransaction, minimalCellCapacity } from '@ckb-lumos/helpers';
 import { RPC } from '@ckb-lumos/rpc';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbIndexer, ScriptType } from '@force-bridge/x/dist/ckb/tx-helper/indexer';

@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { ValInfos } from '@force-bridge/cli/src/changeVal';
+import { Script } from '@ckb-lumos/base';
 import { KeyStore } from '@force-bridge/keystore/dist';
 import { OmniLockCellConfig, OwnerCellConfig } from '@force-bridge/x/dist/ckb/tx-helper/deploy';
 import {
@@ -207,15 +207,46 @@ async function startCollectorService(FORCE_BRIDGE_KEYSTORE_PASSWORD: string, for
   );
 }
 
+async function execChangeVal(
+  forcecli: string,
+  CKB_PRIVKEY: string,
+  ETH_PRIVKEY: string,
+  validatorInfosPath: string,
+  changeValRawTxPath: string,
+  changeValTxWithSigDir: string,
+  oldMultiSigner: MultisigConfig,
+): Promise<void> {
+  await execShellCmd(
+    `${forcecli} change-val set --xchain ETH  --ckbPrivateKey ${CKB_PRIVKEY} --input ${validatorInfosPath} --output ${changeValRawTxPath}`,
+    true,
+  );
+  for (let i = 0; i < oldMultiSigner.verifiers.length; i++) {
+    await execShellCmd(
+      `${forcecli} change-val sign --ckbPrivateKey ${oldMultiSigner.verifiers[i].privkey} --ethPrivateKey ${oldMultiSigner.verifiers[i].privkey}  --input ${changeValRawTxPath} --output ${changeValTxWithSigDir}changeValidatorTxWithSig-${i}.json`,
+      true,
+    );
+  }
+
+  await execShellCmd(
+    `${forcecli} change-val send  --ckbPrivateKey ${CKB_PRIVKEY} --ethPrivateKey ${ETH_PRIVKEY} --input ${changeValTxWithSigDir} --source ${changeValRawTxPath}`,
+    true,
+  );
+}
+
 async function startChangeVal(
   forcecli: string,
   configPath: string,
   bridgeEthAddress: string,
+  omnilockLockscript: Script,
+  omnilockAdminCellTypescript: Script,
+  ckbDeps: CkbDeps,
+  safeAddress: string,
   CKB_PRIVKEY: string,
   ETH_PRIVKEY: string,
   oldMultiSigner: MultisigConfig,
   extraMultiSigConfig: MultisigConfig,
   ownerCellTypescriptArgs: string,
+  contractNetworks?: ContractNetworksConfig,
 ) {
   const newThreshold = extraMultiSigConfig.threshold;
   const newMultiSigConfig: VerifierConfig[] = [oldMultiSigner.verifiers[1]].concat(extraMultiSigConfig.verifiers);
@@ -233,42 +264,102 @@ async function startChangeVal(
   if (!fs.existsSync(changeValTxWithSigDir)) {
     fs.mkdirSync(changeValTxWithSigDir, { recursive: true });
   }
-  const valInfos: ValInfos = {
-    ckb: {
-      newThreshold: newThreshold,
-      oldValInfos: {
-        R: 0,
-        M: oldMultiSigner.threshold,
-        publicKeyHashes: oldMultiSigner.verifiers.map((v) => v.ckbPubkeyHash),
-      },
-      ownerCellTypescriptArgs,
-    },
-    eth: {
-      contractAddr: bridgeEthAddress,
-      newThreshold: newThreshold,
-      oldValidators: oldMultiSigner.verifiers.map((v) => v.ethAddress),
-    },
-    newValRpcURLs: sigServerHost,
-  };
-  writeJsonToFile(valInfos, validatorInfosPath);
+
   logger.info(
     `------ start to change validators from 1/2 to 3/4. save validator info to ${validatorInfosPath} ------ `,
   );
-  await execShellCmd(
-    `${forcecli} change-val set  --ckbPrivateKey ${CKB_PRIVKEY} --input ${validatorInfosPath} --output ${changeValRawTxPath}`,
-    true,
-  );
-  for (let i = 0; i < oldMultiSigner.verifiers.length; i++) {
-    await execShellCmd(
-      `${forcecli} change-val sign --ckbPrivateKey ${oldMultiSigner.verifiers[i].privkey} --ethPrivateKey ${oldMultiSigner.verifiers[i].privkey}  --input ${changeValRawTxPath} --output ${changeValTxWithSigDir}changeValidatorTxWithSig-${i}.json`,
-      true,
-    );
-  }
 
-  await execShellCmd(
-    `${forcecli} change-val send  --ckbPrivateKey ${CKB_PRIVKEY} --ethPrivateKey ${ETH_PRIVKEY} --input ${changeValTxWithSigDir} --source ${changeValRawTxPath}`,
-    true,
+  writeJsonToFile(
+    {
+      ckb: {
+        newThreshold: newThreshold,
+        oldValInfos: {
+          R: 0,
+          M: oldMultiSigner.threshold,
+          publicKeyHashes: oldMultiSigner.verifiers.map((v) => v.ckbPubkeyHash),
+        },
+        omnilockLockscript: omnilockLockscript,
+        omnilockAdminCellTypescript: omnilockAdminCellTypescript,
+        deps: ckbDeps,
+        ownerCellTypescriptArgs,
+      },
+      eth: {
+        contractAddr: bridgeEthAddress,
+        newThreshold: newThreshold,
+        oldValidators: oldMultiSigner.verifiers.map((v) => v.ethAddress),
+      },
+      newValRpcURLs: sigServerHost,
+    },
+    validatorInfosPath,
   );
+  await execChangeVal(
+    forcecli,
+    CKB_PRIVKEY,
+    ETH_PRIVKEY,
+    validatorInfosPath,
+    changeValRawTxPath,
+    changeValTxWithSigDir,
+    oldMultiSigner,
+  );
+
+  writeJsonToFile(
+    {
+      ckbOmnilock: {
+        newThreshold: newThreshold,
+        oldValInfos: {
+          R: 0,
+          M: oldMultiSigner.threshold,
+          publicKeyHashes: oldMultiSigner.verifiers.map((v) => v.ckbPubkeyHash),
+        },
+        omnilockLockscript: omnilockLockscript,
+        omnilockAdminCellTypescript: omnilockAdminCellTypescript,
+        deps: ckbDeps,
+        ownerCellTypescriptArgs,
+      },
+      newValRpcURLs: sigServerHost,
+    },
+    validatorInfosPath,
+  );
+  await execChangeVal(
+    forcecli,
+    CKB_PRIVKEY,
+    ETH_PRIVKEY,
+    validatorInfosPath,
+    changeValRawTxPath,
+    changeValTxWithSigDir,
+    oldMultiSigner,
+  );
+
+  writeJsonToFile(
+    {
+      ethGnosisSafe: {
+        safeAddress,
+        contractNetworks,
+        threshold: newThreshold,
+      },
+      newValRpcURLs: sigServerHost,
+    },
+    validatorInfosPath,
+  );
+  await execChangeVal(
+    forcecli,
+    CKB_PRIVKEY,
+    ETH_PRIVKEY,
+    validatorInfosPath,
+    changeValRawTxPath,
+    changeValTxWithSigDir,
+    oldMultiSigner,
+  );
+  await execChangeVal(
+    forcecli,
+    CKB_PRIVKEY,
+    ETH_PRIVKEY,
+    validatorInfosPath,
+    changeValRawTxPath,
+    changeValTxWithSigDir,
+    oldMultiSigner,
+  );
+
   logger.info(`------  change validators from 1/2 to 3/4 successfully -------`);
   const collectorConfig: { forceBridge: Config } = JSON.parse(
     fs.readFileSync(path.join(configPath, 'collector/force_bridge.json'), 'utf8').toString(),
@@ -453,11 +544,16 @@ async function main() {
     forcecli,
     configPath,
     bridgeEthAddress,
+    omniLockConfig.omniMultisigLockscript,
+    omniLockConfig.adminCellTypescript,
+    ckbDeps,
+    safeAddress,
     CKB_TEST_PRIVKEY,
     ETH_TEST_PRIVKEY,
     multisigConfig,
     extraMultiSigConfig,
     ownerConfig.ownerCellTypescript.args,
+    safeContractNetworks,
   );
   await asyncSleep(60000);
   await startCollectorService(FORCE_BRIDGE_KEYSTORE_PASSWORD, forcecli, configPath);

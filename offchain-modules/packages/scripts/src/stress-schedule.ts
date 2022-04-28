@@ -28,6 +28,7 @@ type StressKeystore = {
 
 const stressKeystoreConfigPath = './stress-keystore.json';
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function devConfig(): StressConfig {
   // your send lock tx account privkey; * 1. eth needs, 2. ethDai token needs *
   const ethPrivateKey = '';
@@ -380,7 +381,7 @@ function logToDiscord(log: string) {
   logger.info(log);
   const webHookUrl =
     'https://discord.com/api/webhooks/945223969496240138/BsvWvYBEttKWeO-din1fMh4lffk9juP_BkIKhMLho-Z7wC1_H-lJbFWe7j-iMqkh7iWv';
-  new WebHook(webHookUrl)
+  void new WebHook(webHookUrl)
     .setTitle('stress-schedule job log')
     .setDescription(log)
     .addTimeStamp()
@@ -412,7 +413,7 @@ function main() {
         logger.error(`stress schedule test failed, error: ${error.stack}`);
         const webHookErrorUrl =
           'https://discord.com/api/webhooks/946301786938015755/gW2CEtVgXkG6ehyYsbcPbbdM1jeyXes3hKtz0Klk5yJDjWd-8R0Q6eOFvwKmd9XbRWIT';
-        new WebHook(webHookErrorUrl)
+        void new WebHook(webHookErrorUrl)
           .setTitle('stress-schedule test error')
           .setDescription(error.stack)
           .addTimeStamp()
@@ -453,7 +454,7 @@ function main() {
           logger.error(`stress schedule test failed, error: ${error.stack}`);
           const webHookErrorUrl =
             'https://discord.com/api/webhooks/946301786938015755/gW2CEtVgXkG6ehyYsbcPbbdM1jeyXes3hKtz0Klk5yJDjWd-8R0Q6eOFvwKmd9XbRWIT';
-          new WebHook(webHookErrorUrl)
+          void new WebHook(webHookErrorUrl)
             .setTitle('stress-schedule test error')
             .setDescription(error.stack)
             .addTimeStamp()

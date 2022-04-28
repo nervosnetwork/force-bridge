@@ -199,7 +199,7 @@ export async function ckbOriginStressTest({
   xchainSudtTokenAddress: string;
   lockCkbSudtAmount: string;
   burnErc20SudtAmount: string;
-}) {
+}): Promise<void> {
   logger.info(
     `start stress ckb test with bridgeDirection=${bridgeDirection}, batchNumber=${batchNumber}, roundNumber=${roundNumber}`,
   );
@@ -256,7 +256,7 @@ export async function ckbOriginStressTest({
   logger.info(`stress ckb test succeed!`);
 }
 
-export async function ckbOriginStressTestAfter() {
+export async function ckbOriginStressTestAfter(): Promise<void> {
   logger.info(`start stress ckb test after`);
   // TODO transfer and bridge
 }
