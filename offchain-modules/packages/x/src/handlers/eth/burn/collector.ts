@@ -57,7 +57,7 @@ class Collector extends Burn {
       return;
     }
 
-    const amount = `0x${BigInt(parsedLog.args.amount.toString()).toString(16)}`;
+    const amount = parsedLog.args.amount.toString();
 
     await this.ethDb.createCollectorCkbUnlock([
       {

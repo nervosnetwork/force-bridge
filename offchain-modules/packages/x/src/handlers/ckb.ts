@@ -465,8 +465,8 @@ export class CkbHandler {
           xchain,
           senderAddress,
           assetIdent,
-          amount: `0x${amount.toString(16)}`,
-          bridgeFee: `0x${bridgeFee.toString(16)}`,
+          amount: amount.toString(),
+          bridgeFee: bridgeFee.toString(),
           recipientAddress,
           blockNumber,
           blockTimestamp,
@@ -494,8 +494,8 @@ export class CkbHandler {
         await this.db.updateLockAmountAndBridgeFee([
           {
             ckbTxHash,
-            amount: `0x${amountFromEthMint.toString(16)}`,
-            bridgeFee: `0x${(amount - amountFromEthMint).toString(16)}`,
+            amount: amountFromEthMint.toString(),
+            bridgeFee: (amount - amountFromEthMint).toString(),
           },
         ]);
         logger.info(
@@ -535,7 +535,7 @@ export class CkbHandler {
           ckbTxHash,
           erc20TokenAddress,
           nervosAssetId: assetIdent,
-          amount: `0x${mintAmount.toString(16)}`,
+          amount: mintAmount.toString(),
           recipientAddress: recipientAddress,
         },
       ];
@@ -1414,13 +1414,13 @@ export async function parseUnlockTx(
       );
       return null;
     }
-    let amount: string;
+    let amount: bigint;
     if (isCkb) {
       if (output.type) {
         logger.error(`invalid unlock tx: typescript of output should be null when is ckb: ${output}`);
         return null;
       }
-      amount = output.capacity;
+      amount = BigInt(nonNullable(output.capacity));
     } else {
       if (
         !output.type ||
@@ -1433,7 +1433,7 @@ export async function parseUnlockTx(
         );
         return null;
       }
-      amount = `0x${utils.readBigUInt128LE(tx.outputsData[i]).toString(16)}`;
+      amount = utils.readBigUInt128LE(tx.outputsData[i]);
     }
     const recipientAddress = encodeToAddress({
       code_hash: output.lock.codeHash,
@@ -1446,7 +1446,7 @@ export async function parseUnlockTx(
       burnTxHash,
       xchain,
       assetIdent,
-      amount,
+      amount: amount.toString(),
       recipientAddress,
       udtExtraData,
       blockNumber,
