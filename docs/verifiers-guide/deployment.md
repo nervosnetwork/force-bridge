@@ -106,7 +106,7 @@ multiConfig:
 
 
 # generate keystore
-$ echo "{\"force-bridge\":\"${PRIVKEY}\"}" > keys.json
+$ echo "{\"verifier\":\"${PRIVKEY}\"}" > keys.json
 $ forcecli keystore encrypt -s ./keys.json -d ./keystore.json -p my-custom-password
 # 1. Save the keystore.json file and remember your password.
 # 2. Delete the keys.json file, close the terminal and clear the shell commands history to keep your private key safe.
