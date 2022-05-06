@@ -27,7 +27,7 @@ export class EthLock {
   @Column('varchar', { length: 10240 })
   recipient: string;
 
-  @Column('varchar', { length: 10240, default: '' })
+  @Column('varchar', { length: 1024, default: '' })
   sudtExtraData: string;
 
   @Index()

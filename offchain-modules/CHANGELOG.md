@@ -1,3 +1,49 @@
+## v0.0.34 (2022-4-6)
+
+### Bugs
+
+- [fix lumos version to support new ckb address](https://github.com/nervosnetwork/force-bridge/pull/350)
+
+### Features
+
+- [add transfer CKB script](https://github.com/nervosnetwork/force-bridge/pull/347)
+
+## v0.0.33 (2022-3-28)
+
+### Bugs
+
+- [fix ckb indexer collect multisig-cell with data](https://github.com/nervosnetwork/force-bridge/pull/345)
+
+## v0.0.32 (2022-3-28)
+
+### Bugs
+
+- [fix change validators should handle multisig-cell-data](https://github.com/nervosnetwork/force-bridge/pull/343)
+
+## v0.0.31 (2022-3-28)
+
+### Features
+
+- [support decrypt keystore](https://github.com/nervosnetwork/force-bridge/pull/342)
+
+## v0.0.30 (2022-3-26)
+
+- [fix get logs from bsc node exceed 5000](https://github.com/nervosnetwork/force-bridge/pull/340)
+
+## v0.0.29 (2022-3-25)
+
+- [fix eth lock table row too long](https://github.com/nervosnetwork/force-bridge/pull/339)
+
+## v0.0.28 (2022-3-24)
+
+## v0.0.27 (2022-3-24)
+
+## v0.0.26 (2022-3-23)
+
+### Features
+
+- [adjust eth rpc timeout](https://github.com/nervosnetwork/force-bridge/pull/331)
+
 ## v0.0.25 (2022-2-25)
 
 ### Features

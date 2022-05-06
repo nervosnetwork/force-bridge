@@ -95,7 +95,7 @@ Generate your own private key. The private key is used to sign the cross-chain t
 ```bash
 # generate the multiConfig
 $ export PRIVKEY=0x1000000000000000000000000000000000000000000000000000000000000000
-$ forcecli config generate -k $PRIVKEY
+$ forcecli config generate -k $PRIVKEY -p ckb
 multiConfig:
 {
   "ethAddress": "0x7B2419E0Ee0BD034F7Bf24874C12512AcAC6e21C",
@@ -106,7 +106,7 @@ multiConfig:
 
 
 # generate keystore
-$ echo "{\"force-bridge\":\"${PRIVKEY}\"}" > keys.json
+$ echo "{\"verifier\":\"${PRIVKEY}\"}" > keys.json
 $ forcecli keystore encrypt -s ./keys.json -d ./keystore.json -p my-custom-password
 # 1. Save the keystore.json file and remember your password.
 # 2. Delete the keys.json file, close the terminal and clear the shell commands history to keep your private key safe.

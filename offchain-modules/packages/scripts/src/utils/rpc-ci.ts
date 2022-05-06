@@ -1,5 +1,5 @@
 import assert from 'assert';
-import { objectToTransactionSkeleton } from '@ckb-lumos/helpers';
+import { objectToTransactionSkeleton, parseAddress, encodeToAddress } from '@ckb-lumos/helpers';
 import { txSkeletonToRawTransactionToSign } from '@force-bridge/x/dist/ckb/tx-helper/generator';
 import { asyncSleep, privateKeyToCkbAddress, privateKeyToEthAddress } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
@@ -1062,7 +1062,7 @@ export async function rpcTest(
   CKB_PRI_KEY: string,
   ETH_PRI_KEY: string,
   bridgeEthAddress: string,
-  CKB_TEST_ADDRESS: string = privateKeyToCkbAddress(CKB_PRI_KEY),
+  CKB_TEST_ADDRESS: string = encodeToAddress(parseAddress(privateKeyToCkbAddress(CKB_PRI_KEY))),
   ETH_TEST_ADDRESS: string = privateKeyToEthAddress(ETH_PRI_KEY),
   ETH_TOKEN_ADDRESS = '0x0000000000000000000000000000000000000000',
 ): Promise<void> {

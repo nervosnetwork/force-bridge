@@ -48,6 +48,18 @@
     "ckbL2ContractAddress": ""
   },
   {
+    "address": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+    "symbol": "WBTC|eth",
+    "name": "Wrapped WBTC (ForceBridge from Ethereum)",
+    "decimal": 8,
+    "logoURI": "https://cryptologos.cc/logos/wrapped-bitcoin-wbtc-logo.svg?v=002",
+    "sudtArgs": "0x0a2117bce7a84cac80e7c5971919d12987e4da58f79e010c6c2f58c7d6e687e1",
+    "source": "Ethereum",
+    "bridge": "ForceBridge",
+    "ckbExplorerUrl": "https://explorer.nervos.org/sudt/0x3d077c897d2a6903acb2ee2d7f92c0175f93d033d89fcb53a32e39a6954dc018",
+    "ckbL2ContractAddress": ""
+  },
+  {
     "address": "0xBA11D00c5f74255f56a5E366F4F77f5A186d7f55",
     "symbol": "BAND|eth",
     "name": "Wrapped BAND (ForceBridge from Ethereum)",
@@ -429,6 +441,18 @@
     "source": "BSC",
     "bridge": "ForceBridge",
     "ckbExplorerUrl": "https://explorer.nervos.org/sudt/0xc98c302c81300ac6e445988d1fe1e1305b2cf035ca1138f00645ee60dcb6acd2",
+    "ckbL2ContractAddress": ""
+  },
+  {
+    "address": "0x3EE2200Efb3400fAbB9AacF31297cBdD1d435D47",
+    "symbol": "ADA|bsc",
+    "name": "Wrapped ADA (ForceBridge from BSC)",
+    "decimal": 18,
+    "logoURI": "https://cryptologos.cc/logos/cardano-ada-logo.svg?v=002",
+    "sudtArgs": "0x0353c4ffdcbda18f934a95341575781f3aaf7b68d35151997ff0967cfa0b9866",
+    "source": "BSC",
+    "bridge": "ForceBridge",
+    "ckbExplorerUrl": "https://explorer.nervos.org/sudt/0xd34b83fcd8508318f9ea98003fa685e42ef7130bae51bba31916f25c80afad21",
     "ckbL2ContractAddress": ""
   },
   {

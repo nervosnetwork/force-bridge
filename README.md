@@ -25,11 +25,16 @@ A general new designed Force Bridge.
 cargo install capsule --git https://github.com/nervosnetwork/capsule.git --tag v0.2.3
 # or download the binary and put it in you PATH
 # https://github.com/nervosnetwork/capsule/releases/v0.2.3
+```
 
-# run the integration test with docker
+### Run bridge via CI
+```bash
+# Setup bridge, and run the integration test with docker
 make local-ci
+```
 
-# run the bridge server manually
+### Run the bridge cli manually
+```bash
 cd offchain-modules
 yarn install
 cp config.json.example config.json
