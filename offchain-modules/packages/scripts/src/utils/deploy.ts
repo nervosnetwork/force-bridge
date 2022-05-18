@@ -36,7 +36,7 @@ import { normalizers, Reader } from 'ckb-js-toolkit';
 import { Contract, ethers } from 'ethers';
 import * as lodash from 'lodash';
 import { genRandomVerifierConfig, VerifierConfig } from './generate';
-import { pathFromProjectRoot } from './index';
+import { execShellCmd, pathFromProjectRoot } from './index';
 
 export interface DeployDevResult {
   assetWhiteList: WhiteListEthAsset[];
@@ -273,17 +273,28 @@ export async function deployDev(
     M: MULTISIG_THRESHOLD,
     publicKeyHashes: verifierConfigs.map((vc) => vc.ckbPubkeyHash),
   };
-  const ownerConfig: OwnerCellConfig = await ckbDeployGenerator.createOwnerCell(
-    multisigItem,
-    ckbPrivateKey,
-    multiCellXchainType,
+  const offchainModulePath = pathFromProjectRoot('offchain-modules');
+  const tsnodePath = path.join(offchainModulePath, 'node_modules/.bin/ts-node');
+  const ckbUpgradeDeployCli = `${tsnodePath} ${offchainModulePath}/packages/scripts/src/ckb-upgrade-deploy.ts`;
+  await execShellCmd(
+    `${ckbUpgradeDeployCli} owner-cell --ckbRpcUrl ${CKB_RPC_URL} --ckbIndexerUrl ${CKB_INDEXER_URL} --env DEV --ckbPrivateKey ${ckbPrivateKey} -R ${
+      multisigItem.R
+    } -M ${multisigItem.M} --publicKeyHashes ${multisigItem.publicKeyHashes.join(',')} -x ${multiCellXchainType}`,
+    true,
   );
+  const ownerCellResult = fs.readFileSync(`${offchainModulePath}/owner-cell-result.json`).toString();
+  const ownerConfig: OwnerCellConfig = JSON.parse(ownerCellResult);
   logger.info('ownerConfig', ownerConfig);
-  const omniLockConfig: OmniLockCellConfig = await ckbDeployGenerator.createOmniLockAdminCell(
-    multisigItem,
-    ckbPrivateKey,
-    ckbDeps.omniLock!.script,
+  await execShellCmd(
+    `${ckbUpgradeDeployCli} admin-cell --ckbRpcUrl ${CKB_RPC_URL} --ckbIndexerUrl ${CKB_INDEXER_URL} --env DEV --ckbPrivateKey ${ckbPrivateKey} -R ${
+      multisigItem.R
+    } -M ${multisigItem.M} --publicKeyHashes ${multisigItem.publicKeyHashes.join(',')} --omniLockScriptCodeHash ${
+      ckbDeps.omniLock!.script.codeHash
+    } --omniLockScriptHashType ${ckbDeps.omniLock!.script.hashType}`,
+    true,
   );
+  const adminCellResult = fs.readFileSync(`${offchainModulePath}/admin-cell-result.json`).toString();
+  const omniLockConfig: OmniLockCellConfig = JSON.parse(adminCellResult);
   logger.info('omniLockConfig', omniLockConfig);
 
   // generate_configs
