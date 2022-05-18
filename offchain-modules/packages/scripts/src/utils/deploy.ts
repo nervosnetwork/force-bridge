@@ -1,4 +1,5 @@
 import fs from 'fs';
+import path from 'path';
 import { Cell, CellDep, Script, utils } from '@ckb-lumos/base';
 import { SerializeWitnessArgs } from '@ckb-lumos/base/lib/core';
 import { common } from '@ckb-lumos/common-scripts';
@@ -20,11 +21,19 @@ import {
 } from '@force-bridge/x/dist/config';
 import { asyncSleep, privateKeyToCkbAddress, writeJsonToFile } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
-import { deployEthContract, deployAssetManager, deploySafe } from '@force-bridge/x/dist/xchain/eth';
+import {
+  deployEthContract,
+  deployAssetManager,
+  deploySafe,
+  deployEthMirror,
+  unsignedAddEthMirrorTxToFile,
+  signAddEthMirrorTxToFile,
+  sendEthMirrorTxFromFiles,
+} from '@force-bridge/x/dist/xchain/eth';
 import { ContractNetworksConfig } from '@gnosis.pm/safe-core-sdk';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import { normalizers, Reader } from 'ckb-js-toolkit';
-import { ethers } from 'ethers';
+import { Contract, ethers } from 'ethers';
 import * as lodash from 'lodash';
 import { genRandomVerifierConfig, VerifierConfig } from './generate';
 import { pathFromProjectRoot } from './index';
@@ -170,9 +179,10 @@ export async function deployDev(
   ckbPrivateKey: string,
   env: 'LINA' | 'AGGRON4' | 'DEV' = 'DEV',
   multiCellXchainType: string,
-  cachePath?: string,
+  configPath: string,
   ckbDeps?: CkbDeps,
 ): Promise<DeployDevResult> {
+  const cachePath = path.join(configPath, 'deployConfig.json');
   if (cachePath && fs.existsSync(cachePath)) {
     return JSON.parse(fs.readFileSync(cachePath, 'utf8'));
   }
@@ -188,14 +198,6 @@ export async function deployDev(
     MULTISIG_THRESHOLD,
   );
   logger.info(`bridge address: ${bridgeEthAddress}`);
-
-  const { safeAddress, contractNetworks: safeContractNetworks } = await deploySafe(
-    ETH_RPC_URL,
-    ethPrivateKey,
-    MULTISIG_THRESHOLD,
-    ethMultiSignAddresses,
-  );
-  logger.info(`safeAddress: ${safeAddress}, safeContractNetworks: ${safeContractNetworks}`);
 
   const ckbDeployGenerator = new CkbDeployManager(CKB_RPC_URL, CKB_INDEXER_URL);
   if (!ckbDeps) {
@@ -335,8 +337,14 @@ export async function deployDev(
     verifiers: verifierConfigs,
   };
 
-  const assetManagerContract = await deployAssetManager(ETH_RPC_URL, ethPrivateKey, safeAddress, nervosAssetWhiteList);
-  logger.info(`asset manager address: ${assetManagerContract.address}`);
+  const { safeAddress, safeContractNetworks, assetManagerContract } = await deployEthCkb2Eth(
+    ETH_RPC_URL,
+    ethPrivateKey,
+    MULTISIG_THRESHOLD,
+    verifierConfigs,
+    nervosAssetWhiteList,
+    path.join(configPath, 'deployGnosis/'),
+  );
 
   // get start height
   const provider = new ethers.providers.JsonRpcProvider(ETH_RPC_URL);
@@ -365,4 +373,68 @@ export async function deployDev(
     writeJsonToFile(data, cachePath);
   }
   return data;
+}
+
+async function deployEthCkb2Eth(
+  url: string,
+  privateKey: string,
+  threshold: number,
+  owners: VerifierConfig[],
+  nervosAssetWhiteList: WhiteListNervosAsset[],
+  basePath: string,
+): Promise<{
+  nervosAssetWhiteList: WhiteListNervosAsset[];
+  safeAddress: string;
+  assetManagerContract: Contract;
+  safeContractNetworks?: ContractNetworksConfig;
+}> {
+  const { safeAddress, contractNetworks } = await deploySafe(
+    url,
+    privateKey,
+    threshold,
+    owners.map((o) => o.ethAddress),
+  );
+  const assetManagerContract = await deployAssetManager(url, privateKey, safeAddress);
+  for (const v of nervosAssetWhiteList) {
+    const ckbEthMirror = await deployEthMirror(
+      url,
+      privateKey,
+      v.name,
+      v.symbol,
+      v.decimal,
+      assetManagerContract.address,
+    );
+    logger.info(`ckb mirror address: ${ckbEthMirror.address} asset id:${v.typescriptHash}`);
+
+    v.xchainTokenAddress = ckbEthMirror.address;
+
+    const txPath = path.join(basePath, `${v.typescriptHash}-tx.json`);
+
+    await unsignedAddEthMirrorTxToFile(
+      url,
+      safeAddress,
+      assetManagerContract.address,
+      ckbEthMirror.address,
+      v.typescriptHash,
+      privateKey,
+      txPath,
+      contractNetworks,
+    );
+
+    for (const owner of owners) {
+      const sigPath = path.join(basePath, `${v.typescriptHash}-sig-${owner.ethAddress}.json`);
+      fs.copyFileSync(txPath, sigPath);
+      await signAddEthMirrorTxToFile(sigPath, owner.privkey);
+    }
+
+    fs.rmSync(txPath);
+
+    await sendEthMirrorTxFromFiles(basePath, privateKey);
+
+    fs.rmdirSync(basePath);
+
+    logger.info(`ckb mirror added to asset manager. address: ${ckbEthMirror.address} asset id:${v.typescriptHash}`);
+  }
+
+  return { nervosAssetWhiteList, safeContractNetworks: contractNetworks, safeAddress, assetManagerContract };
 }

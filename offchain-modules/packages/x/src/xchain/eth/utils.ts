@@ -1,6 +1,9 @@
-import { SafeFactory, EthersAdapter, ContractNetworksConfig } from '@gnosis.pm/safe-core-sdk';
+import fs from 'fs';
+import path from 'path';
+import Safe, { SafeFactory, EthersAdapter, ContractNetworksConfig, EthSignSignature } from '@gnosis.pm/safe-core-sdk';
+import { SafeTransaction, SafeSignature } from '@gnosis.pm/safe-core-sdk-types';
 import { Contract, ethers, Wallet } from 'ethers';
-import { WhiteListNervosAsset } from '../../config';
+import { writeJsonToFile } from '../../utils';
 import { logger } from '../../utils/logger';
 import { abi as asabi, bytecode as asbytecode } from './abi/AssetManager.json';
 import { abi, bytecode } from './abi/ForceBridge.json';
@@ -29,12 +32,7 @@ export async function deployEthContract(
   return bridgeContract.address;
 }
 
-export async function deployAssetManager(
-  url: string,
-  privateKey: string,
-  safeAddress: string,
-  nervosAssetWhiteList: WhiteListNervosAsset[],
-): Promise<Contract> {
+export async function deployAssetManager(url: string, privateKey: string, safeAddress: string): Promise<Contract> {
   const assetManagerContract = await new ethers.ContractFactory(
     asabi,
     asbytecode,
@@ -47,20 +45,98 @@ export async function deployAssetManager(
     return Promise.reject('failed to deploy asset manager contract');
   }
 
-  for (const v of nervosAssetWhiteList) {
-    const ckbEthMirror = await deployEthMirror(url, privateKey, v.name, v.symbol, v.decimal);
-    logger.info(`ckb mirror address: ${ckbEthMirror.address} asset id:${v.typescriptHash}`);
-
-    await (await ckbEthMirror.transferOwnership(assetManagerContract.address)).wait();
-    await (await assetManagerContract.addAsset(ckbEthMirror.address, v.typescriptHash)).wait();
-    v.xchainTokenAddress = ckbEthMirror.address;
-    logger.info(`ckb mirror added to asset manager. address: ${ckbEthMirror.address} asset id:${v.typescriptHash}`);
-  }
-
   await assetManagerContract.transferOwnership(safeAddress);
   logger.info(`Asset Manager Contract has been transfered to safe address: ${safeAddress}`);
 
   return assetManagerContract;
+}
+
+export async function unsignedAddEthMirrorTxToFile(
+  url: string,
+  safeAddress: string,
+  assetManagerAddress: string,
+  mirrorTokenAddress: string,
+  typeHash: string,
+  privateKey: string,
+  outputPath: string,
+  contractNetworks?: ContractNetworksConfig,
+): Promise<void> {
+  const wallet = new Wallet(privateKey, new ethers.providers.JsonRpcProvider(url));
+  const safe = await Safe.create({
+    ethAdapter: new EthersAdapter({ ethers, signer: wallet }),
+    safeAddress: safeAddress,
+    contractNetworks: contractNetworks,
+  });
+
+  const assetManagerContract = new Contract(assetManagerAddress, asabi);
+
+  writeJsonToFile(
+    {
+      signature: {},
+      url: url,
+      safeAddress: safeAddress,
+      contractNetworks: contractNetworks,
+      tx: await safe.createTransaction({
+        to: assetManagerAddress,
+        value: '0',
+        data: assetManagerContract.interface.encodeFunctionData('addAsset', [mirrorTokenAddress, typeHash]),
+      }),
+    },
+    outputPath,
+  );
+}
+
+export async function signAddEthMirrorTxToFile(filePath: string, privateKey: string): Promise<void> {
+  const infos = JSON.parse(fs.readFileSync(filePath).toString());
+
+  const provider = new ethers.providers.JsonRpcProvider(infos.url);
+  const safe = await Safe.create({
+    ethAdapter: new EthersAdapter({ ethers, signer: new ethers.Wallet(privateKey, provider) }),
+    safeAddress: infos.safeAddress,
+    contractNetworks: infos.contractNetworks,
+  });
+
+  const hash = await safe.getTransactionHash(infos.tx);
+  infos.signature = await safe.signTransactionHash(hash);
+
+  writeJsonToFile(infos, filePath);
+}
+
+export async function sendEthMirrorTxFromFiles(filesPath: string, privateKey: string): Promise<void> {
+  const files = fs.readdirSync(filesPath);
+  const signatures: Array<SafeSignature> = [];
+  let url = '';
+  let safeAddress = '';
+  let contractNetworks: ContractNetworksConfig | undefined = undefined;
+  let tx: SafeTransaction | undefined = undefined;
+
+  for (const file of files) {
+    const infos = JSON.parse(fs.readFileSync(path.join(filesPath, file)).toString());
+    signatures.push(infos.signature);
+    url = infos.url;
+    safeAddress = infos.safeAddress;
+    contractNetworks = infos.contractNetworks;
+    tx = infos.tx;
+    fs.rmSync(path.join(filesPath, file));
+  }
+
+  if (!tx) {
+    return;
+  }
+
+  const provider = new ethers.providers.JsonRpcProvider(url);
+  const safe = await Safe.create({
+    ethAdapter: new EthersAdapter({ ethers, signer: new ethers.Wallet(privateKey, provider) }),
+    safeAddress: safeAddress,
+    contractNetworks: contractNetworks,
+  });
+
+  tx = await safe.createTransaction(tx.data);
+  for (const v of signatures) {
+    tx.addSignature(new EthSignSignature(v.signer, v.data));
+  }
+
+  await safe.executeTransaction(tx);
 }
 
 export async function deployEthMirror(
@@ -69,6 +145,7 @@ export async function deployEthMirror(
   name: string,
   symbol: string,
   decimals: number,
+  assetManagerContractAddress: string,
 ): Promise<Contract> {
   const contract = await new ethers.ContractFactory(
     mabi,
@@ -76,6 +153,8 @@ export async function deployEthMirror(
     new Wallet(privateKey, new ethers.providers.JsonRpcProvider(url)),
   ).deploy(name, symbol, decimals);
   const receipt = await contract.deployTransaction.wait();
+
+  await (await contract.transferOwnership(assetManagerContractAddress)).wait();
 
   logger.info(`deploy eth mirror ${name} tx receipt is ${JSON.stringify(receipt)}`);
 
