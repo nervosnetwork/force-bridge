@@ -39,26 +39,26 @@ deploy
 
 deploy
   .command('generate-add-eth-mirror-tx')
-  .requiredOption('-u --url <ethRpcUrl>', 'Url of eth rpc')
+  .requiredOption('-u --ethRpcUrl <ethRpcUrl>', 'Url of eth rpc')
   .requiredOption('-s --safeAddress <safeAddress>', 'gnosis safe contract address')
   .requiredOption('-a --assetManagerAddress <assetManagerAddress>', 'asset manager contract address')
   .requiredOption('-m --mirrorTokenAddress <mirrorTokenAddress>', 'ckb mirror token address')
   .requiredOption('-p --privateKey <privateKey>', 'eth private key')
   .requiredOption('-t --typescriptHash <typescriptHash>', 'sudt/ckb typescriptHash')
-  .requiredOption('-f --file <filePath>', 'file to write tx to.')
+  .requiredOption('-f --filePath <filePath>', 'file to write tx to.')
   .action(doUnsignedAddEthMirror)
   .description('generate unsigned add eth mirror token tx.');
 
 deploy
   .command('sign-add-eth-mirror-tx')
-  .requiredOption('-f --file <filePath>', 'the file which the tx stored in.')
+  .requiredOption('-f --filePath <filePath>', 'the file which the tx stored in.')
   .requiredOption('-p --privateKey <privateKey>', 'eth private key')
   .action(doSignAddEthMirrorTx)
   .description('sign the add eth mirror token tx.');
 
 deploy
   .command('send-add-eth-mirror-tx')
-  .requiredOption('-d --dir <basePath>', 'the dir which the files stored in')
+  .requiredOption('-d --dir <dir>', 'the dir which the files stored in')
   .requiredOption('-p --privateKey <privateKey>', 'eth private key')
   .action(doSendAddEthMirrorTokenTx)
   .description('send the add eth mirror token tx');
@@ -66,7 +66,7 @@ deploy
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function doDeploySafe(opts: Record<string, any>): Promise<void> {
   try {
-    const { safeAddress } = await deploySafe(opts.ethRpcUrl, opts.privateKey, opts.threshold, opts.owners);
+    const { safeAddress } = await deploySafe(opts.ethRpcUrl, opts.privateKey, opts.threshold, opts.verifiers);
     console.log(`safe contract deployed. address: ${safeAddress}`);
   } catch (e) {
     console.error(`failed to deploy gnosis safe contract. ${e}`);
@@ -101,6 +101,8 @@ async function doDeployEthMirror(opts: Record<string, any>): Promise<void> {
 }
 
 async function doUnsignedAddEthMirror(opts: Record<string, string>): Promise<void> {
+  console.log(opts);
+
   try {
     await unsignedAddEthMirrorTxToFile(
       opts.ethRpcUrl,
@@ -129,7 +131,7 @@ async function doSignAddEthMirrorTx(opts: Record<string, string>): Promise<void>
 
 async function doSendAddEthMirrorTokenTx(opts: Record<string, string>): Promise<void> {
   try {
-    await sendEthMirrorTxFromFiles(opts.basePath, opts.privateKey);
+    await sendEthMirrorTxFromFiles(opts.dir, opts.privateKey);
     console.log('send add eth mirror token tx successfully.');
   } catch (e) {
     console.error(`failed to send add mirror token tx. ${e}`);
