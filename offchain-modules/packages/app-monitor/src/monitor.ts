@@ -9,6 +9,7 @@ import {
   EthMintRecord,
   EthBurnRecord,
 } from '@force-bridge/reconc/dist';
+import { nonNullable } from '@force-bridge/x';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { getOmniLockMultisigAddress } from '@force-bridge/x/dist/ckb/tx-helper/multisig/omni-lock';
@@ -24,6 +25,7 @@ import {
 } from '@force-bridge/xchain-eth/dist/reconc';
 import axios from 'axios';
 import { BigNumber } from 'bignumber.js';
+import dayjs from 'dayjs';
 import { ethers } from 'ethers';
 import { assetListPriceChange } from './assetPrice';
 import { BalanceProvider } from './balanceProvider';
@@ -51,6 +53,52 @@ export interface feeStatus {
   ethThreshold: bigint;
 }
 
+interface GasPriceTicker {
+  time: number;
+  price: number;
+}
+
+class GasPriceRecorder {
+  private averageSeconds: number;
+  private riseRate: number;
+  private continueSeconds: number;
+  private tickers: Array<GasPriceTicker>;
+  private startRiseTime?: number;
+
+  public constructor(averageSeconds: number, riseRate: number, continueSeconds: number) {
+    this.averageSeconds = averageSeconds;
+    this.riseRate = riseRate;
+    this.continueSeconds = continueSeconds;
+    this.tickers = new Array<GasPriceTicker>();
+  }
+
+  public async put(time: number, price: number): Promise<string> {
+    const avgPrice =
+      this.tickers.map((ticker) => ticker.price).reduce((sum, price) => sum + price, 0) / this.tickers.length;
+    let allRight = true;
+    if (avgPrice > 0 && price > avgPrice * (1 + this.riseRate)) {
+      if (this.startRiseTime) {
+        if (time - this.startRiseTime >= this.continueSeconds) {
+          allRight = false;
+        }
+      } else {
+        this.startRiseTime = time;
+      }
+    } else if (this.startRiseTime) {
+      this.startRiseTime = undefined;
+    }
+    this.tickers.push({ time, price });
+    while (time - this.tickers[0].time > this.averageSeconds) {
+      this.tickers.shift();
+    }
+    if (allRight) {
+      return '';
+    } else {
+      return `average gas price in last ${this.averageSeconds} seconds: ${avgPrice} current gas price: ${price}`;
+    }
+  }
+}
+
 function newEvent(event: monitorEvent): EventItem {
   return {
     addTime: new Date().getTime(),
@@ -66,6 +114,7 @@ export class Monitor {
   private ethProvider: ethers.providers.JsonRpcProvider;
   private ownerTypeHash: string;
   private durationConfig: Duration;
+  private gasPriceRecorder: GasPriceRecorder;
   private balanceProvider: BalanceProvider;
   webHookInfoUrl: string;
   webHookErrorUrl: string;
@@ -75,6 +124,14 @@ export class Monitor {
     this.webHookErrorUrl = ForceBridgeCore.config.monitor!.discordWebHookError || this.webHookInfoUrl;
     this.ethProvider = new ethers.providers.JsonRpcProvider(ForceBridgeCore.config.eth.rpcUrl);
     this.ownerTypeHash = getOwnerTypeHash();
+    if (ForceBridgeCore.config.monitor!.gasPrice) {
+      const gasPriceConfig = nonNullable(ForceBridgeCore.config.monitor!.gasPrice);
+      this.gasPriceRecorder = new GasPriceRecorder(
+        gasPriceConfig.averageSeconds,
+        gasPriceConfig.riseRate,
+        gasPriceConfig.continueSeconds,
+      );
+    }
     this.balanceProvider = new BalanceProvider(
       ForceBridgeCore.config.eth.rpcUrl,
       ForceBridgeCore.config.ckb.ckbRpcUrl,
@@ -257,6 +314,12 @@ export class Monitor {
     setTimeout(() => {
       this.checkOvermintEvent();
     }, ForceBridgeCore.config.monitor!.overmintCheckInterval);
+
+    if (ForceBridgeCore.config.monitor!.gasPrice) {
+      setTimeout(() => {
+        this.checkGasPriceEvent();
+      }, ForceBridgeCore.config.monitor!.gasPrice.fetchIntervalSeconds * 1000);
+    }
   }
 
   async init(): Promise<void> {
@@ -472,6 +535,33 @@ export class Monitor {
       .addTimeStamp()
       .success()
       .send();
+  }
+
+  checkGasPriceEvent(): void {
+    foreverPromise(
+      async () => {
+        logger.info('start gasPrice check');
+        const ethgasAPI = ForceBridgeCore.config.monitor!.gasPrice!.ethgasAPI;
+        const ethgas = (await axios.get(ethgasAPI)).data;
+        const now = dayjs();
+        const errorMsg = await this.gasPriceRecorder.put(now.unix(), ethgas.average);
+        if (errorMsg) {
+          await new WebHook(this.webHookErrorUrl)
+            .setTitle('gasPrice check error' + ` - ${ForceBridgeCore.config.monitor!.env}`)
+            .setDescription(errorMsg)
+            .addTimeStamp()
+            .error()
+            .send();
+        }
+      },
+      {
+        onRejectedInterval: ForceBridgeCore.config.monitor!.gasPrice!.fetchIntervalSeconds * 1000,
+        onResolvedInterval: ForceBridgeCore.config.monitor!.gasPrice!.fetchIntervalSeconds * 1000,
+        onRejected: (e: Error) => {
+          logger.error(`Monitor checkGasPriceEvent error:${e.stack}`);
+        },
+      },
+    );
   }
 
   checkOvermintEvent(): void {

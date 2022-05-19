@@ -18,7 +18,6 @@
     "@force-bridge/x": "^0.0.34",
     "@force-bridge/xchain-eth": "^0.0.34",
     "cheerio": "^1.0.0-rc.10",
-    "dayjs": "^1.11.0",
     "dotenv": "^10.0.0",
     "mustache": "^4.2.0",
     "node-fetch": "^1.7.3",
