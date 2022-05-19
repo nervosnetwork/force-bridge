@@ -4,6 +4,7 @@ import { feeCmd } from './bridgeFee';
 import { changeValCmd } from './changeVal';
 import { relayerCmd } from './collector';
 import { configCmd } from './config';
+import { deploy } from './deploy';
 import { ethCmd } from './eth';
 import { keystoreCmd } from './keystore';
 import { monitorCmd } from './monitor';
@@ -26,7 +27,8 @@ async function main() {
     .addCommand(monitorCmd)
     .addCommand(configCmd)
     .addCommand(changeValCmd)
-    .addCommand(keystoreCmd);
+    .addCommand(keystoreCmd)
+    .addCommand(deploy);
 
   await program.parseAsync(process.argv);
 }
