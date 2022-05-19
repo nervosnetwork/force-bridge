@@ -158,6 +158,8 @@ export interface collectorConfig {
   gasPriceGweiLimit: number;
   maxPriorityFeePerGasGwei?: string;
   multiCellXchainType: string; // insulate multi cell when generate mint tx, Ethereum='0x01', Bsc='0x02'
+  longTimePendingSeconds?: number;
+  longTimePendingDiscordWebHook?: string;
 }
 
 export interface verifierEndpoint {
