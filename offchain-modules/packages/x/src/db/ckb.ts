@@ -1,5 +1,5 @@
 // invoke in ckb handler
-import { Connection, In, UpdateResult } from 'typeorm';
+import { Connection, In, LessThan, UpdateResult } from 'typeorm';
 import { ChainType } from '../ckb/model/asset';
 import { ForceBridgeCore } from '../core';
 import { CollectorCkbMint, dbTxStatus } from './entity/CkbMint';
@@ -497,6 +497,26 @@ export class CkbDb implements IQuery {
       where: {
         ckbTxHash: In(hashes),
       },
+    });
+  }
+
+  async getCollectorCkbMintPendingRecordsBeforeSometime(time: string, take = 50): Promise<CollectorCkbMint[]> {
+    return await this.connection.getRepository(CollectorCkbMint).find({
+      where: {
+        status: 'pending',
+        createdAt: LessThan(time),
+      },
+      take,
+    });
+  }
+
+  async getCollectorCkbUnlockPendingRecordsBeforeSometime(time: string, take = 50): Promise<CollectorCkbUnlock[]> {
+    return await this.connection.getRepository(CollectorCkbUnlock).find({
+      where: {
+        status: 'pending',
+        createdAt: LessThan(time),
+      },
+      take,
     });
   }
 }
