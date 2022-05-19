@@ -1,5 +1,6 @@
 import { Connection } from 'typeorm';
 import { Audit } from '../audit';
+import { DatabaseChecker } from '../checker/databaseChecker';
 import { ForceBridgeCore } from '../core';
 import { BridgeFeeDB, CkbDb, EthDb, KVDb, TronDb } from '../db';
 import { BtcDb } from '../db/btc';
@@ -41,6 +42,8 @@ export function startHandlers(conn: Connection): void {
     const ethHandler = new EthHandler(ethDb, feeDb, kvDb, ethChain, role);
     ForceBridgeCore.getXChainHandler().eth = ethHandler;
     ethHandler.start();
+    const longTimePendingChecker = new DatabaseChecker(ckbDb, kvDb, ethDb, role);
+    longTimePendingChecker.start();
   }
 
   if (ForceBridgeCore.config.eos !== undefined) {
