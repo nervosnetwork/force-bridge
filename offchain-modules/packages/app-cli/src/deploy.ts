@@ -6,6 +6,7 @@ import {
   signAddEthMirrorTxToFile,
   sendEthMirrorTxFromFiles,
 } from '@force-bridge/x/dist/xchain/eth';
+import { ContractNetworksConfig } from '@gnosis.pm/safe-core-sdk';
 import commander from 'commander';
 
 export const deploy = new commander.Command('deploy');
@@ -46,6 +47,11 @@ deploy
   .requiredOption('-p --privateKey <privateKey>', 'eth private key')
   .requiredOption('-t --typescriptHash <typescriptHash>', 'sudt/ckb typescriptHash')
   .requiredOption('-f --filePath <filePath>', 'file to write tx to.')
+  .option('--with-config', "need configs which gnosis safe doesn't support")
+  .option('--chainId <chainId>', 'the id of chain which the safe contract deployed on')
+  .option('--multiSendAddress <multiSendAddress>', 'one of the contract networks configs')
+  .option('--safeMasterCopyAddress <safeMasterCopyAddress>', 'the id of chain which the safe contract deployed on')
+  .option('--safeProxyFactoryAddress <safeProxyFactoryAddress>', 'the id of chain which the safe contract deployed on')
   .action(doUnsignedAddEthMirror)
   .description('generate unsigned add eth mirror token tx.');
 
@@ -66,8 +72,21 @@ deploy
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function doDeploySafe(opts: Record<string, any>): Promise<void> {
   try {
-    const { safeAddress } = await deploySafe(opts.ethRpcUrl, opts.privateKey, opts.threshold, opts.verifiers);
+    const { safeAddress, contractNetworks } = await deploySafe(
+      opts.ethRpcUrl,
+      opts.privateKey,
+      opts.threshold,
+      opts.verifiers,
+    );
     console.log(`safe contract deployed. address: ${safeAddress}`);
+    if (!contractNetworks) {
+      return;
+    }
+
+    console.log(`you may need the following configurations.`);
+    for (const chainId in contractNetworks) {
+      console.log(`chainId: ${chainId} ${JSON.stringify(contractNetworks[chainId])}`);
+    }
   } catch (e) {
     console.error(`failed to deploy gnosis safe contract. ${e}`);
   }
@@ -100,10 +119,20 @@ async function doDeployEthMirror(opts: Record<string, any>): Promise<void> {
   }
 }
 
-async function doUnsignedAddEthMirror(opts: Record<string, string>): Promise<void> {
-  console.log(opts);
-
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function doUnsignedAddEthMirror(opts: Record<string, any>): Promise<void> {
   try {
+    let contractNetworksConfig: ContractNetworksConfig | undefined;
+    if (opts.withConfig) {
+      contractNetworksConfig = {
+        [opts.chainId]: {
+          multiSendAddress: opts.multiSendAddress,
+          safeMasterCopyAddress: opts.safeMasterCopyAddress,
+          safeProxyFactoryAddress: opts.safeProxyFactoryAddress,
+        },
+      };
+    }
+
     await unsignedAddEthMirrorTxToFile(
       opts.ethRpcUrl,
       opts.safeAddress,
@@ -112,6 +141,7 @@ async function doUnsignedAddEthMirror(opts: Record<string, string>): Promise<voi
       opts.typescriptHash,
       opts.privateKey,
       opts.filePath,
+      contractNetworksConfig,
     );
 
     console.log('unsigned add eth mirror token tx generated successfully.');
