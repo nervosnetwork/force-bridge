@@ -431,6 +431,10 @@ async function deployEthCkb2Eth(
 
     await sendEthMirrorTxFromFiles(basePath, privateKey);
 
+    for (const file of fs.readdirSync(basePath)) {
+      fs.rmSync(path.join(basePath, file));
+    }
+
     fs.rmdirSync(basePath);
 
     logger.info(`ckb mirror added to asset manager. address: ${ckbEthMirror.address} asset id:${v.typescriptHash}`);
