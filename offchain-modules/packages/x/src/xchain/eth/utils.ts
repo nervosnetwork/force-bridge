@@ -117,7 +117,6 @@ export async function sendEthMirrorTxFromFiles(filesPath: string, privateKey: st
     safeAddress = infos.safeAddress;
     contractNetworks = infos.contractNetworks;
     tx = infos.tx;
-    fs.rmSync(path.join(filesPath, file));
   }
 
   if (!tx) {
