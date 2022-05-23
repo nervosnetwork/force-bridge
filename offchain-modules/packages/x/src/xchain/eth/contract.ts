@@ -259,7 +259,9 @@ export class EthChain {
             nonNullable(ForceBridgeCore.config.collector).maxPriorityFeePerGasGwei || '1.5';
           options = {
             gasLimit,
-            maxFeePerGas: BigNumber.from(nonNullable(ForceBridgeCore.config.collector).gasPriceGweiLimit * 10 ** 9),
+            maxFeePerGas: nonNullable(ForceBridgeCore.config.collector).gasPriceGweiAuto
+              ? gasPrice
+              : BigNumber.from(nonNullable(ForceBridgeCore.config.collector).gasPriceGweiLimit * 10 ** 9),
             maxPriorityFeePerGas: ethers.utils.parseUnits(maxPriorityFeePerGasGwei, 'gwei'),
           };
         }
