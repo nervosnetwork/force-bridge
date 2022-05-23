@@ -366,7 +366,9 @@ export class EthChain {
         if (!ForceBridgeCore.config.collector!.disableEIP1559Style) {
           options = {
             gasLimit,
-            maxFeePerGas: BigNumber.from(nonNullable(ForceBridgeCore.config.collector).gasPriceGweiLimit * 10 ** 9),
+            maxFeePerGas: nonNullable(ForceBridgeCore.config.collector).gasPriceGweiAuto
+              ? gasPrice
+              : BigNumber.from(nonNullable(ForceBridgeCore.config.collector).gasPriceGweiLimit * 10 ** 9),
             maxPriorityFeePerGas: ethers.utils.parseUnits(
               nonNullable(ForceBridgeCore.config.collector).maxPriorityFeePerGasGwei || '1.5',
               'gwei',
