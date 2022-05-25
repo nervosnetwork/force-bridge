@@ -1,5 +1,5 @@
 // invoke in eth handler
-import { Connection, In, Repository, UpdateResult } from 'typeorm';
+import { Connection, In, LessThan, Repository, UpdateResult } from 'typeorm';
 import { ForceBridgeCore } from '../core';
 import { CkbLock } from './entity/CkbLock';
 import { CollectorCkbMint } from './entity/CkbMint';
@@ -422,5 +422,25 @@ export class EthDb implements IQuery {
       .set({ status: 'success' })
       .where({ ckbTxHash: In(ckbTxHashes) })
       .execute();
+  }
+
+  async getCollectorEthMintPendingRecordsBeforeSometime(time: string, take = 50): Promise<CollectorEthMint[]> {
+    return await this.connection.getRepository(CollectorEthMint).find({
+      where: {
+        status: 'pending',
+        createdAt: LessThan(time),
+      },
+      take,
+    });
+  }
+
+  async getCollectorEthUnlockPendingRecordsBeforeSometime(time: string, take = 50): Promise<CollectorEthUnlock[]> {
+    return await this.connection.getRepository(CollectorEthUnlock).find({
+      where: {
+        status: 'pending',
+        createdAt: LessThan(time),
+      },
+      take,
+    });
   }
 }
