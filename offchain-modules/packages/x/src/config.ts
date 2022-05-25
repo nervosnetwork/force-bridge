@@ -211,6 +211,7 @@ export interface monitorConfig {
   env: string;
   feeAccounts?: feeAccounts;
   verifierEndpoints?: verifierEndpoint[];
+  gasPrice?: GasPriceConfig;
 }
 
 export interface AuditConfig {
@@ -219,6 +220,14 @@ export interface AuditConfig {
   auditThreshold: string;
   sendStatusInterval: number;
   valueAccumulateInterval: number;
+}
+
+export interface GasPriceConfig {
+  averageSeconds: number;
+  fetchIntervalSeconds: number;
+  riseRate: number;
+  continueSeconds: number;
+  ethgasAPI: string;
 }
 
 export interface Config {
