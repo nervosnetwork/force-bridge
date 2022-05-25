@@ -44,7 +44,7 @@ abstract class Mint {
     if (record == undefined) {
       await this.initBlock(log.blockHash);
 
-      const amount = `0x${BigInt(parsedLog.args.amount.toString()).toString(16)}`;
+      const amount = parsedLog.args.amount.toString();
 
       const iEthMint = {
         ckbTxHash: parsedLog.args.lockId,
@@ -81,7 +81,7 @@ abstract class Mint {
         {
           ckbTxHash: ckbRecord.ckbTxHash,
           amount: record.amount,
-          bridgeFee: `0x${BigInt(bridgeFee).toString(16)}`,
+          bridgeFee,
         },
       ]);
     }
