@@ -1,0 +1,39 @@
+<html>
+
+<body>
+  <button id="btn">version</button>
+  <div> value: <span id="ret"></span></div>
+  </div>
+</body>
+
+<script src="global.js"></script>
+<script>  
+  document.getElementById("btn").addEventListener("click", () => {
+  var xmlhttp = new XMLHttpRequest();
+  xmlhttp.open("POST", apiUrl);
+  xmlhttp.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+  const p1 = "version";
+  const p2 = 10;
+
+  xmlhttp.send(JSON.stringify({
+    jsonrpc: "2.0",
+    "method": p1,
+    "id": p2,
+  }));
+    
+  xmlhttp.onreadystatechange = function () {
+      if(xmlhttp.readyState === 4&&xmlhttp.status === 200)
+      {
+          console.log(xmlhttp.responseText);
+          document.getElementById("ret").innerHTML = xmlhttp.responseText;
+      }
+      if (xmlhttp.status === 400) {
+          console.log(xmlhttp.responseText)
+          document.getElementById("ret").innerHTML = xmlhttp.responseText;
+      }
+    }
+  });
+
+</script>
+
+</html>

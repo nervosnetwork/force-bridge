@@ -1,0 +1,27 @@
+{
+  "name": "force-bridge-e2e-tests",
+  "scripts": {
+    "e2e-test": "jest -i",
+    "test-single": "jest",
+    "lint": "eslint src/*.js ./*.js"
+  },
+  "dependencies": {
+    "@chainsafe/dappeteer": "^2.4.0",
+    "ethereumjs-tx": "^2.1.2",
+    "puppeteer": "^14.1.0"
+  },
+  "devDependencies": {
+    "@babel/plugin-transform-modules-commonjs": "^7.17.9",
+    "eslint": "^8.18.0",
+    "eslint-config-airbnb": "^19.0.4",
+    "eslint-plugin-import": "^2.26.0",
+    "eslint-plugin-sonarjs": "^0.13.0",
+    "http-server": "^14.1.0",
+    "jest": "^28.1.0"
+  },
+  "jest": {
+    "preset": "@chainsafe/dappeteer",
+    "globalSetup": "./jest/setup.js",
+    "testEnvironment": "./jest/dappeteer_environment.js"
+  }
+}

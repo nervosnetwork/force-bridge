@@ -1,0 +1,77 @@
+<html>
+
+<body>
+  <button id="btn">getBalance</button>
+  <div><input type="text" id="param1" value="" /></div>
+  <div><input type="text" id="param2" value="" /></div>
+  <div><input type="text" id="param3" value="" /></div>
+  <div><input type="text" id="param4" value="" /></div>
+  <div><input type="text" id="param5" value="" /></div>
+  <div><input type="text" id="param6" value="" /></div>
+  <div><input type="text" id="testType" value="" /></div>
+  <div> value: <span id="ret"></span></div>
+  </div>
+</body>
+<script src="global.js"></script>
+<script>
+  document.getElementById("btn").addEventListener("click", () => {
+    const param1 = document.getElementById("param1").value;
+    const param2 = document.getElementById("param2").value;
+    const param3 = document.getElementById("param3").value;
+    const param4 = document.getElementById("param4").value;
+    const param5 = document.getElementById("param5").value;
+    const param6 = document.getElementById("param6").value;
+    const t_type = document.getElementById("testType").value;
+
+    var xmlhttp = new XMLHttpRequest();
+    xmlhttp.open("POST", apiUrl);
+    xmlhttp.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+    const p1 = "getBalance"; 
+    const p2 = 4; 
+    const p3 = [
+    {
+      "network": param1,
+      "userIdent": param2,
+      "assetIdent": param3
+    },
+    {
+      "network": param4,
+      "userIdent": param5,
+      "assetIdent": param6
+    }
+  ];
+
+    // 0: none params 1: common params to request 2: more params
+    if (t_type === "0") {
+      const p3 = [
+    ];
+      } 
+    if (t_type === "2") {
+      p3.other = "other";
+      }  
+
+    xmlhttp.send(JSON.stringify({
+      jsonrpc: "2.0",
+      "method": p1,
+      "id": p2,
+      "params": p3,
+    }));
+    
+    xmlhttp.onreadystatechange = function () {
+        if(xmlhttp.readyState === 4&&xmlhttp.status === 200)
+        {
+            console.log(xmlhttp.responseText);
+            document.getElementById("ret").innerHTML = xmlhttp.responseText;
+        }
+        if (xmlhttp.status === 400) {
+            console.log(xmlhttp.responseText)
+            document.getElementById("ret").innerHTML = xmlhttp.responseText;
+        }
+    }
+  });
+
+
+
+</script>
+
+</html>
