@@ -9,7 +9,7 @@ describe("getBridgeOutNervosBridgeFee", () => {
   it("getBridgeOutNervosBridgeFee_1", async () => {
     const res = {
       jsonrpc: "2.0",
-      id: 7,
+      id: expect.any(Number),
       result: {
         fee: {
           network: "Ethereum",
@@ -24,7 +24,7 @@ describe("getBridgeOutNervosBridgeFee", () => {
     await param1.type("Ethereum");
     await param2.type("100000000000000");
     await param3.type("0x0000000000000000000000000000000000000000");
-    await goto.check(page, JSON.stringify(res));
+    await goto.checkObject(page, res);
   });
 
   /**

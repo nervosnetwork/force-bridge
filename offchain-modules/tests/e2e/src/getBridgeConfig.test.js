@@ -14,21 +14,17 @@ describe("getBridgeConfig", () => {
         nervos: {
           network: "testnet",
           confirmNumber: 15,
+          omniLockCodeHash: "0xea5d73e46455979b498e7c6eb4eb88af285ad474c3a7eab98d16e0d9210d56f1",
+          omniLockHashType: "data",
         },
         xchains: {
           Ethereum: {
-            contractAddress: "0x0670009F6126e57C679E90aEE46861D28DA2F703",
+            contractAddress: expect.any(String),
             confirmNumber: 12,
           },
         },
       },
     };
-    await goto.check(page, JSON.stringify(res));
+    await goto.checkObject(page, res);
   });
-
-  // {
-  //   jsonrpc: "2.0",
-  //   "method": "getBridgeConfig",
-  //   "id": 5
-  // }
 });

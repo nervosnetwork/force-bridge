@@ -10,9 +10,7 @@ describe("version", () => {
     const res = {
       jsonrpc: "2.0",
       id: 10,
-      result: {
-        version: expect.anything(),
-      },
+      result: expect.anything(),
     };
     await goto.checkObject(page, res);
   });

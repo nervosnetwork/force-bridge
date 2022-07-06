@@ -8,8 +8,6 @@ start the process : force-bridge testnet
 
 
 ```
-cd force-bridge/offchain-modules/tests/e2e
-mv config_demo.json config.json
 cd force-bridge/offchain-modules/tests/e2e/src
 yarn exec http-server
 cd force-bridge/offchain-modules/tests/e2e/

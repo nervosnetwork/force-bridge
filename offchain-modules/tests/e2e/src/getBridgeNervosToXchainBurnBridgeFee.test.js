@@ -9,7 +9,7 @@ describe("getBridgeNervosToXchainBurnBridgeFee", () => {
   it("getBridgeNervosToXchainBurnBridgeFee_1", async () => {
     const res = {
       jsonrpc: "2.0",
-      id: 145,
+      id: expect.any(Number),
       result: {
         xchain: "Ethereum",
         amount: "20000000000",
@@ -21,7 +21,7 @@ describe("getBridgeNervosToXchainBurnBridgeFee", () => {
     await param1.type("Ethereum");
     await param2.type("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
     await param3.type("100000000000");
-    await goto.check(page, JSON.stringify(res));
+    await goto.checkObject(page, res);
   });
 
   /**

@@ -14,9 +14,9 @@ describe("generateBridgeNervosToXchainLockTx", () => {
         network: "Nervos",
         rawTransaction: {
           cellProvider: {
-            ckbRpcUrl: "https://testnet.ckb.dev/rpc",
-            ckbIndexerUrl: "https://testnet.ckb.dev/indexer",
-            uri: "https://testnet.ckb.dev/rpc",
+            ckbRpcUrl: expect.any(String),
+            ckbIndexerUrl: expect.any(String),
+            uri: expect.any(String),
           },
           cellDeps: [
             {
@@ -49,9 +49,9 @@ describe("generateBridgeNervosToXchainLockTx", () => {
               data: "0x",
               out_point: {
                 index: "0x0",
-                tx_hash: "0x6e573f475335e670296eba51c0bb9703e2cc535e3194b9d5319d69079bbd3efc",
+                tx_hash: expect.any(String),
               },
-              block_number: "0x5116ce",
+              block_number: expect.any(String),
             },
           ],
           outputs: [
@@ -87,7 +87,7 @@ describe("generateBridgeNervosToXchainLockTx", () => {
             {
               type: "witness_args_lock",
               index: 0,
-              message: "0xb8d04b07adf92ba6f5c001dad367532735a761793d890784cdcfcb3b01a87a0d",
+              message: expect.any(String),
             },
           ],
           inputSinces: {},
@@ -104,7 +104,8 @@ describe("generateBridgeNervosToXchainLockTx", () => {
     await param3.type("Ethereum");
     await param4.type("0x888905E586E70d47C2Ea0aA68452efAFed968888");
     await param5.type("ckt1qr496ulyv32e0x6f3e7xad8t3zhjskk5wnp6064e35twpkfpp4t0zqqp3zystevxuux50sh2p2ngg5h04lkedzygqqemewls");
-    await goto.check(page, JSON.stringify(res));
+    // await goto.check(page, JSON.stringify(res));
+    await goto.checkObject(page, res);
   }, goto.longTimeOut);
 
   /**
