@@ -6,6 +6,5 @@ yarn-error.log
 *.sqlite
 .nyc_output/
 coverage/
-.vscode/
 log/
 keystore.json
