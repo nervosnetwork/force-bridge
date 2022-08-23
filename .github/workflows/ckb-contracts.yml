@@ -50,7 +50,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2020-10-22
+          toolchain: nightly-2022-01-21
           override: true
           components: rustfmt, clippy
       - run: cargo fmt --all -- --check
