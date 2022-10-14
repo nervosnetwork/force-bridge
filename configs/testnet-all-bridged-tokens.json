@@ -5,10 +5,10 @@
     "name": "Wrapped ETH (Force Bridge from Ethereum)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=002",
-    "sudtArgs": "0x1b072aa0ded384067106ea0c43c85bd71bafa5afdb432123511da46b390a4e33",
+    "sudtArgs": "0x9cfc1339d0b730258d517db6fbf29d091e0aec807eb8b79d99ecbb86bfac3574",
     "source": "Ethereum",
     "bridge": "ForceBridge",
-    "ckbExplorerUrl": "https://pudge.explorer.nervos.org/sudt/0xa9eb9df467715766b009ad57cf4c7a2977bc8377d51ace37a3653f3bbb540b7c",
+    "ckbExplorerUrl": "https://pudge.explorer.nervos.org/sudt/0x6a00931d7a84706b0ab620c16626fd65de159f9da2682fd9e9b5b3d5c66309f4",
     "ckbL2ContractAddress": "",
     "uanInfo": {
       "sourceUan": "ETH.eth",
@@ -18,15 +18,15 @@
     }
   },
   {
-    "address": "0x7Af456bf0065aADAB2E6BEc6DaD3731899550b84",
+    "address": "0x9D4b99b866910E9647d5f8D35CCAbFc91c0A501F",
     "symbol": "DAI|eth",
     "name": "Wrapped DAI (Force Bridge from Ethereum)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/multi-collateral-dai-dai-logo.svg?v=002",
-    "sudtArgs": "0xcb8c7b352d88142993bae0f6a1cfc0ec0deac41e3377a2f7038ff6b103548353",
+    "sudtArgs": "0x3f818bfd96df3930b3b7c9704fdb3b4f7216f80bd87f098f7887c000b7ca0e71",
     "source": "Ethereum",
     "bridge": "ForceBridge",
-    "ckbExplorerUrl": "https://pudge.explorer.nervos.org/sudt/0x938bfcf98a741c84055386a230c0a056913c3cac11c15fd520dabc23172f62e5",
+    "ckbExplorerUrl": "https://pudge.explorer.nervos.org/sudt/0xea71d74e4ce0a548dcb691209f1c18543842f92f3df86f6f5ef9031eab98a539",
     "ckbL2ContractAddress": "",
     "uanInfo": {
       "sourceUan": "DAI.eth",
@@ -36,15 +36,15 @@
     }
   },
   {
-    "address": "0x74a3dbd5831f45CD0F3002Bb87a59B7C15b1B5E6",
+    "address": "0xD5b940de010672CF8C009b2DDb2d7095d40C5175",
     "symbol": "USDT|eth",
     "name": "Wrapped USDT (Force Bridge from Ethereum)",
     "decimal": 6,
     "logoURI": "https://cryptologos.cc/logos/tether-usdt-logo.svg?v=002",
-    "sudtArgs": "0xf0a746d4d8df5c18826e11030c659ded11e7218b854f86e6bbdc2af726ad1ec3",
+    "sudtArgs": "0x9d220523b875864e7a957e87e2f11ce234db56e70087a33cb566e48cd9e43f30",
     "source": "Ethereum",
     "bridge": "ForceBridge",
-    "ckbExplorerUrl": "https://pudge.explorer.nervos.org/sudt/0x907d01da7ff3fa24bd9ef647f05f0b97a0f1c0f705ebce2b4d6d915d6895d317",
+    "ckbExplorerUrl": "https://pudge.explorer.nervos.org/sudt/0x8a5a5d618902f8c25f4546d0d7870f1ef8896e62b98c6e560b45943d23d1534e",
     "ckbL2ContractAddress": "",
     "uanInfo": {
       "sourceUan": "USDT.eth",
@@ -54,21 +54,39 @@
     }
   },
   {
-    "address": "0x265566D4365d80152515E800ca39424300374A83",
+    "address": "0x149Dd3299643b4d607ef7E63ad6C94ca4C1b3527",
     "symbol": "USDC|eth",
     "name": "Wrapped USDC (Force Bridge from Ethereum)",
     "decimal": 6,
     "logoURI": "https://cryptologos.cc/logos/usd-coin-usdc-logo.svg?v=002",
-    "sudtArgs": "0x5497b6d3d55443d573420ca8e413ee1be8553c6f7a8a6e36bf036bf71f0e3c39",
+    "sudtArgs": "0xc07de96b0014480edd008dd529120fe72a2ae809bfab4394aa5b96819e96e64e",
     "source": "Ethereum",
     "bridge": "ForceBridge",
-    "ckbExplorerUrl": "https://pudge.explorer.nervos.org/sudt/0x23f7af8acb0f5c0382f2637fe1813cbdcc1fc728be56f889ea8fca7d66180831",
+    "ckbExplorerUrl": "https://pudge.explorer.nervos.org/sudt/0x07b46b362ff68257e391343e6e9e396df5c2b1319562d3713d0c1abd24d34fd9",
     "ckbL2ContractAddress": "",
     "uanInfo": {
       "sourceUan": "USDC.eth",
       "sourceDisplayName": "USDC",
       "bridgedUan": "USDC.ckb|fb.eth",
       "bridgedDisplayName": "USDC (via Force Bridge from ETH)"
+    }
+  },
+  {
+    "address": "0x6fB39185e89959AeF4a47A84611fB36255C2b3da",
+    "symbol": "WBTC|eth",
+    "name": "Wrapped BTC (Force Bridge from Ethereum)",
+    "decimal": 8,
+    "logoURI": "https://cryptologos.cc/logos/wrapped-bitcoin-wbtc-logo.svg?v=002",
+    "sudtArgs": "0xf7f761732d4c0957851a720bd54124564885e977bccf655e8e4580a3a0e8bdd6",
+    "source": "Ethereum",
+    "bridge": "ForceBridge",
+    "ckbExplorerUrl": "https://pudge.explorer.nervos.org/sudt/0x933c95a9265f84c4309e7c23fb38e95291440fb0be06cdb1abd3c60b5aaec283",
+    "ckbL2ContractAddress": "",
+    "uanInfo": {
+      "sourceUan": "WBTC.eth",
+      "sourceDisplayName": "WBTC",
+      "bridgedUan": "WBTC.ckb|fb.eth",
+      "bridgedDisplayName": "WBTC (via Force Bridge from ETH)"
     }
   },
   {
