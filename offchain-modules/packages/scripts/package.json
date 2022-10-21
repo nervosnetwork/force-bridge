@@ -10,20 +10,20 @@
     "test": "yarn run build"
   },
   "dependencies": {
-    "@force-bridge/app-monitor": "^0.0.35",
-    "@force-bridge/ckb-indexer-client": "^0.0.35",
-    "@force-bridge/internal": "^0.0.35",
-    "@force-bridge/keystore": "^0.0.35",
-    "@force-bridge/reconc": "^0.0.35",
-    "@force-bridge/x": "^0.0.35",
-    "@force-bridge/xchain-eth": "^0.0.35",
+    "@force-bridge/app-monitor": "^0.0.36",
+    "@force-bridge/ckb-indexer-client": "^0.0.36",
+    "@force-bridge/internal": "^0.0.36",
+    "@force-bridge/keystore": "^0.0.36",
+    "@force-bridge/reconc": "^0.0.36",
+    "@force-bridge/x": "^0.0.36",
+    "@force-bridge/xchain-eth": "^0.0.36",
     "cheerio": "^1.0.0-rc.10",
     "dotenv": "^10.0.0",
     "mustache": "^4.2.0",
     "node-fetch": "^1.7.3",
     "shelljs": "^0.8.4"
   },
-  "version": "0.0.35",
+  "version": "0.0.36",
   "devDependencies": {
     "@types/shelljs": "^0.8.9"
   }
