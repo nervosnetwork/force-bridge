@@ -1,3 +1,12 @@
+## v0.0.35 (2022-10-21)
+
+### Features
+
+- [eip1559 automatic switch maxFeePerGas using get_gasPrice](https://github.com/nervosnetwork/force-bridge/pull/367)
+- [check collector long time pending](https://github.com/nervosnetwork/force-bridge/pull/365)
+- [monitor alarm gas price sudden rise](https://github.com/nervosnetwork/force-bridge/pull/368)
+- [add individual audit of large amount burn](https://github.com/nervosnetwork/force-bridge/pull/381)
+
 ## v0.0.34 (2022-4-6)
 
 ### Bugs
