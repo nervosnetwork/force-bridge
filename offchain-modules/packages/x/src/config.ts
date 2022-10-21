@@ -193,6 +193,8 @@ export interface AuditConfig {
   discordToken: string;
   channelId: string;
   auditThreshold: string;
+  individualAuditThreshold: string;
+  individualAuditInterval: number;
   sendStatusInterval: number;
   valueAccumulateInterval: number;
 }

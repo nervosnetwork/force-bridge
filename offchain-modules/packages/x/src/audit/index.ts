@@ -1,6 +1,7 @@
 import { BigNumber } from 'bignumber.js';
 import { ChainType } from '../ckb/model/asset';
 import { AuditConfig, WhiteListEthAsset } from '../config';
+import { ForceBridgeCore } from '../core';
 import { StatDb } from '../db/stat';
 import { foreverPromise } from '../utils';
 import { logger } from '../utils/logger';
@@ -46,6 +47,31 @@ export class Audit {
         },
       },
     );
+    if (ForceBridgeCore.config.common.role === 'collector') {
+      foreverPromise(
+        async () => {
+          const collectorEthUnlocks = await this.statDb.getManualReviewCollectorEthUnlocks();
+          if (collectorEthUnlocks && collectorEthUnlocks.length > 0) {
+            const messages = collectorEthUnlocks
+              .map(
+                (ethUnlock) =>
+                  `ckbTxHash: ${ethUnlock.ckbTxHash}, amount: ${ethUnlock.amount}, message: ${ethUnlock.message}`,
+              )
+              .join('\n');
+            const msg = `Nervos -> Ethereum ${collectorEthUnlocks.length} individual manual review required: ${messages}\n`;
+            console.info(msg);
+            await this.bot.sendMessage(msg);
+          }
+        },
+        {
+          onRejectedInterval: this.auditConfig.individualAuditInterval,
+          onResolvedInterval: this.auditConfig.individualAuditInterval,
+          onRejected: (e: Error) => {
+            logger.error(`handle individual audit error:${e.stack}`);
+          },
+        },
+      );
+    }
   }
 
   // Get the sum of value in dollar which is transferred out from Nervos in specific interval
