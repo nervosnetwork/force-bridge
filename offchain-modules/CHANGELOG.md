@@ -1,3 +1,9 @@
+## v0.0.36 (2022-10-21)
+
+### Bugs
+
+- [individual audit use price](https://github.com/nervosnetwork/force-bridge/pull/382)
+
 ## v0.0.35 (2022-10-21)
 
 ### Features
