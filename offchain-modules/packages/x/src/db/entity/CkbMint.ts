@@ -1,6 +1,6 @@
 import { Entity, Column, CreateDateColumn, UpdateDateColumn, Index, PrimaryColumn } from 'typeorm';
 
-export type dbTxStatus = 'todo' | 'pending' | 'success' | 'error';
+export type dbTxStatus = 'todo' | 'pending' | 'success' | 'error' | 'manual-review';
 export type CkbMintStatus = dbTxStatus;
 
 @Entity()

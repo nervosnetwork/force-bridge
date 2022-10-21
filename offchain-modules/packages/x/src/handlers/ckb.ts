@@ -16,7 +16,7 @@ import { forceBridgeRole } from '../config';
 import { ForceBridgeCore } from '../core';
 import { CkbDb, KVDb } from '../db';
 import { CollectorCkbMint } from '../db/entity/CkbMint';
-import { ICkbBurn, ICkbMint, MintedRecord, MintedRecords } from '../db/model';
+import { ICkbBurn, ICkbMint, IEthUnlock, MintedRecord, MintedRecords } from '../db/model';
 import { asserts, nonNullable } from '../errors';
 import { BridgeMetricSingleton, txTokenInfo } from '../metric/bridge-metric';
 import { createAsset, MultiSigMgr } from '../multisig/multisig-mgr';
@@ -105,7 +105,22 @@ export class CkbHandler {
       logger.info(`CkbHandler onCkbBurnConfirmed burnRecord:${JSON.stringify(burn)}`);
       if (BigInt(burn.amount) <= BigInt(burn.bridgeFee))
         throw new Error('Unexpected error: burn amount less than bridge fee');
-      const unlockAmount = (BigInt(burn.amount) - BigInt(burn.bridgeFee)).toString();
+      const amount = BigInt(burn.amount) - BigInt(burn.bridgeFee);
+      const unlockAmount = amount.toString();
+      const collectorEthUnlock: IEthUnlock = {
+        ckbTxHash: burn.ckbTxHash,
+        asset: burn.asset,
+        amount: unlockAmount,
+        recipientAddress: burn.recipientAddress,
+      };
+      const individualAuditThreshold =
+        ForceBridgeCore.config.audit && ForceBridgeCore.config.audit!.individualAuditThreshold
+          ? ForceBridgeCore.config.audit!.individualAuditThreshold
+          : '80000000000000000000';
+      if (amount > BigInt(individualAuditThreshold)) {
+        collectorEthUnlock.status = 'manual-review';
+        collectorEthUnlock.message = `Amount ${amount} is greater than the threshold of ${individualAuditThreshold}`;
+      }
       switch (burn.chain) {
         case ChainType.BTC:
           await this.db.createBtcUnlock([
@@ -119,14 +134,7 @@ export class CkbHandler {
           ]);
           break;
         case ChainType.ETH:
-          await this.db.createCollectorEthUnlock([
-            {
-              ckbTxHash: burn.ckbTxHash,
-              asset: burn.asset,
-              amount: unlockAmount,
-              recipientAddress: burn.recipientAddress,
-            },
-          ]);
+          await this.db.createCollectorEthUnlock([collectorEthUnlock]);
           break;
         case ChainType.EOS:
           await this.db.createEosUnlock([
