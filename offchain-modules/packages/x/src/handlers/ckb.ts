@@ -29,6 +29,7 @@ import {
   uint8ArrayToString,
 } from '../utils';
 import { logger } from '../utils/logger';
+import { getCachedAssetAVGPrice } from '../utils/price';
 import { getAssetTypeByAsset } from '../xchain/tron/utils';
 import Transaction = CKBComponents.Transaction;
 import TransactionWithStatus = CKBComponents.TransactionWithStatus;
@@ -116,10 +117,14 @@ export class CkbHandler {
       const individualAuditThreshold =
         ForceBridgeCore.config.audit && ForceBridgeCore.config.audit!.individualAuditThreshold
           ? ForceBridgeCore.config.audit!.individualAuditThreshold
-          : '80000000000000000000';
-      if (amount > BigInt(individualAuditThreshold)) {
+          : '100000';
+      const asset = ForceBridgeCore.config.eth.assetWhiteList.find((asset) => asset.address === burn.asset);
+      if (!asset) throw new Error('asset not in white list');
+      const price = await getCachedAssetAVGPrice(asset.symbol);
+
+      if ((amount * BigInt(price)) / BigInt(10 ** asset.decimal) > BigInt(individualAuditThreshold)) {
         collectorEthUnlock.status = 'manual-review';
-        collectorEthUnlock.message = `Amount ${amount} is greater than the threshold of ${individualAuditThreshold}`;
+        collectorEthUnlock.message = `Amount of ${amount} ${asset.symbol} is greater than the threshold of ${individualAuditThreshold}`;
       }
       switch (burn.chain) {
         case ChainType.BTC:
