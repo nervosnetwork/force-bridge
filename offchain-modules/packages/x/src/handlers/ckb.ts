@@ -3,6 +3,7 @@ import { serializeMultisigScript } from '@ckb-lumos/common-scripts/lib/secp256k1
 import { key } from '@ckb-lumos/hd';
 import { encodeToAddress, sealTransaction, TransactionSkeletonType } from '@ckb-lumos/helpers';
 import { RPC } from '@ckb-lumos/rpc';
+import { BigNumber } from 'bignumber.js';
 import { Reader } from 'ckb-js-toolkit';
 import * as lodash from 'lodash';
 import { BtcAsset, ChainType, EosAsset, EthAsset, getAsset, TronAsset } from '../ckb/model/asset';
@@ -106,8 +107,7 @@ export class CkbHandler {
       logger.info(`CkbHandler onCkbBurnConfirmed burnRecord:${JSON.stringify(burn)}`);
       if (BigInt(burn.amount) <= BigInt(burn.bridgeFee))
         throw new Error('Unexpected error: burn amount less than bridge fee');
-      const amount = BigInt(burn.amount) - BigInt(burn.bridgeFee);
-      const unlockAmount = amount.toString();
+      const unlockAmount = (BigInt(burn.amount) - BigInt(burn.bridgeFee)).toString();
       const collectorEthUnlock: IEthUnlock = {
         ckbTxHash: burn.ckbTxHash,
         asset: burn.asset,
@@ -121,10 +121,14 @@ export class CkbHandler {
       const asset = ForceBridgeCore.config.eth.assetWhiteList.find((asset) => asset.address === burn.asset);
       if (!asset) throw new Error('asset not in white list');
       const price = await getCachedAssetAVGPrice(asset.symbol);
-
-      if ((amount * BigInt(price)) / BigInt(10 ** asset.decimal) > BigInt(individualAuditThreshold)) {
+      if (
+        new BigNumber(unlockAmount)
+          .multipliedBy(price)
+          .div(Math.pow(10, asset.decimal))
+          .gt(new BigNumber(individualAuditThreshold))
+      ) {
         collectorEthUnlock.status = 'manual-review';
-        collectorEthUnlock.message = `Amount of ${amount} ${asset.symbol} is greater than the threshold of ${individualAuditThreshold}`;
+        collectorEthUnlock.message = `Amount of ${unlockAmount} ${asset.symbol} is greater than the threshold of ${individualAuditThreshold}`;
       }
       switch (burn.chain) {
         case ChainType.BTC:
