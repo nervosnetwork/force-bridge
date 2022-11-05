@@ -1,3 +1,9 @@
+## v0.0.38 (2022-11-05)
+
+### Bugs
+
+- [get_token_price_from_binance bug fix](https://github.com/nervosnetwork/force-bridge/pull/384)
+
 ## v0.0.37 (2022-10-21)
 
 ### Bugs
