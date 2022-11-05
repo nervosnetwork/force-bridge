@@ -6,6 +6,12 @@ export async function getAssetAVGPrice(token: string): Promise<string> {
   if (token === 'USDT') {
     return '1';
   }
+  if (token === 'WBTC' || token === 'BTCB') {
+    token = 'BTC';
+  }
+  if (token === 'WBNB') {
+    token = 'BNB';
+  }
   try {
     const res = await axios.get(`${BINANCE_EXCHANGE_API}?symbol=${token}USDT`);
     return res.data.weightedAvgPrice;
