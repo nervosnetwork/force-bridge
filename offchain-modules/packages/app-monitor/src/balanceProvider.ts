@@ -1,11 +1,11 @@
-import CKB from '@nervosnetwork/ckb-sdk-core';
-import { CkbIndexer, Order, ScriptType, SearchKey } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
 import { utils } from '@ckb-lumos/base';
+import { EthAsset } from '@force-bridge/x/dist/ckb/model/asset';
+import { CkbIndexer, Order, ScriptType, SearchKey } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
+import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
+import { logger } from '@force-bridge/x/dist/utils/logger';
+import CKB from '@nervosnetwork/ckb-sdk-core';
 import Web3 from 'web3';
 import { AbiItem } from 'web3-utils';
-import { logger } from '@force-bridge/x/dist/utils/logger';
-import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
-import { EthAsset } from '@force-bridge/x/dist/ckb/model/asset';
 
 const minERC20ABI = [
   // balanceOf

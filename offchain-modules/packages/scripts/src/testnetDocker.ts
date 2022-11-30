@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { KeyStore } from '@force-bridge/keystore/dist';
+import { nonNullable } from '@force-bridge/x';
 import { OwnerCellConfig } from '@force-bridge/x/dist/ckb/tx-helper/deploy';
 import { Config, WhiteListEthAsset, CkbDeps } from '@force-bridge/x/dist/config';
 import { getFromEnv, privateKeyToCkbPubkeyHash, writeJsonToFile } from '@force-bridge/x/dist/utils';
@@ -8,9 +9,8 @@ import { logger, initLog } from '@force-bridge/x/dist/utils/logger';
 import * as dotenv from 'dotenv';
 import * as lodash from 'lodash';
 import * as Mustache from 'mustache';
-import { execShellCmd, PATH_PROJECT_ROOT, pathFromProjectRoot } from './utils';
+import { execShellCmd, pathFromProjectRoot } from './utils';
 import { deployDev } from './utils/deploy';
-import { nonNullable } from '@force-bridge/x';
 
 dotenv.config({ path: process.env.DOTENV_PATH || '.env' });
 
@@ -99,12 +99,12 @@ async function generateConfig(
   writeJsonToFile({ forceBridge: watcherConfig }, path.join(configPath, 'watcher/force_bridge.json'));
   //monitor
   const monitorConfig: Config = lodash.cloneDeep(baseConfig);
-  monitorConfig.common.orm = undefined;
   monitorConfig.common.port = undefined;
   monitorConfig.common.openMetric = false;
   monitorConfig.common.role = 'watcher';
   monitorConfig.common.log.identity = 'monitor';
   monitorConfig.common.log.logFile = path.join(configPath, 'monitor/force_bridge.log');
+  monitorConfig.common.orm!.host = 'monitor_db';
   monitorConfig.monitor = {
     discordWebHook: monitorDiscordWebHook,
     expiredTime: 1800000, //30 minutes
@@ -236,6 +236,13 @@ services:
     depends_on:
       - {{name}}_db
 {{/verifiers}}
+  monitor_db:
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: forcebridge
+    ports:
+      - 3064:3306
   monitor:
     image: node:14.18.1-bullseye
     restart: on-failure
@@ -250,6 +257,8 @@ services:
       cd /app/offchain-modules;
       npx ts-node ./packages/app-cli/src/index.ts monitor -cfg /data/force_bridge.json
       '
+    depends_on:
+      - monitor_db
 volumes:
   force-bridge-node-modules:
     external: true

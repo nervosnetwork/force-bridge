@@ -58,6 +58,12 @@ export type CkbMintRecord = ToRecord & {
   blockHash?: string;
 };
 
+export type SudtRecord = FromRecord & {
+  token: string;
+  lock: string;
+  direction: 'in' | 'out';
+};
+
 export class Reconciliation {
   constructor(public from: FromRecord[], public to: ToRecord[]) {}
 
