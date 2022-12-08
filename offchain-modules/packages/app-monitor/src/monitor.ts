@@ -149,7 +149,14 @@ export class Monitor {
 
   async onSudtRecord(record: SudtRecord): Promise<void> {
     logger.info(`Receive sudt:${JSON.stringify(record)}`);
-    await this.sudtDb.createSudtTransferRecord(record.txId, record.direction, record.lock, record.token, record.amount);
+    await this.sudtDb.createSudtTransferRecord(
+      record.txId,
+      record.direction,
+      record.lock,
+      record.token,
+      record.amount,
+      record.index,
+    );
   }
 
   async onCkbBurnRecord(burn: CkbBurnRecord): Promise<void> {

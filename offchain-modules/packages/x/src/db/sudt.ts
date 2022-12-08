@@ -14,6 +14,7 @@ export class SudtDb {
     address: string,
     sudtArgs: string,
     amount: string,
+    index: number,
   ): Promise<void> {
     const record = this.sudtRepository.create({
       txHash: hash,
@@ -21,6 +22,7 @@ export class SudtDb {
       address,
       sudtArgs,
       amount,
+      index,
     });
     await this.sudtRepository.save(record);
   }

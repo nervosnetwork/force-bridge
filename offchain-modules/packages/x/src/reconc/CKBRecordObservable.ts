@@ -75,7 +75,9 @@ export class CKBRecordObservable {
         try {
           const records: SudtRecord[] = [];
           const tx = await rpc.getTransaction(getTxResult.tx_hash);
-          for (const input of tx.transaction.inputs) {
+          const inputs = tx.transaction.inputs;
+          for (let i = 0; i < inputs.length; i++) {
+            const input = inputs[i];
             if (input.previousOutput) {
               const tx = await rpc.getTransaction(input.previousOutput.txHash);
               const output = tx.transaction.outputs[parseInt(input.previousOutput.index)];
@@ -85,6 +87,7 @@ export class CKBRecordObservable {
                 output.type.hashType == searchKey.script.hash_type
               ) {
                 records.push({
+                  index: i,
                   txId: tx.transaction.hash,
                   amount: tx.transaction.outputsData[parseInt(input.previousOutput.index)],
                   lock: this.provider.scriptToAddress(ScriptLike.from(output.lock)),
@@ -106,6 +109,7 @@ export class CKBRecordObservable {
               v.type.hashType == searchKey.script.hash_type
             ) {
               records.push({
+                index: k,
                 txId: tx.transaction.hash,
                 amount: tx.transaction.outputsData[k],
                 lock: this.provider.scriptToAddress(ScriptLike.from(v.lock)),

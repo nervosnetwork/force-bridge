@@ -62,6 +62,7 @@ export type SudtRecord = FromRecord & {
   token: string;
   lock: string;
   direction: 'in' | 'out';
+  index: number;
 };
 
 export class Reconciliation {

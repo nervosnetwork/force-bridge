@@ -1,6 +1,7 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 
 @Entity()
+@Index(['txHash', 'index', 'direction'], { unique: true })
 export class Sudt {
   @PrimaryGeneratedColumn('increment')
   id: number;
@@ -16,6 +17,9 @@ export class Sudt {
 
   @Column()
   sudtArgs: string;
+
+  @Column()
+  index: number;
 
   @Column()
   amount: string;
