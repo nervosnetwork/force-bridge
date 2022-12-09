@@ -88,7 +88,7 @@ export class CKBRecordObservable {
               ) {
                 records.push({
                   index: i,
-                  txId: tx.transaction.hash,
+                  txId: getTxResult.tx_hash,
                   amount: tx.transaction.outputsData[parseInt(input.previousOutput.index)],
                   lock: this.provider.scriptToAddress(ScriptLike.from(output.lock)),
                   direction: 'out',
