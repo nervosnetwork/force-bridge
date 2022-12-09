@@ -22,6 +22,7 @@ import { TronLock } from '../db/entity/TronLock';
 import { TronUnlock } from '../db/entity/TronUnlock';
 import { WithdrawedBridgeFee } from '../db/entity/WithdrawedBridgeFee';
 import { KV } from '../db/entity/kv';
+import { Sudt } from '../db/entity/sudt';
 import { nonNullable } from '../errors';
 
 export { asyncSleep, retryPromise, foreverPromise } from './promise';
@@ -160,6 +161,7 @@ export async function getDBConnection(): Promise<Connection> {
       TronLock,
       TronUnlock,
       WithdrawedBridgeFee,
+      Sudt,
     ],
     namingStrategy: new SnakeNamingStrategy(),
   });

@@ -1,23 +1,23 @@
-import { core } from '@ckb-lumos/base';
+import { core, utils } from '@ckb-lumos/base';
 import { CKBIndexerClient, SearchKey, SearchKeyFilter } from '@force-bridge/ckb-indexer-client';
 import type * as Indexer from '@force-bridge/ckb-indexer-client';
-import { CkbBurnRecord, CkbMintRecord } from '@force-bridge/reconc';
+import { CkbBurnRecord, CkbMintRecord, SudtRecord } from '@force-bridge/reconc';
 import { Amount } from '@lay2/pw-core';
 import { default as RPC } from '@nervosnetwork/ckb-sdk-rpc';
 import { Observable, from } from 'rxjs';
-import { map, expand, takeWhile, filter as rxFilter, mergeMap, distinct } from 'rxjs/operators';
+import { map, expand, takeWhile, filter as rxFilter, mergeMap, distinct, retry } from 'rxjs/operators';
 import { Asset } from '../ckb/model/asset';
 import { ScriptLike } from '../ckb/model/script';
 import { RecipientCellData } from '../ckb/tx-helper/generated/eth_recipient_cell';
 import { ForceBridgeLockscriptArgs } from '../ckb/tx-helper/generated/force_bridge_lockscript';
 import { MintWitness } from '../ckb/tx-helper/generated/mint_witness';
+import { ForceBridgeCore } from '../core';
 import { fromHexString, toHexString, uint8ArrayToString } from '../utils';
 
 export interface CKBRecordObservableProvider {
   ownerCellTypeHash: string;
   recipientType: ScriptLike;
   bridgeLock: ScriptLike;
-
   indexer: CKBIndexerClient;
   rpc: RPC;
   /**
@@ -26,19 +26,20 @@ export interface CKBRecordObservableProvider {
   scriptToAddress: (script: ScriptLike) => string;
 }
 
-export interface CKBMintFilter {
-  // lock?: ScriptLike;
-  fromBlock?: string;
-  toBlock?: string;
-  asset?: Asset;
-}
-
-export interface CKBBurnFilter {
+export interface Filter {
   fromBlock?: string; // hex string
   toBlock?: string; // hex string
+}
+
+export type CKBMintFilter = Filter & {
+  // lock?: ScriptLike;
+  asset?: Asset;
+};
+
+export type CKBBurnFilter = Filter & {
   sender?: ScriptLike;
   filterRecipientData: (data: RecipientCellData) => boolean;
-}
+};
 
 function isTypeIDCorrect(args: string, expectOwnerTypeHash: string): boolean {
   const bridgeLockArgs = new ForceBridgeLockscriptArgs(fromHexString(args).buffer);
@@ -48,6 +49,87 @@ function isTypeIDCorrect(args: string, expectOwnerTypeHash: string): boolean {
 
 export class CKBRecordObservable {
   constructor(private provider: CKBRecordObservableProvider) {}
+
+  observeSudtRecord(filter: Filter): Observable<SudtRecord[]> {
+    const { rpc, indexer: indexer } = this.provider;
+
+    const searchKey: SearchKey = {
+      filter: { block_range: [filter.fromBlock ?? '0x0', filter.toBlock ?? '0xffffffffffffffff'] },
+      script: {
+        code_hash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
+        hash_type: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
+        args: '0x',
+      },
+      script_type: 'type',
+    };
+
+    const observable = from(
+      indexer.get_transactions({
+        searchKey,
+      }),
+    ).pipe(
+      retry(2),
+      takeWhile((res) => res.objects.length > 0),
+      mergeMap((res) => res.objects),
+      mergeMap(async (getTxResult) => {
+        try {
+          const records: SudtRecord[] = [];
+          const tx = await rpc.getTransaction(getTxResult.tx_hash);
+          const inputs = tx.transaction.inputs;
+          for (let i = 0; i < inputs.length; i++) {
+            const input = inputs[i];
+            if (input.previousOutput) {
+              const tx = await rpc.getTransaction(input.previousOutput.txHash);
+              const output = tx.transaction.outputs[parseInt(input.previousOutput.index)];
+              if (
+                output.type &&
+                output.type.codeHash == searchKey.script.code_hash &&
+                output.type.hashType == searchKey.script.hash_type
+              ) {
+                records.push({
+                  index: i,
+                  txId: getTxResult.tx_hash,
+                  amount: tx.transaction.outputsData[parseInt(input.previousOutput.index)],
+                  lock: this.provider.scriptToAddress(ScriptLike.from(output.lock)),
+                  direction: 'out',
+                  token: utils.computeScriptHash({
+                    hash_type: output.type.hashType,
+                    code_hash: output.type.codeHash,
+                    args: output.type.args,
+                  }),
+                });
+              }
+            }
+          }
+
+          tx.transaction.outputs.forEach((v, k) => {
+            if (
+              v.type &&
+              v.type.codeHash == searchKey.script.code_hash &&
+              v.type.hashType == searchKey.script.hash_type
+            ) {
+              records.push({
+                index: k,
+                txId: tx.transaction.hash,
+                amount: tx.transaction.outputsData[k],
+                lock: this.provider.scriptToAddress(ScriptLike.from(v.lock)),
+                direction: 'in',
+                token: utils.computeScriptHash({
+                  hash_type: v.type.hashType,
+                  code_hash: v.type.codeHash,
+                  args: v.type.args,
+                }),
+              });
+            }
+          });
+          return records;
+        } catch (e) {
+          return [];
+        }
+      }),
+    );
+    return observable;
+  }
 
   observeMintRecord(filter: CKBMintFilter): Observable<CkbMintRecord> {
     const { rpc, indexer: indexer, ownerCellTypeHash, bridgeLock } = this.provider;
