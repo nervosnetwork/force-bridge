@@ -27,11 +27,13 @@ contract ForceBridge {
     bytes32 public constant CHANGE_VALIDATORS_TYPEHASH =
         0xd2cedd075bf1780178b261ac9c9000261e7fd88d66f6309124bddf24f5d953f8;
 
-    bytes32 private _CACHED_DOMAIN_SEPARATOR;
-    uint256 private _CACHED_CHAIN_ID;
-    bytes32 private _HASHED_NAME;
-    bytes32 private _HASHED_VERSION;
-    bytes32 private _TYPE_HASH;
+    bytes32 private immutable _CACHED_DOMAIN_SEPARATOR;
+    uint256 private immutable _CACHED_CHAIN_ID;
+    address private immutable _CACHED_THIS;
+
+    bytes32 private immutable _HASHED_NAME;
+    bytes32 private immutable _HASHED_VERSION;
+    bytes32 private immutable _TYPE_HASH;
 
     uint256 public latestUnlockNonce_;
     uint256 public latestChangeValidatorsNonce_;
@@ -64,11 +66,14 @@ contract ForceBridge {
         // refer: https://github.com/OpenZeppelin/openzeppelin-contracts/blob/24a0bc23cfe3fbc76f8f2510b78af1e948ae6651/contracts/utils/cryptography/draft-EIP712.sol
         bytes32 hashedName = keccak256(bytes(NAME_712));
         bytes32 hashedVersion = keccak256(bytes("1"));
-        bytes32 typeHash = keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
+        bytes32 typeHash = keccak256(
+            "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+        );
         _HASHED_NAME = hashedName;
         _HASHED_VERSION = hashedVersion;
-        _CACHED_CHAIN_ID = _getChainId();
+        _CACHED_CHAIN_ID = block.chainid;
         _CACHED_DOMAIN_SEPARATOR = _buildDomainSeparator(typeHash, hashedName, hashedVersion);
+        _CACHED_THIS = address(this);
         _TYPE_HASH = typeHash;
 
         // set validators
@@ -100,7 +105,7 @@ contract ForceBridge {
      * @dev Returns the domain separator for the current chain.
      */
     function _domainSeparator() internal view virtual returns (bytes32) {
-        if (_getChainId() == _CACHED_CHAIN_ID) {
+        if (address(this) == _CACHED_THIS && block.chainid == _CACHED_CHAIN_ID) {
             return _CACHED_DOMAIN_SEPARATOR;
         } else {
             return _buildDomainSeparator(_TYPE_HASH, _HASHED_NAME, _HASHED_VERSION);
@@ -113,18 +118,10 @@ contract ForceBridge {
                 typeHash,
                 name,
                 version,
-                _getChainId(),
+                block.chainid,
                 address(this)
             )
         );
-    }
-
-    function _getChainId() private view returns (uint256 chainId) {
-        this; // silence state mutability warning without generating bytecode - see https://github.com/ethereum/solidity/issues/2691
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            chainId := chainid()
-        }
     }
 
     function changeValidators(
