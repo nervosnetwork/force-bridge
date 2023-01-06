@@ -7,6 +7,7 @@ import {SafeERC20} from "./libraries/SafeERC20.sol";
 import {Address} from "./libraries/Address.sol";
 import {MultisigUtils} from "./libraries/MultisigUtils.sol";
 import {SafeMath} from "./libraries/SafeMath.sol";
+import "./libraries/Address.sol";
 
 contract ForceBridge {
     using Address for address;
@@ -278,7 +279,7 @@ contract ForceBridge {
             UnlockRecord calldata r = records[i];
             if (r.amount == 0) continue;
             if (r.token == address(0)) {
-                payable(r.recipient).transfer(r.amount);
+                Address.sendValue(payable(r.recipient), r.amount);
             } else {
                 IERC20(r.token).safeTransfer(r.recipient, r.amount);
             }
