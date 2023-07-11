@@ -12,7 +12,7 @@
     }
   },
   {
-    "address": "0x7Af456bf0065aADAB2E6BEc6DaD3731899550b84",
+    "address": "0x9D4b99b866910E9647d5f8D35CCAbFc91c0A501F",
     "name": "DAI",
     "symbol": "DAI",
     "decimal": 18,
@@ -24,7 +24,7 @@
     }
   },
   {
-    "address": "0x74a3dbd5831f45CD0F3002Bb87a59B7C15b1B5E6",
+    "address": "0xD5b940de010672CF8C009b2DDb2d7095d40C5175",
     "name": "USDT",
     "symbol": "USDT",
     "decimal": 6,
@@ -36,7 +36,7 @@
     }
   },
   {
-    "address": "0x265566D4365d80152515E800ca39424300374A83",
+    "address": "0x149Dd3299643b4d607ef7E63ad6C94ca4C1b3527",
     "name": "USDC",
     "symbol": "USDC",
     "decimal": 6,
@@ -45,6 +45,18 @@
     "bridgeFee": {
       "in": "10",
       "out": "20"
+    }
+  },
+  {
+    "address": "0x6fB39185e89959AeF4a47A84611fB36255C2b3da",
+    "name": "WBTC",
+    "symbol": "WBTC",
+    "decimal": 8,
+    "logoURI": "https://cryptologos.cc/logos/wrapped-bitcoin-wbtc-logo.svg?v=002",
+    "minimalBridgeAmount": "1000000000",
+    "bridgeFee": {
+      "in": "1000000000",
+      "out": "1000000000"
     }
   }
 ]

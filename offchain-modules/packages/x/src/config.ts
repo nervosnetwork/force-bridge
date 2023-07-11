@@ -156,8 +156,12 @@ export interface collectorConfig {
   batchGasLimit: number;
   disableEIP1559Style?: boolean; // disable EIP1559 gas price style, default to be false
   gasPriceGweiLimit: number;
+  gasPriceGweiAuto?: boolean;
+  gasPriceGweiAutoSwitchKey?: string;
   maxPriorityFeePerGasGwei?: string;
   multiCellXchainType: string; // insulate multi cell when generate mint tx, Ethereum='0x01', Bsc='0x02'
+  longTimePendingSeconds?: number;
+  longTimePendingDiscordWebHook?: string;
 }
 
 export interface verifierEndpoint {
@@ -182,14 +186,25 @@ export interface monitorConfig {
   env: string;
   feeAccounts?: feeAccounts;
   verifierEndpoints?: verifierEndpoint[];
+  gasPrice?: GasPriceConfig;
 }
 
 export interface AuditConfig {
   discordToken: string;
   channelId: string;
   auditThreshold: string;
+  individualAuditThreshold: string;
+  individualAuditInterval: number;
   sendStatusInterval: number;
   valueAccumulateInterval: number;
+}
+
+export interface GasPriceConfig {
+  averageSeconds: number;
+  fetchIntervalSeconds: number;
+  riseRate: number;
+  continueSeconds: number;
+  ethgasAPI: string;
 }
 
 export interface Config {

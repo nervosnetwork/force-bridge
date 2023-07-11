@@ -1,3 +1,30 @@
+## v0.0.38 (2022-11-05)
+
+### Bugs
+
+- [get_token_price_from_binance bug fix](https://github.com/nervosnetwork/force-bridge/pull/384)
+
+## v0.0.37 (2022-10-21)
+
+### Bugs
+
+- [individual audit price bug fix](https://github.com/nervosnetwork/force-bridge/pull/383)
+
+## v0.0.36 (2022-10-21)
+
+### Bugs
+
+- [individual audit use price](https://github.com/nervosnetwork/force-bridge/pull/382)
+
+## v0.0.35 (2022-10-21)
+
+### Features
+
+- [eip1559 automatic switch maxFeePerGas using get_gasPrice](https://github.com/nervosnetwork/force-bridge/pull/367)
+- [check collector long time pending](https://github.com/nervosnetwork/force-bridge/pull/365)
+- [monitor alarm gas price sudden rise](https://github.com/nervosnetwork/force-bridge/pull/368)
+- [add individual audit of large amount burn](https://github.com/nervosnetwork/force-bridge/pull/381)
+
 ## v0.0.34 (2022-4-6)
 
 ### Bugs

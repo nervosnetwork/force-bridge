@@ -1,8 +1,6 @@
 [
   {
     "address": "0x0000000000000000000000000000000000000000",
-    "symbol": "ETH|eth",
-    "name": "Wrapped ETH (Force Bridge from Ethereum)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=002",
     "sudtArgs": "0x9657b32fcdc463e13ec9205914fd91c443822a949937ae94add9869e7f2e1de8",
@@ -19,8 +17,6 @@
   },
   {
     "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-    "symbol": "USDT|eth",
-    "name": "Wrapped USDT (Force Bridge from Ethereum)",
     "decimal": 6,
     "logoURI": "https://cryptologos.cc/logos/tether-usdt-logo.svg?v=002",
     "sudtArgs": "0x1b89ae72b96c4f02fa7667ab46febcedf9b495737752176303ddd215d66a615a",
@@ -37,8 +33,6 @@
   },
   {
     "address": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
-    "symbol": "DAI|eth",
-    "name": "Wrapped DAI (Force Bridge from Ethereum)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/multi-collateral-dai-dai-logo.svg?v=002",
     "sudtArgs": "0xdd97fe4f673ed231af188855f4ca8b1034153c8d4e40f5b4fae2afd5d3f53ccc",
@@ -55,8 +49,6 @@
   },
   {
     "address": "0x514910771AF9Ca656af840dff83E8264EcF986CA",
-    "symbol": "LINK|eth",
-    "name": "Wrapped LINK (Force Bridge from Ethereum)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/chainlink-link-logo.svg?v=002",
     "sudtArgs": "0xb4f59ca5a3e1b8bdbce38ca8742bcd922c2201d61090cddd4a053b3f786e3275",
@@ -73,8 +65,6 @@
   },
   {
     "address": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
-    "symbol": "WBTC|eth",
-    "name": "Wrapped WBTC (Force Bridge from Ethereum)",
     "decimal": 8,
     "logoURI": "https://cryptologos.cc/logos/wrapped-bitcoin-wbtc-logo.svg?v=002",
     "sudtArgs": "0x0a2117bce7a84cac80e7c5971919d12987e4da58f79e010c6c2f58c7d6e687e1",
@@ -91,8 +81,6 @@
   },
   {
     "address": "0xBA11D00c5f74255f56a5E366F4F77f5A186d7f55",
-    "symbol": "BAND|eth",
-    "name": "Wrapped BAND (Force Bridge from Ethereum)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/band-protocol-band-logo.svg?v=013",
     "sudtArgs": "0xf7d2b6a5e6c9ec564ce11e30e845d7e4ed9fd873eb3a426e9991d4a780d7c35b",
@@ -109,8 +97,6 @@
   },
   {
     "address": "0x0D8775F648430679A709E98d2b0Cb6250d2887EF",
-    "symbol": "BAT|eth",
-    "name": "Wrapped BAT (Force Bridge from Ethereum)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/basic-attention-token-bat-logo.svg?v=002",
     "sudtArgs": "0xe183387147be24ecb3ba04eb480b6042803b1c93954f9c5a0e5a506cd5571b6b",
@@ -127,8 +113,6 @@
   },
   {
     "address": "0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F",
-    "symbol": "SNX|eth",
-    "name": "Wrapped SNX (Force Bridge from Ethereum)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/synthetix-network-token-snx-logo.svg?v=002",
     "sudtArgs": "0xb31800b3c908eaf217a982cb2a0fb8df7ac047485c432634a079a8c158339020",
@@ -145,8 +129,6 @@
   },
   {
     "address": "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984",
-    "symbol": "UNI|eth",
-    "name": "Wrapped UNI (Force Bridge from Ethereum)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/uniswap-uni-logo.svg?v=013",
     "sudtArgs": "0xb52927f7f444eb178461d0fa8b62b67c4a043add18e36248c7e9734d8d077a7e",
@@ -163,8 +145,6 @@
   },
   {
     "address": "0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e",
-    "symbol": "YFI|eth",
-    "name": "Wrapped YFI (Force Bridge from Ethereum)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/yearn-finance-yfi-logo.svg?v=013",
     "sudtArgs": "0x7658a43a8ae5f3f9d24c2001815617a31c29a4131bf2d2a67a4006f553116e11",
@@ -181,8 +161,6 @@
   },
   {
     "address": "0x4Fabb145d64652a948d72533023f6E7A623C7C53",
-    "symbol": "BUSD|eth",
-    "name": "Wrapped BUSD (Force Bridge from Ethereum)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/binance-usd-busd-logo.svg?v=002",
     "sudtArgs": "0x232678824938dfd87a049122c4e244af88dad7faa79a262362f5bc5356ee4c64",
@@ -199,8 +177,6 @@
   },
   {
     "address": "0xc00e94Cb662C3520282E6f5717214004A7f26888",
-    "symbol": "COMP|eth",
-    "name": "Wrapped COMP (Force Bridge from Ethereum)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/compound-comp-logo.svg?v=013",
     "sudtArgs": "0x82a6b63b13d9980c98b17810eb2599dc94c144c0ddd24fd24e8a7881d93323ff",
@@ -217,8 +193,6 @@
   },
   {
     "address": "0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2",
-    "symbol": "MKR|eth",
-    "name": "Wrapped MKR (Force Bridge from Ethereum)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/maker-mkr-logo.svg?v=002",
     "sudtArgs": "0xbfe64426d24c81113125b33d092655913c8c759e475403a418f4eab47f405dd9",
@@ -235,8 +209,6 @@
   },
   {
     "address": "0x6fB3e0A217407EFFf7Ca062D46c26E5d60a14d69",
-    "symbol": "IOTX|eth",
-    "name": "Wrapped IOTX (Force Bridge from Ethereum)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/iotex-iotx-logo.svg?v=002",
     "sudtArgs": "0x8049b09170892d1b04b24c9c185704149d915ab29d6640a1c74bf85e823738f5",
@@ -253,8 +225,6 @@
   },
   {
     "address": "0xA91ac63D040dEB1b7A5E4d4134aD23eb0ba07e14",
-    "symbol": "BEL|eth",
-    "name": "Wrapped BEL (Force Bridge from Ethereum)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/belacoin-bela-logo.svg?v=013",
     "sudtArgs": "0xbceed8fd2b30c9e246035890196fed4218e5bff472786f74c19d9b156607070b",
@@ -271,8 +241,6 @@
   },
   {
     "address": "0x8E870D67F660D95d5be530380D0eC0bd388289E1",
-    "symbol": "USDP|eth",
-    "name": "Wrapped USDP (Force Bridge from Ethereum)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/paxos-standard-pax-logo.svg?v=002",
     "sudtArgs": "0x160093179296127b43624ab641e2561540e18b1f1b8025d8d6830485201a16a1",
@@ -289,8 +257,6 @@
   },
   {
     "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-    "symbol": "USDC|eth",
-    "name": "Wrapped USDC (Force Bridge from Ethereum)",
     "decimal": 6,
     "logoURI": "https://cryptologos.cc/logos/usd-coin-usdc-logo.svg?v=002",
     "sudtArgs": "0x5c4ac961a2428137f27271cf2af205e5c55156d26d9ac285ed3170e8c4cc1501",
@@ -307,8 +273,6 @@
   },
   {
     "address": "0x8CE9137d39326AD0cD6491fb5CC0CbA0e089b6A9",
-    "symbol": "SXP|eth",
-    "name": "Wrapped SXP (Force Bridge from Ethereum)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/swipe-sxp-logo.svg?v=002",
     "sudtArgs": "0xf49a7d57cd50907d28c0e2ae57b559165ce08aa0ff074fb3b277f6dc5eb285ee",
@@ -325,8 +289,6 @@
   },
   {
     "address": "0x6B3595068778DD592e39A122f4f5a5cF09C90fE2",
-    "symbol": "SUSHI|eth",
-    "name": "Wrapped SUSHI (Force Bridge from Ethereum)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/sushiswap-sushi-logo.svg?v=013",
     "sudtArgs": "0xd7a79519d220983c703fd90083c481fc3144daad7ea05728832cbc021f27c017",
@@ -343,8 +305,6 @@
   },
   {
     "address": "0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9",
-    "symbol": "AAVE|eth",
-    "name": "Wrapped AAVE (Force Bridge from Ethereum)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/aave-aave-logo.svg?v=013",
     "sudtArgs": "0xaf47fbc88c924f720fd8d4c0aea5dca8bd00ceecd9f8c2ab45415f6a5dd2ee97",
@@ -361,8 +321,6 @@
   },
   {
     "address": "0x111111111117dC0aa78b770fA6A738034120C302",
-    "symbol": "1INCH|eth",
-    "name": "Wrapped 1INCH (Force Bridge from Ethereum)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/1inch-1inch-logo.svg?v=013",
     "sudtArgs": "0x5bea7b77283ac8a20bd4e848a67c68349a3880b67278a5565bbbc242a26d3e29",
@@ -379,8 +337,6 @@
   },
   {
     "address": "0x3DB6Ba6ab6F95efed1a6E794caD492fAAabF294D",
-    "symbol": "LTO|eth",
-    "name": "Wrapped LTO (Force Bridge from Ethereum)",
     "decimal": 8,
     "logoURI": "https://cryptologos.cc/logos/lto-network-lto-logo.svg?v=002",
     "sudtArgs": "0x33e2afa67434322b1368bf5064b31dc20021bcccc871aa5cc6a5380aa58c59f6",
@@ -397,8 +353,6 @@
   },
   {
     "address": "0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0",
-    "symbol": "MATIC|eth",
-    "name": "Wrapped MATIC (Force Bridge from Ethereum)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/matic-network-matic-logo.svg?v=002",
     "sudtArgs": "0xb571d967797059352785a0297b3ff740f17df1b97315c311b2c0e0107a0db5a8",
@@ -415,8 +369,6 @@
   },
   {
     "address": "0x1F573D6Fb3F13d689FF844B4cE37794d79a7FF1C",
-    "symbol": "BNT|eth",
-    "name": "Wrapped BNT (Force Bridge from Ethereum)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/bancor-bnt-logo.svg?v=002",
     "sudtArgs": "0x4192873b0a0aaeaa04372aa46ff2cd94a90ac1acaa7569458226febec4d6d5ed",
@@ -433,8 +385,6 @@
   },
   {
     "address": "0x56d811088235F11C8920698a204A5010a788f4b3",
-    "symbol": "BZRX|eth",
-    "name": "Wrapped BZRX (Force Bridge from Ethereum)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/bzx-protocol-bzrx-logo.svg?v=013",
     "sudtArgs": "0xc0ddc82e1a24ccdf637bf19424dfcaa79ccb0dd7bdb1f4fdc7be3457214aee44",
@@ -451,8 +401,6 @@
   },
   {
     "address": "0x814e0908b12A99FeCf5BC101bB5d0b8B5cDf7d26",
-    "symbol": "MDT|eth",
-    "name": "Wrapped MDT (Force Bridge from Ethereum)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/measurable-data-token-mdt-logo.svg?v=013",
     "sudtArgs": "0xe5738a780a759d2f7a1a4b33999d1a7e05d55e0a88efb6068a963aa84531fdbc",
@@ -469,8 +417,6 @@
   },
   {
     "address": "0x89Ab32156e46F46D02ade3FEcbe5Fc4243B9AAeD",
-    "symbol": "PNT|eth",
-    "name": "Wrapped PNT (Force Bridge from Ethereum)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/pnetwork-pnt-logo.svg?v=013",
     "sudtArgs": "0xbdfe9436470e847122230ec5119eed76ace9a99cca1db628cf8d42d334cc16f5",
@@ -487,8 +433,6 @@
   },
   {
     "address": "0xeca82185adCE47f39c684352B0439f030f860318",
-    "symbol": "PERL|eth",
-    "name": "Wrapped PERL (Force Bridge from Ethereum)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/perlin-perl-logo.svg?v=002",
     "sudtArgs": "0x34ae46f1112be6a0f3d17bdf34d64e8508c4e6a6c23ae352d0915e24ac767224",
@@ -505,8 +449,6 @@
   },
   {
     "address": "0xba100000625a3754423978a60c9317c58a424e3D",
-    "symbol": "BAL|eth",
-    "name": "Wrapped BAL (Force Bridge from Ethereum)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/balancer-bal-logo.svg?v=013",
     "sudtArgs": "0xcce6d0ac83d2491f8b8bd3875f3577b9e77f08a0396cd2e9274f339eb76e08a4",
@@ -523,8 +465,6 @@
   },
   {
     "address": "0x5732046A883704404F284Ce41FfADd5b007FD668",
-    "symbol": "BLZ|eth",
-    "name": "Wrapped BLZ (Force Bridge from Ethereum)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/bluzelle-blz-logo.svg?v=002",
     "sudtArgs": "0xda58dca6d334b837dbeb1da27e3ee45039890555bbcadbbd59fa1f32faaa5d5b",
@@ -541,8 +481,6 @@
   },
   {
     "address": "0xDDB3422497E61e13543BeA06989C0789117555c5",
-    "symbol": "COTI|eth",
-    "name": "Wrapped COTI (Force Bridge from Ethereum)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/coti-coti-logo.svg?v=013",
     "sudtArgs": "0x70746eb3aeeefb93c7024332e3b129ac09dbdfd238e9a0ff7763ae1b2cd8193e",
@@ -559,8 +497,6 @@
   },
   {
     "address": "0xE1Be5D3f34e89dE342Ee97E6e90D405884dA6c67",
-    "symbol": "TRX|eth",
-    "name": "Wrapped TRX (Force Bridge from Ethereum)",
     "decimal": 6,
     "logoURI": "https://cryptologos.cc/logos/tron-trx-logo.svg?v=002",
     "sudtArgs": "0xff7eb7296b2e6896274c37bdf949442f8cbb3f89f60d21d39367e2c93d917ad9",
@@ -577,8 +513,6 @@
   },
   {
     "address": "0x0000000000085d4780B73119b644AE5ecd22b376",
-    "symbol": "TUSD|eth",
-    "name": "Wrapped TUSD (Force Bridge from Ethereum)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/trueusd-tusd-logo.svg?v=002",
     "sudtArgs": "0xeb83e2d417474fb5aeaf3ab13be413e445159ade6865bd28834c34f680b9339a",
@@ -595,8 +529,6 @@
   },
   {
     "address": "0x0000000000000000000000000000000000000000",
-    "symbol": "BNB|bsc",
-    "name": "Wrapped BNB (Force Bridge from BSC)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/binance-coin-bnb-logo.svg?v=002",
     "sudtArgs": "0x578cd6ab8c0800e6fbc17b58633857dac5626883af89f842e79cb8f7af24de75",
@@ -613,8 +545,6 @@
   },
   {
     "address": "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56",
-    "symbol": "BUSD|bsc",
-    "name": "Wrapped BUSD (Force Bridge from BSC)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/binance-usd-busd-logo.svg?v=002",
     "sudtArgs": "0x69c215249102308356778d58259c91c0f1988f6f5b07aa614921ee1803ea0059",
@@ -631,8 +561,6 @@
   },
   {
     "address": "0x55d398326f99059fF775485246999027B3197955",
-    "symbol": "USDT|bsc",
-    "name": "Wrapped USDT (Force Bridge from BSC)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/tether-usdt-logo.svg?v=002",
     "sudtArgs": "0xfd6f1818fe746687ef5268f82ce1835ba1a94fdccee5f098a389aeed0067eb57",
@@ -649,8 +577,6 @@
   },
   {
     "address": "0x2170Ed0880ac9A755fd29B2688956BD959F933F8",
-    "symbol": "ETH|bsc",
-    "name": "Wrapped ETH (Force Bridge from BSC)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=002",
     "sudtArgs": "0xd61ddc3184767d677be0d741883779aa9513293c4eaa4e0687b5b1caf845edfe",
@@ -667,8 +593,6 @@
   },
   {
     "address": "0x3EE2200Efb3400fAbB9AacF31297cBdD1d435D47",
-    "symbol": "ADA|bsc",
-    "name": "Wrapped ADA (Force Bridge from BSC)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/cardano-ada-logo.svg?v=002",
     "sudtArgs": "0x0353c4ffdcbda18f934a95341575781f3aaf7b68d35151997ff0967cfa0b9866",
@@ -685,8 +609,6 @@
   },
   {
     "address": "0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c",
-    "symbol": "BTCB|bsc",
-    "name": "Wrapped BTCB (Force Bridge from BSC)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/bitcoin-btc-logo.svg?v=002",
     "sudtArgs": "0x9ea7beb4a36469e00bb30dbac75e93672441b483d519556ba9d1424b9294eae5",
@@ -703,8 +625,6 @@
   },
   {
     "address": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
-    "symbol": "WBNB|bsc",
-    "name": "Wrapped WBNB (Force Bridge from BSC)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/binance-coin-bnb-logo.svg?v=002",
     "sudtArgs": "0x29f425f897896c15ca11fd154d8e22ac56b5f49e683d0c88979ad44752fcd520",
@@ -721,8 +641,6 @@
   },
   {
     "address": "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
-    "symbol": "USDC|bsc",
-    "name": "Wrapped USDC (Force Bridge from BSC)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/usd-coin-usdc-logo.svg?v=002",
     "sudtArgs": "0xcedd0f67f2d218ab992284ab343c2e729d2a124a1612592deaa9f8b8f8a581dd",
@@ -739,8 +657,6 @@
   },
   {
     "address": "0xa296aD1C47FE6bDC133f39555C1D1177BD51fBc5",
-    "symbol": "iBFR|bsc",
-    "name": "Wrapped iBFR (Force Bridge from BSC)",
     "decimal": 18,
     "logoURI": "https://assets.coingecko.com/coins/images/18540/large/buffer.png",
     "sudtArgs": "0x5e945aa680b40d9388d4988aee0aebdd2ad9185b6c0ebfd408fa974818de8b6a",
@@ -757,8 +673,6 @@
   },
   {
     "address": "0xD41FDb03Ba84762dD66a0af1a6C8540FF1ba5dfb",
-    "symbol": "SFP|bsc",
-    "name": "Wrapped SFP (Force Bridge from BSC)",
     "decimal": 18,
     "logoURI": "https://cryptologos.cc/logos/safepal-sfp-logo.svg?v=017",
     "sudtArgs": "0xc66b8a7f4869272e1fd0565535cb444c319b6baafd386c5857f08d87e396cfd5",
