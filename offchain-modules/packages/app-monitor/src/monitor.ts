@@ -1,12 +1,14 @@
 import { parseAddress } from '@ckb-lumos/helpers';
-import { CkbBurnRecord, CkbMintRecord, EthLockRecord, EthUnlockRecord } from '@force-bridge/reconc/dist';
+import { CkbBurnRecord, CkbMintRecord, EthLockRecord, EthUnlockRecord, SudtRecord } from '@force-bridge/reconc/dist';
 import { nonNullable } from '@force-bridge/x';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { verifierEndpoint, feeAccounts } from '@force-bridge/x/dist/config';
 import { bootstrap, ForceBridgeCore } from '@force-bridge/x/dist/core';
+import { KVDb } from '@force-bridge/x/dist/db/kv';
+import { SudtDb } from '@force-bridge/x/dist/db/sudt';
 import { CKBRecordObservable } from '@force-bridge/x/dist/reconc';
-import { asyncSleep, foreverPromise } from '@force-bridge/x/dist/utils';
+import { asyncSleep, foreverPromise, getDBConnection } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
 import {
   createCKBRecordObservable,
@@ -14,10 +16,10 @@ import {
   EthRecordObservable,
 } from '@force-bridge/xchain-eth/dist/reconc';
 import axios from 'axios';
+import dayjs from 'dayjs';
 import { ethers } from 'ethers';
 import { assetListPriceChange } from './assetPrice';
 import { BalanceProvider } from './balanceProvider';
-import dayjs from 'dayjs';
 import { WebHook } from './discord';
 import { Duration, EventItem, monitorEvent, NewDurationCfg, readMonitorConfig, writeMonitorConfig } from './duration';
 
@@ -105,6 +107,8 @@ export class Monitor {
   private durationConfig: Duration;
   private gasPriceRecorder: GasPriceRecorder;
   private balanceProvider: BalanceProvider;
+  private sudtDb: SudtDb;
+  private kvDb: KVDb;
   webHookInfoUrl: string;
   webHookErrorUrl: string;
 
@@ -141,6 +145,22 @@ export class Monitor {
   async onCkbMintRecord(mint: CkbMintRecord): Promise<void> {
     logger.info(`Receive ckbMint:${JSON.stringify(mint)}`);
     this.durationConfig.ckb.pending.mints.set(mint.fromTxId!, newEvent(mint));
+  }
+
+  async onSudtRecord(record: SudtRecord): Promise<void> {
+    logger.info(`Receive sudt:${JSON.stringify(record)}`);
+    try {
+      await this.sudtDb.createSudtTransferRecord(
+        record.txId,
+        record.direction,
+        record.lock,
+        record.token,
+        record.amount,
+        record.index,
+      );
+    } catch (e) {
+      logger.error(e.stack);
+    }
   }
 
   async onCkbBurnRecord(burn: CkbBurnRecord): Promise<void> {
@@ -212,6 +232,7 @@ export class Monitor {
     this.observeCkbEvent().catch((err) => {
       logger.error(`Monitor observeCkbEvent error:${err.stack}`);
     });
+    void this.reconcSudtBill();
     // this.observeAssetPrice().catch((err) => {
     //   logger.error(`Monitor observeAssetPrice error:${err.stack}`);
     // });
@@ -230,7 +251,38 @@ export class Monitor {
     }
   }
 
+  async reconcSudtBill(): Promise<void> {
+    let fromBlock = this.durationConfig.ckb.sudtBillLastReconcBlock;
+    let toBlock = fromBlock + 100;
+    while (fromBlock < this.durationConfig.ckb.sudtBillReconcBlock) {
+      toBlock > this.durationConfig.ckb.sudtBillReconcBlock ? this.durationConfig.ckb.sudtBillReconcBlock : toBlock;
+      try {
+        logger.info(`Monitor reconcSudtBill fromBlock: ${fromBlock} toBlock: ${toBlock}`);
+        await this.ckbRecordObservable
+          .observeSudtRecord({ fromBlock: `0x${fromBlock.toString(16)}`, toBlock: `0x${toBlock.toString(16)}` })
+          .subscribe((records) => {
+            records.forEach((record) => {
+              void this.onSudtRecord(record);
+            });
+          });
+      } catch (e) {
+        logger.error(e.stack);
+      }
+      try {
+        await this.kvDb.set('sudt_bill_last_handle_block', toBlock.toString());
+      } catch (e) {
+        logger.error(e.stack);
+      }
+      fromBlock = toBlock + 1;
+      toBlock = fromBlock + 100;
+      await asyncSleep(10);
+    }
+  }
+
   async init(): Promise<void> {
+    const conn = await getDBConnection();
+    this.sudtDb = new SudtDb(conn);
+    this.kvDb = new KVDb(conn);
     let durationConfig = readMonitorConfig();
     if (!durationConfig) {
       durationConfig = NewDurationCfg();
@@ -246,6 +298,19 @@ export class Monitor {
     if (ForceBridgeCore.config.monitor!.expiredCheckInterval > 0) {
       expiredCheckInterval = ForceBridgeCore.config.monitor!.expiredCheckInterval;
     }
+
+    this.durationConfig.ckb.sudtBillReconcBlock = parseInt(
+      (await this.kvDb.get('sudt_bill_reconc_handle_block')) ?? '0',
+    );
+    if (this.durationConfig.ckb.sudtBillReconcBlock == 0) {
+      await this.kvDb.set('sudt_bill_reconc_handle_block', this.durationConfig.ckb.lastHandledBlock.toString());
+      this.durationConfig.ckb.sudtBillReconcBlock = this.durationConfig.ckb.lastHandledBlock;
+    }
+
+    this.durationConfig.ckb.sudtBillLastReconcBlock = parseInt(
+      (await this.kvDb.get('sudt_bill_last_handle_block')) ?? '0',
+    );
+    console.log(this.durationConfig);
   }
 
   checkExpiredEvent(): void {
@@ -513,6 +578,12 @@ export class Monitor {
             },
           })
           .subscribe((record) => this.onCkbBurnRecord(record));
+
+        await this.ckbRecordObservable.observeSudtRecord({ fromBlock, toBlock }).subscribe((records) => {
+          records.forEach((record) => {
+            void this.onSudtRecord(record);
+          });
+        });
 
         this.durationConfig.ckb.lastHandledBlock = toBlockNum;
       },

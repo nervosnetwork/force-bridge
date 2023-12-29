@@ -47,7 +47,7 @@ export class EthChain {
     this.config = config;
     const connectionInfo = {
       url,
-      timeout: 3000,
+      timeout: 4000,
     };
     this.provider = new ethers.providers.JsonRpcProvider(connectionInfo);
     this.bridgeContractAddr = config.contractAddress;

@@ -25,6 +25,8 @@ export interface EthConfig {
 
 export interface CkbConfig {
   lastHandledBlock: number;
+  sudtBillReconcBlock: number;
+  sudtBillLastReconcBlock: number;
   matchCount: {
     burn: number;
     mint: number;
@@ -55,6 +57,8 @@ export function NewDurationCfg(): Duration {
     },
     ckb: {
       lastHandledBlock: ForceBridgeCore.config.ckb.startBlockHeight,
+      sudtBillLastReconcBlock: 0,
+      sudtBillReconcBlock: 0,
       matchCount: {
         mint: 0,
         burn: 0,
