@@ -32,7 +32,7 @@ export class CkbDapp extends CkbTxHelper {
     });
     // add output
     const sudtOutput: Cell = {
-      cell_output: {
+      cellOutput: {
         capacity: `0x${(amount - fee).toString(16)}`,
         lock: recipient,
       },
@@ -57,7 +57,7 @@ export class CkbDapp extends CkbTxHelper {
     const message = txSkeleton.get('signingEntries').get(0)!.message;
     const Sig = key.signRecoverable(message!, privateKey);
     const tx = sealTransaction(txSkeleton, [Sig]);
-    const hash = await this.ckb.send_transaction(tx);
+    const hash = await this.ckb.sendTransaction(tx);
     await this.waitUntilCommitted(hash);
     return hash;
   }

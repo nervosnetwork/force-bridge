@@ -4,9 +4,9 @@ import { bootstrap, ForceBridgeCore } from '@force-bridge/x/dist/core';
 import { BridgeFeeDB } from '@force-bridge/x/dist/db';
 import { getDBConnection, parsePrivateKey } from '@force-bridge/x/dist/utils';
 import { EthChain, WithdrawBridgeFeeTopic } from '@force-bridge/x/dist/xchain/eth';
-import { Amount } from '@lay2/pw-core';
 import commander from 'commander';
 import { ecsign, toRpcSig } from 'ethereumjs-util';
+import { BigNumber } from 'ethers';
 
 const defaultConfig = './config.json';
 
@@ -103,7 +103,7 @@ async function getTotalAvailable(opts: Record<string, string>) {
 
   const withdrawedBridgeFee = await bridgeFeeDB.getEthTotalWithdrawedBridgeFee(asset);
   const generatedBridgeFee = await bridgeFeeDB.getEthTotalGeneratedBridgeFee(asset);
-  const availableBridgeFee = new Amount(generatedBridgeFee, 0).sub(new Amount(withdrawedBridgeFee, 0)).toString(0);
+  const availableBridgeFee = BigNumber.from(generatedBridgeFee).sub(BigNumber.from(withdrawedBridgeFee)).toString();
   const humanizedAvailableBridgeFee = ethAsset.getHumanizedDescription(availableBridgeFee);
   console.log('total available bridge fee:', humanizedAvailableBridgeFee);
 }

@@ -1,5 +1,6 @@
 import assert from 'assert';
 import { parseAddress } from '@ckb-lumos/helpers';
+import { BI } from '@ckb-lumos/lumos';
 import { ChainType, EthAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
@@ -19,7 +20,6 @@ import { logger } from '@force-bridge/x/dist/utils/logger';
 import { ETH_ADDRESS } from '@force-bridge/x/dist/xchain/eth';
 import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
 import { ForceBridgeContract, reconc } from '@force-bridge/xchain-eth';
-import { Amount } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import { ethers } from 'ethers';
 import nconf from 'nconf';
@@ -116,7 +116,7 @@ async function main() {
     logger.info('expect recipient', `${uint8ArrayToString(recipientLockscript)}`);
     assert(ethLockRecord.recipient === `${uint8ArrayToString(recipientLockscript)}`);
 
-    const mintAmount = new Amount(ethLockRecord.amount, 0).sub(new Amount(ethLockRecord.bridgeFee, 0)).toString(0);
+    const mintAmount = BI.from(ethLockRecord.amount).sub(BI.from(ethLockRecord.bridgeFee)).toString(0);
     const ckbMintRecords = await conn.manager.find(CkbMint, {
       where: {
         id: txHash,
@@ -179,7 +179,7 @@ async function main() {
     assert(unlockReceipt.logs.length === 1);
 
     const recipientParsedLog = iface.parseLog(unlockReceipt.logs[0]);
-    const expectRecipientUnlockAmount = new Amount(burnAmount.toString(), 0).sub(new Amount(bridgeFee.out, 0));
+    const expectRecipientUnlockAmount = BI.from(burnAmount.toString()).sub(BI.from(bridgeFee.out));
     logger.info('recipient parsedLog', recipientParsedLog);
     assert(recipientParsedLog.args.token === ethUnlockRecord.asset);
     logger.info('db unlock amount', ethUnlockRecord.amount);

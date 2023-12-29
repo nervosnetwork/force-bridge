@@ -1,5 +1,5 @@
 import { encodeToAddress } from '@ckb-lumos/helpers';
-import { CKBIndexerClient, Script as IndexerScript } from '@force-bridge/ckb-indexer-client';
+import { Indexer, Script } from '@ckb-lumos/lumos';
 import { ScriptLike } from '@force-bridge/x/dist/ckb/model/script';
 import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
@@ -9,18 +9,18 @@ import { ethers } from 'ethers';
 import { TwoWayRecordObservable } from './EthReconcilerBuilder';
 import { EthRecordObservable } from './EthRecordObservable';
 
-function getRecipientTypeScript(): IndexerScript {
+function getRecipientTypeScript(): Script {
   return {
-    code_hash: ForceBridgeCore.config.ckb.deps.recipientType.script.codeHash,
-    hash_type: ForceBridgeCore.config.ckb.deps.recipientType.script.hashType,
+    codeHash: ForceBridgeCore.config.ckb.deps.recipientType.script.codeHash,
+    hashType: ForceBridgeCore.config.ckb.deps.recipientType.script.hashType,
     args: '0x',
   };
 }
 
-function getBridgeLockscript(): IndexerScript {
+function getBridgeLockscript(): Script {
   return {
-    code_hash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
-    hash_type: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
+    codeHash: ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash,
+    hashType: ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType,
     args: '0x',
   };
 }
@@ -31,12 +31,12 @@ export function createProvider(): ethers.providers.JsonRpcProvider {
 
 export function createCKBRecordObservable(): CKBRecordObservable {
   return new CKBRecordObservable({
-    indexer: new CKBIndexerClient(ForceBridgeCore.ckbIndexer.ckbIndexerUrl),
+    indexer: new Indexer(ForceBridgeCore.ckbIndexer.ckbIndexerUrl),
     rpc: ForceBridgeCore.ckb.rpc,
     ownerCellTypeHash: getOwnerTypeHash(),
     recipientType: ScriptLike.from(getRecipientTypeScript()),
     bridgeLock: ScriptLike.from(getBridgeLockscript()),
-    scriptToAddress: (script) => encodeToAddress(script.toIndexerScript()),
+    scriptToAddress: (script) => encodeToAddress(script),
   });
 }
 

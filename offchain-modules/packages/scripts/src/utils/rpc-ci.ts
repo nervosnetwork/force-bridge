@@ -3,9 +3,8 @@ import { objectToTransactionSkeleton, parseAddress, encodeToAddress } from '@ckb
 import { txSkeletonToRawTransactionToSign } from '@force-bridge/x/dist/ckb/tx-helper/generator';
 import { asyncSleep, privateKeyToCkbAddress, privateKeyToEthAddress } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
-import { Amount } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
-import { ethers } from 'ethers';
+import { BigNumber, ethers } from 'ethers';
 import { JSONRPCClient } from 'json-rpc-2.0';
 import fetch from 'node-fetch/index';
 
@@ -764,10 +763,10 @@ async function lock(
       for (let j = 0; j < 3; j++) {
         const afterBalance = await getBalance(client, testcase.payload.asset.ident, CKB_TEST_ADDRESS, ETH_TEST_ADDRESS);
 
-        const beforeSUDTBalance = new Amount(beforeBalance[0].amount, 0);
-        let expectedSUDTBalance = beforeSUDTBalance.add(new Amount(testcase.payload.asset.amount, 0));
-        expectedSUDTBalance = expectedSUDTBalance.sub(new Amount(inFee.fee.amount, 0));
-        const afterSUDTBalance = new Amount(afterBalance[0].amount, 0);
+        const beforeSUDTBalance = BigNumber.from(beforeBalance[0].amount);
+        let expectedSUDTBalance = beforeSUDTBalance.add(BigNumber.from(testcase.payload.asset.amount));
+        expectedSUDTBalance = expectedSUDTBalance.sub(BigNumber.from(inFee.fee.amount));
+        const afterSUDTBalance = BigNumber.from(afterBalance[0].amount);
         logger.info('amount ', beforeSUDTBalance, afterSUDTBalance, expectedSUDTBalance);
         if (expectedSUDTBalance.toString() != afterSUDTBalance.toString() && j < 2) {
           await asyncSleep(3000);
@@ -818,8 +817,8 @@ async function burn(
 
       const afterBalance = await getBalance(client, testcase.payload.asset, CKB_TEST_ADDRESS, ETH_TEST_ADDRESS);
       assert(
-        new Amount(beforeBalance[0].amount, 0).sub(new Amount(testcase.payload.amount, 0)).toString() ===
-          new Amount(afterBalance[0].amount, 0).toString(),
+        BigNumber.from(beforeBalance[0].amount).sub(BigNumber.from(testcase.payload.amount)).toString() ===
+          BigNumber.from(afterBalance[0].amount).toString(),
       );
     }
   }

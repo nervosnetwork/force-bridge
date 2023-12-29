@@ -68,7 +68,9 @@ export async function deployDev(
       const PATH_PW_LOCK_DEP = pathFromProjectRoot('/offchain-modules/deps/pw_lock');
       const sudtBin = fs.readFileSync(PATH_SUDT_DEP);
       const pwLockBin = fs.readFileSync(PATH_PW_LOCK_DEP);
-      sudtDep = await ckbDeployGenerator.deploySudt(sudtBin, ckbPrivateKey);
+      logger.info('deploying sudtDep');
+      sudtDep = await ckbDeployGenerator.deployContract(sudtBin, ckbPrivateKey);
+      logger.info('deploying pwLockDep');
       pwLockDep = await ckbDeployGenerator.deployContract(pwLockBin, ckbPrivateKey);
       logger.info('deployed pwLockDep', JSON.stringify(pwLockDep, null, 2));
     } else if (env === 'AGGRON4') {

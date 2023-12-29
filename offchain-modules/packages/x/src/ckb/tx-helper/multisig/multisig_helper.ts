@@ -20,8 +20,8 @@ export function getMultisigLock(multisigScript: MultisigItem): Script {
   const serializedMultisigScript = serializeMultisigScript(multisigScript);
   const args = multisigArgs(serializedMultisigScript);
   const multisigLockscript = {
-    code_hash: multisigTemplate.CODE_HASH,
-    hash_type: multisigTemplate.HASH_TYPE,
+    codeHash: multisigTemplate.CODE_HASH,
+    hashType: multisigTemplate.HASH_TYPE,
     args,
   };
   return multisigLockscript;
@@ -30,8 +30,8 @@ export function getMultisigLock(multisigScript: MultisigItem): Script {
 export function getOwnLockHash(multisigScript: MultisigItem): string {
   const multisigLockscript = getMultisigLock(multisigScript);
   const ownLockHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>{
-    codeHash: multisigLockscript.code_hash,
-    hashType: multisigLockscript.hash_type,
+    codeHash: multisigLockscript.codeHash,
+    hashType: multisigLockscript.hashType,
     args: multisigLockscript.args,
   });
   return ownLockHash;
@@ -39,8 +39,8 @@ export function getOwnLockHash(multisigScript: MultisigItem): string {
 
 export function getOwnerTypeHash(): string {
   const ownerTypeHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>{
-    codeHash: ForceBridgeCore.config.ckb.ownerCellTypescript.code_hash,
-    hashType: ForceBridgeCore.config.ckb.ownerCellTypescript.hash_type,
+    codeHash: ForceBridgeCore.config.ckb.ownerCellTypescript.codeHash,
+    hashType: ForceBridgeCore.config.ckb.ownerCellTypescript.hashType,
     args: ForceBridgeCore.config.ckb.ownerCellTypescript.args,
   });
   return ownerTypeHash;
@@ -54,8 +54,8 @@ export function getMultisigAddr(multisigScript: MultisigItem): string {
 export function privateKeyToAddress(privateKey: string): string {
   const fromBlake160 = key.publicKeyToBlake160(key.privateToPublic(privateKey as HexString));
   const fromLockScript = {
-    code_hash: secpTemplate.CODE_HASH,
-    hash_type: secpTemplate.HASH_TYPE,
+    codeHash: secpTemplate.CODE_HASH,
+    hashType: secpTemplate.HASH_TYPE,
     args: fromBlake160,
   };
   return encodeToAddress(fromLockScript);

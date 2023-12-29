@@ -1,10 +1,10 @@
 import { ForceBridgeAPIV1Client } from '@force-bridge/app-rpc-server/dist/client';
 import { nonNullable } from '@force-bridge/x';
 import { privateKeyToCkbAddress } from '@force-bridge/x/dist/utils';
-import { Amount } from '@lay2/pw-core';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import commander from 'commander';
-import { ethers } from 'ethers';
+import { BigNumber, ethers } from 'ethers';
+import { parseUnits, formatUnits } from 'ethers/lib/utils';
 import { waitUnlockCompleted } from './utils';
 
 const ForceBridgeRpc = 'http://47.56.233.149:3083/force-bridge/api/v1';
@@ -82,7 +82,7 @@ async function doLock(opts: Record<string, string | boolean>) {
     asset: {
       network: 'Ethereum',
       ident: assetInfo.ident,
-      amount: new Amount(amount, assetInfo.info.decimals).toString(0),
+      amount: parseUnits(amount, assetInfo.info.decimals).toString(),
     },
   };
   const lockTx = nonNullable(
@@ -139,7 +139,7 @@ async function doUnlock(opts: Record<string, string | boolean>) {
     sender: ckbAddress,
     recipient: recipientAddress,
     asset: assetInfo.info.shadow.ident,
-    amount: new Amount(amount, assetInfo.info.decimals).toString(0),
+    amount: parseUnits(amount, assetInfo.info.decimals).toString(),
   };
 
   const unlockTx = await new ForceBridgeAPIV1Client(forceBridgeRpc).generateBridgeOutNervosTransaction(burnPayload);
@@ -178,7 +178,7 @@ async function doBalanceOf(opts: Record<string, string>) {
   ]);
   balances.forEach((balance) => {
     console.log(
-      `Address:${address} balance:${new Amount(balance.amount, 0).toString(assetInfo.info.decimals)} ${
+      `Address:${address} balance:${formatUnits(BigNumber.from(balance.amount), assetInfo.info.decimals)} ${
         assetInfo.info.symbol
       }`,
     );

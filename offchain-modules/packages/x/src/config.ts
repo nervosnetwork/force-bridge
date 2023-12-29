@@ -1,4 +1,4 @@
-import { DepType, HashType, Script } from '@ckb-lumos/base';
+import { DepType, HashType, Script } from '@ckb-lumos/lumos';
 
 export type forceBridgeRole = 'watcher' | 'collector' | 'verifier';
 

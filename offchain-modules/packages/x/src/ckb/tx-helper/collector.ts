@@ -1,6 +1,8 @@
 import { Script, utils, Cell } from '@ckb-lumos/base';
+import { SearchKey, ScriptType } from '@ckb-lumos/ckb-indexer/src/type';
+import { Indexer as CkbIndexer } from '@ckb-lumos/lumos';
 import { logger } from '../../utils/logger';
-import { CkbIndexer, ScriptType, SearchKey, Terminator } from './indexer';
+import { Terminator } from './indexer';
 
 export abstract class Collector {
   abstract getCellsByLockscriptAndCapacity(lockscript: Script, capacity: bigint): Promise<Cell[]>;
@@ -18,19 +20,19 @@ export class IndexerCollector extends Collector {
       if (accCapacity >= needCapacity) {
         return { stop: true, push: false };
       }
-      if (cell.data.length / 2 - 1 > 0 || cell.cell_output.type) {
+      if (cell.data.length / 2 - 1 > 0 || cell.cellOutput.type) {
         return { stop: false, push: false };
       } else {
-        accCapacity += BigInt(cell.cell_output.capacity);
+        accCapacity += BigInt(cell.cellOutput.capacity);
         return { stop: false, push: true };
       }
     };
     const searchKey = {
       script: lockscript,
-      script_type: ScriptType.lock,
+      scriptType: 'lock' as ScriptType,
     };
     const cells = await this.indexer.getCells(searchKey, terminator);
-    return cells;
+    return cells.objects;
   }
 
   async collectSudtByAmount(searchKey: SearchKey, amount: bigint): Promise<Cell[]> {
@@ -46,38 +48,31 @@ export class IndexerCollector extends Collector {
       }
     };
     const cells = await this.indexer.getCells(searchKey, terminator);
-    return cells;
+    return cells.objects;
   }
 
   async getBalance(lock: Script): Promise<bigint> {
     const searchKey = {
       script: lock,
-      script_type: ScriptType.lock,
+      scriptType: 'lock' as ScriptType,
     };
     const cells = await this.indexer.getCells(searchKey);
-    let balance = 0n;
-    cells.forEach((cell) => {
-      balance += BigInt(cell.cell_output.capacity);
-    });
-    return balance;
+    return cells.objects.reduce((acc, cur) => (acc += BigInt(cur.cellOutput.capacity)), 0n);
   }
 
   async getSUDTBalance(sudtType: Script, userLock: Script): Promise<bigint> {
     const searchKey = {
       script: userLock,
-      script_type: ScriptType.lock,
+      scriptType: 'lock' as ScriptType,
       filter: {
         script: sudtType,
       },
     };
     const cells = await this.indexer.getCells(searchKey);
-    let balance = 0n;
-    cells.forEach((cell) => {
-      logger.debug('cell.data:', cell.data);
-      const amount = utils.readBigUInt128LE(cell.data);
-      balance += amount;
-    });
-    return balance;
+    return cells.objects.reduce((acc, cur) => {
+      logger.debug('cell.data:', cur.data);
+      return (acc += utils.readBigUInt128LE(cur.data));
+    }, 0n);
   }
 
   async getCellsByLockscriptAndCapacityWhenBurn(
@@ -91,22 +86,22 @@ export class IndexerCollector extends Collector {
       if (accCapacity >= needCapacity) {
         return { stop: true, push: false };
       }
-      if (cell.cell_output.type && cell.cell_output.type.code_hash === recipientTypeCodeHash) {
-        accCapacity += BigInt(cell.cell_output.capacity);
+      if (cell.cellOutput.type && cell.cellOutput.type.codeHash === recipientTypeCodeHash) {
+        accCapacity += BigInt(cell.cellOutput.capacity);
         return { stop: false, push: true };
       }
-      if (cell.data.length / 2 - 1 > 0 || cell.cell_output.type !== undefined) {
+      if (cell.data.length / 2 - 1 > 0 || cell.cellOutput.type !== undefined) {
         return { stop: false, push: false };
       } else {
-        accCapacity += BigInt(cell.cell_output.capacity);
+        accCapacity += BigInt(cell.cellOutput.capacity);
         return { stop: false, push: true };
       }
     };
     const searchKey = {
       script: lockscript,
-      script_type: ScriptType.lock,
+      scriptType: 'lock' as ScriptType,
     };
     const cells = await this.indexer.getCells(searchKey, terminator);
-    return cells;
+    return cells.objects;
   }
 }

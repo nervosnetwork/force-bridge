@@ -138,13 +138,13 @@ function addressToSudtArgs(address: string, network: Network): string {
       throw new Error(`unknown network: ${network}`);
   }
   const ownerCellTypeHash = utils.computeScriptHash({
-    code_hash: '0x00000000000000000000000000000000000000000000000000545950455f4944',
-    hash_type: 'type',
+    codeHash: '0x00000000000000000000000000000000000000000000000000545950455f4944',
+    hashType: 'type',
     args,
   });
   const bridgeLockscript = {
-    code_hash: '0x93bc7a915d3d8f8b9678bc6c7a1751738c99ce6e66bba4dfab56672f6d691789',
-    hash_type: 'type' as 'type' | 'data',
+    codeHash: '0x93bc7a915d3d8f8b9678bc6c7a1751738c99ce6e66bba4dfab56672f6d691789',
+    hashType: 'type' as 'type' | 'data',
     args: new EthAsset(address, ownerCellTypeHash).toBridgeLockscriptArgs(),
   };
   const sudtArgs = utils.computeScriptHash(bridgeLockscript);
@@ -153,8 +153,8 @@ function addressToSudtArgs(address: string, network: Network): string {
 
 function computeSudtTypeHash(sudtArgs: string): string {
   const sudtTypeHash = utils.computeScriptHash({
-    code_hash: '0x5e7a36a77e68eecc013dfa2fe6a23f3b6c344b04005808694ae6dd45eea4cfd5',
-    hash_type: 'type',
+    codeHash: '0x5e7a36a77e68eecc013dfa2fe6a23f3b6c344b04005808694ae6dd45eea4cfd5',
+    hashType: 'type',
     args: sudtArgs,
   });
   return sudtTypeHash;

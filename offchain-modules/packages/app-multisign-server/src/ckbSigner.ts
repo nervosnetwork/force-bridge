@@ -1,13 +1,7 @@
-import { Cell } from '@ckb-lumos/base';
-import { common } from '@ckb-lumos/common-scripts';
+import { Cell, utils } from '@ckb-lumos/base';
 import { key } from '@ckb-lumos/hd';
-import {
-  parseAddress,
-  objectToTransactionSkeleton,
-  TransactionSkeleton,
-  TransactionSkeletonType,
-  TransactionSkeletonObject,
-} from '@ckb-lumos/helpers';
+import { parseAddress, TransactionSkeletonObject } from '@ckb-lumos/helpers';
+import { commons, helpers } from '@ckb-lumos/lumos';
 import { BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
@@ -35,10 +29,10 @@ async function verifyCreateCellTx(rawData: string, payload: ckbCollectSignatures
   const ownerTypeHash = getOwnerTypeHash();
   const bridgeCells: Cell[] = [];
   txSkeleton.outputs.forEach((output) => {
-    if (!output.cell_output.lock) {
+    if (!output.cellOutput.lock) {
       return;
     }
-    if (output.cell_output.lock.code_hash === ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash) {
+    if (output.cellOutput.lock.codeHash === ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash) {
       bridgeCells.push(output);
     }
   });
@@ -69,7 +63,7 @@ async function verifyCreateCellTx(rawData: string, payload: ckbCollectSignatures
     }
 
     const output = bridgeCells[i];
-    const lockScript = output.cell_output.lock;
+    const lockScript = output.cellOutput.lock;
     if (output.data !== '0x') {
       return new SigError(
         SigErrorCode.InvalidRecord,
@@ -86,10 +80,10 @@ async function verifyCreateCellTx(rawData: string, payload: ckbCollectSignatures
         }`,
       );
     }
-    if (lockScript.hash_type !== ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType) {
+    if (lockScript.hashType !== ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType) {
       return new SigError(
         SigErrorCode.InvalidRecord,
-        `create bridge cell lockScript hash_type:${lockScript.hash_type} doesn't match with ${ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType}, asset chain:${createAsset.chain} address:${createAsset.asset}`,
+        `create bridge cell lockScript hashType:${lockScript.hashType} doesn't match with ${ForceBridgeCore.config.ckb.deps.bridgeLock.script.hashType}, asset chain:${createAsset.chain} address:${createAsset.asset}`,
       );
     }
   }
@@ -129,10 +123,10 @@ async function verifyMintTx(pubKey: string, rawData: string, payload: ckbCollect
 
   const mintCells: Cell[] = [];
   txSkeleton.outputs.forEach((output) => {
-    if (!output.cell_output.type) {
+    if (!output.cellOutput.type) {
       return;
     }
-    if (output.cell_output.type.code_hash === ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash) {
+    if (output.cellOutput.type.codeHash === ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash) {
       mintCells.push(output);
     }
   });
@@ -228,17 +222,17 @@ async function verifyEthMintTx(mintRecord: mintRecord, output: Cell): Promise<Si
     args: asset.toBridgeLockscriptArgs(),
   };
 
-  const lockScript = output.cell_output.lock;
-  if (lockScript.code_hash !== recipientLockscript.code_hash) {
+  const lockScript = output.cellOutput.lock;
+  if (lockScript.codeHash !== recipientLockscript.codeHash) {
     return new SigError(
       SigErrorCode.InvalidRecord,
-      `lockScript code_hash:${lockScript.code_hash} doesn't match with:${recipientLockscript.code_hash}`,
+      `lockScript codeHash:${lockScript.codeHash} doesn't match with:${recipientLockscript.codeHash}`,
     );
   }
-  if (lockScript.hash_type !== recipientLockscript.hash_type) {
+  if (lockScript.hashType !== recipientLockscript.hashType) {
     return new SigError(
       SigErrorCode.InvalidRecord,
-      `lockScript hash_type:${lockScript.hash_type} doesn't match with:${recipientLockscript.hash_type}`,
+      `lockScript hashType:${lockScript.hashType} doesn't match with:${recipientLockscript.hashType}`,
     );
   }
   if (lockScript.args !== recipientLockscript.args) {
@@ -248,20 +242,20 @@ async function verifyEthMintTx(mintRecord: mintRecord, output: Cell): Promise<Si
     );
   }
 
-  const typeScript = nonNullable(output.cell_output.type);
-  if (typeScript.code_hash !== ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash) {
+  const typeScript = nonNullable(output.cellOutput.type);
+  if (typeScript.codeHash !== ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash) {
     return new SigError(
       SigErrorCode.InvalidRecord,
-      `typescript code_hash:${typeScript.code_hash} doesn't match with:${ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash}`,
+      `typescript codeHash:${typeScript.codeHash} doesn't match with:${ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash}`,
     );
   }
-  if (typeScript.hash_type !== ForceBridgeCore.config.ckb.deps.sudtType.script.hashType) {
+  if (typeScript.hashType !== ForceBridgeCore.config.ckb.deps.sudtType.script.hashType) {
     return new SigError(
       SigErrorCode.InvalidRecord,
-      `typescript hash_type:${typeScript.hash_type} doesn't match with:${ForceBridgeCore.config.ckb.deps.sudtType.script.hashType}`,
+      `typescript hashType:${typeScript.hashType} doesn't match with:${ForceBridgeCore.config.ckb.deps.sudtType.script.hashType}`,
     );
   }
-  const sudtArgs = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
+  const sudtArgs = utils.computeScriptHash(bridgeCellLockscript);
   if (sudtArgs !== typeScript.args) {
     return new SigError(SigErrorCode.InvalidRecord, `typescript args:${typeScript.args} doesn't with ${sudtArgs}`);
   }
@@ -273,8 +267,8 @@ async function verifyEthMintTx(mintRecord: mintRecord, output: Cell): Promise<Si
   return SigErrorOk;
 }
 
-function verifyTxSkeleton(txSkeleton: TransactionSkeletonType): SigError {
-  let newTxSkeleton = TransactionSkeleton({
+function verifyTxSkeleton(txSkeleton: helpers.TransactionSkeletonType): SigError {
+  let newTxSkeleton = helpers.TransactionSkeleton({
     cellProvider: txSkeleton.get('cellProvider'),
     cellDeps: txSkeleton.get('cellDeps'),
     headerDeps: txSkeleton.get('headerDeps'),
@@ -284,7 +278,7 @@ function verifyTxSkeleton(txSkeleton: TransactionSkeletonType): SigError {
     fixedEntries: txSkeleton.get('fixedEntries'),
     inputSinces: txSkeleton.get('inputSinces'),
   });
-  newTxSkeleton = common.prepareSigningEntries(newTxSkeleton);
+  newTxSkeleton = commons.common.prepareSigningEntries(newTxSkeleton);
   const newSigningEntries = newTxSkeleton.get('signingEntries');
 
   if (newSigningEntries.size !== txSkeleton.get('signingEntries').size) {
@@ -335,7 +329,7 @@ export async function signCkbTx(params: collectSignaturesParams): Promise<SigRes
 
   const pubKey = ForceBridgeCore.ckb.utils.privateKeyToPublicKey(privKey);
   const payload = params.payload as ckbCollectSignaturesPayload;
-  const txSkeleton = objectToTransactionSkeleton(payload.txSkeleton);
+  const txSkeleton = helpers.objectToTransactionSkeleton(payload.txSkeleton);
   let err: SigError = verifyTxSkeleton(txSkeleton);
   if (err.Code !== SigErrorCode.Ok) {
     return new SigResponse(err);
@@ -377,7 +371,7 @@ export async function signCkbTx(params: collectSignaturesParams): Promise<SigRes
           rawData: params.rawData,
           inputOutPoints: txSkeleton.inputs
             .map((cell) => {
-              return cell.out_point!.tx_hash + ':' + cell.out_point!.index;
+              return cell.outPoint!.txHash + ':' + cell.outPoint!.index;
             })
             .join(';'),
           signature: sig,

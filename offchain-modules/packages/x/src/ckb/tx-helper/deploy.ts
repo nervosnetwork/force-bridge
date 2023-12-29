@@ -1,8 +1,10 @@
 import { Cell, HashType, OutPoint, Script } from '@ckb-lumos/base';
-import { common } from '@ckb-lumos/common-scripts';
+import { utils as lumosUtils } from '@ckb-lumos/base';
+import { ScriptType } from '@ckb-lumos/ckb-indexer/src/type';
+import { common, deploy } from '@ckb-lumos/common-scripts';
 import { key } from '@ckb-lumos/hd';
 import {
-  generateSecp256k1Blake160Address,
+  encodeToConfigAddress,
   minimalCellCapacity,
   parseAddress,
   sealTransaction,
@@ -12,12 +14,10 @@ import {
 import * as utils from '@nervosnetwork/ckb-sdk-utils';
 import { ConfigItem, MultisigItem } from '../../config';
 import { asserts, nonNullable } from '../../errors';
-import { blake2b, transactionSkeletonToJSON } from '../../utils';
+import { transactionSkeletonToJSON } from '../../utils';
 import { logger } from '../../utils/logger';
 import { CkbTxHelper } from './base_generator';
-import { ScriptType } from './indexer';
 import { getMultisigLock } from './multisig/multisig_helper';
-import { generateTypeIDScript } from './multisig/typeid';
 
 export interface ContractsBin {
   bridgeLockscript: Buffer;
@@ -49,7 +49,7 @@ export class CkbDeployManager extends CkbTxHelper {
     let txSkeleton = TransactionSkeleton({ cellProvider: this.indexer });
     logger.debug(`txSkeleton: ${transactionSkeletonToJSON(txSkeleton)}`);
     // get from cells
-    const fromAddress = generateSecp256k1Blake160Address(key.privateKeyToBlake160(privateKey));
+    const fromAddress = encodeToConfigAddress(key.privateKeyToBlake160(privateKey), 'SECP256K1_BLAKE160');
     const fromLockscript = parseAddress(fromAddress);
     const fromCells = await this.getFromCells(fromLockscript);
     if (fromCells.length === 0) {
@@ -63,17 +63,17 @@ export class CkbDeployManager extends CkbTxHelper {
     });
     // add output
     const firstInput = {
-      previous_output: firstInputCell.out_point,
+      previousOutput: firstInputCell.outPoint!,
       since: '0x0',
     };
-    const outputType = generateTypeIDScript(firstInput, `0x0`);
+    const outputType = lumosUtils.generateTypeIdScript(firstInput, `0x0`);
     const codeHash = utils.scriptToHash(<CKBComponents.Script>{
-      codeHash: outputType.code_hash,
-      hashType: outputType.hash_type,
+      codeHash: outputType.codeHash,
+      hashType: outputType.hashType,
       args: outputType.args,
     });
     const scriptOutput: Cell = {
-      cell_output: {
+      cellOutput: {
         capacity: '0x0',
         lock: fromLockscript,
         type: outputType,
@@ -81,7 +81,7 @@ export class CkbDeployManager extends CkbTxHelper {
       data: utils.bytesToHex(contract),
     };
     const scriptCapacity = minimalCellCapacity(scriptOutput);
-    scriptOutput.cell_output.capacity = `0x${scriptCapacity.toString(16)}`;
+    scriptOutput.cellOutput.capacity = `0x${scriptCapacity.toString(16)}`;
 
     txSkeleton = txSkeleton.update('outputs', (outputs) => {
       return outputs.push(scriptOutput);
@@ -108,7 +108,7 @@ export class CkbDeployManager extends CkbTxHelper {
     let txSkeleton = TransactionSkeleton({ cellProvider: this.indexer });
     logger.debug(`txSkeleton: ${transactionSkeletonToJSON(txSkeleton)}`);
     // get from cells
-    const fromAddress = generateSecp256k1Blake160Address(key.privateKeyToBlake160(privateKey));
+    const fromAddress = encodeToConfigAddress(key.privateKeyToBlake160(privateKey), 'SECP256K1_BLAKE160');
     const fromLockscript = parseAddress(fromAddress);
     const fromCells = await this.getFromCells(fromLockscript);
     if (fromCells.length === 0) {
@@ -122,17 +122,17 @@ export class CkbDeployManager extends CkbTxHelper {
     });
     // add output
     const firstInput = {
-      previous_output: firstInputCell.out_point,
+      previousOutput: firstInputCell.outPoint!,
       since: '0x0',
     };
-    const bridgeLockscriptOutputType = generateTypeIDScript(firstInput, `0x0`);
+    const bridgeLockscriptOutputType = lumosUtils.generateTypeIdScript(firstInput, `0x0`);
     const bridgeLockscriptCodeHash = utils.scriptToHash(<CKBComponents.Script>{
-      codeHash: bridgeLockscriptOutputType.code_hash,
-      hashType: bridgeLockscriptOutputType.hash_type,
+      codeHash: bridgeLockscriptOutputType.codeHash,
+      hashType: bridgeLockscriptOutputType.hashType,
       args: bridgeLockscriptOutputType.args,
     });
     const bridgeLockscriptOutput: Cell = {
-      cell_output: {
+      cellOutput: {
         capacity: '0x0',
         lock: fromLockscript,
         type: bridgeLockscriptOutputType,
@@ -140,16 +140,16 @@ export class CkbDeployManager extends CkbTxHelper {
       data: utils.bytesToHex(contracts.bridgeLockscript),
     };
     const bridgeLockscriptCapacity = minimalCellCapacity(bridgeLockscriptOutput);
-    bridgeLockscriptOutput.cell_output.capacity = `0x${bridgeLockscriptCapacity.toString(16)}`;
+    bridgeLockscriptOutput.cellOutput.capacity = `0x${bridgeLockscriptCapacity.toString(16)}`;
 
-    const recipientTypescriptOutputType = generateTypeIDScript(firstInput, `0x1`);
+    const recipientTypescriptOutputType = lumosUtils.generateTypeIdScript(firstInput, `0x1`);
     const recipientTypescriptCodeHash = utils.scriptToHash(<CKBComponents.Script>{
-      codeHash: recipientTypescriptOutputType.code_hash,
-      hashType: recipientTypescriptOutputType.hash_type,
+      codeHash: recipientTypescriptOutputType.codeHash,
+      hashType: recipientTypescriptOutputType.hashType,
       args: recipientTypescriptOutputType.args,
     });
     const recipientTypescriptOutput: Cell = {
-      cell_output: {
+      cellOutput: {
         capacity: '0x0',
         lock: fromLockscript,
         type: recipientTypescriptOutputType,
@@ -157,7 +157,7 @@ export class CkbDeployManager extends CkbTxHelper {
       data: utils.bytesToHex(contracts.recipientTypescript),
     };
     const recipientTypescriptCapacity = minimalCellCapacity(recipientTypescriptOutput);
-    recipientTypescriptOutput.cell_output.capacity = `0x${recipientTypescriptCapacity.toString(16)}`;
+    recipientTypescriptOutput.cellOutput.capacity = `0x${recipientTypescriptCapacity.toString(16)}`;
     txSkeleton = txSkeleton.update('outputs', (outputs) => {
       return outputs.push(bridgeLockscriptOutput).push(recipientTypescriptOutput);
     });
@@ -196,37 +196,44 @@ export class CkbDeployManager extends CkbTxHelper {
   // should only be called in dev net
   async deploySudt(sudtBin: Buffer, privateKey: string): Promise<ConfigItem> {
     await this.indexer.waitForSync();
-    let txSkeleton = TransactionSkeleton({ cellProvider: this.indexer });
-    // get from cells
-    const fromAddress = generateSecp256k1Blake160Address(key.privateKeyToBlake160(privateKey));
-    const fromLockscript = parseAddress(fromAddress);
-    // add output
-    const sudtOutput: Cell = {
-      cell_output: {
-        capacity: '0x0',
-        lock: fromLockscript,
-      },
-      data: utils.bytesToHex(sudtBin),
-    };
-    const sudtCellCapacity = minimalCellCapacity(sudtOutput);
-    sudtOutput.cell_output.capacity = `0x${sudtCellCapacity.toString(16)}`;
-    txSkeleton = txSkeleton.update('outputs', (outputs) => {
-      return outputs.push(sudtOutput);
+    const fromAddress = encodeToConfigAddress(key.privateKeyToBlake160(privateKey), 'SECP256K1_BLAKE160');
+    const res = await deploy.generateDeployWithDataTx({
+      cellProvider: this.indexer,
+      scriptBinary: sudtBin,
+      fromInfo: fromAddress,
     });
-    txSkeleton = await this.completeTx(txSkeleton, fromAddress);
-    const hash = await this.SignAndSendTransaction(txSkeleton, privateKey);
-    const sudtCodeHash = utils.bytesToHex(blake2b(sudtBin));
+    await this.SignAndSendTransaction(res.txSkeleton, privateKey);
+    // let txSkeleton = TransactionSkeleton({ cellProvider: this.indexer });
+    // // get from cells
+    // const fromAddress = encodeToConfigAddress(key.privateKeyToBlake160(privateKey), 'SECP256K1_BLAKE160');
+    // const fromLockscript = parseAddress(fromAddress);
+    // // add output
+    // const sudtOutput: Cell = {
+    //   cellOutput: {
+    //     capacity: '0x0',
+    //     lock: fromLockscript,
+    //   },
+    //   data: utils.bytesToHex(sudtBin),
+    // };
+    // const sudtCellCapacity = minimalCellCapacity(sudtOutput);
+    // sudtOutput.cellOutput.capacity = `0x${sudtCellCapacity.toString(16)}`;
+    // txSkeleton = txSkeleton.update('outputs', (outputs) => {
+    //   return outputs.push(sudtOutput);
+    // });
+    // txSkeleton = await this.completeTx(txSkeleton, fromAddress);
+    // const hash = await this.SignAndSendTransaction(txSkeleton, privateKey);
+    // const sudtCodeHash = utils.bytesToHex(blake2b(sudtBin));
     return {
       cellDep: {
-        depType: 'code',
+        depType: res.scriptConfig.DEP_TYPE,
         outPoint: {
-          txHash: hash,
-          index: '0x0',
+          txHash: res.scriptConfig.TX_HASH,
+          index: res.scriptConfig.INDEX,
         },
       },
       script: {
-        codeHash: sudtCodeHash,
-        hashType: 'data',
+        codeHash: res.scriptConfig.CODE_HASH,
+        hashType: res.scriptConfig.HASH_TYPE,
       },
     };
   }
@@ -234,37 +241,44 @@ export class CkbDeployManager extends CkbTxHelper {
   // should only be called in dev net
   async deployContract(contractBin: Buffer, privateKey: string): Promise<ConfigItem> {
     await this.indexer.waitForSync();
-    let txSkeleton = TransactionSkeleton({ cellProvider: this.indexer });
-    // get from cells
-    const fromAddress = generateSecp256k1Blake160Address(key.privateKeyToBlake160(privateKey));
-    const fromLockscript = parseAddress(fromAddress);
-    // add output
-    const contractOutput: Cell = {
-      cell_output: {
-        capacity: '0x0',
-        lock: fromLockscript,
-      },
-      data: utils.bytesToHex(contractBin),
-    };
-    const contractCellCapacity = minimalCellCapacity(contractOutput);
-    contractOutput.cell_output.capacity = `0x${contractCellCapacity.toString(16)}`;
-    txSkeleton = txSkeleton.update('outputs', (outputs) => {
-      return outputs.push(contractOutput);
+    const fromAddress = encodeToConfigAddress(key.privateKeyToBlake160(privateKey), 'SECP256K1_BLAKE160');
+    const res = await deploy.generateDeployWithDataTx({
+      cellProvider: this.indexer,
+      scriptBinary: contractBin,
+      fromInfo: fromAddress,
     });
-    txSkeleton = await this.completeTx(txSkeleton, fromAddress);
-    const hash = await this.SignAndSendTransaction(txSkeleton, privateKey);
-    const contractCodeHash = utils.bytesToHex(blake2b(contractBin));
+    await this.SignAndSendTransaction(res.txSkeleton, privateKey);
+    // let txSkeleton = TransactionSkeleton({ cellProvider: this.indexer });
+    // // get from cells
+    // const fromAddress = encodeToConfigAddress(key.privateKeyToBlake160(privateKey), 'SECP256K1_BLAKE160');
+    // const fromLockscript = parseAddress(fromAddress);
+    // // add output
+    // const contractOutput: Cell = {
+    //   cellOutput: {
+    //     capacity: '0x0',
+    //     lock: fromLockscript,
+    //   },
+    //   data: utils.bytesToHex(contractBin),
+    // };
+    // const contractCellCapacity = minimalCellCapacity(contractOutput);
+    // contractOutput.cellOutput.capacity = `0x${contractCellCapacity.toString(16)}`;
+    // txSkeleton = txSkeleton.update('outputs', (outputs) => {
+    //   return outputs.push(contractOutput);
+    // });
+    // txSkeleton = await this.completeTx(txSkeleton, fromAddress);
+    // const hash = await this.SignAndSendTransaction(txSkeleton, privateKey);
+    // const contractCodeHash = utils.bytesToHex(blake2b(contractBin));
     return {
       cellDep: {
-        depType: 'code',
+        depType: res.scriptConfig.DEP_TYPE,
         outPoint: {
-          txHash: hash,
-          index: '0x0',
+          txHash: res.scriptConfig.TX_HASH,
+          index: res.scriptConfig.INDEX,
         },
       },
       script: {
-        codeHash: contractCodeHash,
-        hashType: 'data',
+        codeHash: res.scriptConfig.CODE_HASH,
+        hashType: res.scriptConfig.HASH_TYPE,
       },
     };
   }
@@ -274,7 +288,7 @@ export class CkbDeployManager extends CkbTxHelper {
     const message = txSkeleton.get('signingEntries').get(0)!.message;
     const Sig = key.signRecoverable(message!, privateKey);
     const tx = sealTransaction(txSkeleton, [Sig]);
-    const hash = await this.ckb.send_transaction(tx, 'passthrough');
+    const hash = await this.ckb.sendTransaction(tx, 'passthrough');
     await this.waitUntilCommitted(hash);
     return hash;
   }
@@ -286,7 +300,7 @@ export class CkbDeployManager extends CkbTxHelper {
   ): Promise<OwnerCellConfig> {
     await this.indexer.waitForSync();
     const multisigLockscript = getMultisigLock(multisigItem);
-    const fromAddress = generateSecp256k1Blake160Address(key.privateKeyToBlake160(privateKey));
+    const fromAddress = encodeToConfigAddress(key.privateKeyToBlake160(privateKey), 'SECP256K1_BLAKE160');
     const fromLockscript = parseAddress(fromAddress);
     let txSkeleton = TransactionSkeleton({ cellProvider: this.indexer });
     const fromCells = await this.getFromCells(fromLockscript);
@@ -301,28 +315,28 @@ export class CkbDeployManager extends CkbTxHelper {
     });
     // add owner cell
     const firstInput = {
-      previous_output: firstInputCell.out_point,
+      previousOutput: firstInputCell.outPoint!,
       since: '0x0',
     };
-    const ownerCellTypescript = generateTypeIDScript(firstInput, `0x0`);
+    const ownerCellTypescript = lumosUtils.generateTypeIdScript(firstInput, `0x0`);
     const ownerCell: Cell = {
-      cell_output: {
+      cellOutput: {
         capacity: '0x0',
         lock: multisigLockscript,
         type: ownerCellTypescript,
       },
       data: '0x',
     };
-    ownerCell.cell_output.capacity = `0x${minimalCellCapacity(ownerCell).toString(16)}`;
+    ownerCell.cellOutput.capacity = `0x${minimalCellCapacity(ownerCell).toString(16)}`;
     // create an empty cell for the multi sig
     const multiCell: Cell = {
-      cell_output: {
+      cellOutput: {
         capacity: '0x0',
         lock: multisigLockscript,
       },
       data: multiCellXchainType,
     };
-    multiCell.cell_output.capacity = `0x${minimalCellCapacity(multiCell).toString(16)}`;
+    multiCell.cellOutput.capacity = `0x${minimalCellCapacity(multiCell).toString(16)}`;
     txSkeleton = txSkeleton.update('outputs', (outputs) => {
       return outputs.push(ownerCell).push(multiCell);
     });
@@ -338,28 +352,28 @@ export class CkbDeployManager extends CkbTxHelper {
     await this.indexer.waitForSync();
     let txSkeleton = TransactionSkeleton({ cellProvider: this.indexer });
     // get from cells
-    const fromAddress = generateSecp256k1Blake160Address(key.privateKeyToBlake160(privateKey));
+    const fromAddress = encodeToConfigAddress(key.privateKeyToBlake160(privateKey), 'SECP256K1_BLAKE160');
     const fromLockscript = parseAddress(fromAddress);
     const typeidCodeHash = '0x00000000000000000000000000000000000000000000000000545950455f4944';
     for (const u of upgrade) {
       // get input
       const typeidScript = {
-        code_hash: typeidCodeHash,
-        hash_type: 'type' as HashType,
+        codeHash: typeidCodeHash,
+        hashType: 'type' as HashType,
         args: u.typeidArgs,
       };
       const searchKey = {
         script: typeidScript,
-        script_type: ScriptType.type,
+        scriptType: 'lock' as ScriptType,
       };
       const typeidInputs = await this.indexer.getCells(searchKey);
-      asserts(typeidInputs.length === 1);
+      asserts(typeidInputs.objects.length === 1);
       txSkeleton = txSkeleton.update('inputs', (inputs) => {
-        return inputs.concat(typeidInputs);
+        return inputs.concat(typeidInputs.objects);
       });
       // add output
       const NewContractOutput: Cell = {
-        cell_output: {
+        cellOutput: {
           capacity: '0x0',
           lock: fromLockscript,
           type: typeidScript,
@@ -367,7 +381,7 @@ export class CkbDeployManager extends CkbTxHelper {
         data: utils.bytesToHex(u.bin),
       };
       const sudtCellCapacity = minimalCellCapacity(NewContractOutput);
-      NewContractOutput.cell_output.capacity = `0x${sudtCellCapacity.toString(16)}`;
+      NewContractOutput.cellOutput.capacity = `0x${sudtCellCapacity.toString(16)}`;
       txSkeleton = txSkeleton.update('outputs', (outputs) => {
         return outputs.push(NewContractOutput);
       });
@@ -376,7 +390,7 @@ export class CkbDeployManager extends CkbTxHelper {
     const hash = await this.SignAndSendTransaction(txSkeleton, privateKey);
     const outpoints = upgrade.map((_u, i) => {
       return {
-        tx_hash: hash,
+        txHash: hash,
         index: '0x' + i.toString(16),
       };
     });
