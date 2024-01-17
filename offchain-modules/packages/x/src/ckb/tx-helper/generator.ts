@@ -363,8 +363,8 @@ export class CkbTxGenerator extends CkbTxHelper {
       chain: asset.chainType,
       asset: fromHexString(toHexString(stringToUint8Array(asset.getAddress()))).buffer,
       amount: fromHexString(utils.toBigUInt128LE(amount)).buffer,
-      bridge_lock_codeHash: fromHexString(ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash).buffer,
-      bridge_lock_hashType: hashType,
+      bridge_lock_code_hash: fromHexString(ForceBridgeCore.config.ckb.deps.bridgeLock.script.codeHash).buffer,
+      bridge_lock_hash_type: hashType,
       owner_cell_type_hash: fromHexString(ownerCellTypeHash).buffer,
     };
 

@@ -1,6 +1,7 @@
 import { utils } from '@ckb-lumos/base';
 import { WitnessArgs } from '@ckb-lumos/base/lib/blockchain';
 import { IndexerTransaction, ScriptType, SearchKey } from '@ckb-lumos/ckb-indexer/src/type';
+import { bytify } from '@ckb-lumos/codec/lib/bytes';
 import { serializeMultisigScript } from '@ckb-lumos/common-scripts/lib/secp256k1_blake160_multisig';
 import { key } from '@ckb-lumos/hd';
 import { encodeToAddress, sealTransaction, TransactionSkeletonType } from '@ckb-lumos/helpers';
@@ -422,7 +423,7 @@ export class CkbHandler {
     if (0 === mintedSudtCellIndexes.length) return null;
 
     const witnessArgs = WitnessArgs.unpack(tx.witnesses[0]);
-    const inputTypeWitness = witnessArgs.inputType;
+    const inputTypeWitness = bytify(witnessArgs.inputType ?? '').buffer;
     const mintWitness = new MintWitness(inputTypeWitness, { validate: true });
     const lockTxHashes = mintWitness.getLockTxHashes();
     const parsedResult: MintedRecord[] = [];
