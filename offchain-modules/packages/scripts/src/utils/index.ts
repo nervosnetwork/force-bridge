@@ -1,7 +1,8 @@
 import path from 'path';
+import { RPC } from '@ckb-lumos/lumos';
+import { CKBComponents } from '@ckb-lumos/rpc/lib/types/api';
 import { asyncSleep } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
-import CKB from '@nervosnetwork/ckb-sdk-core';
 import * as shelljs from 'shelljs';
 
 export const PATH_PROJECT_ROOT = path.join(__dirname, '../../../../..');
@@ -63,13 +64,13 @@ export async function waitFnCompleted(timeout: number, fn: waitFn, sleepTime = 1
 }
 
 export async function waitUntilCommitted(
-  ckb: CKB,
+  rpc: RPC,
   txHash: string,
   timeout: number,
 ): Promise<CKBComponents.TransactionWithStatus> {
   let waitTime = 0;
   while (true) {
-    const txStatus = await ckb.rpc.getTransaction(txHash);
+    const txStatus = await rpc.getTransaction(txHash);
     if (txStatus != undefined) {
       logger.debug(`tx ${txHash} status: ${txStatus.txStatus.status}, index: ${waitTime}`);
       if (txStatus.txStatus.status === 'committed') {

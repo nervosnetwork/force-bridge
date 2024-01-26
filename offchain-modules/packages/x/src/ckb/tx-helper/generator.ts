@@ -1,4 +1,4 @@
-import { Cell, Script, Indexer, utils, WitnessArgs as IWitnessArgs } from '@ckb-lumos/base';
+import { Cell, Script, utils, WitnessArgs as IWitnessArgs } from '@ckb-lumos/base';
 import { WitnessArgs, RawTransaction } from '@ckb-lumos/base/lib/blockchain';
 import { ScriptType } from '@ckb-lumos/ckb-indexer/src/type';
 import { bytes } from '@ckb-lumos/codec';
@@ -13,7 +13,7 @@ import {
 import { Reader } from 'ckb-js-toolkit';
 import * as lodash from 'lodash';
 import { ForceBridgeCore } from '../../core';
-import { asserts, nonNullable } from '../../errors';
+import { asserts } from '../../errors';
 import { asyncSleep, fromHexString, stringToUint8Array, toHexString, transactionSkeletonToJSON } from '../../utils';
 import { logger } from '../../utils/logger';
 import { Asset } from '../model/asset';
@@ -140,11 +140,16 @@ export class CkbTxGenerator extends CkbTxHelper {
     }
   }
 
-  async mint(records: MintAssetRecord[], indexer: Indexer): Promise<TransactionSkeletonType> {
+  async mint(records: MintAssetRecord[]): Promise<TransactionSkeletonType> {
     for (;;) {
       try {
         const fromAddress = getFromAddr();
-        let txSkeleton = TransactionSkeleton({ cellProvider: indexer });
+        let txSkeleton = TransactionSkeleton({
+          cellProvider: {
+            collector: (queryOptions) =>
+              this.indexer.collector({ ...queryOptions, type: 'empty', data: { data: '0x', searchMode: 'exact' } }),
+          },
+        });
         const multisigCell = await this.fetchMultisigCell();
         if (multisigCell === undefined) {
           logger.error(`CkbHandler mint fetchMultiSigCell failed: cannot found multiSig cell`);
@@ -339,9 +344,13 @@ export class CkbTxGenerator extends CkbTxHelper {
     }
     logger.debug('burn sudtCells: ', sudtCells);
     let txSkeleton = TransactionSkeleton({ cellProvider: this.indexer });
-    txSkeleton = txSkeleton.update('inputs', (inputs) => {
-      return inputs.concat(sudtCells);
-    });
+    for (const cell of sudtCells) {
+      txSkeleton = await common.setupInputCell(txSkeleton, cell);
+    }
+    txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => cellDeps.push(this.sudtDep));
+    // txSkeleton = txSkeleton.update('inputs', (inputs) => {
+    // return inputs.concat(sudtCells);
+    // });
 
     // add recipient output cell
     const ownerCellTypeHash = getOwnerTypeHash();
@@ -402,19 +411,19 @@ export class CkbTxGenerator extends CkbTxHelper {
       });
     }
     // add cell deps
-    txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
-      const secp256k1 = nonNullable(this.lumosConfig.SCRIPTS.SECP256K1_BLAKE160);
-      return cellDeps
-        .push({
-          outPoint: {
-            txHash: secp256k1.TX_HASH,
-            index: secp256k1.INDEX,
-          },
-          depType: secp256k1.DEP_TYPE,
-        })
-        .push(this.sudtDep)
-        .push(this.recipientDep);
-    });
+    // txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
+    //   const secp256k1 = nonNullable(this.lumosConfig.SCRIPTS.SECP256K1_BLAKE160);
+    //   return cellDeps
+    //     .push({
+    //       outPoint: {
+    //         txHash: secp256k1.TX_HASH,
+    //         index: secp256k1.INDEX,
+    //       },
+    //       depType: secp256k1.DEP_TYPE,
+    //     })
+    //     .push(this.sudtDep)
+    //     .push(this.recipientDep);
+    // });
 
     // add change output
     const changeOutput: Cell = {
@@ -462,15 +471,15 @@ export class CkbTxGenerator extends CkbTxHelper {
       fromLockscript.codeHash === omniLockConfig.script.codeHash &&
       fromLockscript.hashType === omniLockConfig.script.hashType
     ) {
-      txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
-        return cellDeps.push({
-          outPoint: {
-            txHash: omniLockConfig.cellDep.outPoint.txHash,
-            index: omniLockConfig.cellDep.outPoint.index,
-          },
-          depType: omniLockConfig.cellDep.depType,
-        });
-      });
+      // txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
+      //   return cellDeps.push({
+      //     outPoint: {
+      //       txHash: omniLockConfig.cellDep.outPoint.txHash,
+      //       index: omniLockConfig.cellDep.outPoint.index,
+      //     },
+      //     depType: omniLockConfig.cellDep.depType,
+      //   });
+      // });
 
       const messageToSign = (() => {
         const hasher = new utils.CKBHasher();
@@ -506,7 +515,7 @@ export class CkbTxGenerator extends CkbTxHelper {
       });
     }
 
-    logger.debug(`txSkeleton: ${transactionSkeletonToJSON(txSkeleton)}`);
+    logger.debug(`txSkeleton111111111: ${transactionSkeletonToJSON(txSkeleton)}`);
     logger.debug(`final fee: ${await this.calculateCapacityDiff(txSkeleton)}`);
 
     return txSkeleton;

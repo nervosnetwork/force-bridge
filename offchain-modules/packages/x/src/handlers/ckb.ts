@@ -525,7 +525,7 @@ export class CkbHandler {
     }
 
     logger.info(`mint for records`, records);
-    const txSkeleton = await generator.mint(records, this.ckbIndexer);
+    const txSkeleton = await generator.mint(records);
     logger.debug(`mint tx txSkeleton ${transactionSkeletonToJSON(txSkeleton)}`);
     const sigs = await this.collectMintSignatures(txSkeleton, mintRecords);
     for (;;) {

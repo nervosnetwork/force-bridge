@@ -1,8 +1,8 @@
 // keep sending tx to bridge
+import { RPC } from '@ckb-lumos/lumos';
 import { TransactionResponse } from '@ethersproject/abstract-provider';
 import { asyncSleep, getFromEnv, privateKeyToCkbAddress } from '@force-bridge/x/dist/utils';
 import { initLog, logger } from '@force-bridge/x/dist/utils/logger';
-import CKB from '@nervosnetwork/ckb-sdk-core';
 import * as dotenv from 'dotenv';
 import { ethers, providers, Wallet } from 'ethers';
 import { JSONRPCClient } from 'json-rpc-2.0';
@@ -17,7 +17,7 @@ class TxSender {
   client: JSONRPCClient;
   provider: providers.JsonRpcProvider;
   ethWallet: Wallet;
-  ckb: CKB;
+  rpc: RPC;
   ethAddress: string;
 
   constructor(
@@ -32,7 +32,7 @@ class TxSender {
   ) {
     this.ethAddress = ethers.utils.computeAddress(ethPrivateKey);
     this.ckbAddresses = ckbPrivateKeys.map((k) => privateKeyToCkbAddress(k));
-    this.ckb = new CKB(ckbRpcUrl);
+    this.rpc = new RPC(ckbRpcUrl);
     const client = new JSONRPCClient((jsonRPCRequest) =>
       fetch(forceBridgeUrl, {
         method: 'POST',
@@ -92,7 +92,7 @@ class TxSender {
   ): Promise<string> {
     const ckbAddress = privateKeyToCkbAddress(ckbPrivateKey);
     const burnTx = await generateBurnTx(
-      this.ckb,
+      this.rpc,
       this.client,
       ethTokenAddress,
       ckbPrivateKey,
@@ -100,9 +100,9 @@ class TxSender {
       recipient,
       burnAmount,
     );
-    const burnTxHash = await this.ckb.rpc.sendTransaction(burnTx, 'passthrough');
+    const burnTxHash = await this.rpc.sendTransaction(burnTx!, 'passthrough');
     if (wait) {
-      await waitUntilCommitted(this.ckb, burnTxHash, 120);
+      await waitUntilCommitted(this.rpc, burnTxHash, 120);
     }
     return burnTxHash;
   }
@@ -116,7 +116,7 @@ class TxSender {
   }
 
   async burnSender(): Promise<void> {
-    await prepareCkbAddresses(this.ckb, this.ckbPrivateKeys, this.ckbPrivateKey, this.ckbRpcUrl, this.ckbIndexerUrl);
+    await prepareCkbAddresses(this.rpc, this.ckbPrivateKeys, this.ckbPrivateKey, this.ckbRpcUrl, this.ckbIndexerUrl);
     for (;;) {
       const ethTokenAddress = '0x0000000000000000000000000000000000000000';
       const recipient = this.ethAddress;
@@ -133,7 +133,7 @@ class TxSender {
         }
       }
       logger.info('burn txs', txs);
-      await Promise.all(txs.map((tx) => waitUntilCommitted(this.ckb, tx, 120)));
+      await Promise.all(txs.map((tx) => waitUntilCommitted(this.rpc, tx, 120)));
     }
   }
 
