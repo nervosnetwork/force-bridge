@@ -384,7 +384,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
       const assetFut = this.getAccountBalance(value);
       balanceFutures.push(assetFut);
     }
-    return (await Promise.all(balanceFutures)) as unknown as Promise<GetBalanceResponse>;
+    return ((await Promise.all(balanceFutures)) as unknown) as Promise<GetBalanceResponse>;
   }
 
   async getAccountBalance(value: BalancePayload): Promise<AssetType> {

@@ -308,21 +308,28 @@ async function main() {
       sudtSize: 500,
     },
   };
-  const { assetWhiteList, ckbDeps, ownerConfig, bridgeEthAddress, multisigConfig, ckbStartHeight, ethStartHeight } =
-    await deployDev(
-      ETH_RPC_URL,
-      CKB_RPC_URL,
-      CKB_INDEXER_URL,
-      MULTISIG_NUMBER,
-      MULTISIG_THRESHOLD,
-      ETH_PRIVATE_KEY,
-      CKB_PRIVATE_KEY,
-      'DEV',
-      '0x01',
-      path.join(configPath, 'deployConfig.json'),
-    );
+  const {
+    assetWhiteList,
+    ckbDeps,
+    ownerConfig,
+    bridgeEthAddress,
+    multisigConfig,
+    ckbStartHeight,
+    ethStartHeight,
+  } = await deployDev(
+    ETH_RPC_URL,
+    CKB_RPC_URL,
+    CKB_INDEXER_URL,
+    MULTISIG_NUMBER,
+    MULTISIG_THRESHOLD,
+    ETH_PRIVATE_KEY,
+    CKB_PRIVATE_KEY,
+    'DEV',
+    '0x01',
+    path.join(configPath, 'deployConfig.json'),
+  );
   await generateConfig(
-    initConfig as unknown as Config,
+    (initConfig as unknown) as Config,
     assetWhiteList,
     ckbDeps,
     ownerConfig,

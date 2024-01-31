@@ -8,7 +8,7 @@ test('test Reconciliation', (t) => {
     new Reconciliation(
       [
         {
-          amount: new BigNumber('0x016345785d8a0000') as unknown as string,
+          amount: (new BigNumber('0x016345785d8a0000') as unknown) as string,
           txId: '0xa776aebf68482d52715a0eb5e9fb8136322ef32d569af57ac9dde2c05681a8ec',
         },
       ],

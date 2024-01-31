@@ -30,9 +30,9 @@ export class EthRecordObservable {
   constructor(options: Options) {
     const { provider, contract } = options;
     this.provider = provider;
-    this.contract = (
-      contract instanceof Contract ? contract : new Contract(contract, ForceBridge__factory.createInterface(), provider)
-    ) as ForceBridgeContract;
+    this.contract = (contract instanceof Contract
+      ? contract
+      : new Contract(contract, ForceBridge__factory.createInterface(), provider)) as ForceBridgeContract;
   }
 
   observeLockRecord(logFilter: EventTypeOf<'Locked'>, blockFilter: BlockFilter = {}): Observable<EthLockRecord> {

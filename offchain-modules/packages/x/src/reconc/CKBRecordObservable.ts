@@ -230,59 +230,55 @@ export class CKBRecordObservable {
 
     const { rpc, indexer } = this.provider;
 
-    const indexerTx2FromRecord =
-      () =>
-      (txs$: Observable<IndexerTransactionList>): Observable<CkbBurnRecord> => {
-        return txs$.pipe(
-          mergeMap((txs) => txs.objects.filter((indexerTx) => indexerTx.ioType === 'output')),
-          mergeMap((tx) => rpc.getTransaction(tx.txHash), 20),
-          map((tx) => {
-            const recipientCellData = new RecipientCellData(fromHexString(tx.transaction.outputsData[0]).buffer);
-            return { recipientCellData, txId: tx.transaction.hash };
-          }),
-          rxFilter((tx) => {
-            if (!filter.filterRecipientData(tx.recipientCellData)) {
-              return false;
-            }
-            return true;
-            // const assetAddress = toHexString(new Uint8Array(tx.recipientCellData.getAsset().raw()));
-            // let asset;
-            // const ownerTypeHash = getOwnerTypeHash();
-            // switch (tx.recipientCellData.getChain()) {
-            //   case ChainType.BTC:
-            //     asset = new BtcAsset(uint8ArrayToString(fromHexString(assetAddress)), ownerTypeHash);
-            //     break;
-            //   case ChainType.ETH:
-            //     asset = new EthAsset(uint8ArrayToString(fromHexString(assetAddress)), ownerTypeHash);
-            //     break;
-            //   case ChainType.TRON:
-            //     asset = new TronAsset(uint8ArrayToString(fromHexString(assetAddress)), ownerTypeHash);
-            //     break;
-            //   case ChainType.EOS:
-            //     asset = new EosAsset(uint8ArrayToString(fromHexString(assetAddress)), ownerTypeHash);
-            //     break;
-            //   default:
-            //     return false;
-            // }
-            // return (
-            //   asset.inWhiteList() &&
-            //   utils.readBigUInt128LE(`0x${toHexString(new Uint8Array(tx.recipientCellData.getAmount().raw()))}`) >=
-            //     BigInt(asset.getMinimalAmount())
-            // );
-          }),
+    const indexerTx2FromRecord = () => (txs$: Observable<IndexerTransactionList>): Observable<CkbBurnRecord> => {
+      return txs$.pipe(
+        mergeMap((txs) => txs.objects.filter((indexerTx) => indexerTx.ioType === 'output')),
+        mergeMap((tx) => rpc.getTransaction(tx.txHash), 20),
+        map((tx) => {
+          const recipientCellData = new RecipientCellData(fromHexString(tx.transaction.outputsData[0]).buffer);
+          return { recipientCellData, txId: tx.transaction.hash };
+        }),
+        rxFilter((tx) => {
+          if (!filter.filterRecipientData(tx.recipientCellData)) {
+            return false;
+          }
+          return true;
+          // const assetAddress = toHexString(new Uint8Array(tx.recipientCellData.getAsset().raw()));
+          // let asset;
+          // const ownerTypeHash = getOwnerTypeHash();
+          // switch (tx.recipientCellData.getChain()) {
+          //   case ChainType.BTC:
+          //     asset = new BtcAsset(uint8ArrayToString(fromHexString(assetAddress)), ownerTypeHash);
+          //     break;
+          //   case ChainType.ETH:
+          //     asset = new EthAsset(uint8ArrayToString(fromHexString(assetAddress)), ownerTypeHash);
+          //     break;
+          //   case ChainType.TRON:
+          //     asset = new TronAsset(uint8ArrayToString(fromHexString(assetAddress)), ownerTypeHash);
+          //     break;
+          //   case ChainType.EOS:
+          //     asset = new EosAsset(uint8ArrayToString(fromHexString(assetAddress)), ownerTypeHash);
+          //     break;
+          //   default:
+          //     return false;
+          // }
+          // return (
+          //   asset.inWhiteList() &&
+          //   utils.readBigUInt128LE(`0x${toHexString(new Uint8Array(tx.recipientCellData.getAmount().raw()))}`) >=
+          //     BigInt(asset.getMinimalAmount())
+          // );
+        }),
 
-          map((item) => {
-            const u128leBuf = new Uint8Array(item.recipientCellData.getAmount().raw());
-            const amount = BigInt('0x' + Buffer.from(u128leBuf).reverse().toString('hex')).toString();
-            const recipient = Buffer.from(
-              new Uint8Array(item.recipientCellData.getRecipientAddress().raw()),
-            ).toString();
-            const asset = Buffer.from(new Uint8Array(item.recipientCellData.getAsset().raw())).toString();
-            const chain = item.recipientCellData.getChain();
-            return { txId: item.txId, amount, recipient, token: asset, chain };
-          }),
-        );
-      };
+        map((item) => {
+          const u128leBuf = new Uint8Array(item.recipientCellData.getAmount().raw());
+          const amount = BigInt('0x' + Buffer.from(u128leBuf).reverse().toString('hex')).toString();
+          const recipient = Buffer.from(new Uint8Array(item.recipientCellData.getRecipientAddress().raw())).toString();
+          const asset = Buffer.from(new Uint8Array(item.recipientCellData.getAsset().raw())).toString();
+          const chain = item.recipientCellData.getChain();
+          return { txId: item.txId, amount, recipient, token: asset, chain };
+        }),
+      );
+    };
 
     return from(indexer.getTransactions(searchKey)).pipe(
       expand((tx) => indexer.getTransactions(searchKey, { lastCursor: tx.lastCursor })),
