@@ -13,6 +13,6 @@
     "access": "public"
   },
   "dependencies": {
-    "key-store": "^1.2.0"
+    "key-store": "1.2.0"
   }
 }

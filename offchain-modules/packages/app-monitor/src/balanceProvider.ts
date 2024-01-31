@@ -4,8 +4,9 @@ import { CkbIndexer, Order, ScriptType, SearchKey } from '@force-bridge/x/dist/c
 import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { logger } from '@force-bridge/x/dist/utils/logger';
 import CKB from '@nervosnetwork/ckb-sdk-core';
-import Web3 from 'web3';
-import { AbiItem } from 'web3-utils';
+// import Web3 from 'web3';
+// import { AbiItem } from 'web3-utils';
+import { ethers } from 'ethers';
 
 const minERC20ABI = [
   // balanceOf
@@ -27,26 +28,26 @@ const minERC20ABI = [
 ];
 
 export class BalanceProvider {
-  private web3: Web3;
+  private web3: ethers.providers.JsonRpcProvider;
   private ckb: CKB;
   private ckbIndexer: CkbIndexer;
   private ownerTypeHash: string;
 
   constructor(ethRpcUrl: string, ckbRpcUrl: string, ckbIndexerUrl: string) {
-    this.web3 = new Web3(ethRpcUrl);
+    this.web3 = new ethers.providers.JsonRpcProvider(ethRpcUrl);
     this.ckb = new CKB(ckbRpcUrl);
     this.ckbIndexer = new CkbIndexer(ckbRpcUrl, ckbIndexerUrl);
     this.ownerTypeHash = getOwnerTypeHash();
   }
 
   async ethBalance(address: string): Promise<bigint> {
-    const balance = await this.web3.eth.getBalance(address);
+    const balance = await this.web3.getBalance(address);
     logger.info(`eth_balance name: ETH, address: ${address}, balance: ${balance}`);
-    return BigInt(balance);
+    return balance.toBigInt();
   }
 
   async ethErc20Balance(address: string, tokenAddress: string, name: string): Promise<bigint> {
-    const TokenContract = new this.web3.eth.Contract(minERC20ABI as AbiItem[], tokenAddress);
+    const TokenContract = new ethers.Contract(tokenAddress, minERC20ABI);
     const erc20_amount = await TokenContract.methods.balanceOf(address).call();
     const erc20_balance = erc20_amount.toString();
     logger.info(

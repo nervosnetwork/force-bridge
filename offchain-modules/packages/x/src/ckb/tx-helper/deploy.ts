@@ -203,26 +203,6 @@ export class CkbDeployManager extends CkbTxHelper {
       fromInfo: fromAddress,
     });
     await this.SignAndSendTransaction(res.txSkeleton, privateKey);
-    // let txSkeleton = TransactionSkeleton({ cellProvider: this.indexer });
-    // // get from cells
-    // const fromAddress = encodeToConfigAddress(key.privateKeyToBlake160(privateKey), 'SECP256K1_BLAKE160');
-    // const fromLockscript = parseAddress(fromAddress);
-    // // add output
-    // const sudtOutput: Cell = {
-    //   cellOutput: {
-    //     capacity: '0x0',
-    //     lock: fromLockscript,
-    //   },
-    //   data: utils.bytesToHex(sudtBin),
-    // };
-    // const sudtCellCapacity = minimalCellCapacity(sudtOutput);
-    // sudtOutput.cellOutput.capacity = `0x${sudtCellCapacity.toString(16)}`;
-    // txSkeleton = txSkeleton.update('outputs', (outputs) => {
-    //   return outputs.push(sudtOutput);
-    // });
-    // txSkeleton = await this.completeTx(txSkeleton, fromAddress);
-    // const hash = await this.SignAndSendTransaction(txSkeleton, privateKey);
-    // const sudtCodeHash = utils.bytesToHex(blake2b(sudtBin));
     return {
       cellDep: {
         depType: res.scriptConfig.DEP_TYPE,
@@ -242,32 +222,12 @@ export class CkbDeployManager extends CkbTxHelper {
   async deployContract(contractBin: Buffer, privateKey: string): Promise<ConfigItem> {
     await this.indexer.waitForSync();
     const fromAddress = encodeToConfigAddress(key.privateKeyToBlake160(privateKey), 'SECP256K1_BLAKE160');
-    const res = await deploy.generateDeployWithDataTx({
+    const res = await deploy.generateDeployWithTypeIdTx({
       cellProvider: this.indexer,
       scriptBinary: contractBin,
       fromInfo: fromAddress,
     });
     await this.SignAndSendTransaction(res.txSkeleton, privateKey);
-    // let txSkeleton = TransactionSkeleton({ cellProvider: this.indexer });
-    // // get from cells
-    // const fromAddress = encodeToConfigAddress(key.privateKeyToBlake160(privateKey), 'SECP256K1_BLAKE160');
-    // const fromLockscript = parseAddress(fromAddress);
-    // // add output
-    // const contractOutput: Cell = {
-    //   cellOutput: {
-    //     capacity: '0x0',
-    //     lock: fromLockscript,
-    //   },
-    //   data: utils.bytesToHex(contractBin),
-    // };
-    // const contractCellCapacity = minimalCellCapacity(contractOutput);
-    // contractOutput.cellOutput.capacity = `0x${contractCellCapacity.toString(16)}`;
-    // txSkeleton = txSkeleton.update('outputs', (outputs) => {
-    //   return outputs.push(contractOutput);
-    // });
-    // txSkeleton = await this.completeTx(txSkeleton, fromAddress);
-    // const hash = await this.SignAndSendTransaction(txSkeleton, privateKey);
-    // const contractCodeHash = utils.bytesToHex(blake2b(contractBin));
     return {
       cellDep: {
         depType: res.scriptConfig.DEP_TYPE,

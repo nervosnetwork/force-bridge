@@ -397,7 +397,7 @@ function generateCases(
         recipient: ETH_TEST_ADDRESS,
         asset: ETH_TOKEN_ADDRESS,
       },
-      error: 'Error: Cannot convert undefined to a BigInt',
+      error: "Error: invalid type: undefined can't be converted into BI",
     },
     {
       description: 'burn ETH should return error when network is invalid',
@@ -485,7 +485,7 @@ function generateCases(
         asset: ETH_TOKEN_ADDRESS,
         amount: 'abc',
       },
-      error: 'Error: Cannot convert abc to a BigInt',
+      error: "Error: invalid type: abc can't be converted into BI",
     },
     {
       description: 'burn ETH should return error when amount over balance',
@@ -671,7 +671,7 @@ function generateCases(
         network: 'Ethereum',
         xchainAssetIdent: ETH_TOKEN_ADDRESS,
       },
-      error: 'Error: Cannot convert undefined to a BigInt',
+      error: "Error: invalid type: undefined can't be converted into BI",
     },
     {
       description: 'should return error when network is invalid',
@@ -698,7 +698,7 @@ function generateCases(
         xchainAssetIdent: ETH_TOKEN_ADDRESS,
         amount: 'abc',
       },
-      error: 'Error: Cannot convert abc to a BigInt',
+      error: "Error: invalid type: abc can't be converted into BI",
     },
   ];
   return {

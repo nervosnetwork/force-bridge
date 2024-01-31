@@ -16,7 +16,7 @@ export async function getAssetAVGPrice(token: string): Promise<string> {
     const res = await axios.get(`${BINANCE_EXCHANGE_API}?symbol=${token}USDT`);
     return res.data.weightedAvgPrice;
   } catch (err) {
-    throw new Error(`failed to get price of ${token}, error: ${err.response.data}`);
+    throw new Error(`failed to get price of ${token}, error: ${err}`);
   }
 }
 

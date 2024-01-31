@@ -1,7 +1,8 @@
 import { Cell, utils } from '@ckb-lumos/base';
+import { bytes, number } from '@ckb-lumos/codec';
 import { key } from '@ckb-lumos/hd';
 import { parseAddress, TransactionSkeletonObject } from '@ckb-lumos/helpers';
-import { commons, helpers } from '@ckb-lumos/lumos';
+import { BI, commons, helpers } from '@ckb-lumos/lumos';
 import { BtcAsset, ChainType, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { getOwnerTypeHash } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { ForceBridgeCore } from '@force-bridge/x/dist/core';
@@ -14,7 +15,6 @@ import {
 } from '@force-bridge/x/dist/multisig/multisig-mgr';
 import { verifyCollector } from '@force-bridge/x/dist/multisig/utils';
 import { compareCkbAddress } from '@force-bridge/x/dist/utils';
-import { Amount } from '@lay2/pw-core';
 import { SigError, SigErrorCode, SigErrorOk } from './error';
 import { SigResponse, SigServer } from './sigServer';
 
@@ -213,7 +213,7 @@ async function verifyEthMintRecords(records: mintRecord[]): Promise<SigError> {
 
 async function verifyEthMintTx(mintRecord: mintRecord, output: Cell): Promise<SigError> {
   const ownerTypeHash = getOwnerTypeHash();
-  const amount = new Amount(mintRecord.amount, 0);
+  const amount = BI.from(mintRecord.amount);
   const asset = new EthAsset(mintRecord.asset, ownerTypeHash);
   const recipientLockscript = parseAddress(mintRecord.recipientLockscript);
   const bridgeCellLockscript = {
@@ -260,7 +260,7 @@ async function verifyEthMintTx(mintRecord: mintRecord, output: Cell): Promise<Si
     return new SigError(SigErrorCode.InvalidRecord, `typescript args:${typeScript.args} doesn't with ${sudtArgs}`);
   }
 
-  const data = amount.toUInt128LE();
+  const data = bytes.hexify(number.Uint128LE.pack(amount));
   if (data !== output.data) {
     return new SigError(SigErrorCode.InvalidRecord, `data:${output.data} doesn't with ${data}`);
   }

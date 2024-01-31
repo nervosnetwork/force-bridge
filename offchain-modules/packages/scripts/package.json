@@ -17,14 +17,14 @@
     "@force-bridge/reconc": "^0.0.38",
     "@force-bridge/x": "^0.0.38",
     "@force-bridge/xchain-eth": "^0.0.38",
-    "cheerio": "^1.0.0-rc.10",
-    "dotenv": "^10.0.0",
-    "mustache": "^4.2.0",
-    "node-fetch": "^1.7.3",
-    "shelljs": "^0.8.4"
+    "cheerio": "1.0.0-rc.10",
+    "dotenv": "10.0.0",
+    "mustache": "4.2.0",
+    "node-fetch": "1.7.3",
+    "shelljs": "0.8.4"
   },
   "version": "0.0.38",
   "devDependencies": {
-    "@types/shelljs": "^0.8.9"
+    "@types/shelljs": "0.8.9"
   }
 }

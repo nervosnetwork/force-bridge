@@ -2,18 +2,12 @@ import { Connection } from 'typeorm';
 import { Audit } from '../audit';
 import { DatabaseChecker } from '../checker/databaseChecker';
 import { ForceBridgeCore } from '../core';
-import { BridgeFeeDB, CkbDb, EthDb, KVDb, TronDb } from '../db';
-import { BtcDb } from '../db/btc';
-import { EosDb } from '../db/eos';
+import { BridgeFeeDB, CkbDb, EthDb, KVDb } from '../db';
 import { StatDb } from '../db/stat';
-import { BtcHandler } from '../handlers/btc';
 import { CkbHandler } from '../handlers/ckb';
-import { EosHandler } from '../handlers/eos';
 import { EthHandler } from '../handlers/eth';
-import { TronHandler } from '../handlers/tron';
 import { BridgeMetricSingleton } from '../metric/bridge-metric';
 import { logger } from '../utils/logger';
-import { BTCChain } from '../xchain/btc';
 import { EthChain } from '../xchain/eth';
 
 export function startHandlers(conn: Connection): void {
@@ -46,24 +40,24 @@ export function startHandlers(conn: Connection): void {
     longTimePendingChecker.start();
   }
 
-  if (ForceBridgeCore.config.eos !== undefined) {
-    const eosDb = new EosDb(conn);
-    const eosHandler = new EosHandler(eosDb, ForceBridgeCore.config.eos, role);
-    eosHandler.start();
-  }
+  // if (ForceBridgeCore.config.eos !== undefined) {
+  //   const eosDb = new EosDb(conn);
+  //   const eosHandler = new EosHandler(eosDb, ForceBridgeCore.config.eos, role);
+  //   eosHandler.start();
+  // }
 
-  if (ForceBridgeCore.config.tron !== undefined) {
-    const tronDb = new TronDb(conn);
-    const tronHandler = new TronHandler(tronDb, role);
-    tronHandler.start();
-  }
+  // if (ForceBridgeCore.config.tron !== undefined) {
+  //   const tronDb = new TronDb(conn);
+  //   const tronHandler = new TronHandler(tronDb, role);
+  //   tronHandler.start();
+  // }
 
-  if (ForceBridgeCore.config.btc !== undefined) {
-    const btcDb = new BtcDb(conn);
-    const btcChain = new BTCChain();
-    const btcHandler = new BtcHandler(btcDb, btcChain, role);
-    btcHandler.start();
-  }
+  // if (ForceBridgeCore.config.btc !== undefined) {
+  //   const btcDb = new BtcDb(conn);
+  //   const btcChain = new BTCChain();
+  //   const btcHandler = new BtcHandler(btcDb, btcChain, role);
+  //   btcHandler.start();
+  // }
 
   // start audit bot
   if (ForceBridgeCore.config.audit !== undefined) {

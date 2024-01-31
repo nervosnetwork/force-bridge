@@ -346,11 +346,8 @@ export class CkbTxGenerator extends CkbTxHelper {
     let txSkeleton = TransactionSkeleton({ cellProvider: this.indexer });
     for (const cell of sudtCells) {
       txSkeleton = await common.setupInputCell(txSkeleton, cell);
+      txSkeleton = txSkeleton.update('outputs', (outputs) => outputs.clear());
     }
-    txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => cellDeps.push(this.sudtDep));
-    // txSkeleton = txSkeleton.update('inputs', (inputs) => {
-    // return inputs.concat(sudtCells);
-    // });
 
     // add recipient output cell
     const ownerCellTypeHash = getOwnerTypeHash();
@@ -411,19 +408,7 @@ export class CkbTxGenerator extends CkbTxHelper {
       });
     }
     // add cell deps
-    // txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => {
-    //   const secp256k1 = nonNullable(this.lumosConfig.SCRIPTS.SECP256K1_BLAKE160);
-    //   return cellDeps
-    //     .push({
-    //       outPoint: {
-    //         txHash: secp256k1.TX_HASH,
-    //         index: secp256k1.INDEX,
-    //       },
-    //       depType: secp256k1.DEP_TYPE,
-    //     })
-    //     .push(this.sudtDep)
-    //     .push(this.recipientDep);
-    // });
+    txSkeleton = txSkeleton.update('cellDeps', (cellDeps) => cellDeps.push(this.recipientDep).push(this.sudtDep));
 
     // add change output
     const changeOutput: Cell = {
