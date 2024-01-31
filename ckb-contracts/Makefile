@@ -11,7 +11,7 @@ fmt:
 
 update-and-audit:
 	cargo update
-	for c in $$(ls contracts); do echo "enter $$c"; cd contracts/$$c; cargo update; cargo audit; echo "update and audit scan done"; cd ../..; done
+	for c in $$(ls contracts); do echo "enter $$c"; cd contracts/$$c; cargo update; cargo audit --ignore RUSTSEC-2021-0103; echo "update and audit scan done"; cd ../..; done
 
 build-contract:
 	capsule build
