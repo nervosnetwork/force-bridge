@@ -292,7 +292,7 @@ async function main() {
   const FORCE_BRIDGE_KEYSTORE_PASSWORD = '123456';
   const ETH_RPC_URL = 'http://127.0.0.1:8545';
   const CKB_RPC_URL = 'http://127.0.0.1:8114';
-  const CKB_INDEXER_URL = 'http://127.0.0.1:8116';
+  const CKB_INDEXER_URL = 'http://127.0.0.1:8114';
   const FORCE_BRIDGE_URL = 'http://127.0.0.1:8080/force-bridge/api/v1';
 
   const configPath = pathFromProjectRoot('workdir/integration');
@@ -329,24 +329,31 @@ async function main() {
     },
     ckb: {
       ckbRpcUrl: 'http://127.0.0.1:8114',
-      ckbIndexerUrl: 'http://127.0.0.1:8116',
+      ckbIndexerUrl: 'http://127.0.0.1:8114',
       startBlockHeight: 1,
       confirmNumber: 1,
     },
   };
-  const { assetWhiteList, ckbDeps, ownerConfig, bridgeEthAddress, multisigConfig, ckbStartHeight, ethStartHeight } =
-    await deployDev(
-      ETH_RPC_URL,
-      CKB_RPC_URL,
-      CKB_INDEXER_URL,
-      MULTISIG_NUMBER,
-      MULTISIG_THRESHOLD,
-      ETH_PRIVATE_KEY,
-      CKB_PRIVATE_KEY,
-      'DEV',
-      '0x01',
-      path.join(configPath, 'deployConfig.json'),
-    );
+  const {
+    assetWhiteList,
+    ckbDeps,
+    ownerConfig,
+    bridgeEthAddress,
+    multisigConfig,
+    ckbStartHeight,
+    ethStartHeight,
+  } = await deployDev(
+    ETH_RPC_URL,
+    CKB_RPC_URL,
+    CKB_INDEXER_URL,
+    MULTISIG_NUMBER,
+    MULTISIG_THRESHOLD,
+    ETH_PRIVATE_KEY,
+    CKB_PRIVATE_KEY,
+    'DEV',
+    '0x01',
+    path.join(configPath, 'deployConfig.json'),
+  );
 
   const extraMultiSigConfig = {
     threshold: EXTRA_MULTISIG_NUMBER,
@@ -354,7 +361,7 @@ async function main() {
   };
   logger.info(`extra multiSig config ${JSON.stringify(extraMultiSigConfig, null, 2)}`);
   await generateConfig(
-    initConfig as unknown as Config,
+    (initConfig as unknown) as Config,
     assetWhiteList,
     ckbDeps,
     ownerConfig,

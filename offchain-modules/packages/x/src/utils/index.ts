@@ -127,9 +127,9 @@ export function compareCkbAddress(address1: string, address2: string): boolean {
   const lockscript1 = parseAddress(address1);
   const lockscript2 = parseAddress(address2);
   return (
-    lockscript1.code_hash === lockscript2.code_hash &&
+    lockscript1.codeHash === lockscript2.codeHash &&
     lockscript1.args === lockscript2.args &&
-    lockscript1.hash_type === lockscript2.hash_type
+    lockscript1.hashType === lockscript2.hashType
   );
 }
 

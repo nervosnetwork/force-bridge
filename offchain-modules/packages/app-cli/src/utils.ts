@@ -13,8 +13,8 @@ export async function getSudtBalance(address: string, asset: Asset): Promise<big
   };
   const sudtArgs = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>bridgeCellLockscript);
   const sudtType = {
-    code_hash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
-    hash_type: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
+    codeHash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
+    hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
     args: sudtArgs,
   };
 

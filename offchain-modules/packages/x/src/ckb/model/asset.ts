@@ -1,3 +1,4 @@
+import { computeScriptHash } from '@ckb-lumos/base/lib/utils';
 import { BigNumber } from 'bignumber.js';
 import { ForceBridgeCore } from '../../core';
 import { fromHexString, stringToUint8Array, toHexString } from '../../utils';
@@ -23,8 +24,8 @@ export abstract class Asset {
     }
 
     this.ownerCellTypeHash = ForceBridgeCore.ckb.utils.scriptToHash(<CKBComponents.Script>{
-      codeHash: ForceBridgeCore.config.ckb.ownerCellTypescript.code_hash,
-      hashType: ForceBridgeCore.config.ckb.ownerCellTypescript.hash_type,
+      codeHash: ForceBridgeCore.config.ckb.ownerCellTypescript.codeHash,
+      hashType: ForceBridgeCore.config.ckb.ownerCellTypescript.hashType,
       args: ForceBridgeCore.config.ckb.ownerCellTypescript.args,
     });
   }
@@ -37,7 +38,7 @@ export abstract class Asset {
     };
     return new ScriptLike(
       ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
-      ForceBridgeCore.ckb.utils.scriptToHash(bridgeCellLockscript),
+      computeScriptHash(bridgeCellLockscript),
       ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
     );
   }

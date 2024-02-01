@@ -330,22 +330,29 @@ async function main() {
     ckbDepsFromFile = JSON.parse(fs.readFileSync(ckbDepsPath, 'utf8'));
   }
 
-  const { assetWhiteList, ckbDeps, ownerConfig, bridgeEthAddress, multisigConfig, ckbStartHeight, ethStartHeight } =
-    await deployDev(
-      ETH_RPC_URL,
-      CKB_RPC_URL,
-      CKB_INDEXER_URL,
-      MULTISIG_NUMBER,
-      MULTISIG_THRESHOLD,
-      ETH_PRIVATE_KEY,
-      CKB_PRIVATE_KEY,
-      'AGGRON4',
-      '0x01',
-      path.join(configPath, 'deployConfig.json'),
-      ckbDepsFromFile,
-    );
+  const {
+    assetWhiteList,
+    ckbDeps,
+    ownerConfig,
+    bridgeEthAddress,
+    multisigConfig,
+    ckbStartHeight,
+    ethStartHeight,
+  } = await deployDev(
+    ETH_RPC_URL,
+    CKB_RPC_URL,
+    CKB_INDEXER_URL,
+    MULTISIG_NUMBER,
+    MULTISIG_THRESHOLD,
+    ETH_PRIVATE_KEY,
+    CKB_PRIVATE_KEY,
+    'AGGRON4',
+    '0x01',
+    path.join(configPath, 'deployConfig.json'),
+    ckbDepsFromFile,
+  );
   await generateConfig(
-    initConfig as unknown as Config,
+    (initConfig as unknown) as Config,
     assetWhiteList,
     ckbDeps,
     ownerConfig,

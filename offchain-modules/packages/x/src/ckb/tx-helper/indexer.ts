@@ -99,11 +99,11 @@ export class CkbIndexer implements Indexer {
   }
 
   async waitForSync(blockDifference = 0): Promise<void> {
-    const rpcTipNumber = parseInt((await this.getCkbRpc().get_tip_header()).number, 16);
+    const rpcTipNumber = parseInt((await this.getCkbRpc().getTipHeader()).number, 16);
     logger.debug('rpcTipNumber', rpcTipNumber);
     let index = 0;
     while (true) {
-      const indexerTipNumber = parseInt((await this.tip()).block_number, 16);
+      const indexerTipNumber = parseInt((await this.tip()).blockNumber, 16);
       logger.debug('indexerTipNumber', indexerTipNumber);
       if (indexerTipNumber + blockDifference >= rpcTipNumber) {
         return;
@@ -161,10 +161,10 @@ export class CkbIndexer implements Indexer {
               for (const cell of liveCells) {
                 if (queryData === 'any' || queryData === cell.output_data) {
                   yield {
-                    cell_output: cell.output,
+                    cellOutput: cell.output,
                     data: cell.output_data,
-                    out_point: cell.out_point,
-                    block_number: cell.block_number,
+                    outPoint: cell.out_point,
+                    blockNumber: cell.block_number,
                   };
                 }
               }
@@ -284,10 +284,10 @@ $ echo '{
       logger.debug('liveCells', liveCells[liveCells.length - 1]);
       for (const liveCell of liveCells) {
         const cell: Cell = {
-          cell_output: liveCell.output,
+          cellOutput: liveCell.output,
           data: liveCell.output_data,
-          out_point: liveCell.out_point,
-          block_number: liveCell.block_number,
+          outPoint: liveCell.out_point,
+          blockNumber: liveCell.block_number,
         };
         const { stop, push } = terminator(index, cell);
         if (push) {

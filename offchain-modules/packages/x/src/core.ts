@@ -1,9 +1,9 @@
 import fs from 'fs';
+import { Indexer as CkbIndexer } from '@ckb-lumos/lumos';
 import { KeyStore } from '@force-bridge/keystore';
 import CKB from '@nervosnetwork/ckb-sdk-core';
 import { ethers } from 'ethers';
 import nconf from 'nconf';
-import { CkbIndexer } from './ckb/tx-helper/indexer';
 import { initLumosConfig } from './ckb/tx-helper/init_lumos_config';
 import { Config } from './config';
 import { asserts } from './errors';

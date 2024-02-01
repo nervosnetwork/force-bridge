@@ -1,7 +1,6 @@
+import { RPC, hd, helpers } from '@ckb-lumos/lumos';
 import { nonNullable } from '@force-bridge/x';
 import { initLog, logger } from '@force-bridge/x/dist/utils/logger';
-import CKB from '@nervosnetwork/ckb-sdk-core';
-import { AddressPrefix } from '@nervosnetwork/ckb-sdk-utils';
 import { ethers } from 'ethers';
 import { JSONRPCClient } from 'json-rpc-2.0';
 import fetch from 'node-fetch/index';
@@ -36,7 +35,7 @@ async function main() {
   logger.info(
     `start stress test with bridgeDirection=${bridgeDirection}, batchNumber=${batchNumber}, roundNumber=${roundNumber}`,
   );
-  const ckb = new CKB(ckbNodeUrl);
+  const rpc = new RPC(ckbNodeUrl);
   const client = new JSONRPCClient((jsonRPCRequest) =>
     fetch(forceBridgeUrl, {
       method: 'POST',
@@ -63,10 +62,10 @@ async function main() {
   const ckbAddresses = await (async () => {
     if (bridgeDirection === 'in') {
       return ckbPrivs.map((key) =>
-        ckb.utils.pubkeyToAddress(ckb.utils.privateKeyToPublicKey(key), { prefix: AddressPrefix.Testnet }),
+        helpers.encodeToConfigAddress(hd.key.privateKeyToBlake160(key), 'SECP256K1_BLAKE160'),
       );
     }
-    return prepareCkbAddresses(ckb, ckbPrivs, ckbPrivateKey, ckbNodeUrl, ckbIndexerUrl);
+    return prepareCkbAddresses(rpc, ckbPrivs, ckbPrivateKey, ckbNodeUrl, ckbIndexerUrl);
   })();
 
   logger.info('start initial round of stress lock test');
@@ -77,7 +76,7 @@ async function main() {
   const lockPromise = stressLock(roundNumber - 1, batchNumber, client, provider, ethWallet, ckbAddresses, ethNodeUrl);
   stressPromise.push(lockPromise);
   if (bridgeDirection === 'both') {
-    const burnPromise = stressBurn(roundNumber, batchNumber, ckb, client, ckbPrivs, ckbAddresses, ethAddress);
+    const burnPromise = stressBurn(roundNumber, batchNumber, rpc, client, ckbPrivs, ckbAddresses, ethAddress);
     stressPromise.push(burnPromise);
   }
   await Promise.all(stressPromise);
@@ -126,7 +125,7 @@ async function stressLock(
 async function stressBurn(
   roundNumber: number,
   batchNumber: number,
-  ckb: CKB,
+  rpc: RPC,
   client: JSONRPCClient,
   ckbPrivs: Array<string>,
   senders: Array<string>,
@@ -136,7 +135,7 @@ async function stressBurn(
   for (let i = 0; i < roundNumber; i++) {
     logger.info(`start ${i + 1} round stress burn test`);
     const burnEthSudtTxs = await burn(
-      ckb,
+      rpc,
       client,
       ckbPrivs,
       senders,
@@ -147,7 +146,7 @@ async function stressBurn(
     );
     await check(client, burnEthSudtTxs, senders, batchNumber, ethTokenAddress);
     const burnErc20SudtTxs = await burn(
-      ckb,
+      rpc,
       client,
       ckbPrivs,
       senders,

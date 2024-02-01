@@ -7,6 +7,7 @@ import {
   generateSecp256k1Blake160Address,
   minimalCellCapacity,
   objectToTransactionSkeleton,
+  transactionSkeletonToObject,
   sealTransaction,
   TransactionSkeleton,
   TransactionSkeletonObject,
@@ -18,7 +19,7 @@ import { initLumosConfig } from '@force-bridge/x/dist/ckb/tx-helper/init_lumos_c
 import { getMultisigLock } from '@force-bridge/x/dist/ckb/tx-helper/multisig/multisig_helper';
 import { MultisigItem } from '@force-bridge/x/dist/config';
 import { httpRequest } from '@force-bridge/x/dist/multisig/client';
-import { privateKeyToCkbPubkeyHash, transactionSkeletonToJSON, writeJsonToFile } from '@force-bridge/x/dist/utils';
+import { privateKeyToCkbPubkeyHash, writeJsonToFile } from '@force-bridge/x/dist/utils';
 import { buildChangeValidatorsSigRawData } from '@force-bridge/x/dist/xchain/eth';
 import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
 import commander from 'commander';
@@ -155,7 +156,7 @@ async function doMakeTx(opts: Record<string, string>): Promise<void> {
         newMultisigScript: newMultisigItem,
         oldMultisigItem: valInfos.ckb.oldValInfos,
         signature: [],
-        txSkeleton: txSkeleton.toJS(),
+        txSkeleton: transactionSkeletonToObject(txSkeleton),
       };
     }
 
@@ -260,22 +261,22 @@ async function generateCkbChangeValTx(
   const oldMultisigCell = await ckbClient.fetchMultisigCell(oldMultisigLockscript, xchainCellData);
 
   const newOwnerCell: Cell = {
-    cell_output: {
+    cellOutput: {
       capacity: '0x0',
       lock: newMultisigLockscript,
-      type: oldOwnerCell!.cell_output.type,
+      type: oldOwnerCell!.cellOutput.type,
     },
     data: '0x',
   };
-  newOwnerCell.cell_output.capacity = `0x${minimalCellCapacity(newOwnerCell).toString(16)}`;
+  newOwnerCell.cellOutput.capacity = `0x${minimalCellCapacity(newOwnerCell).toString(16)}`;
   const newMultiCell: Cell = {
-    cell_output: {
+    cellOutput: {
       capacity: '0x0',
       lock: newMultisigLockscript,
     },
     data: xchainCellData,
   };
-  newMultiCell.cell_output.capacity = `0x${minimalCellCapacity(newMultiCell).toString(16)}`;
+  newMultiCell.cellOutput.capacity = `0x${minimalCellCapacity(newMultiCell).toString(16)}`;
 
   txSkeleton = await common.setupInputCell(txSkeleton, oldOwnerCell!, oldMultisigItem);
   txSkeleton = await common.setupInputCell(txSkeleton, oldMultisigCell!, oldMultisigItem);
@@ -320,9 +321,9 @@ async function sendCkbChangeValTx(
   });
   content1 += signatures.join('');
 
-  console.debug(`txSkeleton: ${transactionSkeletonToJSON(txSkeleton)}`);
+  console.debug(`txSkeleton: ${txSkeleton.toJSON()}`);
   const tx = sealTransaction(txSkeleton, [content0, content1]);
-  const hash = await ckbClient.ckb.send_transaction(tx, 'passthrough');
+  const hash = await ckbClient.ckb.sendTransaction(tx, 'passthrough');
   console.log(`change tx hash ${hash}`);
   await ckbClient.waitUntilCommitted(hash);
   return;
@@ -423,7 +424,7 @@ export class CkbChangeValClient extends CkbTxHelper {
       data: '0x',
     });
     for await (const cell of cellCollector.collect()) {
-      if (cell.cell_output.type && cell.cell_output.type.args === ownerCellTypescriptArgs) {
+      if (cell.cellOutput.type && cell.cellOutput.type.args === ownerCellTypescriptArgs) {
         return cell;
       }
     }
@@ -435,7 +436,7 @@ export class CkbChangeValClient extends CkbTxHelper {
       data: xchainCellData,
     });
     for await (const cell of cellCollector.collect()) {
-      if (cell.cell_output.type === null && cell.data === xchainCellData) {
+      if (cell.cellOutput.type === null && cell.data === xchainCellData) {
         return cell;
       }
     }

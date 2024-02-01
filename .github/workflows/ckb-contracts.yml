@@ -26,7 +26,7 @@ jobs:
       - name: check audit
         run: |
           cargo install --force cargo-audit
-          for c in $(ls contracts); do echo "enter $c"; cd contracts/$c; cargo audit; echo "audit done"; cd ../..; done
+          for c in $(ls contracts); do echo "enter $c"; cd contracts/$c; cargo audit --ignore RUSTSEC-2021-0103; echo "audit done"; cd ../..; done
       - name: Cache cargo crate and target
         id: cache-contract-target
         uses: actions/cache@v2

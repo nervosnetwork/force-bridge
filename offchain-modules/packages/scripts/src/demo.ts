@@ -235,7 +235,7 @@ const mint = async () => {
     witnesses: [{ lock: '', inputType: '', outputType: '' }],
     outputsData: [bigintToSudtAmount(100), '0x', '0x'],
   };
-  const signedTx = ckb.signTransaction(PRI_KEY)(rawTx as unknown as CKBComponents.RawTransaction);
+  const signedTx = ckb.signTransaction(PRI_KEY)((rawTx as unknown) as CKBComponents.RawTransaction);
   console.dir({ signedTx }, { depth: null });
   const mintTxHash = await ckb.rpc.sendTransaction(signedTx);
   console.log(`Mint Transaction has been sent with tx hash ${mintTxHash}`);
@@ -307,7 +307,7 @@ const burn = async (sudtCell) => {
     outputsData: [bigintToSudtAmount(99), bigintToSudtAmount(1)],
   };
   console.dir({ rawTx }, { depth: null });
-  const signedTx = ckb.signTransaction(PRI_KEY)(rawTx as unknown as CKBComponents.RawTransaction);
+  const signedTx = ckb.signTransaction(PRI_KEY)((rawTx as unknown) as CKBComponents.RawTransaction);
   console.dir({ signedTx }, { depth: null });
   const burnTxHash = await ckb.rpc.sendTransaction(signedTx);
   console.log(`Burn Transaction has been sent with tx hash ${burnTxHash}`);
@@ -335,4 +335,4 @@ const bootstrap = async () => {
   nconf.save();
 };
 
-bootstrap();
+void bootstrap();

@@ -1,8 +1,9 @@
-import { core, utils } from '@ckb-lumos/base';
-import { CKBIndexerClient, SearchKey, SearchKeyFilter } from '@force-bridge/ckb-indexer-client';
-import type * as Indexer from '@force-bridge/ckb-indexer-client';
+import { utils } from '@ckb-lumos/base';
+import { WitnessArgs } from '@ckb-lumos/base/lib/blockchain';
+import { SearchKey, IndexerTransactionList } from '@ckb-lumos/ckb-indexer/lib/type';
+import { number } from '@ckb-lumos/codec';
+import { HexadecimalRange, Indexer } from '@ckb-lumos/lumos';
 import { CkbBurnRecord, CkbMintRecord, SudtRecord } from '@force-bridge/reconc';
-import { Amount } from '@lay2/pw-core';
 import { default as RPC } from '@nervosnetwork/ckb-sdk-rpc';
 import { Observable, from } from 'rxjs';
 import { map, expand, takeWhile, filter as rxFilter, mergeMap, distinct, retry } from 'rxjs/operators';
@@ -18,7 +19,8 @@ export interface CKBRecordObservableProvider {
   ownerCellTypeHash: string;
   recipientType: ScriptLike;
   bridgeLock: ScriptLike;
-  indexer: CKBIndexerClient;
+
+  indexer: Indexer;
   rpc: RPC;
   /**
    * parse a script to a mint recipient
@@ -54,27 +56,23 @@ export class CKBRecordObservable {
     const { rpc, indexer: indexer } = this.provider;
 
     const searchKey: SearchKey = {
-      filter: { block_range: [filter.fromBlock ?? '0x0', filter.toBlock ?? '0xffffffffffffffff'] },
+      filter: { blockRange: [filter.fromBlock ?? '0x0', filter.toBlock ?? '0xffffffffffffffff'] },
       script: {
-        code_hash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
-        hash_type: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
+        codeHash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
+        hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
         args: '0x',
       },
-      script_type: 'type',
+      scriptType: 'type',
     };
 
-    const observable = from(
-      indexer.get_transactions({
-        searchKey,
-      }),
-    ).pipe(
+    const observable = from(indexer.getTransactions(searchKey)).pipe(
       retry(2),
       takeWhile((res) => res.objects.length > 0),
       mergeMap((res) => res.objects),
       mergeMap(async (getTxResult) => {
         try {
           const records: SudtRecord[] = [];
-          const tx = await rpc.getTransaction(getTxResult.tx_hash);
+          const tx = await rpc.getTransaction(getTxResult.txHash);
           const inputs = tx.transaction.inputs;
           for (let i = 0; i < inputs.length; i++) {
             const input = inputs[i];
@@ -83,18 +81,18 @@ export class CKBRecordObservable {
               const output = tx.transaction.outputs[parseInt(input.previousOutput.index)];
               if (
                 output.type &&
-                output.type.codeHash == searchKey.script.code_hash &&
-                output.type.hashType == searchKey.script.hash_type
+                output.type.codeHash == searchKey.script.codeHash &&
+                output.type.hashType == searchKey.script.hashType
               ) {
                 records.push({
                   index: i,
-                  txId: getTxResult.tx_hash,
+                  txId: getTxResult.txHash,
                   amount: tx.transaction.outputsData[parseInt(input.previousOutput.index)],
                   lock: this.provider.scriptToAddress(ScriptLike.from(output.lock)),
                   direction: 'out',
                   token: utils.computeScriptHash({
-                    hash_type: output.type.hashType,
-                    code_hash: output.type.codeHash,
+                    hashType: output.type.hashType,
+                    codeHash: output.type.codeHash,
                     args: output.type.args,
                   }),
                 });
@@ -105,8 +103,8 @@ export class CKBRecordObservable {
           tx.transaction.outputs.forEach((v, k) => {
             if (
               v.type &&
-              v.type.codeHash == searchKey.script.code_hash &&
-              v.type.hashType == searchKey.script.hash_type
+              v.type.codeHash == searchKey.script.codeHash &&
+              v.type.hashType == searchKey.script.hashType
             ) {
               records.push({
                 index: k,
@@ -115,8 +113,8 @@ export class CKBRecordObservable {
                 lock: this.provider.scriptToAddress(ScriptLike.from(v.lock)),
                 direction: 'in',
                 token: utils.computeScriptHash({
-                  hash_type: v.type.hashType,
-                  code_hash: v.type.codeHash,
+                  hashType: v.type.hashType,
+                  codeHash: v.type.codeHash,
                   args: v.type.args,
                 }),
               });
@@ -133,25 +131,25 @@ export class CKBRecordObservable {
 
   observeMintRecord(filter: CKBMintFilter): Observable<CkbMintRecord> {
     const { rpc, indexer: indexer, ownerCellTypeHash, bridgeLock } = this.provider;
-    const blockRange: SearchKeyFilter['block_range'] = [
+    const blockRange: HexadecimalRange = [
       filter.fromBlock ? filter.fromBlock : '0x0',
       filter.toBlock ? filter.toBlock : '0xffffffffffffffff', // u64::Max
     ];
 
     const searchKey: SearchKey = {
-      filter: { block_range: blockRange },
-      script: bridgeLock.toIndexerScript(),
-      script_type: 'lock',
+      filter: { blockRange },
+      script: bridgeLock,
+      scriptType: 'lock',
     };
 
-    const observable = from(indexer.get_transactions({ searchKey })).pipe(
-      expand((res) => indexer.get_transactions({ searchKey, cursor: res.last_cursor })),
+    const observable = from(indexer.getTransactions(searchKey)).pipe(
+      expand(({ lastCursor }) => indexer.getTransactions(searchKey, { lastCursor })),
       takeWhile((res) => res.objects.length > 0),
       mergeMap((res) => res.objects),
-      rxFilter((getTxResult: Indexer.GetTransactionsResult) => getTxResult.io_type === 'output'),
-      distinct((res) => res.tx_hash),
+      rxFilter((res) => res.ioType === 'output'),
+      distinct((res) => res.txHash),
       mergeMap(async (getTxResult) => {
-        const tx = await rpc.getTransaction(getTxResult.tx_hash);
+        const tx = await rpc.getTransaction(getTxResult.txHash);
         return { tx, getTxResult };
       }, 20),
       rxFilter((res) => {
@@ -177,8 +175,8 @@ export class CKBRecordObservable {
       mergeMap((res) => {
         try {
           const tx = res.tx;
-          const witnessArgs = new core.WitnessArgs(fromHexString(tx.transaction.witnesses[0]).buffer);
-          const inputTypeWitness = witnessArgs.getInputType().value().raw();
+          const witnessArgs = WitnessArgs.unpack(fromHexString(tx.transaction.witnesses[0]).buffer);
+          const inputTypeWitness = witnessArgs.inputType;
           const witness = new MintWitness(inputTypeWitness, { validate: true });
           // 1 mintTx : 1 lockTxHash
           // 1 sudtOutput : 1 lockTxHash
@@ -196,7 +194,7 @@ export class CKBRecordObservable {
             }
 
             const fromTxId = uint8ArrayToString(new Uint8Array(lockTxHashes.indexAt(records.length).raw()));
-            const amount = Amount.fromUInt128LE(tx.transaction.outputsData[i]).toString(0);
+            const amount = number.Uint128LE.unpack(tx.transaction.outputsData[i]).toString(0);
             const txId = tx.transaction.hash;
             let fee = '-1';
             if (filter.asset) {
@@ -205,7 +203,7 @@ export class CKBRecordObservable {
 
             const recipient = this.provider.scriptToAddress(ScriptLike.from(cell.lock));
             const blockHash = tx.txStatus.blockHash || '';
-            const blockNumber = parseInt(res.getTxResult.block_number, 16);
+            const blockNumber = parseInt(res.getTxResult.blockNumber, 16);
             const record: CkbMintRecord = { amount, fromTxId, txId, fee, recipient, blockHash, blockNumber };
             return records.concat(record);
           }, [] as CkbMintRecord[]);
@@ -219,75 +217,71 @@ export class CKBRecordObservable {
   }
 
   observeBurnRecord(filter: CKBBurnFilter): Observable<CkbBurnRecord> {
-    const blockRange: SearchKeyFilter['block_range'] = [
+    const blockRange: HexadecimalRange = [
       filter.fromBlock ? filter.fromBlock : '0x0',
       filter.toBlock ? filter.toBlock : '0xffffffffffffffff', // u64::Max
     ];
 
     const searchKey: SearchKey = {
-      script_type: 'type',
-      script: this.provider.recipientType.toIndexerScript(),
-      filter: { block_range: blockRange, script: filter.sender ? filter.sender.toIndexerScript() : undefined },
+      scriptType: 'type',
+      script: this.provider.recipientType,
+      filter: { blockRange: blockRange, script: filter.sender ?? filter.sender },
     };
 
     const { rpc, indexer } = this.provider;
 
-    const indexerTx2FromRecord =
-      () =>
-      (txs$: Observable<Indexer.IndexerIterableResult<Indexer.GetTransactionsResult>>): Observable<CkbBurnRecord> => {
-        return txs$.pipe(
-          mergeMap((txs) => txs.objects.filter((indexerTx) => indexerTx.io_type === 'output')),
-          mergeMap((tx) => rpc.getTransaction(tx.tx_hash), 20),
-          map((tx) => {
-            const recipientCellData = new RecipientCellData(fromHexString(tx.transaction.outputsData[0]).buffer);
-            return { recipientCellData, txId: tx.transaction.hash };
-          }),
-          rxFilter((tx) => {
-            if (!filter.filterRecipientData(tx.recipientCellData)) {
-              return false;
-            }
-            return true;
-            // const assetAddress = toHexString(new Uint8Array(tx.recipientCellData.getAsset().raw()));
-            // let asset;
-            // const ownerTypeHash = getOwnerTypeHash();
-            // switch (tx.recipientCellData.getChain()) {
-            //   case ChainType.BTC:
-            //     asset = new BtcAsset(uint8ArrayToString(fromHexString(assetAddress)), ownerTypeHash);
-            //     break;
-            //   case ChainType.ETH:
-            //     asset = new EthAsset(uint8ArrayToString(fromHexString(assetAddress)), ownerTypeHash);
-            //     break;
-            //   case ChainType.TRON:
-            //     asset = new TronAsset(uint8ArrayToString(fromHexString(assetAddress)), ownerTypeHash);
-            //     break;
-            //   case ChainType.EOS:
-            //     asset = new EosAsset(uint8ArrayToString(fromHexString(assetAddress)), ownerTypeHash);
-            //     break;
-            //   default:
-            //     return false;
-            // }
-            // return (
-            //   asset.inWhiteList() &&
-            //   utils.readBigUInt128LE(`0x${toHexString(new Uint8Array(tx.recipientCellData.getAmount().raw()))}`) >=
-            //     BigInt(asset.getMinimalAmount())
-            // );
-          }),
+    const indexerTx2FromRecord = () => (txs$: Observable<IndexerTransactionList>): Observable<CkbBurnRecord> => {
+      return txs$.pipe(
+        mergeMap((txs) => txs.objects.filter((indexerTx) => indexerTx.ioType === 'output')),
+        mergeMap((tx) => rpc.getTransaction(tx.txHash), 20),
+        map((tx) => {
+          const recipientCellData = new RecipientCellData(fromHexString(tx.transaction.outputsData[0]).buffer);
+          return { recipientCellData, txId: tx.transaction.hash };
+        }),
+        rxFilter((tx) => {
+          if (!filter.filterRecipientData(tx.recipientCellData)) {
+            return false;
+          }
+          return true;
+          // const assetAddress = toHexString(new Uint8Array(tx.recipientCellData.getAsset().raw()));
+          // let asset;
+          // const ownerTypeHash = getOwnerTypeHash();
+          // switch (tx.recipientCellData.getChain()) {
+          //   case ChainType.BTC:
+          //     asset = new BtcAsset(uint8ArrayToString(fromHexString(assetAddress)), ownerTypeHash);
+          //     break;
+          //   case ChainType.ETH:
+          //     asset = new EthAsset(uint8ArrayToString(fromHexString(assetAddress)), ownerTypeHash);
+          //     break;
+          //   case ChainType.TRON:
+          //     asset = new TronAsset(uint8ArrayToString(fromHexString(assetAddress)), ownerTypeHash);
+          //     break;
+          //   case ChainType.EOS:
+          //     asset = new EosAsset(uint8ArrayToString(fromHexString(assetAddress)), ownerTypeHash);
+          //     break;
+          //   default:
+          //     return false;
+          // }
+          // return (
+          //   asset.inWhiteList() &&
+          //   utils.readBigUInt128LE(`0x${toHexString(new Uint8Array(tx.recipientCellData.getAmount().raw()))}`) >=
+          //     BigInt(asset.getMinimalAmount())
+          // );
+        }),
 
-          map((item) => {
-            const u128leBuf = new Uint8Array(item.recipientCellData.getAmount().raw());
-            const amount = BigInt('0x' + Buffer.from(u128leBuf).reverse().toString('hex')).toString();
-            const recipient = Buffer.from(
-              new Uint8Array(item.recipientCellData.getRecipientAddress().raw()),
-            ).toString();
-            const asset = Buffer.from(new Uint8Array(item.recipientCellData.getAsset().raw())).toString();
-            const chain = item.recipientCellData.getChain();
-            return { txId: item.txId, amount, recipient, token: asset, chain };
-          }),
-        );
-      };
+        map((item) => {
+          const u128leBuf = new Uint8Array(item.recipientCellData.getAmount().raw());
+          const amount = BigInt('0x' + Buffer.from(u128leBuf).reverse().toString('hex')).toString();
+          const recipient = Buffer.from(new Uint8Array(item.recipientCellData.getRecipientAddress().raw())).toString();
+          const asset = Buffer.from(new Uint8Array(item.recipientCellData.getAsset().raw())).toString();
+          const chain = item.recipientCellData.getChain();
+          return { txId: item.txId, amount, recipient, token: asset, chain };
+        }),
+      );
+    };
 
-    return from(indexer.get_transactions({ searchKey })).pipe(
-      expand((tx) => indexer.get_transactions({ searchKey, cursor: tx.last_cursor })),
+    return from(indexer.getTransactions(searchKey)).pipe(
+      expand((tx) => indexer.getTransactions(searchKey, { lastCursor: tx.lastCursor })),
       takeWhile((tx) => tx.objects.length > 0),
       indexerTx2FromRecord(),
     );

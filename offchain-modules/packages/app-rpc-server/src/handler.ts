@@ -1,4 +1,5 @@
 import { parseAddress, transactionSkeletonToObject } from '@ckb-lumos/helpers';
+import { BI } from '@ckb-lumos/lumos';
 import { Asset, BtcAsset, EosAsset, EthAsset, TronAsset } from '@force-bridge/x/dist/ckb/model/asset';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
 import { CkbTxGenerator } from '@force-bridge/x/dist/ckb/tx-helper/generator';
@@ -13,7 +14,6 @@ import { logger } from '@force-bridge/x/dist/utils/logger';
 import { IBalance } from '@force-bridge/x/dist/xchain/btc';
 import { abi } from '@force-bridge/x/dist/xchain/eth/abi/ForceBridge.json';
 import { checkLock } from '@force-bridge/x/dist/xchain/eth/check';
-import { Amount } from '@lay2/pw-core';
 import { BigNumber } from 'bignumber.js';
 import bitcore from 'bitcore-lib';
 import { ethers } from 'ethers';
@@ -384,7 +384,7 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
       const assetFut = this.getAccountBalance(value);
       balanceFutures.push(assetFut);
     }
-    return (await Promise.all(balanceFutures)) as unknown as Promise<GetBalanceResponse>;
+    return ((await Promise.all(balanceFutures)) as unknown) as Promise<GetBalanceResponse>;
   }
 
   async getAccountBalance(value: BalancePayload): Promise<AssetType> {
@@ -421,8 +421,8 @@ export class ForceBridgeAPIV1Handler implements API.ForceBridgeAPIV1 {
       case 'Nervos': {
         const userScript = parseAddress(value.userIdent);
         const sudtType = {
-          code_hash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
-          hash_type: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
+          codeHash: ForceBridgeCore.config.ckb.deps.sudtType.script.codeHash,
+          hashType: ForceBridgeCore.config.ckb.deps.sudtType.script.hashType,
           args: value.assetIdent,
         };
         const collector = new IndexerCollector(ForceBridgeCore.ckbIndexer);
@@ -480,9 +480,7 @@ function transferDbRecordToResponse(
     const confirmStatus = record.lock_confirm_status === 'confirmed' ? 'confirmed' : record.lock_confirm_number;
     const bridgeFee = new EthAsset(record.asset).getBridgeFee('in');
     const mintAmount =
-      record.mint_amount === null
-        ? new Amount(record.lock_amount, 0).sub(new Amount(bridgeFee, 0)).toString(0)
-        : record.mint_amount;
+      record.mint_amount === null ? BI.from(record.lock_amount).sub(BI.from(bridgeFee)).toString() : record.mint_amount;
     bridgeTxRecord = {
       txSummary: {
         fromAsset: {
@@ -513,7 +511,7 @@ function transferDbRecordToResponse(
     const bridgeFee = new EthAsset(record.asset).getBridgeFee('out');
     const unlockAmount =
       record.unlock_amount === null
-        ? new Amount(record.burn_amount, 0).sub(new Amount(bridgeFee, 0)).toString(0)
+        ? BI.from(record.burn_amount).sub(BI.from(bridgeFee)).toString()
         : record.unlock_amount;
     bridgeTxRecord = {
       txSummary: {
@@ -627,6 +625,6 @@ function checkETHAmount(assetIdent, amount) {
   const humanizeMinimalAmount = new BigNumber(minimalAmount)
     .times(new BigNumber(10).pow(-assetInfo.decimal))
     .toString();
-  if (new Amount(amount, 0).lt(new Amount(minimalAmount, 0)))
+  if (BI.from(amount).lt(BI.from(minimalAmount)))
     throw new Error(`minimal bridge amount is ${humanizeMinimalAmount} ${assetInfo.symbol}`);
 }

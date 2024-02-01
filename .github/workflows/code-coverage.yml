@@ -12,7 +12,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2022-01-21
+          toolchain: nightly
           override: true
           components: rustfmt, clippy
       - name: install-tarpaulin

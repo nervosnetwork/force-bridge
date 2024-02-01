@@ -1,13 +1,11 @@
-import { encodeToAddress, objectToTransactionSkeleton, parseAddress } from '@ckb-lumos/helpers';
+import { generateGenesisScriptConfigs } from '@ckb-lumos/config-manager';
+import { encodeToAddress, parseAddress, TransactionSkeleton, objectToTransactionSkeleton } from '@ckb-lumos/helpers';
+import { hd, Indexer as CkbIndexer, RPC, Script, helpers, Indexer, commons, BI, Transaction } from '@ckb-lumos/lumos';
+import { CkbTxHelper } from '@force-bridge/x/dist/ckb/tx-helper/base_generator';
 import { IndexerCollector } from '@force-bridge/x/dist/ckb/tx-helper/collector';
-import { txSkeletonToRawTransactionToSign } from '@force-bridge/x/dist/ckb/tx-helper/generator';
-import { CkbIndexer } from '@force-bridge/x/dist/ckb/tx-helper/indexer';
 import { asserts } from '@force-bridge/x/dist/errors';
 import { asyncSleep } from '@force-bridge/x/dist/utils';
 import { logger } from '@force-bridge/x/dist/utils/logger';
-import { Script } from '@lay2/pw-core';
-import CKB from '@nervosnetwork/ckb-sdk-core';
-import { AddressPrefix } from '@nervosnetwork/ckb-sdk-utils';
 import { ethers } from 'ethers';
 import { JSONRPCClient } from 'json-rpc-2.0';
 import fetch from 'node-fetch/index';
@@ -51,7 +49,7 @@ export async function generateLockTx(
 }
 
 export async function generateBurnTx(
-  ckb: CKB,
+  rpc: RPC,
   client: JSONRPCClient,
   asset: string,
   ckbPriv: string,
@@ -59,7 +57,7 @@ export async function generateBurnTx(
   recipient: string,
   amount: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-): Promise<any> {
+): Promise<Transaction | undefined> {
   const burnPayload = {
     network: 'Ethereum',
     sender: sender,
@@ -70,13 +68,14 @@ export async function generateBurnTx(
 
   for (let i = 0; i < 5; i++) {
     try {
-      const burnTxSkeleton = await client.request('generateBridgeOutNervosTransaction', burnPayload);
-      const unsignedBurnTx = txSkeletonToRawTransactionToSign(
-        objectToTransactionSkeleton(burnTxSkeleton.rawTransaction),
-      );
-      logger.info('unsignedBurnTx ', unsignedBurnTx);
+      const res = await client.request('generateBridgeOutNervosTransaction', burnPayload);
+      const burnTxSkeleton = commons.common.prepareSigningEntries(objectToTransactionSkeleton(res.rawTransaction));
+      const signingEntries = burnTxSkeleton.get('signingEntries');
+      const sigs = signingEntries!
+        .map((signingEntrie) => hd.key.signRecoverable(signingEntrie.message!, ckbPriv))
+        .toArray();
+      const signedTx = helpers.sealTransaction(burnTxSkeleton, sigs);
 
-      const signedTx = ckb.signTransaction(ckbPriv)(unsignedBurnTx);
       logger.info('signedTx', signedTx);
       return signedTx;
     } catch (e) {
@@ -176,7 +175,7 @@ export async function lock(
 }
 
 export async function burn(
-  ckb: CKB,
+  rpc: RPC,
   client: JSONRPCClient,
   ckbPrivs: Array<string>,
   senders: Array<string>,
@@ -188,14 +187,14 @@ export async function burn(
   const batchNum = ckbPrivs.length;
   const burnTxHashes = new Array<string>();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const signedBurnTxs = new Array<any>();
+  const signedBurnTxs = new Array<Transaction>();
   for (let i = 0; i < batchNum; i++) {
-    const burnTx = await generateBurnTx(ckb, client, ethTokenAddress, ckbPrivs[i], senders[i], recipient, burnAmount);
-    signedBurnTxs.push(burnTx);
+    const burnTx = await generateBurnTx(rpc, client, ethTokenAddress, ckbPrivs[i], senders[i], recipient, burnAmount);
+    signedBurnTxs.push(burnTx!);
   }
 
   for (let i = 0; i < batchNum; i++) {
-    const burnETHTxHash = await ckb.rpc.sendTransaction(signedBurnTxs[i], 'passthrough');
+    const burnETHTxHash = await rpc.sendTransaction(signedBurnTxs[i], 'passthrough');
     await asyncSleep(intervalMs);
     burnTxHashes.push(burnETHTxHash);
   }
@@ -224,85 +223,76 @@ export function prepareCkbPrivateKeys(batchNum: number): Array<string> {
 }
 
 export async function prepareCkbAddresses(
-  ckb: CKB,
+  rpc: RPC,
   privateKeys: Array<string>,
   ckbPrivateKey: string,
   ckbNodeUrl: string,
   ckbIndexerUrl: string,
 ): Promise<Array<string>> {
-  const batchNum = ckbPrivateKey.length;
-  const { secp256k1Dep } = await ckb.loadDeps();
-  asserts(secp256k1Dep);
-  const cellDeps = [
-    {
-      outPoint: secp256k1Dep.outPoint,
-      depType: secp256k1Dep.depType,
-    },
-  ];
+  const ckbTxHelper = new CkbTxHelper(ckbNodeUrl, ckbIndexerUrl);
+  let txSkeleton = TransactionSkeleton({ cellProvider: new Indexer(ckbIndexerUrl) });
 
-  const publicKey = ckb.utils.privateKeyToPublicKey(ckbPrivateKey);
-  const args = `0x${ckb.utils.blake160(publicKey, 'hex')}`;
+  const batchNum = ckbPrivateKey.length;
+  const { SECP256K1_BLAKE160 } = generateGenesisScriptConfigs(await rpc.getBlockByNumber('0x0'));
+  asserts(SECP256K1_BLAKE160);
+
+  const args = hd.key.privateKeyToBlake160(ckbPrivateKey);
   const fromLockscript = {
-    code_hash: secp256k1Dep.codeHash,
+    codeHash: SECP256K1_BLAKE160.CODE_HASH,
     args,
-    hash_type: secp256k1Dep.hashType,
+    hashType: SECP256K1_BLAKE160.HASH_TYPE,
   };
+  const fromAddress = helpers.encodeToAddress(fromLockscript);
   asserts(fromLockscript);
   const needSupplyCap = batchNum * 600 * 100000000 + 100000;
   const collector = new IndexerCollector(new CkbIndexer(ckbNodeUrl, ckbIndexerUrl));
 
   const needSupplyCapCells = await collector.getCellsByLockscriptAndCapacity(fromLockscript, BigInt(needSupplyCap));
-  const inputs = needSupplyCapCells.map((cell) => {
-    return { previousOutput: { txHash: cell.out_point!.tx_hash, index: cell.out_point!.index }, since: '0x0' };
-  });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const outputs = new Array<any>();
-  const outputsData = new Array<string>();
+  let inputCap = BI.from(0);
+  for (const cell of needSupplyCapCells) {
+    inputCap = inputCap.add(BI.from(cell.cellOutput.capacity));
+    txSkeleton = await commons.common.setupInputCell(txSkeleton, cell);
+  }
   const addresses = new Array<string>();
+  let outputCap = BI.from(0);
   for (const key of privateKeys) {
-    const toPublicKey = ckb.utils.privateKeyToPublicKey(key);
-    addresses.push(ckb.utils.pubkeyToAddress(toPublicKey, { prefix: AddressPrefix.Testnet }));
-
-    const toArgs = `0x${ckb.utils.blake160(toPublicKey, 'hex')}`;
-    const toScript = Script.fromRPC({
-      code_hash: secp256k1Dep.codeHash,
-      args: toArgs,
-      hash_type: secp256k1Dep.hashType,
-    });
+    const toScript: Script = {
+      codeHash: SECP256K1_BLAKE160.CODE_HASH,
+      args: hd.key.privateKeyToBlake160(key),
+      hashType: SECP256K1_BLAKE160.HASH_TYPE,
+    };
+    addresses.push(helpers.encodeToAddress(toScript));
     const capacity = 600 * 100000000;
+    outputCap = outputCap.add(capacity);
+
     const toScriptCell = {
       lock: toScript,
       capacity: `0x${capacity.toString(16)}`,
     };
-    outputs.push(toScriptCell);
-    outputsData.push('0x');
+    txSkeleton = txSkeleton.update('outputs', (outputs) =>
+      outputs.push({
+        cellOutput: toScriptCell,
+        data: '0x',
+      }),
+    );
   }
-
-  const inputCap = needSupplyCapCells.map((cell) => BigInt(cell.cell_output.capacity)).reduce((a, b) => a + b, 0n);
-  const outputCap = outputs.map((cell) => BigInt(cell.capacity)).reduce((a, b) => a + b);
-  const changeCellCapacity = inputCap - outputCap - 10000000n;
-  outputs.push({
-    lock: Script.fromRPC(fromLockscript),
-    capacity: `0x${changeCellCapacity.toString(16)}`,
+  txSkeleton = txSkeleton.update('outputs', (outputs) => {
+    const output = outputs.get(0)!;
+    output.cellOutput.capacity = `0x${inputCap.sub(outputCap).toString(16)}`;
+    return outputs.set(0, output);
   });
-  outputsData.push('0x');
+  logger.info(`txSkeleton: ${JSON.stringify(txSkeleton, null, 2)}`);
 
-  const rawTx = {
-    version: '0x0',
-    cellDeps,
-    headerDeps: [],
-    inputs,
-    outputs,
-    witnesses: [{ lock: '', inputType: '', outputType: '' }],
-    outputsData,
-  };
+  txSkeleton = await commons.common.payFeeByFeeRate(txSkeleton, [fromAddress], 1000);
+  txSkeleton = commons.common.prepareSigningEntries(txSkeleton);
+  const message = txSkeleton.get('signingEntries').get(0)?.message;
+  const sig = hd.key.signRecoverable(message!, ckbPrivateKey);
+  const tx = helpers.sealTransaction(txSkeleton, [sig]);
 
-  logger.info(`rawTx: ${JSON.stringify(rawTx, null, 2)}`);
-  const signedTx = ckb.signTransaction(ckbPrivateKey)(rawTx);
-  logger.info('signedTx', signedTx);
-
-  const burnTxHash = await ckb.rpc.sendTransaction(signedTx, 'passthrough');
+  logger.info(`rawTx: ${JSON.stringify(tx, null, 2)}`);
+  const burnTxHash = await rpc.sendTransaction(tx, 'passthrough');
+  await ckbTxHelper.waitUntilCommitted(burnTxHash, 120);
   logger.info('tx', burnTxHash);
   return addresses;
 }
@@ -343,7 +333,7 @@ export async function ethBatchTest(
   burnAmount = '1000000000000000',
 ): Promise<void> {
   logger.info('ethBatchTest start!');
-  const ckb = new CKB(ckbNodeUrl);
+  const rpc = new RPC(ckbNodeUrl);
 
   const client = new JSONRPCClient((jsonRPCRequest) =>
     fetch(forceBridgeUrl, {
@@ -368,12 +358,12 @@ export async function ethBatchTest(
   const ethAddress = ethWallet.address;
 
   const ckbPrivs = await prepareCkbPrivateKeys(batchNum);
-  const ckbAddresses = await prepareCkbAddresses(ckb, ckbPrivs, ckbPrivateKey, ckbNodeUrl, ckbIndexerUrl);
+  const ckbAddresses = await prepareCkbAddresses(rpc, ckbPrivs, ckbPrivateKey, ckbNodeUrl, ckbIndexerUrl);
 
   const lockTxs = await lock(client, provider, ethWallet, ckbAddresses, ethTokenAddress, lockAmount, ethNodeUrl);
   await check(client, lockTxs, ckbAddresses, batchNum, ethTokenAddress);
 
-  const burnTxs = await burn(ckb, client, ckbPrivs, ckbAddresses, ethAddress, ethTokenAddress, burnAmount);
+  const burnTxs = await burn(rpc, client, ckbPrivs, ckbAddresses, ethAddress, ethTokenAddress, burnAmount);
   await check(client, burnTxs, ckbAddresses, batchNum, ethTokenAddress);
   logger.info('ethBatchTest pass!');
 }
